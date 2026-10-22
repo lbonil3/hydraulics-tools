@@ -1,13 +1,15 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Culvert Studio – HDS-5 culvert analysis</title>
 <link rel="stylesheet" href="style.css"></head><body>
-<header><h1>Culvert Studio</h1><span>Visual culvert analysis per FHWA HDS-5 (3rd ed., 2012) · first version</span>
+<header><h1>Culvert Studio</h1><span>Visual culvert analysis per FHWA HDS-5 (3rd ed., 2012) · with roadway overtopping</span>
 <label class="units">Units <select id="units"><option value="US">US customary (ft, cfs)</option><option value="SI">SI (m, m³/s)</option></select></label></header>
 <main><aside id="form"></aside>
 <section id="out">
  <div id="summary"></div>
  <div class="card"><h3>Profile view <small>(hover an input to highlight it here)</small></h3><svg id="profile" viewBox="0 0 900 340"></svg></div>
- <div class="row"><div class="card grow"><h3>Performance curve – headwater vs discharge</h3><svg id="rating" viewBox="0 0 600 320"></svg></div>
+ <div class="row"><div class="card grow"><h3>Performance curve – culvert headwater vs culvert discharge</h3><svg id="rating" viewBox="0 0 600 320"></svg></div>
  <div class="card"><h3>Cross-section at inlet</h3><svg id="xsec" viewBox="0 0 300 320"></svg></div></div>
+ <div class="row"><div class="card grow"><h3>Flow split – culvert vs roadway (HY-8-style summary)</h3><div id="split"></div></div>
+ <div class="card grow"><h3>Discharge vs headwater elevation</h3><svg id="splitchart" viewBox="0 0 600 320"></svg></div></div>
  <div class="card"><h3>Step-by-step explanation</h3><div id="explain"></div></div>
 </section></main>
 <script src="calc.js"></script><script src="app.js"></script></body></html>

@@ -65,5 +65,42 @@ function analyze(p){
   const Vout=Q/geom(p.shape,B,D,yout).A;
   return {US,g,D,B,N,Q,S,A,R,dc,Vc,Hc,yn,X,regime,ratio,HWi,ELhi,TW,ho,V,hv,Hf,He,Ho,H,ELho,HWo,control,HW,EL:p.invIn+HW,yout,Vout,inlet:inl};
 }
-root.Culvert={INLETS,MANNING,analyze,geom,critical,normal};
+
+// ---- Roadway overtopping (HDS-5 Eq. 3.9, Fig. 3.11; curves from HDS-1 / HY-7, as used in HY-8) ----
+// Curves digitized from HDS-5 (2012) Figure 3.11 A/B/C. Units for curve lookups: ft.
+const CR_DEEP={paved:[[0.15,3.05],[0.20,3.065],[0.24,3.075],[0.28,3.085],[0.32,3.09]],
+               gravel:[[0.15,2.945],[0.20,2.98],[0.24,3.01],[0.28,3.05],[0.32,3.09]]}; // Fig 3.11A: Cr vs HWr/Lr (>0.15)
+const CR_SHALLOW={paved:[[0,2.92],[0.15,2.98],[0.3,3.01],[0.6,3.03],[1,3.03],[2,3.035],[4,3.04]],
+               gravel:[[0,2.50],[0.2,2.60],[0.5,2.70],[0.9,2.80],[1.5,2.90],[2,2.96],[2.6,3.00],[3.2,3.03],[4,3.04]]}; // Fig 3.11B: Cr vs HWr ft (HWr/Lr<=0.15)
+const KT={paved:[[0,1],[0.77,1],[0.85,0.97],[0.90,0.93],[0.94,0.85],[0.96,0.70],[0.975,0.50],[1,0]],
+          gravel:[[0,1],[0.75,1],[0.80,0.97],[0.87,0.90],[0.91,0.80],[0.94,0.70],[0.96,0.60],[0.97,0.50],[1,0]]}; // Fig 3.11C: kt vs ht/HWr (below 0.5 extrapolated to 0 at 1.0)
+function interp(t,x){if(x<=t[0][0])return t[0][1];for(let i=1;i<t.length;i++)if(x<=t[i][0]){const a=t[i-1],b=t[i];return a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0]);}return t[t.length-1][1];}
+function weirCoef(hFt,LrFt,surface){ // returns Cr (US)
+  return (LrFt>0&&hFt/LrFt>0.15)?interp(CR_DEEP[surface],hFt/LrFt):interp(CR_SHALLOW[surface],hFt);}
+function ktFactor(ratio,surface){return ratio<=0?1:interp(KT[surface],Math.min(ratio,1));}
+// road: {segs:[[sta,elev],...], Lr, surface:'paved'|'gravel'|'custom', Cd(custom, US), twElev|null, US}
+function roadFlow(EL,road){
+  const US=road.US,f=US?1:3.28084,Lr=road.Lr*f; let Q=0,wet=0,hmax=0,crMin=Infinity,crMax=0,ktMin=1;
+  const P=road.segs;
+  for(let i=1;i<P.length;i++){const [s1,z1]=P[i-1],[s2,z2]=P[i],n=40,dx=(s2-s1)/n;
+    for(let k=0;k<n;k++){const z=z1+(z2-z1)*(k+0.5)/n,h=EL-z;if(h<=0)continue;
+      let Cr,kt=1;
+      if(road.surface==='custom')Cr=road.Cd; else{Cr=weirCoef(h*f,Lr,road.surface);
+        if(road.twElev!=null&&road.twElev>z)kt=ktFactor((road.twElev-z)/h,road.surface);}
+      const Cd=kt*Cr*(US?1:0.552);Q+=Cd*Math.abs(dx)*Math.pow(h,1.5);wet+=Math.abs(dx);hmax=Math.max(hmax,h);
+      crMin=Math.min(crMin,Cr);crMax=Math.max(crMax,Cr);ktMin=Math.min(ktMin,kt);}}
+  return {Q,wet,hmax,crMin,crMax,ktMin};
+}
+function crestMin(road){return Math.min(...road.segs.map(p=>p[1]));}
+// Balance: find culvert flow Qc so that Qc + Qroad(HW(Qc)) = Qt. elOf(Qc) returns culvert HW elevation.
+function balance(Qt,elOf,road){
+  const zc=crestMin(road),EL0=elOf(Qt);
+  if(EL0<=zc) return {Qc:Qt,Qr:0,EL:EL0,iter:1,over:false,road:roadFlow(EL0,road)};
+  let a=0,b=Qt,it=0,Qc,EL,rf;
+  for(;it<100;it++){Qc=(a+b)/2;EL=elOf(Qc);rf=roadFlow(EL,road);const err=Qc+rf.Q-Qt;
+    if(Math.abs(err)<=1e-4*Qt)break; if(err>0)b=Qc;else a=Qc;}
+  return {Qc,Qr:rf.Q,EL,iter:it+1,over:true,road:rf};
+}
+root.Culvert={INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
+
 })(typeof module!=='undefined'?module.exports:window);

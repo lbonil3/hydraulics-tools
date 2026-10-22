@@ -17,26 +17,42 @@ const F=[
  ['Qmin','Flows','Rating curve minimum flow','Q',[30,0.85],'Lowest flow plotted on the performance curve.','Your choice; often 10% of design.',null,'hw'],
  ['Qmax','Flows','Rating curve maximum flow','Q',[450,12.7],'Highest flow plotted (often 1.5× design, to check the 100-yr / check flood).','Hydrology report or your choice.',null,'hw'],
  ['twMode','Tailwater','Tailwater condition','sel',['const'],'Water level downstream that can back up into the culvert. "None" = free outfall.','Hydraulic model of the downstream channel, normal-depth calc, or a known pond/river level.',null,'tw'],
- ['twElev','Tailwater','Tailwater elevation','L',[101.5,30.94],'Water surface elevation just downstream of the outlet at the design flow.','Downstream channel normal-depth calc (Manning) or a HEC-RAS model.',null,'tw']
+ ['twElev','Tailwater','Tailwater elevation','L',[101.5,30.94],'Water surface elevation just downstream of the outlet at the design flow.','Downstream channel normal-depth calc (Manning) or a HEC-RAS model.',null,'tw'],
+ ['roadOn','Roadway','Model roadway overtopping?','sel',['on'],'When the headwater rises above the road, water flows over the road like a broad-crested weir. Turning this on splits the total flow between culvert and road (as HY-8 does).','Turn on whenever the road could flood during the check storm.',null,'road'],
+ ['roadMode','Roadway','Road crest described by','sel',['const'],'"Constant crest" = a flat low section of road with a single elevation and length. "Profile" = station/elevation points along the road centerline (e.g., a sag vertical curve), split into segments and summed (HDS-5 Fig. 3.12A).','Roadway plans profile sheet, or survey shots along the road crown/shoulder.',null,'road'],
+ ['crestEl','Roadway','Crest elevation (low point)','L',[110,33.53],'Elevation of the lowest point of the road surface where water would first spill over (usually the shoulder or crown at the sag).','Roadway plans profile or survey of the road low point.',null,'road'],
+ ['crestLen','Roadway','Crest length','L',[300,91.4],'Length along the road (perpendicular to flow) over which overtopping happens at the crest elevation.','Plans: length of the flat/sag section. Typical 50–2000 ft.',[20,3000,6,900],'road'],
+ ['roadProfile','Roadway','Road profile (station, elevation per line)','txt',['0, 113\n100, 111\n200, 110\n300, 110.5\n400, 113','0, 34.44\n30.5, 33.83\n61, 33.53\n91.4, 33.68\n122, 34.44'],'Points along the road centerline, one per line: station, elevation. Each pair of points forms a segment; flow over each is computed and summed.','Plans profile sheet (PVI stations/elevations) or survey. Use 3–15 points across the sag.',null,'road'],
+ ['topWidth','Roadway','Roadway top width (Lr)','L',[40,12.2],'Width of the embankment top in the direction of flow (pavement + shoulders). Used to choose deep vs shallow weir coefficients (HWr/Lr).','Typical section on roadway plans. Typical 24–150 ft.',[10,200,3,60],'road'],
+ ['surface','Roadway','Road surface','sel',['paved'],'Paved or gravel changes the weir coefficient Cr (HDS-5 Fig. 3.11, from HDS-1 / HY-7). Choose "custom" to type your own Cd.','Roadway plans / site visit.',null,'road'],
+ ['roadCd','Roadway','Custom weir coefficient Cd','num',[3.0,1.66],'Only used when surface = custom. Discharge coefficient in Q = Cd·L·HWr^1.5. HY-8 allows 2.5–3.095 (US).','Agency manual; 3.0 US (1.66 SI) is a common value.',[2.5,3.1,1.38,1.71],'road']
 ];
 const state={units:'US'};
 function opts(id){
  if(id==='shape')return[['circular','Circular pipe'],['box','Box (rectangular)']];
  if(id==='material')return[['concrete','Concrete (n=0.012)'],['cmp','Corrugated metal (n=0.024)'],['hdpe','HDPE smooth (n=0.012)'],['custom','Custom n']];
+ if(id==='roadOn')return[['on','Yes – include flow over the road'],['off','No – culvert only']];
+ if(id==='roadMode')return[['const','Constant crest (one elevation)'],['profile','Roadway profile (points)']];
+ if(id==='surface')return[['paved','Paved'],['gravel','Gravel'],['custom','Custom Cd']];
  if(id==='twMode')return[['const','Constant elevation'],['none','None (free outfall)']];
  if(id==='inlet')return C.INLETS[val('shape')||'box'].map(i=>[i.id,`${i.name} — HDS-5 ${i.chart}`]);
 }
-function val(id){const e=document.getElementById(id);if(!e)return null;return e.tagName==='SELECT'?e.value:parseFloat(e.value)}
+function val(id){const e=document.getElementById(id);if(!e)return null;return (e.tagName==='SELECT'||e.tagName==='TEXTAREA')?e.value:parseFloat(e.value)}
+function roadObj(p){if(val('roadOn')!=='on')return null;let segs;
+ if(val('roadMode')==='profile'){segs=val('roadProfile').split(/\n/).map(l=>l.split(/[,;\s]+/).filter(Boolean).map(Number)).filter(q=>q.length>=2&&q.every(isFinite)).map(q=>[q[0],q[1]]).sort((x,y)=>x[0]-y[0]);if(segs.length<2)return {bad:true};}
+ else segs=[[0,val('crestEl')],[val('crestLen'),val('crestEl')]];
+ return {segs,Lr:val('topWidth'),surface:val('surface'),Cd:val('roadCd'),twElev:p.twMode==='const'?p.twElev:null,US:state.units==='US'};}
+function elOf(Qc){return Qc<=1e-9?val('invIn'):C.analyze(params(Qc)).EL;}
 function build(){
- let h='',step='';const steps={Site:'1. Site',Culvert:'2. Culvert barrel',Inlet:'3. Inlet',Flows:'4. Flows',Tailwater:'5. Tailwater'};
+ let h='',step='';const steps={Site:'1. Site',Culvert:'2. Culvert barrel',Inlet:'3. Inlet',Flows:'4. Flows',Tailwater:'5. Tailwater',Roadway:'6. Roadway overtopping'};
  F.forEach(f=>{ if(f[1]!==step){if(step)h+='</fieldset>';step=f[1];h+=`<fieldset><legend>${steps[step]}</legend>`;}
   const u=f[3]==='L'?U[state.units].L:f[3]==='Q'?U[state.units].Q:'';
-  const inp=f[3]==='sel'?`<select id="${f[0]}"></select>`:`<input id="${f[0]}" type="number" inputmode="decimal" step="any" value="${f[4][state.units==='US'?0:1]??f[4][0]}">`;
+  const inp=f[3]==='txt'?`<textarea id="${f[0]}" rows="5">${(f[4][state.units==='US'?0:1]).replace(/\\n/g,'\n')}</textarea>`:f[3]==='sel'?`<select id="${f[0]}"></select>`:`<input id="${f[0]}" type="number" inputmode="decimal" step="any" value="${f[4][state.units==='US'?0:1]??f[4][0]}">`;
   const rg=f[7]?`<br><b>Typical range:</b> ${state.units==='US'?f[7][0]+'–'+f[7][1]:f[7][2]+'–'+f[7][3]} ${u}`:'';
   h+=`<div class="f" data-hl="${f[8]}" id="f_${f[0]}"><label><span>${f[2]} ${u?'('+u+')':''}</span><span style="display:flex;gap:4px">${inp}<button class="i" type="button" title="What is this?">i</button></span></label>
   <div class="help"><b>What it is:</b> ${f[5]}<br><b>Where to get it:</b> ${f[6]}${rg}</div><div class="warn" id="w_${f[0]}"></div></div>`;});
- $('#form').innerHTML=h+'</fieldset><p style="font-size:12px;color:#556">Roadway overtopping is not modeled in this version.</p>';
- ['shape','material','twMode'].forEach(id=>fill(id));fill('inlet');
+ $('#form').innerHTML=h+'</fieldset>';
+ ['shape','material','twMode','roadOn','roadMode','surface'].forEach(id=>fill(id));fill('inlet');
  $('#shape').value='box';fill('inlet');$('#inlet').value='b_90';
  document.querySelectorAll('.i').forEach(b=>b.onclick=()=>b.closest('.f').classList.toggle('open'));
  document.querySelectorAll('.f').forEach(d=>{const on=()=>hl(d.dataset.hl),off=()=>hl(null);d.onmouseenter=on;d.onmouseleave=off;d.addEventListener('focusin',on);d.addEventListener('focusout',off);});
@@ -47,18 +63,25 @@ let hlTarget=null;function hl(t){hlTarget=t;document.querySelectorAll('[data-par
 function params(Q){return{units:state.units,shape:val('shape'),span:val('span'),rise:val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:C.INLETS[val('shape')].find(i=>i.id===val('inlet')),Q:Q??val('Q'),twMode:val('twMode'),twElev:val('twElev')};}
 function validate(p){const w={},us=state.units==='US';
  F.forEach(f=>{const v=val(f[0]);if(f[7]&&isFinite(v)){const lo=us?f[7][0]:f[7][2],hi=us?f[7][1]:f[7][3];if(v<lo||v>hi)w[f[0]]=`⚠ ${v} is outside the usual ${lo}–${hi}. Double-check the value and units.`;}
-  if(f[3]!=='sel'&&!isFinite(v))w[f[0]]='⚠ Please enter a number.';});
+  if(f[3]!=='sel'&&f[3]!=='txt'&&!isFinite(v)&&!(f[1]==='Roadway'&&val('roadOn')!=='on'))w[f[0]]='⚠ Please enter a number.';});
  if(p.invOut>=p.invIn)w.invOut='⚠ Outlet is not lower than inlet — zero/adverse slope. Results assume full-flow outlet control; check carefully.';
  else if(p.S>0.1)w.invOut='⚠ Slope over 10% is unusually steep.';
  if(val('Qmin')>=val('Qmax'))w.Qmax='⚠ Maximum must be greater than minimum.';
  if(p.twMode==='const'&&p.twElev<p.invOut)w.twElev='ℹ Tailwater is below the outlet invert — it will have no effect.';
  if(p.twMode==='none')w.twElev='ℹ Ignored (tailwater set to none).';
  if(p.shape!=='box')w.span='ℹ Ignored for circular pipe.';
+ if(val('roadOn')==='on'){const ro=roadObj(p);
+  if(val('roadMode')==='const'){w.roadProfile='ℹ Ignored (constant crest selected).';}else{w.crestEl=w.crestLen='ℹ Ignored (profile selected).';if(ro.bad)w.roadProfile='⚠ Need at least 2 lines of "station, elevation".';}
+  if(val('surface')!=='custom')w.roadCd='ℹ Ignored (Cr comes from HDS-5 Fig. 3.11 curves).';
+  if(!ro.bad){const zc=C.crestMin(ro);if(zc<=p.invIn+p.rise)w[val('roadMode')==='const'?'crestEl':'roadProfile']='⚠ Road crest is at or below the top of the barrel inlet — check elevations.';
+   if(p.twMode==='const'&&p.twElev>zc)w.twElev='⚠ Tailwater is above the road crest — submergence is severe; results uncertain.';}}
  F.forEach(f=>$('#w_'+f[0]).textContent=w[f[0]]||'');return Object.keys(w).filter(k=>w[k].startsWith('⚠')).length;}
 const fx=(x,d=2)=>isFinite(x)?x.toFixed(d):'—';
 function run(){
  const p=params();p.S=(p.invIn-p.invOut)/p.length;const bad=validate(p);
  if(!p.inlet||!(p.rise>0)||!(p.Q>0)||!(p.length>0)){$('#explain').textContent='Enter valid inputs to see results.';return;}
+ const ro=roadObj(p),Qt=p.Q;let bal=null;
+ if(ro&&!ro.bad){bal=C.balance(Qt,elOf,ro);p.Q=bal.Qc;}
  const r=C.analyze(p),u=U[state.units],L=u.L,allow=val('allowHW');
  const flags=[];
  if(r.HW/r.D>1.2)flags.push(`HW/D = ${fx(r.HW/r.D)} exceeds 1.2 (common agency limit for pipes/boxes). Consider a larger or additional barrel, or a better inlet.`);
@@ -67,10 +90,14 @@ function run(){
  else if(r.Vout>(state.units==='US'?10:3))flags.push(`Outlet velocity ${fx(r.Vout)} ${u.V} is moderately high — check outlet protection.`);
  if(r.regime==='transition')flags.push('Inlet flow is in the transition zone between unsubmerged and submerged equations (interpolated).');
  if(p.S<=0)flags.push('Zero or adverse slope — normal depth undefined.');
+ if(bal&&bal.over){flags.push(`Roadway overtops: ${fx(bal.Qr)} ${u.Q} (${fx(bal.Qr/Qt*100,0)}% of the total) flows over the road, ${fx(bal.road.hmax)} ${L} deep at the low point. Most agencies do not allow overtopping at the design flood — check criteria, traffic safety and embankment erosion (HDS-5 §5.4.5).`);
+  if(bal.road.hmax>(state.units==='US'?1:0.3))flags.push('Overtopping depth exceeds about 1 ft (0.3 m): roadway is likely impassable and embankment erosion risk is high.');
+  if(bal.road.ktMin<1)flags.push(`Tailwater submerges the road weir (k<sub>t</sub> down to ${fx(bal.road.ktMin,3)}).`);}
+ if(ro&&ro.bad)flags.push('Roadway profile is incomplete — overtopping skipped.');
  if(bad)flags.push(`${bad} input(s) have warnings — see the form.`);
  $('#summary').innerHTML=`<div class="kpi gov">Controlling headwater<b>${fx(r.HW)} ${L}</b>El. ${fx(r.EL)} ${L} · ${r.control} control</div>
   <div class="kpi">HW/D<b>${fx(r.HW/r.D)}</b></div><div class="kpi">Inlet control HW<b>${fx(r.HWi)} ${L}</b></div><div class="kpi">Outlet control HW<b>${fx(r.HWo)} ${L}</b></div>
-  <div class="kpi">Outlet velocity<b>${fx(r.Vout)} ${u.V}</b></div><div class="kpi">Slope<b>${fx(r.S*100,2)} %</b></div>`;
+  <div class="kpi">Outlet velocity<b>${fx(r.Vout)} ${u.V}</b></div><div class="kpi">Slope<b>${fx(r.S*100,2)} %</b></div>${bal?`<div class="kpi ${bal.over?'gov':''}">Roadway overtopping Q<b>${fx(bal.Qr)} ${u.Q}</b>Culvert ${fx(bal.Qc)} of ${fx(Qt)} ${u.Q}</div>`:''}`;
  const i=r.inlet,ku=r.US?'1.0':'1.811';
  $('#explain').innerHTML=`<ol>
  <li><b>Geometry.</b> Barrel ${p.shape==='box'?fx(r.B)+' × '+fx(r.D):fx(r.D)+' diameter'} ${L}, full area A = ${fx(r.A)} ${L}², hydraulic radius R = ${fx(r.R,3)} ${L}. Slope S = (${p.invIn} − ${p.invOut}) / ${p.length} = ${fx(r.S,4)}. Flow per barrel Q = ${fx(r.Q)} ${u.Q} (${r.N} barrel${r.N>1?'s':''}).</li>
@@ -81,20 +108,23 @@ function run(){
  <li><b>Outlet control</b> (full-barrel losses). V = Q/A = ${fx(r.V)} ${u.V}, velocity head = ${fx(r.hv,3)} ${L}. Entrance loss K<sub>e</sub>·V²/2g = ${i.Ke}·${fx(r.hv,3)} = ${fx(r.He,3)}; friction ${r.US?29:19.63}·n²·L/R<sup>1.33</sup>·V²/2g = ${fx(r.Hf,3)}; exit loss 1.0·V²/2g = ${fx(r.Ho,3)}; total H = ${fx(r.H,3)} ${L}.
   Tailwater depth TW = ${fx(r.TW)} ${L}; (d<sub>c</sub>+D)/2 = ${fx((r.dc+r.D)/2)} → h<sub>o</sub> = ${fx(r.ho)} ${L}. Headwater El. = outlet invert + h<sub>o</sub> + H = ${p.invOut} + ${fx(r.ho)} + ${fx(r.H,3)} = ${fx(r.ELho)}, so HW<sub>o</sub> = <b>${fx(r.HWo)} ${L}</b>.</li>
  <li><b>Which governs?</b> The larger headwater controls: <b>${r.control} control</b> (${fx(Math.max(r.HWi,r.HWo))} vs ${fx(Math.min(r.HWi,r.HWo))} ${L}). ${r.control==='Inlet'?'The entrance is the bottleneck — improving the inlet edge (bevels, wingwalls) helps; barrel roughness does not.':'The barrel/tailwater is the bottleneck — a smoother, shorter, larger barrel or lower tailwater helps; inlet improvements only reduce the small entrance loss.'}</li>
- <li><b>Outlet velocity</b> ≈ ${fx(r.Vout)} ${u.V} at depth ${fx(r.yout)} ${L} (${r.control==='Inlet'?'normal depth':'larger of d<sub>c</sub> and TW, capped at D'}).</li></ol>
+ <li><b>Outlet velocity</b> ≈ ${fx(r.Vout)} ${u.V} at depth ${fx(r.yout)} ${L} (${r.control==='Inlet'?'normal depth':'larger of d<sub>c</sub> and TW, capped at D'}).</li>${bal?roadExplain(bal,ro,Qt,u):''}</ol>
  ${flags.length?flags.map(f=>`<div class="flag">⚠ ${f}</div>`).join(''):'<div class="flag ok">✓ No warnings.</div>'}`;
- drawProfile(p,r,allow);drawRating(p,r);drawX(p,r);hl(hlTarget);
+ drawProfile(p,r,allow,ro&&!ro.bad?ro:null,bal);drawRating(p,r);drawSplit(p,ro&&!ro.bad?ro:null);drawX(p,r);hl(hlTarget);
 }
-function drawProfile(p,r,allow){
+function drawProfile(p,r,allow,ro,bal){
+ const zc=ro?C.crestMin(ro):p.invIn+r.D*1.6;
  const W=900,H=340,x0=200,x1=700,L=r.US?'ft':'m';
- const zmin=Math.min(p.invOut,p.invIn)-r.D*0.6,zmax=Math.max(r.EL,isFinite(allow)?allow:0,p.invIn+r.D*1.8)+r.D*0.3;
+ const zmin=Math.min(p.invOut,p.invIn)-r.D*0.6,zmax=Math.max(r.EL,isFinite(allow)?allow:0,p.invIn+r.D*1.8,zc)+r.D*0.3;
  const Y=z=>H-30-(z-zmin)/(zmax-zmin)*(H-60);
- const yi=Y(p.invIn),yo=Y(p.invOut),ti=Y(p.invIn+r.D),to=Y(p.invOut+r.D),road=Y(p.invIn+r.D*1.6);
+ const yi=Y(p.invIn),yo=Y(p.invOut),ti=Y(p.invIn+r.D),to=Y(p.invOut+r.D),road=Y(zc);
  const twEl=p.twMode==='const'?Math.max(p.twElev,p.invOut):p.invOut;
  const wsIn=Math.min(r.D,r.control==='Inlet'?r.dc:Math.max(r.dc,r.D)),wsOut=Math.min(r.D,r.yout);
  let s=`<rect width="${W}" height="${H}" fill="#eaf4fb"/>
  <path data-part="embank" d="M60 ${yi} L${x0-40} ${yi} L${x0+60} ${road} L${x1-60} ${road} L${x1+40} ${yo} L840 ${yo} L840 ${H} L60 ${H}Z" fill="#c9b48a" stroke="#8a7550"/>
- <text x="${(x0+x1)/2}" y="${road-6}" text-anchor="middle" fill="#5a4a2c">Roadway embankment (overtopping not modeled)</text>
+ <text x="${(x0+x1)/2}" y="${road+18}" text-anchor="middle" fill="#5a4a2c">${ro?'Road crest El. '+fx(zc):'Roadway embankment (overtopping off)'}</text>
+ <line data-part="road" x1="${x0+60}" x2="${x1-60}" y1="${road}" y2="${road}" stroke="#444" stroke-width="4"/>
+ ${bal&&bal.over?`<path d="M${x0+60-(road-Y(r.EL))} ${Y(r.EL)} L${x1-60} ${Y(r.EL)+(road-Y(r.EL))*0.45} L${x1-60} ${road} L${x0+60} ${road}Z" fill="#4a90d9" opacity=".6"/><text x="${(x0+x1)/2}" y="${Y(r.EL)-8}" text-anchor="middle" font-weight="700" fill="#174a7c">Overtopping ${fx(bal.Qr)} ${r.US?'cfs':'m³/s'} · HWr = ${fx(bal.road.hmax)} ${L}</text>`:''}
  <path d="M${x0} ${yi} L${x1} ${yo} L${x1} ${to} L${x0} ${ti}Z" fill="#fff" stroke="none"/>
  <path data-part="hw" d="M40 ${Y(r.EL)} L${x0+ (Y(r.EL)>ti? 0:0)} ${Y(r.EL)} L${x0} ${yi} L40 ${yi}Z" fill="#4a90d9" opacity=".55"/>
  <path d="M${x0} ${Y(p.invIn+wsIn)} L${x1} ${Y(p.invOut+wsOut)} L${x1} ${yo} L${x0} ${yi}Z" fill="#4a90d9" opacity=".55"/>
@@ -113,6 +143,30 @@ function drawProfile(p,r,allow){
  if(isFinite(allow))s+=`<line data-part="allow" x1="30" x2="${x0+40}" y1="${Y(allow)}" y2="${Y(allow)}" stroke="#c0392b" stroke-dasharray="6 4"/><text x="${x0-60}" y="${Y(allow)-4}" fill="#c0392b" font-size="12">Allowable ${allow}</text>`;
  $('#profile').innerHTML=`<defs><marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>`+s;
 }
+function roadExplain(b,ro,Qt,u){const L=u.L,us=ro.US,zc=C.crestMin(ro);
+ return `<li><b>Roadway overtopping</b> (HDS-5 Eq. 3.9: Q<sub>r</sub> = C<sub>d</sub>·L·HW<sub>r</sub><sup>1.5</sup>, C<sub>d</sub> = k<sub>t</sub>·C<sub>r</sub>${us?'':' × 0.552 for SI'}). Road crest low point El. ${fx(zc)} ${L}, top width L<sub>r</sub> = ${ro.Lr} ${L}, ${ro.surface} surface; ${ro.segs.length-1} profile segment(s), each split into 40 slices and summed (HDS-5 Fig. 3.12A).
+ ${b.over?`The culvert alone would need headwater El. ${fx(elOf(Qt))} ${L} to pass ${fx(Qt)} ${u.Q}, which is above the crest, so flow splits. By bisection on culvert flow (${b.iter} iterations, tolerance 0.01% of Q) the balance is: culvert ${fx(b.Qc)} + road ${fx(b.Qr)} = ${fx(b.Qc+b.Qr)} ${u.Q} at headwater El. <b>${fx(b.EL)} ${L}</b>. Max depth over road HW<sub>r</sub> = ${fx(b.road.hmax)} ${L} over ${fx(b.road.wet)} ${L} of road; C<sub>r</sub> = ${fx(b.road.crMin,3)}${b.road.crMax-b.road.crMin>0.001?'–'+fx(b.road.crMax,3):''}${ro.surface==='custom'?' (custom)':` (Fig. 3.11${b.road.hmax/ro.Lr>0.15?'A, deep':'B, shallow'})`}, k<sub>t</sub> min = ${fx(b.road.ktMin,3)} (Fig. 3.11C). Steps 1–7 above are for the culvert's share, ${fx(b.Qc)} ${u.Q}.`:`Headwater El. ${fx(b.EL)} ${L} stays below the road crest, so no flow goes over the road at the design discharge.`}</li>`;}
+function drawSplit(p,ro){const box=$('#split');if(!ro){box.innerHTML='<p>Roadway overtopping is turned off (step 6).</p>';$('#splitchart').innerHTML='';return;}
+ const q0=val('Qmin'),q1=val('Qmax'),u=U[state.units];if(!(q1>q0&&q0>=0))return;
+ const rows=[];for(let k=0;k<=10;k++){const q=Math.max(q0+(q1-q0)*k/10,1e-6);rows.push([q,C.balance(q,elOf,ro)]);}
+ const qd=val('Q');rows.push([qd,C.balance(qd,elOf,ro),1]);rows.sort((a,b)=>a[0]-b[0]);
+ let t=`<div style="overflow-x:auto"><table class="split"><tr><th>Total Q (${u.Q})</th><th>Culvert Q</th><th>Roadway Q</th><th>HW elev (${u.L})</th><th>Iterations</th></tr>`+rows.map(([q,b,d])=>`<tr class="${d?'des':''}${b.over?' ov':''}"><td>${fx(q)}${d?' (design)':''}</td><td>${fx(b.Qc)}</td><td>${fx(b.Qr)}</td><td>${fx(b.EL)}</td><td>${b.iter}</td></tr>`).join('')+'</table></div>';
+ const zc=C.crestMin(ro);let a=0,bq=Math.max(q1,qd)*4;
+ if(elOf(bq)<zc)t+='<p>No overtopping up to '+fx(bq)+' '+u.Q+'.</p>';
+ else{for(let i=0;i<60;i++){const m=(a+bq)/2;if(elOf(m)<zc)a=m;else bq=m;}t+=`<p><b>Overtopping discharge: overtopping begins at about ${fx(a)} ${u.Q}</b> (culvert headwater reaches road crest El. ${fx(zc)} ${u.L}). Shaded rows overtop.</p>`;}
+ box.innerHTML=t;
+ const pts=[];for(let k=0;k<=40;k++){const q=Math.max(q0+(q1-q0)*k/40,1e-6),b=C.balance(q,elOf,ro);pts.push([b.EL,b.Qc,b.Qr,q]);}
+ const W=600,H=320,m=50,e0=Math.min(...pts.map(t=>t[0])),e1=Math.max(...pts.map(t=>t[0]),zc)+0.3,qm=q1;
+ const X=q=>m+q/qm*(W-m-15),Y=e=>H-35-(e-e0)/(e1-e0)*(H-55);
+ const line=(i,c,d)=>`<polyline fill="none" stroke="${c}" stroke-width="2.5" ${d||''} points="${pts.filter(t=>i!==2||t[2]>0||t[0]>=zc-1e-9).map(t=>X(t[i])+','+Y(t[0])).join(' ')}"/>`;
+ let g='';for(let k=0;k<=5;k++){const e=e0+(e1-e0)*k/5,q=qm*k/5;g+=`<line x1="${m}" x2="${W-15}" y1="${Y(e)}" y2="${Y(e)}" stroke="#eee"/><text x="${m-5}" y="${Y(e)+4}" text-anchor="end" font-size="11">${e.toFixed(1)}</text><text x="${X(q)}" y="${H-20}" text-anchor="middle" font-size="11">${q.toFixed(0)}</text>`;}
+ $('#splitchart').innerHTML=g+`<line data-part="road" x1="${m}" x2="${W-15}" y1="${Y(zc)}" y2="${Y(zc)}" stroke="#8a7550" stroke-dasharray="5 4"/><text x="${W-20}" y="${Y(zc)-4}" text-anchor="end" font-size="11" fill="#5a4a2c">Road crest ${fx(zc)}</text>
+ ${line(1,'#2b6cb0')}${line(2,'#c0392b','stroke-dasharray="6 4"')}${line(3,'#111')}
+ <line x1="${m}" y1="${H-35}" x2="${W-15}" y2="${H-35}" stroke="#333"/><line x1="${m}" y1="10" x2="${m}" y2="${H-35}" stroke="#333"/>
+ <text x="${W/2}" y="${H-3}" text-anchor="middle">Discharge (${u.Q})</text><text transform="rotate(-90)" x="${-H/2+10}" y="12" text-anchor="middle">Headwater elevation (${u.L})</text>
+ <rect x="${m+10}" y="14" width="150" height="62" fill="#fff" stroke="#ccc"/>${[['Culvert','#2b6cb0',''],['Roadway','#c0392b','6 4'],['Total','#111','']].map((l,i)=>`<line x1="${m+18}" x2="${m+45}" y1="${28+i*18}" y2="${28+i*18}" stroke="${l[1]}" stroke-width="2.5" stroke-dasharray="${l[2]}"/><text x="${m+50}" y="${32+i*18}" font-size="12">${l[0]}</text>`).join('')}`;
+}
+
 function drawRating(p,r){
  const q0=val('Qmin'),q1=val('Qmax');if(!(q1>q0&&q0>=0))return;
  const pts=[];for(let k=0;k<=40;k++){const q=q0+(q1-q0)*k/40;if(q<=0)continue;const a=C.analyze(params(q));pts.push([q,a.HWi,a.HWo]);}
@@ -139,4 +193,4 @@ function drawX(p,r){
  $('#xsec').innerHTML=s;
 }
 $('#units').onchange=e=>{state.units=e.target.value;build();run();};
-build();run();
+build();new URLSearchParams(location.search).forEach((v,k)=>{const e=document.getElementById(k);if(e)e.value=v;});run();

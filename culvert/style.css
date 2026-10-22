@@ -29,3 +29,7 @@ select,button{min-height:44px;font-size:16px}button.add,button.del{min-height:44
 .kpi{flex:1 1 45%}table{font-size:13px;white-space:nowrap}.card{padding:8px}
 .card h3 small{display:none}
 }
+
+textarea{width:170px;font:13px monospace}table.split{border-collapse:collapse;width:100%;font-size:13px}table.split td,table.split th{border-bottom:1px solid #e2e7ee;padding:3px 6px;text-align:right}
+table.split tr.ov td{background:#fff1f0}table.split tr.des td{font-weight:700}
+@media (max-width:700px){textarea{width:100%;font-size:16px}}
