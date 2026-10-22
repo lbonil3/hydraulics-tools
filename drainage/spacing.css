@@ -1,0 +1,6 @@
+.spbadges{display:flex;flex-wrap:wrap;gap:6px;width:100%}.spb{padding:4px 10px;border-radius:14px;font-size:13px;font-weight:700}.spb.ok{background:#e8f7ec;color:#1e7a3a}.spb.no{background:#fde8e6;color:#b03a2e}
+.sprange{width:100%;accent-color:#1f4e79;margin:6px 0}.f .sprange{width:100%;max-width:none;border:0;padding:0;min-height:36px;background:none}
+.spchain td,.spchain th{text-align:right;white-space:nowrap}@keyframes spfl{0%{box-shadow:0 0 0 0 #d4a017}50%{box-shadow:0 0 0 6px rgba(212,160,23,.4)}100%{box-shadow:0 0 0 0 transparent}}.spflash{animation:spfl .8s ease 2}
+@media (prefers-reduced-motion:reduce){.spflash{animation:none}}
+.f input.sprange{-webkit-appearance:auto;appearance:auto;height:36px;min-height:36px;width:100%!important;max-width:none!important;border:0!important;box-shadow:none;padding:0}
+@media (min-width:701px){#xs[data-nofit]{max-height:52vh}}
