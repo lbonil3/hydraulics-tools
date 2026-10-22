@@ -1,0 +1,22 @@
+#report table.rt{white-space:normal!important}
+#report h4{margin:14px 0 6px;color:#1f4e79}
+#report .rhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+#report .rprint{background:#1f4e79;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer}
+#report .rt{width:100%;border-collapse:collapse;font-size:14px}
+#report .rt th{text-align:left;vertical-align:top;width:34%;padding:5px 8px 5px 0;color:#444;font-weight:600}
+#report .rt td{padding:5px 0;border-bottom:1px solid #eee}
+#report .rchk{list-style:none;padding:0;margin:0}
+#report .rf{padding:6px 0 6px 0;border-bottom:1px solid #eee;line-height:1.4}
+#report .rb{display:inline-block;min-width:48px;text-align:center;font-size:11px;font-weight:700;border-radius:4px;padding:2px 5px;margin-right:8px;color:#fff}
+#report .pass .rb{background:#2e7d32}#report .warn .rb{background:#d68a00}#report .fail .rb{background:#c0392b}#report .info .rb{background:#607d8b}
+#report .rnar{background:#f3f8fc;border-left:4px solid #1f4e79;padding:8px 10px}
+@media (max-width:700px){#report .rt,#report .rt tbody,#report .rt tr{display:block;width:100%;min-width:0}#report{overflow-wrap:anywhere}#report .rt th,#report .rt td{display:block;width:auto;padding:2px 0}#report .rt th{padding-top:8px;border:0}#report .rt{font-size:13.5px}}
+@media print{
+ body *{visibility:hidden}
+ #reportcard,#reportcard *{visibility:visible}
+ #reportcard{position:absolute;left:0;top:0;width:100%;box-shadow:none!important;border:0!important;margin:0!important;display:block!important}
+ #report .rprint{display:none}
+ #report .rt th,#report .rt td{display:table-cell}
+ #report .rf,#report .rt td{break-inside:avoid}
+ @page{margin:15mm}
+}

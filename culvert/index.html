@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Culvert"><meta name="theme-color" content="#1f4e79"><meta name="format-detection" content="telephone=no"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest"><title>Culvert Studio – HDS-5 culvert analysis</title>
-<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="mobile.css"><link rel="stylesheet" href="profile.css"></head><body>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="mobile.css"><link rel="stylesheet" href="profile.css"><link rel="stylesheet" href="report.css"></head><body>
 <header><h1>Culvert Studio</h1><span>Visual culvert analysis per FHWA HDS-5 (3rd ed., 2012) · with roadway overtopping</span>
 <label class="units">Units <select id="units"><option value="US">US customary (ft, cfs)</option><option value="SI">SI (m, m³/s)</option></select></label></header>
 <main><aside id="form"></aside>
@@ -10,6 +10,7 @@
  <div class="card"><h3>Cross-section at inlet</h3><svg id="xsec" viewBox="0 0 300 320"></svg></div></div>
  <div class="row"><div class="card grow"><h3>Flow split – culvert vs roadway (HY-8-style summary)</h3><div id="split"></div></div>
  <div class="card grow"><h3>Discharge vs headwater elevation</h3><svg id="splitchart" viewBox="0 0 600 320"></svg></div></div>
+ <div class="card" id="reportcard"><h3>Design report <small>(plain-language, updates live)</small></h3><div id="report"></div></div>
  <div class="card"><h3>Step-by-step explanation</h3><div id="explain"></div></div>
 </section></main>
-<script src="calc.js"></script><script src="app.js"></script><script src="profile.js"></script><script>window.MOBILE_CFG={barLabel:"Controlling HW"}</script><script src="mobile.js"></script></body></html>
+<script src="calc.js"></script><script src="app.js"></script><script src="profile.js"></script><script src="report.js"></script><script>window.MOBILE_CFG={barLabel:"Controlling HW"}</script><script src="mobile.js"></script></body></html>
