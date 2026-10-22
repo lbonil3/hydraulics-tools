@@ -17,6 +17,7 @@ const F=[
  ['udPoly','Culvert','User-defined shape: x, y per line (closed outline)','txt',['0, 0\n8, 0\n8, 3\n6.5, 4.5\n1.5, 4.5\n0, 3','0, 0\n2.44, 0\n2.44, 0.91\n1.98, 1.37\n0.46, 1.37\n0, 0.91'],'Inside outline of the barrel, points in order around the shape (x across, y up from the invert). The polygon closes itself. Rise and span are taken from the outline.','Shop drawings or field measurements. 6–40 points is typical.',null,'xs'],
  ['inlet','Inlet','Inlet configuration','sel',[''],'How the upstream end is built. Sets the HDS-5 inlet-control coefficients (K, M, c, Y) and the entrance loss coefficient Ke.','Plans / standard drawings, or field inspection of the inlet.',null,'inlet'],
  ['Q','Flows','Design discharge','Q',[300,8.5],'Peak flow the culvert must pass (e.g., 25-yr or 50-yr storm).','Hydrology report (Rational method, USGS regression, TR-55, HEC-HMS).',[1,5000,0.03,140],'hw'],
+ ['Qcheck','Flows','Check flood discharge (1% AEP, 100-yr)','Q',[0,0],'TxDOT HDM Ch. 4 §6: "All facilities must be evaluated to the 1% AEP flood event." Enter the 100-yr peak flow to see headwater, overtopping and outlet velocity at that flow. 0 = skip.','Hydrology report, or send it from the Rational Method tool (same county IDF, Tc and C at the 1% AEP intensity).',null,'hw'],
  ['Qmin','Flows','Rating curve minimum flow','Q',[30,0.85],'Lowest flow plotted on the performance curve.','Your choice; often 10% of design.',null,'hw'],
  ['Qmax','Flows','Rating curve maximum flow','Q',[450,12.7],'Highest flow plotted (often 1.5× design, to check the 100-yr / check flood).','Hydrology report or your choice.',null,'hw'],
  ['twMode','Tailwater','Tailwater condition','sel',['const'],'Water level downstream that can back up into the culvert. "None" = free outfall.','Hydraulic model of the downstream channel, normal-depth calc, or a known pond/river level.',null,'tw'],
@@ -105,12 +106,16 @@ function validate(p){const w={},us=state.units==='US';
    if(p.twMode==='const'&&p.twElev>zc)w.twElev='⚠ Tailwater is above the road crest — submergence is severe; results uncertain.';}}
  F.forEach(f=>$('#w_'+f[0]).textContent=w[f[0]]||'');return Object.keys(w).filter(k=>w[k].startsWith('⚠')).length;}
 const fx=(x,d=2)=>isFinite(x)?x.toFixed(d):'—';
+function checkFlood(ro){const Qk=val('Qcheck');if(!(Qk>0))return null;const p=params(Qk);p.S=(p.invIn-p.invOut)/p.length;if(!p.inlet)return null;
+ let bal=null;if(ro&&!ro.bad){bal=C.balance(Qk,elOf,ro);p.Q=bal.Qc;}const r=C.analyze(p);
+ return {Qt:Qk,Qc:p.Q,Qr:bal?bal.Qr:0,over:!!(bal&&bal.over),EL:bal&&bal.over?bal.EL:r.EL,HW:(bal&&bal.over?bal.EL:r.EL)-p.invIn,Vout:r.Vout,control:r.control,r};}
 function run(){
  const p=params();p.S=(p.invIn-p.invOut)/p.length;const bad=validate(p);
  if(!p.inlet||!(p.rise>0)||!(p.Q>0)||!(p.length>0)){$('#explain').textContent='Enter valid inputs to see results.';return;}
  const ro=roadObj(p),Qt=p.Q;let bal=null;
  if(ro&&!ro.bad){bal=C.balance(Qt,elOf,ro);p.Q=bal.Qc;}
  const r=C.analyze(p),u=U[state.units],L=u.L,allow=val('allowHW');
+ window.CHECK=checkFlood(ro);
  const flags=[];
  if(r.HW/r.D>1.2)flags.push(`HW/D = ${fx(r.HW/r.D)} exceeds 1.2 (common agency limit for pipes/boxes). Consider a larger or additional barrel, or a better inlet.`);
  if(isFinite(allow)&&r.EL>allow)flags.push(`Headwater elevation ${fx(r.EL)} ${L} exceeds the allowable ${fx(allow)} ${L}.`);

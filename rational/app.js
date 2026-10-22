@@ -61,6 +61,7 @@ function read(){const v=id=>{const e=$('#'+id);return e?e.value:undefined};
   if(s.t==='shallow')s.paved=v('pv'+j)==='1';if(s.t==='channel'){s.n=+v('n'+j);s.A=+v('A'+j);s.P=+v('P'+j);}});}
  else{const k=S.kk;k.Lo=+v('Lo');k.No=v('No');k.So=+v('So');k.Lc=+v('Lc');k.Sc=+v('Sc');k.adj=$('#adj').checked;}
  S.ser=v('ser');S.county=v('county');S.zone=v('zone');S.rp=+v('rp');S.sub.forEach((u,j)=>{const nu=v('use'+j);if(nu!==u.use){u.use=nu;const r=CTAB[nu];u.C=+((r[0]+r[1])/2).toFixed(3);}else u.C=+v('C'+j);u.A=+v('A'+j);});}
+function idfAt(rp){const r=zones(S.county).find(r=>r[1]===S.zone);const [e,b,d]=r[2+RP.indexOf(rp)];return {e,b,d};}
 function idf(){const r=zones(S.county).find(r=>r[1]===S.zone);const [e,b,d]=r[2+RP.indexOf(S.rp)];return {e,b,d};}
 function compute(){const rows=[],steps=[],flags=[];
  if(mode==='NRCS'){let sheetTot=0;S.segs.forEach((s,j)=>{let hr,V,eq;
@@ -95,9 +96,18 @@ function draw(R){const W=900,x0=30,x1=870,tot=R.rows.reduce((a,r)=>a+r.L,0)||1;l
   <text x="${(xa+xb)/2}" y="${(ya+yb)/2+22}" text-anchor="middle" font-size="11" fill="#556">${i+1}. ${(NAME[r.t]||r.t[0].toUpperCase()+r.t.slice(1)).split(' ')[0]} · ${r.L} ft</text>`;});
  let lx=x0;[['sheet','Sheet / Kerby'],['shallow','Shallow concentrated'],['channel','Channel / pipe / Kirpich']].forEach(([k,n])=>{s+=`<rect x="${lx}" y="180" width="14" height="8" fill="${COL[k]}"/><text x="${lx+18}" y="188" font-size="11">${n}</text>`;lx+=170;});
  $('#path').innerHTML=s;}
+// Hand design + check (1% AEP) flows to the culvert tool. TxDOT HDM Ch. 4 §6 (Table 4-2 notes): "All facilities must be evaluated to the 1% AEP flood event."
+function sendBox(Q,I,C,A,tc){const I100=T.intensity(idfAt(100),tc),Q100=C*I100*A;
+ const d={Q:+Q.toFixed(2),Qcheck:+Q100.toFixed(2),rp:S.rp,county:S.county,zone:S.zone,ser:S.ser,tc:+tc.toFixed(2),C:+C.toFixed(3),A:+A.toFixed(3),i:+I.toFixed(3),i100:+I100.toFixed(3),t:Date.now()};
+ const url='../culvert/?'+new URLSearchParams({from:'rational',Q:d.Q,Qcheck:d.Qcheck,rp:d.rp,county:d.county,zone:d.zone,ser:d.ser,tc:d.tc,C:d.C,A:d.A,i:d.i,i100:d.i100}).toString();
+ let el=$('#sendc');if(!el){el=document.createElement('div');el.id='sendc';el.className='card';$('#summary').after(el);}
+ el.innerHTML=`<h3>Send to culvert tool</h3><p style="margin:4px 0 8px">Design flow <b>${f(Q,1)} cfs</b> (${S.rp}-yr) and check flood <b>${f(Q100,1)} cfs</b> (100-yr, 1% AEP: same county IDF, Tc = ${f(tc,1)} min and C = ${f(C,3)}; i<sub>100</sub> = ${f(I100,2)} in/hr). TxDOT HDM Ch. 4 §6: “All facilities must be evaluated to the 1% AEP flood event.” Pick the design frequency from HDM Table 4-2 for your facility (e.g., freeway main-lane culverts: 2% AEP, 50-yr).</p><a class="sendbtn" href="${url}" style="display:inline-block;background:#1f4e79;color:#fff;padding:10px 16px;border-radius:8px;font-weight:600;text-decoration:none">Send to culvert tool →</a>`;
+ el.querySelector('a').onclick=()=>{try{localStorage.setItem('hydro.handoff',JSON.stringify(d));}catch(e){}};
+ window.HANDOFF=d;}
 function render(){const R=compute();draw(R);const below=R.tc<T.TC_MIN;
  const K=idf(),I=T.intensity(K,R.gov),A=S.sub.reduce((a,u)=>a+u.A,0),C=S.sub.reduce((a,u)=>a+u.C*u.A,0)/A,Q=C*I*A;
  $('#summary').innerHTML=`<div class="kpi gov" style="font-size:15px">Peak flow Q = C·i·A (${S.rp}-yr)<b style="font-size:30px">${f(Q,1)} cfs</b></div><div class="kpi">Intensity i<b>${f(I,2)} in/hr</b>${S.county} · ${S.zone} · ${S.ser}</div><div class="kpi">Composite C<b>${f(C,3)}</b></div><div class="kpi">Area A<b>${f(A,2)} ac</b></div><div class="kpi">Tc used<b>${f(R.gov,1)} min</b>${below?'10-min minimum governs (computed '+f(R.tc,1)+')':'computed Tc governs'}</div>`;
+ sendBox(Q,I,C,A,R.gov);
  $('#table').innerHTML=`<table><tr><th>#</th><th>Type</th><th>Length (ft)</th><th>Velocity (ft/s)</th><th>Travel time (min)</th><th>Share</th></tr>${R.rows.map((r,i)=>`<tr><td>${i+1}</td><td><span style="color:${COL[r.t]}">■</span> ${NAME[r.t]||r.t}</td><td>${r.L}</td><td>${f(r.V)}</td><td>${f(r.min,2)}</td><td>${f(100*r.min/R.tc,0)}%</td></tr>`).join('')}<tr><th colspan="4">Total</th><th>${f(R.tc,2)}</th><th></th></tr></table>`;
  const st=[...R.steps,`Add the travel times: Tc = ${R.rows.map(r=>f(r.min,1)).join(' + ')} = <b>${f(R.tc,1)} min</b>.`,
   below?`${f(R.tc,1)} min is less than TxDOT's 10-minute minimum for Rational Method intensity (Sec. 12, "Rainfall Intensity"), so <b>use Tc = 10 min</b> to read i from the IDF curve.`:`${f(R.tc,1)} min exceeds the 10-minute minimum, so <b>use the computed Tc</b> as the storm duration when reading i.`];
