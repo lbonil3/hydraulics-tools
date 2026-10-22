@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Ditch"><meta name="theme-color" content="#1f4e79"><meta name="format-detection" content="telephone=no"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest"><title>Ditch Studio – roadside channel capacity and lining stability (HEC-15 / TxDOT HDM)</title>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="mobile.css"><link rel="stylesheet" href="ditch.css"><link rel="stylesheet" href="../home-btn.css"></head><body>
+<header><a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">&#8592; Home</a><h1>Ditch Studio</h1><span>Roadside ditch capacity (Manning), normal and critical depth, Froude, freeboard and lining stability per FHWA HEC-15 3rd ed. (2005) and TxDOT Hydraulic Design Manual Ch. 7 Sec. 3 · US units</span></header>
+<main><aside id="form"></aside>
+<section id="out">
+ <div id="summary"></div>
+ <div class="card"><h3>Cross section <small>(animated water level, freeboard, shear on the wetted perimeter)</small></h3><svg id="xs" viewBox="0 0 360 230" data-nofit="1" role="img" aria-label="Ditch cross section"></svg></div>
+ <div class="card"><h3>Rating curve (Q vs depth)</h3><svg id="rc" viewBox="0 0 360 230" data-nofit="1" role="img" aria-label="Rating curve"></svg></div>
+ <div class="card"><h3>Profile (mini view)</h3><svg id="pf" viewBox="0 0 360 110" data-nofit="1" role="img" aria-label="Ditch profile"></svg></div>
+ <div class="card"><h3>Checks</h3><div id="checks"></div></div>
+ <div class="card"><h3>Results</h3><div id="table"></div></div>
+ <div class="card"><h3>Step-by-step explanation</h3><div id="explain"></div></div>
+ <div class="card cite" id="refs"></div>
+</section></main>
+<script src="calc.js"></script><script src="app.js"></script><script>window.MOBILE_CFG={}</script><script src="mobile.js"></script></body></html>
