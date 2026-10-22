@@ -55,7 +55,7 @@ function report(p,r,allow,ro,bal){const el=document.getElementById('report');if(
  const tw=p.twMode==='const'?`El. ${f(p.twElev)} ${L} (depth ${f(r.TW)} ${L} above outlet invert)`:'none / free outfall';
  const road=ro&&!ro.bad?`crest low point El. ${f(zc)} ${L}, top width ${f(ro.Lr)} ${L}, ${ro.surface}`:'not modelled';
  const row=(a,b)=>`<tr><th>${a}</th><td>${b}</td></tr>`;
- el.innerHTML=`<div class="rhead"><div><b>Culvert design report</b><br><small>Generated ${new Date().toLocaleString()} · Culvert Studio (FHWA HDS-5 methods, HY-8-style profile)</small></div><button type="button" class="rprint" onclick="window.print()">Print / Save PDF</button></div>
+ el.innerHTML=`<div class="rhead"><div><b>Culvert design report</b><br><small>Generated ${new Date().toLocaleString()} · Culvert Studio (FHWA HDS-5 methods, HY-8-style profile)</small></div><span class="rbtns"><button type="button" class="rprint rpdf" data-act="pdf">Save / Share PDF</button><button type="button" class="rprint rprt" data-act="print">Print</button></span></div>
  <h4>1. Inputs</h4><table class="rt">${row('Culvert',`${p.barrels} × ${size}, ${st('material')}, Manning n = ${p.n}`)}${row('Inlet',`${i.name} (HDS-5 ${i.chart}); entrance loss K<sub>e</sub> = ${i.Ke}`)}
  ${row('Length / slope',`${f(p.length,1)} ${L}; S = ${f(r.S*100)}%`)}${row('Inverts',`inlet El. ${f(p.invIn)} ${L}, outlet El. ${f(p.invOut)} ${L}`)}${row('Design flow',`${f(Qt)} ${Q}`)}${row('Tailwater',tw)}${row('Roadway',road)}${isFinite(allow)?row('Allowable HW',`El. ${f(allow)} ${L}`):''}</table>
  <h4>2. Results</h4><table class="rt">${row('Headwater',`El. <b>${f(r.EL)} ${L}</b>; depth HW = ${f(r.HW)} ${L}; HW/D = ${f(HWD)}`)}${row('Control',`<b>${r.control} control</b> (inlet HW ${f(r.HWi)} ${L}, outlet HW ${f(r.HWo)} ${L})`)}
@@ -66,6 +66,6 @@ function report(p,r,allow,ro,bal){const el=document.getElementById('report');if(
  <h4>3. Design checks</h4><ul class="rchk">${ck.join('')}</ul>
  <h4>4. Summary</h4><p class="rnar">${nar}</p>
  <p class="rnote"><small>References: TxDOT Hydraulic Design Manual (online edition, txdot.gov/manuals/des/hyd), Ch. 4 §6 and Ch. 8 §2; FHWA HDS-5 <i>Hydraulic Design of Highway Culverts</i>, 3rd ed. (FHWA-HIF-12-026 / FHWA-NHI-12-029, 2012) §2.2.5; FHWA HEC-14 <i>Hydraulic Design of Energy Dissipators for Culverts and Channels</i>, 3rd ed. (FHWA-NHI-06-086, 2006); FHWA HY-8 8.0 User Manual §5.2.7. Values are quoted from those sources. Where they give no number (freeboard, minimum culvert size), the report says so instead of making one up. Check your district's criteria too. This is a screening tool, not a sealed design.</small></p>`;}
-window.drawProfile=function(p,r,allow,ro,bal){const o=prev.apply(this,arguments);try{report(p,r,allow,ro,bal);}catch(e){console.error(e);}return o;};
+window.drawProfile=function(p,r,allow,ro,bal){const o=prev.apply(this,arguments);try{report(p,r,allow,ro,bal);if(window.ReportPDF)ReportPDF.prep();}catch(e){console.error(e);}return o;};
 try{if(typeof run==="function")run();}catch(e){console.error(e);}
 })();

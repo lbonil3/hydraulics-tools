@@ -15,8 +15,13 @@
  body *{visibility:hidden}
  #reportcard,#reportcard *{visibility:visible}
  #reportcard{position:absolute;left:0;top:0;width:100%;box-shadow:none!important;border:0!important;margin:0!important;display:block!important}
- #report .rprint{display:none}
+ #report .rprint,#report .rbtns{display:none}
  #report .rt th,#report .rt td{display:table-cell}
  #report .rf,#report .rt td{break-inside:avoid}
  @page{margin:15mm}
 }
+#report .rbtns{display:flex;gap:8px;flex-wrap:wrap}
+#report .rprt{background:#fff;color:#1f4e79;border:1px solid #1f4e79}
+#report .rlink{display:block;margin-top:6px;font-weight:600}
+@media print{#report .rbtns,#report .rlink{display:none}}
+@media (display-mode: standalone){#report .rprt{display:none}}
