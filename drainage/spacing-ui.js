@@ -3,7 +3,7 @@
 const RPS=[2,5,10,25,50,100],IDF=()=>S.space.ser==='AMS'?window.IDF_AMS:window.IDF_PDS;
 const COUNTIES=[...new Set(window.IDF_PDS.map(r=>r[0]))];
 S.space={wmode:'lanes',nl:4,ex:0,crown:'half',amode:'wl',Aac:0.25,xax:'len',pw:24,L:300,C:0.9,imode:'idf',county:'Travis',zone:'Zone-1',ser:'PDS',rp:'10',tc:10,i:6,Qco:0,
- gt:'uniform',SL:0.01,Sx:0.02,n:0.016,W:2,a:2,it:'curb',cl:10,ca:3,cw:2,meth:'TxDOT',gw:2,gl:3,Vo:8.2,
+ gt:'uniform',SL:0.01,Sx:0.02,n:0.016,W:2,a:2,it:'curb',gtype:'P-1-7/8',cl:10,ca:3,cw:2,meth:'TxDOT',gw:2,gl:3,Vo:8.2,
  road:'txmaj',lane:12,sh:0,Tc:10,curb:6,Qblim:0.5,chainN:'4',chainMode:'auto'};
 const ROAD={txi:['TxDOT: interstate / controlled-access main lanes — ½ outer lane',(s)=>s.sh+0.5*s.lane],
  txmaj:['TxDOT: major highway (2+ lanes each direction) — outer lane',(s)=>s.sh+s.lane],
@@ -15,6 +15,7 @@ const ROAD={txi:['TxDOT: interstate / controlled-access main lanes — ½ outer 
  hloc:['HEC-22 Table 5.1: local street — ½ driving lane',(s)=>s.sh+0.5*s.lane],
  custom:['Custom allowable spread (enter T)',null]};
 Object.assign(H,{
+ gtype:['Grate type','','Grate pattern (used for the plan drawing and as a reminder when reading Vo from HEC-22 Figure 7.8).','Grate catalog; HEC-22 Table 7.1 grate types.',null],
  wmode:['Roadway width','','Type the width directly, or build it from lanes.','Typical section.',null],
  nl:['Number of lanes','','Crowned: total lanes of the roadway (half drains to this gutter). Full width: lanes that slope to this gutter.','Typical section.',[1,8]],
  lw:['Lane width','ft','Travel lane width (also used for the spread criterion).','Typical section (12 ft typical).',[10,12]],
@@ -67,7 +68,7 @@ window.form=function(){if(mode!=='space')return oForm();const s=S.space;let h=''
  h+=`<fieldset><legend>Gutter</legend>${sel('gt',s.gt,[['uniform','Uniform cross slope'],['composite','Composite (depressed gutter)']])}${num('SL',s)}${num('Sx',s)}${num('n',s)}${s.gt==='composite'?num('W',s)+num('a',s):''}</fieldset>`;
  h+=`<fieldset><legend>Inlet on grade</legend>${sel('it',s.it,[['curb','Curb opening'],['grate','Grate'],['combo','Combination (grate + curb)']])}`;
  if(s.it!=='grate')h+=field('cl2',s.cl,null,'cl')+num('ca',s)+num('cw',s)+sel('meth',s.meth,[['TxDOT','TxDOT HDM (Eq. 10-5…10-13)'],['HEC22','HEC-22 (Eq. 5.7/7.11)']]);
- if(s.it!=='curb')h+=num('gw',s)+num('gl',s)+num('Vo',s);h+='</fieldset>';
+ if(s.it!=='curb')h+=sel('gtype',s.gtype,['P-1-7/8','P-1-7/8-4','P-1-1/8','Reticuline','Curved vane','30° tilt-bar'].map(g=>[g,g]))+num('gw',s)+num('gl',s)+num('Vo',s);h+='</fieldset>';
  h+=`<fieldset><legend>Design criteria</legend>${sel('road',s.road,Object.entries(ROAD).map(([k,v])=>[k,v[0]]))}${s.wmode==='lanes'&&s.amode!=='ac'?'<div class="lvnote" style="font-size:12.5px;color:#556">Lane and shoulder widths come from section 1.</div>':num('lane',s)+num('sh',s)}${ROAD[s.road][1]?'':field('Tc2',s.Tc,null,'Tc')}${num('curb',s)}${num('Qblim',s)}</fieldset>`;
  h+=`<fieldset><legend>Chain of inlets &amp; chart</legend>${s.amode==='ac'?'':sel('xax',s.xax,[['len','Chart vs length (ft)'],['ac','Chart vs area (ac)']])}${sel('chainN',s.chainN,[1,2,3,4,5,6,8,10].map(n=>[n,n]))}${sel('chainMode',s.chainMode,[['auto','Auto (each at max length)'],['fixed','Fixed (slider length)']])}</fieldset>`;
  $('#form').innerHTML=h;
@@ -97,6 +98,7 @@ window.render=function(){if(mode!=='space'){const x=$('#xs');x.setAttribute('vie
  const R=[...(ac?[]:[['Roadway width W',f(Wd,1),'ft'],['Length L',f(s.L,0),'ft']]),['Drainage area A'+(ac?'':' = W × L / 43,560'),f(r.A,4),'ac'],['Drainage area',Math.round(r.A*43560).toLocaleString(),'sq ft'],['Intensity i',f(i,2),'in/hr'],['Runoff C·i·A',f(r.Qr,3),'cfs'],['Carryover in',f(s.Qco,3),'cfs'],['Gutter flow Q',f(r.Q,3),'cfs'],['Spread T',f(r.T,2),'ft'],['Depth at curb d',f(r.d,3)+' ('+f(r.d*12,1)+' in)','ft'],['Intercepted Qi',f(r.Qi,3),'cfs'],['Bypass',f(r.Qb,3),'cfs'],
   [MX+' — bypass',mxs(m.each.Qb),''],[MX+' — spread',mxs(m.each.T),''],[MX+' — depth',mxs(m.each.d),'']];
  $('#table').innerHTML=tbl(R)+`<h3 style="margin-top:10px">Chain of inlets (${s.chainMode==='auto'?'auto-spaced':'fixed '+(ac?xv+' ac':xv+' ft')})</h3><div style="overflow-x:auto"><table class="spchain"><thead><tr><th>#</th>${ac?'':'<th>L (ft)</th><th>Station (ft)</th>'}<th>A (ac)</th><th>Cum. A (ac)</th><th>Carry in</th><th>Q</th><th>T (ft)</th><th>Qi</th><th>Bypass</th><th></th></tr></thead><tbody>${ch.map(c=>c.fail?`<tr><td>${c.k+1}</td><td colspan="10">Carryover ${f(c.Qco,2)} cfs alone exceeds the ${SP.LABEL[c.gov]} — use a longer/bigger inlet.</td></tr>`:`<tr><td>${c.k+1}</td>${ac?'':`<td>${f(c.L,0)}</td><td>${f(c.sta,0)}</td>`}<td>${f(c.A,3)}</td><td>${f(c.cum,3)}</td><td>${f(c.Qco,2)}</td><td>${f(c.Q,2)}</td><td>${f(c.T,1)}</td><td>${f(c.Qi,2)}</td><td>${f(c.Qb,2)}</td><td>${c.ok?'✓':'✗'}</td></tr>`).join('')}</tbody></table></div>`;
+ window.SPLAST={s,p,ch,Tal,Wd,ac,r};
  const E=[ac?`Drainage area entered: A = ${f(s.Aac,3)} ac (${Math.round(s.Aac*43560).toLocaleString()} sq ft).`:`Roadway width W = ${f(Wd,1)} ft${s.wmode==='lanes'?` (${s.nl} lanes × ${s.lane} ft + ${s.sh} ft shoulder/parking + ${s.ex} ft extra${s.crown==='half'?', crowned so half drains here':', full width drains here'})`:''}. Area A = W × L / 43,560 = ${f(Wd,1)} × ${s.L} / 43,560 = ${f(r.A,4)} ac.`,
   s.imode==='idf'?`Intensity (TxDOT HDM Eq. 4-21, EBDLKUP-2019 ${s.ser}, ${s.county} ${s.zone}, ${s.rp}-yr): i = b/(Tc+d)<sup>e</sup> with Tc = max(${s.tc}, 10) min = ${f(i,2)} in/hr (TxDOT 10-minute minimum).`:`Intensity entered: ${s.i} in/hr.`,
   `Rational Method (TxDOT HDM Ch. 4 Sec. 12): Q = C·i·A (A in acres) = ${s.C} × ${f(i,2)} in/hr × ${f(r.A,4)} ac = ${f(r.Qr,3)} cfs; plus carryover ${s.Qco} cfs → Q = ${f(r.Q,3)} cfs.`,
