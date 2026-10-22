@@ -20,7 +20,7 @@ function sym(s,xb,yc,kx,ky,detail){const t=s.it,a=s.ca||0;let h='';const lc=s.cl
  const grate=(xa,xe)=>{h+=`<rect x="${xa}" y="${yc}" width="${xe-xa}" height="${wg}" fill="#ddd" stroke="#222" stroke-width="${detail?1.4:1}"/>`+pattern(s.gtype,xa,yc,xe-xa,wg,detail);};
  if(t==='curb')curb(xb-lc,xb);else if(t==='grate')grate(xb-lg,xb);else{curb(xb-Math.max(lc,lg),xb);grate(xb-lg,xb);}
  return h;}
-const label=s=>s.it==='curb'?`Curb ${s.cl} ft${s.ca>0?`, ${s.ca} in depr.`:''}`:s.it==='grate'?`${s.gtype} ${s.gw}×${s.gl} ft`:`Combo: ${s.gtype} ${s.gw}×${s.gl} + curb ${s.cl} ft${s.cl>s.gl?' (sweeper)':''}`;
+const label=s=>(s.stdName?s.stdName+' — ':'')+(s.it==='curb'?`Curb ${s.cl} ft${s.ca>0?`, ${s.ca} in depr.`:''}`:s.it==='grate'?`${s.gtype} ${s.gw}×${s.gl} ft`:`Combo: ${s.gtype} ${s.gw}×${s.gl} + curb ${s.cl} ft${s.cl>s.gl?' (sweeper)':''}`);
 const defs=`<defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#777" stroke-width="1"/></pattern><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1f77b4"/></marker></defs>`;
 function plan(){const X=window.SPLAST;if(!X)return;const {s,p,ch,Tal,Wd,ac}=X,rows=ch.filter(c=>!c.fail);if(!rows.length){$('#plansvg').innerHTML='';return;}
  const Ls=rows.map(c=>ac?c.L*43560/Math.max(Wd,1):c.L),Lt=Ls.reduce((a,b)=>a+b,0)||1,x0=18,x1=342,kx=(x1-x0)/Lt;

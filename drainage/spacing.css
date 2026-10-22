@@ -6,3 +6,4 @@
 @media (min-width:701px){#xs[data-nofit]{max-height:52vh}}
 .spArea{background:#eef5ff;border-left:4px solid #1f4e79;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:14px;line-height:1.45}.spArea b{color:#1f4e79;font-size:16px}
 @media (min-width:701px){#plansvg{max-height:42vh}#detsvg{max-height:36vh}#plancard{max-width:820px}}
+.txpick .txnote{font-size:13px;line-height:1.4;color:#334;background:#f3f7fb;border-left:3px solid #1f4e79;padding:6px 8px;margin-top:6px;overflow-wrap:anywhere}
