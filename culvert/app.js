@@ -16,6 +16,12 @@ const F=[
  ['nBed','Culvert','Manning n of open bottom (streambed)','num',[0.035,0.035],'Open-bottom shapes have a natural streambed floor. HY-8 asks for its own n; a composite n (Horton: equal velocity in each part) is used for the wet perimeter.','Streambed material: gravel 0.025–0.035, cobbles 0.035–0.05.',[0.015,0.07,0.015,0.07],'barrel'],
  ['udPoly','Culvert','User-defined shape: x, y per line (closed outline)','txt',['0, 0\n8, 0\n8, 3\n6.5, 4.5\n1.5, 4.5\n0, 3','0, 0\n2.44, 0\n2.44, 0.91\n1.98, 1.37\n0.46, 1.37\n0, 0.91'],'Inside outline of the barrel, points in order around the shape (x across, y up from the invert). The polygon closes itself. Rise and span are taken from the outline.','Shop drawings or field measurements. 6–40 points is typical.',null,'xs'],
  ['inlet','Inlet','Inlet configuration','sel',[''],'How the upstream end is built. Sets the HDS-5 inlet-control coefficients (K, M, c, Y) and the entrance loss coefficient Ke.','Plans / standard drawings, or field inspection of the inlet.',null,'inlet'],
+ ['taperType','Inlet','Tapered inlet (HDS-5 §3.4, box only)','sel',['none'],'Side-tapered: enlarged face with flared side walls. Slope-tapered: also drops the throat below the streambed. Both move control to the efficient throat; Ke = 0.2.','Plans / standard drawings of the inlet structure.',null,'inlet'],
+ ['taperEdge','Inlet','Tapered inlet face edges','sel',['less'],'Less favorable: square edges, 26°–90° wingwalls. More favorable: bevelled edges or 15°–26° wingwalls (HDS-5 Table A.1).','Plans / standard drawings.',null,'inlet'],
+ ['taperBf','Inlet','Face width Bf','L',[9,2.74],'Width of the enlarged face (wider than the barrel span). Increase until the throat controls.','Plans; HDS-5 tapered inlet design form.',null,'inlet'],
+ ['taperRatio','Inlet','Side taper (_:1)','num',[4,4],'Wall length per unit of flare, 4:1 to 6:1.','Plans.',[4,6,4,6],'inlet'],
+ ['taperSt','Inlet','Depression slope St (_:1)','num',[2,2],'Slope of the floor between face and throat, 2:1 to 3:1 (slope-tapered only).','Plans.',[2,3,2,3],'inlet'],
+ ['taperT','Inlet','Throat depression T','L',[2,0.61],'Streambed at the face minus throat invert (slope-tapered only). The barrel inlet invert above is the throat invert.','Plans.',null,'inlet'],
  ['Q','Flows','Design discharge','Q',[300,8.5],'Peak flow the culvert must pass (e.g., 25-yr or 50-yr storm).','Hydrology report (Rational method, USGS regression, TR-55, HEC-HMS).',[1,5000,0.03,140],'hw'],
  ['Qcheck','Flows','Check flood discharge (1% AEP, 100-yr)','Q',[0,0],'TxDOT HDM Ch. 4 §6: "All facilities must be evaluated to the 1% AEP flood event." Enter the 100-yr peak flow to see headwater, overtopping and outlet velocity at that flow. 0 = skip.','Hydrology report, or send it from the Rational Method tool (same county IDF, Tc and C at the 1% AEP intensity).',null,'hw'],
  ['Qmin','Flows','Rating curve minimum flow','Q',[30,0.85],'Lowest flow plotted on the performance curve.','Your choice; often 10% of design.',null,'hw'],
@@ -46,11 +52,13 @@ function opts(id){
  if(id==='size')return Shapes.catalog(sk)&&Shapes.isHY(sk)?Shapes.sizes(sk,val('material')).map((z,i)=>['s'+i,z.l+' · A '+z.A+' ft²']):[['','— not used for this shape —']];
  if(id==='material'&&Shapes.isHY(sk))return Shapes.mats(sk).map((m,i)=>['m'+i,`${m.name} (n=${m.n}${m.nb!=null&&Shapes.DB[sk].open?', bottom '+m.nb:''})`]);
  if(id==='material')return[['concrete','Concrete (n=0.012)'],['cmp','Corrugated metal (n=0.024)'],['hdpe','HDPE smooth (n=0.012)'],['custom','Custom n']];
+ if(id==='taperType')return[['none','None (straight inlet)'],['side','Side-tapered'],['slope','Slope-tapered (vertical face)']];
+ if(id==='taperEdge')return[['less','Less favorable edges (square, 26°–90° wingwalls)'],['more','More favorable edges (bevels or 15°–26° wingwalls)']];
  if(id==='roadOn')return[['on','Yes – include flow over the road'],['off','No – culvert only']];
  if(id==='roadMode')return[['const','Constant crest (one elevation)'],['profile','Roadway profile (points)']];
  if(id==='surface')return[['paved','Paved'],['gravel','Gravel'],['custom','Custom Cd']];
  if(id==='twMode')return[['const','Constant elevation'],['rect','Rectangular channel (normal depth)'],['trap','Trapezoidal channel (normal depth)'],['tri','Triangular channel (normal depth)'],['irreg','Irregular channel (x, elevation points)'],['rating','Rating curve (Q, TW elevation)'],['none','None (free outfall)']];
- if(id==='inlet'){if(Shapes.isHY(sk))return Shapes.inlets(sk,val('material')).map(i=>[i.id,`${i.name} (Ke=${i.Ke}) — HY-8`]);return C.INLETS[sk||'box'].map(i=>[i.id,`${i.name} — HDS-5 ${i.chart}`]);}
+ if(id==='inlet'){if(Shapes.isHY(sk))return Shapes.inlets(sk,val('material')).map(i=>[i.id,`${i.name} (Ke=${i.Ke}) — HY-8`]);return C.INLETS[sk||'box'].map(i=>[i.id,/^HY-8/.test(i.chart)?`${i.name} (Ke=${i.Ke}) — HY-8 database`:`${i.name} — HDS-5 ${i.chart}`]);}
 }
 function val(id){const e=document.getElementById(id);if(!e)return null;return (e.tagName==='SELECT'||e.tagName==='TEXTAREA')?e.value:parseFloat(e.value)}
 function roadObj(p){if(val('roadOn')!=='on')return null;let segs;
@@ -68,7 +76,7 @@ function build(){
   h+=`<div class="f" data-hl="${f[8]}" id="f_${f[0]}"><label><span>${f[2]} ${u?'('+u+')':''}</span><span style="display:flex;gap:4px">${inp}<button class="i" type="button" title="What is this?">i</button></span></label>
   <div class="help"><b>What it is:</b> ${f[5]}<br><b>Where to get it:</b> ${f[6]}${rg}</div><div class="warn" id="w_${f[0]}"></div></div>`;});
  $('#form').innerHTML=h+'</fieldset>';
- ['shape','material','twMode','roadOn','roadMode','surface'].forEach(id=>fill(id));fill('inlet');
+ ['shape','material','twMode','roadOn','roadMode','surface','taperType','taperEdge'].forEach(id=>fill(id));fill('inlet');
  $('#shape').value='box';fill('inlet');fill('size');$('#inlet').value='b_90';
  document.querySelectorAll('.i').forEach(b=>b.onclick=()=>b.closest('.f').classList.toggle('open'));
  document.querySelectorAll('.f').forEach(d=>{const on=()=>hl(d.dataset.hl),off=()=>hl(null);d.onmouseenter=on;d.onmouseleave=off;d.addEventListener('focusin',on);d.addEventListener('focusout',off);});
@@ -102,7 +110,7 @@ function twFor(Qtot){const m=val('twMode');if(m==='const'||m==='none')return nul
   const ch=chObj();if(m==='irreg'&&ch.pts.length<3)return null;if(!(ch.S>0&&ch.n>0))return null;const r=C.channelTW(ch,Qtot,state.units==='US');r.mode=m;return r;}catch(e){return null;}}
 function params(Q){const k=val('shape'),sec=secFor();
  const inl=Shapes.isHY(k)?Shapes.inletFor(k,val('material'),val('inlet'),sec?(sec.spanNom||sec.B):1,sec?(sec.riseNom||sec.D):1):C.INLETS[k].find(i=>i.id===val('inlet'));
- return{units:state.units,shape:k,section:sec,spanNom:sec&&sec.spanNom,riseNom:sec&&sec.riseNom,span:sec?(sec.spanNom||sec.B):val('span'),rise:sec?(sec.riseNom||sec.D):val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:inl,Q:Q??val('Q'),twMode:val('twMode')==='none'?'none':'const',twElev:(()=>{const t=twFor(state.Qtot??(Q??val('Q')));return t?t.el:val('twElev');})(),twCh:twFor(state.Qtot??(Q??val('Q')))};}
+ return{units:state.units,shape:k,section:sec,spanNom:sec&&sec.spanNom,riseNom:sec&&sec.riseNom,span:sec?(sec.spanNom||sec.B):val('span'),rise:sec?(sec.riseNom||sec.D):val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:inl,Q:Q??val('Q'),twMode:val('twMode')==='none'?'none':'const',twElev:(()=>{const t=twFor(state.Qtot??(Q??val('Q')));return t?t.el:val('twElev');})(),twCh:twFor(state.Qtot??(Q??val('Q'))),taper:(k==='box'&&val('taperType')!=='none'&&val('taperType'))?{type:val('taperType'),edge:val('taperEdge'),Bf:val('taperBf'),taper:val('taperRatio'),St:val('taperSt'),T:val('taperT')}:null};}
 function validate(p){const w={},us=state.units==='US';
  F.forEach(f=>{const v=val(f[0]);if(f[7]&&isFinite(v)){const lo=us?f[7][0]:f[7][2],hi=us?f[7][1]:f[7][3];if(v<lo||v>hi)w[f[0]]=`⚠ ${v} is outside the usual ${lo}–${hi}. Double-check the value and units.`;}
   if(f[3]!=='sel'&&f[3]!=='txt'&&!isFinite(v)&&!(f[1]==='Roadway'&&val('roadOn')!=='on'))w[f[0]]='⚠ Please enter a number.';});
@@ -111,6 +119,8 @@ function validate(p){const w={},us=state.units==='US';
  if(val('Qmin')>=val('Qmax'))w.Qmax='⚠ Maximum must be greater than minimum.';
  if(p.twMode==='const'&&p.twElev<p.invOut)w.twElev='ℹ Tailwater is below the outlet invert — it will have no effect.';
  {const m=val('twMode'),sh=(id,on)=>{const d=document.getElementById('f_'+id);if(d)d.style.display=on?'':'none';};
+  {const tt=val('shape')==='box'?val('taperType'):'none';sh('taperType',val('shape')==='box');['taperEdge','taperBf','taperRatio'].forEach(x=>sh(x,tt!=='none'));['taperSt','taperT'].forEach(x=>sh(x,tt==='slope'));
+   if(tt!=='none'&&!(val('taperBf')>val('span')))w.taperBf='⚠ Face width should be larger than the barrel span.';}
   sh('twElev',m==='const');sh('chB',m==='rect'||m==='trap');sh('chZ1',m==='trap'||m==='tri');sh('chZ2',m==='trap'||m==='tri');['chS','chN'].forEach(x=>sh(x,['rect','trap','tri','irreg'].includes(m)));sh('chInv',['rect','trap','tri'].includes(m));sh('chPts',m==='irreg');sh('chRating',m==='rating');
   const t=p.twCh;if(t&&t.y!=null)w[m==='irreg'?'chPts':'chN']=`ℹ Normal depth ${fx(t.y)} → tailwater El. ${fx(t.el)}; channel velocity ${fx(t.V)}, Froude ${fx(t.Fr)}${t.Fr>1?' (supercritical channel — normal depth may not control)':''}.`;
   else if(t&&m==='rating')w.chRating=`ℹ Tailwater El. ${fx(t.el)} at ${fx(state.Qtot)} (interpolated).`;

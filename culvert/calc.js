@@ -157,6 +157,25 @@ function sectionFromHY8(g,o){o=o||{};const sc=o.scale||1;let r=g.slice();while(r
   s.open=!!o.open; if(o.rise&&s.poly.filter(p=>Math.abs(p[1]-s.D)<1e-9).length>1)s.flatTop=true; return s;}
 function rectSection(B,D,n){const s=makeSection([[0,0],[B,0],[B,D],[0,D]],{nWall:n});s.flatTop=true;return s;}
 function polySection(pts,o){o=o||{};const s=makeSection(pts,{nWall:o.nWall,nBed:o.nBed,bed:o.nBed!=null?((i,a,b)=>Math.abs(a[1])<1e-9&&Math.abs(b[1])<1e-9):null});return s;}
+// HDS-5 (3rd ed.) Sec. 3.4 tapered inlets: throat and face control, Appendix A Form 2 equations (Eq. A.2/A.3) with
+// Table A.1 constants (rectangular concrete: tapered inlet throat; side-/slope-tapered faces). Ke = 0.2 (Sec. 3.4.5).
+const TAPER_K={throat:{K:0.475,M:0.667,c:0.0179,Y:0.97},side_less:{K:0.56,M:0.667,c:0.0446,Y:0.85},side_more:{K:0.56,M:0.667,c:0.0378,Y:0.87},slope_less:{K:0.50,M:0.667,c:0.0446,Y:0.65},slope_more:{K:0.50,M:0.667,c:0.0378,Y:0.71}};
+function form2(k,Q,A,D,S,Ku){const x=Ku*Q/(A*Math.sqrt(D)),u=z=>k.K*Math.pow(z,k.M),sb=z=>k.c*z*z+k.Y;
+  const r=x<=3.5?u(x):x>=4?sb(x):u(3.5)+(sb(4)-u(3.5))*(x-3.5)/0.5;return {x,r:r-0.5*S,reg:x<=3.5?'unsubmerged':x>=4?'submerged':'transition'};}
+function taperIC(t,Q,S,Ku,B,D){const type=t.type==='slope'?'slope':'side',edge=t.edge==='more'?'more':'less';
+  const taper=t.taper||4,Bf=Math.max(t.Bf||B,B),E=D,L1s=(Bf-B)/2*taper;
+  let L1,L2=0,L3=0,faceRise;
+  if(type==='slope'){const St=t.St||2,T=Math.max(0,t.T||0);L2=T*St;L3=Math.max(0.5*B,L1s-L2);L1=L2+L3;faceRise=T+L3*S;}
+  else{L1=L1s;faceRise=L1*S;}
+  const th=form2(TAPER_K.throat,Q,B*D,D,S,Ku),fc=form2(TAPER_K[type+'_'+edge],Q,Bf*E,E,S,Ku);
+  const HWt=th.r*D,HWf=fc.r*E,HWfT=HWf+faceRise;
+  return {type,edge,Bf,E,taper,L1,L2,L3,faceRise,HWt,HWf,HWfT,xt:th.x,xf:fc.x,HW:Math.max(HWt,HWfT),ctrl:HWfT>HWt?'face':'throat'};}
+// Extra inlet types from the HY-8 8.0 shape database (polynomial curves) for the built-in circular and box shapes.
+function extendInlets(db){if(!db||extendInlets.done)return;extendInlets.done=true;
+  const add=(key,mat,names,pre)=>{const m=db[key]&&db[key].mats.find(x=>x.name===mat);if(!m)return;
+    m.inlets.forEach((i,k)=>{if(!names.includes(i.name)||i.t!=='poly')return;INLETS[key==='circular'?'circular':'box'].push(Object.assign({id:pre+k,name:i.name+' (HY-8 database)',chart:'HY-8 8.0 polynomial',Ke:i.KE},i));});};
+  add('circular','Concrete',['Beveled Edge (1:1)','Beveled Edge (1.5:1)','Mitered to Conform to Slope'],'hyc_');
+  add('box','Concrete',['Square Edge (90°) Headwall','1.5:1 Bevel (90°) Headwall','1:1 Bevel Headwall','1.5:1 Bevel (18-34° flare) Wingwall','1:1 Bevel (45° flare) Wingwall'],'hyb_');}
 function analyze(p){
   const US=p.units!=='SI', g=US?32.174:9.81, Ku=US?1.0:1.811, kM=US?1.486:1.0, kf=US?29:19.63;
   const SEC=p.section&&p.section.sec?p.section:null; if(SEC)p=Object.assign({},p,{shape:SEC});
@@ -183,11 +202,12 @@ function analyze(p){
   else if(X>=4.0){ratio=sub(X);regime='submerged';}
   else {const u=unsub(3.5/Ku*Ku), s=sub(4.0);ratio=u+(s-u)*(X-3.5)/0.5;regime='transition';}
   // transition uses equation values at the bounds (X expressed in US-equivalent scale)
-  const HWi=ratio*Di;
+  let HWi=ratio*Di, taper=null;
+  if(p.taper&&p.shape==='box'){taper=taperIC(p.taper,Q,S,Ku,B,D);HWi=taper.HW;ratio=HWi/D;regime='tapered inlet, '+taper.ctrl+' control';}
   const TW = p.twMode==='const' ? Math.max(0,p.twElev-p.invOut) : 0;
   const V=Q/A, hv=V*V/2/g;
   const Hf=kf*nFull*nFull*p.length/Math.pow(R,4/3)*hv;
-  const Ke=inl.Ke??inl.KE; inl=Object.assign({},inl,{Ke});
+  const Ke=taper?0.2:(inl.Ke??inl.KE); inl=Object.assign({},inl,{Ke});
   const He=inl.Ke*hv, Ho=hv, H=He+Hf+Ho;
   // HDS-5 full-flow energy method (used when barrel flows full or no subcritical profile can form)
   const hoHDS=Math.max(TW,(dc+D)/2), ELhoHDS=p.invOut+hoHDS+H;
@@ -209,7 +229,9 @@ function analyze(p){
   const HWo=ELho-p.invIn;
   const ELhi=p.invIn+HWi;
   let control=HWi>=HWo?'Inlet':'Outlet';
-  const HW=Math.max(HWi,HWo);
+  // HY-8: steep barrel, free outlet (TW < dc) and normal depth below the crown -> partly full S2 flow; full-flow outlet control does not govern
+  if(control==='Outlet'&&ocMethod==='steep-full'&&steep&&TW<dc&&yn<D*0.999)control='Inlet';
+  const HW=control==='Inlet'?HWi:Math.max(HWi,HWo);
   // ---- outlet depth & velocity from profile ----
   let yout, profile=null, outMethod;
   let jump=null, jumpType=null;
@@ -231,7 +253,7 @@ function analyze(p){
   if(jumpType==='drowned') control='Outlet'; // inlet submerged by the jump: outlet (subcritical) regime governs the barrel
   if(!profile){profile=[[0,Math.min(D,control==='Inlet'?dc:D)],[p.length,yout]];}
   const Vout=Q/geom(p.shape,B,D,yout).A;
-  return {jump,jumpType,US,g,D,B,N,Q,S,A,R,dc,Vc,Hc,yn,X,regime,ratio,HWi,ELhi,TW,ho,V,hv,Hf,He,Ho,H,ELho,HWo,control,HW,EL:p.invIn+HW,yout,Vout,inlet:inl,steep,ocMethod,outMethod,profile,yinO,hoHDS,ELhoHDS};
+  return {taper,jump,jumpType,US,g,D,B,N,Q,S,A,R,dc,Vc,Hc,yn,X,regime,ratio,HWi,ELhi,TW,ho,V,hv,Hf,He,Ho,H,ELho,HWo,control,HW,EL:p.invIn+HW,yout,Vout,inlet:inl,steep,ocMethod,outMethod,profile,yinO,hoHDS,ELhoHDS};
 }
 
 // ---- Roadway overtopping (HDS-5 Eq. 3.9, Fig. 3.11; curves from HDS-1 / HY-7, as used in HY-8) ----
@@ -297,6 +319,6 @@ function riprapApron(o){const US=o.US!==false,g=US?32.2:9.81,D=o.D,SG=o.SG||2.65
 // HEC-14 Table 1.1 (Froude number at the release point; TW requirement).
 const DISSIPATORS=[[4,'Flow transitions',null,null,'Desirable'],[5,'Scour hole',null,null,'Desirable'],[6,'Hydraulic jump',1,null,'Required'],[7,'Tumbling flow (4% < So < 25%)',1,null,'Not needed'],[7,'Increased resistance',null,null,'Not needed'],[7,'USBR Type IX baffled apron',null,1,'Not needed'],[7,'Broken-back culvert',1,null,'Desirable'],[7,'Outlet weir',2,7,'Not needed'],[7,'Outlet drop/weir',3.5,6,'Not needed'],[8,'USBR Type III stilling basin',4.5,17,'Required'],[8,'USBR Type IV stilling basin',2.5,4.5,'Required'],[8,'SAF stilling basin',1.7,17,'Required'],[9,'CSU rigid boundary basin',null,3,'Not needed'],[9,'Contra Costa basin',null,3,'< 0.5D'],[9,'Hook basin',1.8,3,'Not needed'],[9,'USBR Type VI impact basin (Q < 400 cfs, V < 50 ft/s)',null,null,'Desirable'],[10,'Riprap basin',null,3,'Not needed'],[10,'Riprap apron (rise <= 60 in)',null,null,'Not needed'],[11,'Straight drop structure (drop < 15 ft)',null,1,'Required'],[11,'Box inlet drop structure (drop < 12 ft)',null,1,'Required'],[12,'USACE stilling well',null,null,'Desirable']];
 function dissipatorsFor(Fr){return DISSIPATORS.map(([ch,name,lo,hi,tw])=>({ch,name,lo,hi,tw,range:lo==null&&hi==null?'na':lo!=null&&hi!=null?lo+' to '+hi:lo!=null?'> '+lo:'< '+hi,ok:(lo==null||Fr>lo)&&(hi==null||Fr<hi)}));}
-root.Culvert={riprapApron,dissipatorsFor,RIPRAP_T101,chGeom,channelTW,ratingTW,makeSection,sectionFromHY8,rectSection,polySection,hy8Ratio,secN,momentum,conj,findJump,traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
+root.Culvert={extendInlets,taperIC,TAPER_K,riprapApron,dissipatorsFor,RIPRAP_T101,chGeom,channelTW,ratingTW,makeSection,sectionFromHY8,rectSection,polySection,hy8Ratio,secN,momentum,conj,findJump,traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
 
 })(typeof module!=='undefined'?module.exports:window);

@@ -109,16 +109,53 @@ Max |ΔHW El| = 0.21 ft; max inlet-control depth error = 0.2%
 
 Max |ΔHW El| = 0.01 ft; max inlet-control depth error = 0.3%
 
-### South Dakota concrete box 8 × 6 ft, 0° flare, square-edged crown & 45° bevel (inlet control only — see caveat)
+### South Dakota concrete box 8 × 6 ft, 0° flare, square-edged crown & 45° bevel (re-run 2026-10-22 with n = 0.012 re-entered in HY-8)
 
 | Q (cfs) | HW El HY-8 | HW El ours | Δ ft | IC depth HY-8/ours | OC depth HY-8/ours | yc HY-8/ours | yout HY-8/ours | Vout HY-8/ours |
 |---|---|---|---|---|---|---|---|---|
-| 50 | 101.92 | 101.92 | — | 1.92 / 1.92 | — / 1.57 | 1.07 / 1.07 | 1.03 / 0.71 | 6.08 / 8.78 |
-| 125 | 103.54 | 103.54 | — | 3.54 / 3.54 | — / 2.18 | 1.96 / 1.97 | 1.90 / 1.33 | 8.22 / 11.78 |
-| 200 | 104.69 | 104.69 | — | 4.69 / 4.69 | — / 2.86 | 2.69 / 2.69 | 2.64 / 1.86 | 9.46 / 13.43 |
-| 350 | 106.80 | 106.43 | — | 6.43 / 6.43 | — / 4.53 | 3.90 / 3.90 | 3.90 / 2.82 | 11.21 / 15.50 |
-| 500 | 108.56 | 108.53 | — | 8.53 / 8.53 | — / 6.69 | 4.95 / 4.95 | 4.95 / 3.70 | 12.63 / 16.91 |
-| 575 | 109.96 | 109.96 | — | 9.96 / 9.96 | — / 7.97 | 5.43 / 5.44 | 5.43 / 4.11 | 13.23 / 17.48 |
-| 800 | 116.08 | 115.99 | — | 15.99 / 15.99 | — / 12.23 | 6.00 / 5.99 | 6.00 / 5.23 | 16.67 / 19.11 |
+| 50 | 101.92 | 101.92 | 0.00 | 1.92 / 1.92 | — / 1.57 | 1.07 / 1.07 | 0.71 / 0.71 | 8.86 / 8.78 |
+| 125 | 103.54 | 103.54 | -0.00 | 3.54 / 3.54 | 0.36 / 2.18 | 1.96 / 1.97 | 1.33 / 1.33 | 11.76 / 11.78 |
+| 200 | 104.69 | 104.69 | -0.00 | 4.69 / 4.69 | 1.29 / 2.86 | 2.69 / 2.69 | 1.86 / 1.86 | 13.41 / 13.43 |
+| 275 | 105.58 | 105.58 | 0.00 | 5.58 / 5.58 | 2.30 / 3.63 | 3.32 / 3.32 | 2.36 / 2.36 | 14.58 / 14.59 |
+| 350 | 106.43 | 106.43 | -0.00 | 6.43 / 6.43 | 3.48 / 4.53 | 3.90 / 3.90 | 2.82 / 2.82 | 15.49 / 15.50 |
+| 400 | 107.04 | 107.04 | 0.00 | 7.04 / 7.04 | 4.32 / 5.19 | 4.27 / 4.27 | 3.12 / 3.12 | 16.02 / 16.02 |
+| 500 | 108.53 | 108.53 | 0.00 | 8.53 / 8.53 | 6.69 / 6.69 | 4.95 / 4.95 | 3.70 / 3.70 | 16.90 / 16.91 |
+| 575 | 109.96 | 109.96 | -0.00 | 9.96 / 9.96 | 7.97 / 7.97 | 5.43 / 5.44 | 4.11 / 4.11 | 17.47 / 17.48 |
+| 650 | 111.68 | 111.68 | -0.00 | 11.68 / 11.68 | 9.38 / 9.38 | 5.90 / 5.90 | 5.05 / 4.52 | 16.09 / 17.99 |
+| 725 | 113.70 | 113.70 | -0.00 | 13.70 / 13.70 | 10.76 / 10.75 | 6.00 / 5.99 | 5.33 / 4.90 | 17.01 / 18.50 |
+| 800 | 115.99 | 115.99 | 0.00 | 15.99 / 15.99 | 12.23 / 12.23 | 6.00 / 5.99 | 5.59 / 5.23 | 17.90 / 19.11 |
 
-Max |ΔHW El| = n/a; max inlet-control depth error = 0.1%
+Max |ΔHW El| = 0.00 ft; max inlet-control depth error = 0.1%
+
+## Phase 6 (2026-10-22)
+
+### South Dakota box outlet-control mismatch: resolved
+The earlier HY-8 run gave a normal depth about 45% deeper than Manning. That matched an effective n of about 0.0215, even though the dialog showed 0.012. When Manning's n is typed in again (0.0067 → HY-8 behaves as n = 0.007; 0.012 → as n = 0.012), HY-8's normal depth equals ours. The first run used a stale roughness inside the HY-8 session, not a different method. HY-8's documentation describes the SD box as "a traditional Concrete Box that uses coefficients determined by the TFHRC hydraulics lab and the South Dakota DOT". After the re-run (table above), the maximum headwater-elevation difference is 0.005 ft.
+Remaining difference: at 650–800 cfs, HY-8 labels the flow 5-JS1t and reports the outlet depth equal to the tailwater (5.05–5.59 ft). We keep the supercritical exit depth (4.52–5.23 ft). Headwater is unaffected; outlet velocity is up to 12% higher in our tool, which is conservative for HEC-14.
+
+### Steep barrel with an inlet-control S2 profile
+HY-8 does not let full-flow outlet control govern when the barrel is steep, the tailwater is below critical depth and normal depth is below the crown. It reports type 5-S2n inlet control, and full flow (6-FFc) only once normal depth reaches the rise. calc.js now follows this rule. It changed no existing validation result, and the shape maxima above are unchanged.
+
+### Side-tapered inlet, 5 × 5 ft concrete box: HY-8 8.0 Tapered Inlet Table
+Face width 9 ft, 4:1 taper, square edge top with 26–90° wingwalls. Inlet El. 100, outlet El. 98, L = 200 ft, n = 0.012, trapezoidal tailwater channel.
+
+| Q | HW El HY-8 / ours | Face El HY-8 / ours | Throat El HY-8 / ours |
+|---|---|---|---|
+| 100 | 103.37 / 103.48 | 102.79 / 102.84 | 103.37 / 103.48 |
+| 140 | 104.25 / 104.36 | 103.49 / 103.55 | 104.25 / 104.36 |
+| 180 | 105.05 / 105.16 | 104.13 / 104.18 | 105.05 / 105.16 |
+| 220 | 105.81 / 106.15 | 104.72 / 104.77 | 105.81 / 106.15 |
+| 260 | 106.54 / 106.76 | 105.69 / 105.33 | 106.54 / 106.76 |
+| 300 | 107.29 / 107.40 | 106.18 / 105.86 | 107.29 / 107.40 |
+| 340 | 108.06 / 108.14 | 106.75 / 106.36 | 108.06 / 108.14 |
+| 380 | 108.89 / 108.96 | 107.38 / 107.26 | 108.89 / 108.96 |
+| 400 | 109.34 / 109.41 | 107.72 / 107.81 | 109.34 / 109.41 |
+| 460 | 112.57 / 112.59 (outlet) | 108.86 / 108.97 | 110.78 / 110.89 |
+| 500 | 114.31 / 114.33 (outlet) | 109.71 / 109.81 | 111.85 / 111.98 |
+
+Our throat control runs 0.07–0.34 ft higher, which is conservative. HY-8 uses fitted polynomials; we use the HDS-5 Form 2 equations. The largest difference is in the 3.5–4.0 transition.
+Against the HDS-5 Example Problem No. 1 design forms (nomograph values): throat HWt/D is within 2%, the slope-tapered face within 4%, and the side-tapered face within 9% (low).
+Source of constants: HDS-5 (3rd ed.) Table A.1 is an image in the FHWA PDF and could not be extracted as text. The constants were taken from two published reproductions of Table A.1, which agree with each other. They are confirmed by reproducing the HDS-5 example and the HY-8 run above.
+
+### HY-8 database inlet "1:1 Bevel Headwall", 5 × 5 ft concrete box, HY-8 8.0 Culvert Summary
+Q 50–455 cfs: headwater elevation within 0.01 ft at every flow. At 500 cfs (HW/D 3.38, beyond the polynomial's 0.5–3.0 range): 116.64 vs 116.89 ft.

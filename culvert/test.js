@@ -98,4 +98,27 @@ chk('Fig 3.11C kt free flow at 0.6',ktFactor(0.6,'gravel'),1.0,0.1);
  chk('Supercritical D\' = (D+yn)/2',ra({US:true,Q:85,D:5,TW:3,supercritical:true,yn:2}).Dp,3.5,1e-9);
  chk('SG 2.40 scales D50 by 2.65/2.40',ra({US:true,Q:85,D:5,TW:1.6,SG:2.4}).D50/a.D50,2.65/2.4,1e-6);
  const d=df(4).filter(x=>x.ok).map(x=>x.name);chk('Table 1.1 at Fr=4 includes USBR IV, excludes USBR III',(d.includes('USBR Type IV stilling basin')&&!d.includes('USBR Type III stilling basin'))?1:0,1,0);}
+
+{console.log('\n-- Phase 6: tapered inlets vs HDS-5 Example Problem No. 1 (5x5 RCB, design forms DG 3.4.5-3.4.7) --');const {taperIC:ti,analyze:an}=require('./calc.js').Culvert;
+ for(const [Q,hw] of [[300,1.48],[400,1.9],[500,2.4]])chk(`Throat control HWt/D @${Q} cfs (S=0.043)`,ti({type:'side',Bf:9,taper:4},Q,0.043,1,5,5).HWt/5,hw,3);
+ for(const [Q,hw] of [[300,1.25],[400,1.59],[500,2.04]])chk(`Side-tapered face HWf/E @${Q} cfs, Bf=9 ft (nomograph value)`,ti({type:'side',Bf:9,taper:4},Q,0.043,1,5,5).HWf/5,hw,10);
+ for(const [Q,hw] of [[300,1.14],[400,1.5],[500,2.0]])chk(`Slope-tapered face HWf/E @${Q} cfs, Bf=8 ft`,ti({type:'slope',Bf:8,taper:4,St:2,T:2},Q,0.044,1,5,5).HWf/5,hw,5);
+ const s=ti({type:'side',Bf:9,taper:4},400,0.043,1,5,5);chk('Side-tapered L1 = (Bf-B)/2 x taper',s.L1,8,0.01);chk('Side-tapered face invert rise L1·S (185.8-185.5)',s.faceRise,0.344,1);
+ const sl=ti({type:'slope',Bf:8,taper:4,St:2,T:2},400,0.044,1,5,5);chk('Slope-tapered L2 = T·St',sl.L2,4,0.01);chk('Slope-tapered L3 = max(B/2, (Bf-B)/2·taper - L2)',sl.L3,2.5,0.01);
+ const r=an({units:'US',shape:'box',span:5,rise:5,barrels:1,length:200,invIn:185.5,invOut:176.9,n:0.012,inlet:pick('box','b_90'),Q:400,twMode:'const',twElev:176.9+4.9,taper:{type:'side',Bf:9,taper:4}});
+ chk('analyze(): tapered inlet Ke = 0.2',r.inlet.Ke,0.2,0);chk('analyze(): throat-controlled HW el vs example ELhi 195.0',r.EL,195.0,0.5);}
+
+{console.log('\n-- Phase 6: side-tapered 5x5 box vs HY-8 8.0 (Bf 9 ft, 4:1, square edge 26-90 wingwall, S 0.01, trapezoidal TW channel) --');const C=require('./calc.js').Culvert;
+ const H=[[100,103.37,102.79,103.37],[140,104.25,103.49,104.25],[180,105.05,104.13,105.05],[220,105.81,104.72,105.81],[260,106.54,105.69,106.54],[300,107.29,106.18,107.29],[340,108.06,106.75,108.06],[380,108.89,107.38,108.89],[400,109.34,107.72,109.34],[460,112.57,108.86,110.78],[500,114.31,109.71,111.85]];
+ for(const [Q,hw,fe,te] of H){const tw=C.channelTW({type:'trap',b:10,z1:2,z2:2,S:0.005,n:0.035,inv:98},Q,true),tp={type:'side',Bf:9,taper:4};
+  const r=C.analyze({units:'US',shape:'box',span:5,rise:5,barrels:1,length:200,invIn:100,invOut:98,n:0.012,inlet:pick('box','b_90'),Q,twMode:'const',twElev:tw.el,taper:tp});
+  chk(`HY-8 HW depth @${Q} cfs (face ${fe}, throat ${te})`,r.EL-100,hw-100,6);chk(`HY-8 throat-control depth @${Q}`,r.taper.HWt,te-100,6);chk(`HY-8 face-control depth @${Q}`,r.taper.HWfT,fe-100,8);}}
+
+{console.log('\n-- Phase 6: HY-8 database inlet "1:1 Bevel Headwall" on a 5x5 concrete box vs HY-8 8.0 (S 0.01, trapezoidal TW) --');const C=require('./calc.js').Culvert;global.window=global.window||{};require('./hy8shapes.js');C.extendInlets(window.HY8DB);
+ const inl=C.INLETS.box.find(i=>i.name.startsWith('1:1 Bevel Headwall'));chk('Ke from HY-8 database',inl.Ke,0.2,0);
+ const H=[[50,102.36,2.36,1.01],[95,103.52,3.52,1.61],[140,104.56,4.56,2.15],[185,105.57,5.57,2.65],[230,106.66,6.66,3.13],[275,107.86,7.86,3.60],[300,108.60,8.60,3.85],[365,110.78,10.78,4.48],[410,112.53,12.53,4.75],[455,114.48,14.48,5.00],[500,116.89,16.89,5.00]];
+ for(const [Q,el,ic,yo] of H){const tw=C.channelTW({type:'trap',b:10,z1:2,z2:2,S:0.005,n:0.035,inv:98},Q,true);
+  const r=C.analyze({units:'US',shape:'box',span:5,rise:5,barrels:1,length:200,invIn:100,invOut:98,n:0.012,inlet:inl,Q,twMode:'const',twElev:tw.el});
+  const tl=ic/5>3?2:1;chk(`HY-8 HW El @${Q} cfs${tl>1?" (HW/D>3, beyond polynomial range)":""}`,r.EL-100,el-100,tl);chk(`HY-8 inlet-control depth @${Q}`,r.HWi,ic,tl);}
+ chk('Circular gets 3 HY-8 inlets (bevel 1:1, 1.5:1, mitered)',C.INLETS.circular.filter(i=>/^hyc_/.test(i.id)).length,3,0);}
 console.log(ok?'\nALL CHECKS PASSED':'\nSOME CHECKS FAILED'); process.exit(ok?0:1);

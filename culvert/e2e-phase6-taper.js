@@ -1,0 +1,16 @@
+const pp=require('puppeteer');(async()=>{const b=await pp.launch({args:['--no-sandbox']});const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.emulate(pp.KnownDevices['iPhone 13']);await p.goto('http://localhost:8766/culvert/?v='+Date.now(),{waitUntil:'networkidle0'});await new Promise(r=>setTimeout(r,800));
+const setv=async(id,v)=>p.evaluate((id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},id,v);const w=t=>new Promise(r=>setTimeout(r,t));
+const kpi=()=>p.evaluate(()=>document.querySelector('.kpi b').innerText);const k0=await kpi();
+const opts=await p.evaluate(()=>[...document.querySelectorAll('#inlet option')].map(o=>o.text));console.log('box inlets',opts.length,opts.filter(t=>/HY-8/.test(t)));
+await setv('taperType','side');await w(300);const k1=await kpi();const vis=await p.evaluate(()=>['taperEdge','taperBf','taperRatio','taperSt','taperT'].map(i=>getComputedStyle(document.getElementById('f_'+i)).display));
+console.log({k0,k1,vis,rep:await p.evaluate(()=>document.querySelector('#report .rtap')?.nextElementSibling?.innerText.replace(/\s+/g,' ').slice(0,400))});
+await setv('taperType','slope');await w(300);console.log('slope',await kpi(),await p.evaluate(()=>getComputedStyle(document.getElementById('f_taperT')).display));
+const txt=await p.evaluate(()=>ReportPDF.build().internal.pages.flat().join('\n'));console.log('pdf tapered',/Tapered inlet/.test(txt));
+await setv('taperType','side');await w(300);
+await p.evaluate(()=>{[...document.querySelectorAll('legend')].find(l=>l.innerText.includes('Inlet')).click();});await w(500);
+let c=await p.$('#f_taperType');await c.evaluate(e=>e.scrollIntoView({block:'start'}));await p.evaluate(()=>scrollBy(0,-140));await p.screenshot({path:'/workspace/iphone-tapered-inputs.png'});
+await p.evaluate(()=>{[...document.querySelectorAll('#mtabs button')].find(e=>e.innerText.trim()==='Results').click()});await w(500);
+c=await p.$('#report .rtap');await c.evaluate(e=>e.scrollIntoView({block:'start'}));await p.evaluate(()=>scrollBy(0,-60));await p.screenshot({path:'/workspace/iphone-tapered-report.png'});
+await setv('shape','circular');await w(300);console.log('circ taper hidden',await p.evaluate(()=>getComputedStyle(document.getElementById('f_taperType')).display),await p.evaluate(()=>[...document.querySelectorAll('#inlet option')].map(o=>o.text).filter(t=>/HY-8/.test(t))));
+console.log('ow',await p.evaluate(()=>document.documentElement.scrollWidth),errs);await b.close()})();

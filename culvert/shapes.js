@@ -26,5 +26,6 @@ function section(k,o){// o:{mat,size,units,n,nb,span,rise,poly}
 // outline path of a section scaled to px (y up -> svg down); x0,yb = left, bottom in px
 function path(s,sc,x0,yb){return 'M'+s.poly.map(p=>`${(x0+p[0]*sc-Math.min(...s.poly.map(q=>q[0]))*sc).toFixed(1)},${(yb-p[1]*sc).toFixed(1)}`).join('L')+'Z';}
 function label(k){const e=LIST.find(x=>x[0]===k);return e?e[1]:k;}
+if(window.Culvert&&Culvert.extendInlets)Culvert.extendInlets(DB);
 window.Shapes={LIST,isHY,catalog,mats,mat,sizes,size,inlets,inletFor,section,path,label,parsePoly,DB};
 })();
