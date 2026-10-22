@@ -1,0 +1,15 @@
+const pp=require('puppeteer'),fs=require('fs');(async()=>{const b=await pp.launch({args:['--no-sandbox']});const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
+await p.emulate(pp.KnownDevices['iPhone 13']);await p.goto('http://localhost:8766/culvert/?v='+Date.now(),{waitUntil:'networkidle0'});await p.evaluate(()=>{localStorage.removeItem('culvert.projects');localStorage.removeItem('culvert.options')});await p.reload({waitUntil:'networkidle0'});await new Promise(r=>setTimeout(r,800));
+const setv=async(id,v)=>p.evaluate((id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},id,v);
+const click=id=>p.evaluate(id=>document.getElementById(id).click(),id),w=t=>new Promise(r=>setTimeout(r,t));
+const kpi=()=>p.evaluate(()=>document.querySelector('.kpi b').innerText);
+await setv('pjname','Site A');await click('pjsave');const kA=await kpi();
+await setv('Q',500);await setv('barrels',2);await setv('shape','circular');await w(300);await setv('pjname','Site B');await click('pjsave');const kB=await kpi();
+await p.evaluate(()=>document.getElementById('pjlist').value='Site A');await click('pjload');await w(400);
+const st=await p.evaluate(()=>({Q:val('Q'),N:val('barrels'),shape:val('shape'),k:document.querySelector('.kpi b').innerText,list:[...document.querySelectorAll('#pjlist option')].map(o=>o.value)}));console.log({kA,kB,afterLoadA:st,restored:st.k===kA});
+const json=await p.evaluate(()=>JSON.stringify(Projects.snap('Exported')));fs.writeFileSync('/tmp/proj.json',json);
+await p.evaluate(()=>document.getElementById('pjlist').value='Site B');await click('pjdel');await w(200);
+const inp=await p.$('#pjimp');await inp.uploadFile('/tmp/proj.json');await w(800);
+console.log(await p.evaluate(()=>[[...document.querySelectorAll('#pjlist option')].map(o=>o.value),document.getElementById('pjmsg').innerText,val('Q')]));
+await setv('pjname','FM 123 at Cedar Creek');await p.evaluate(()=>scrollTo(0,0));await w(200);await p.screenshot({path:'/workspace/iphone-projects.png'});
+console.log('ow',await p.evaluate(()=>document.documentElement.scrollWidth),errs);await b.close()})();

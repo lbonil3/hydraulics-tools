@@ -8,7 +8,7 @@ function evalNow(){state.Qtot=val('Q');const p=params();p.S=(p.invIn-p.invOut)/p
  const desc=(p.section?Shapes.label(p.shape)+' '+f(p.span,1)+'×'+f(p.rise,1):p.shape==='box'?'Box '+f(p.span,1)+'×'+f(p.rise,1):'Pipe '+f(p.rise*(state.units==='US'?12:1000),0)+(state.units==='US'?'in':'mm'));
  const inl=$('#inlet');return{desc,N:p.barrels,inlet:inl&&inl.selectedOptions[0]?inl.selectedOptions[0].text.split(' — ')[0]:'',Q:Qt,EL,HWD:(EL-p.invIn)/r.D,control:r.control,Vout:r.Vout,Qr:bal?bal.Qr:0,ckEL:ck?ck.EL:null,ckOver:ck?ck.over:false,units:state.units,allow:val('allowHW')};}
 function snap(){const o={};ids().forEach(id=>o[id]=document.getElementById(id).value);return o;}
-function apply(v){['shape','material','size','inlet'].concat(ids()).forEach(id=>{const e=document.getElementById(id);if(e&&id in v){e.value=v[id];e.dispatchEvent(new Event('change',{bubbles:true}));}});
+function apply(v){['shape','material','size','inlet'].concat(ids()).forEach(id=>{const e=document.getElementById(id);if(e&&id in v){e.value=v[id];e.dispatchEvent(new Event('input',{bubbles:true}));}});
  ids().forEach(id=>{const e=document.getElementById(id);if(e&&id in v)e.value=v[id];});run();}
 function draw(){const a=load(),box=document.getElementById('cmpbody');if(!box)return;const L=state.units==='US'?'ft':'m',V=state.units==='US'?'ft/s':'m/s';
  if(!a.length){box.innerHTML='<p class="muted">No options saved yet. Set up a barrel, then tap <b>Save current as option</b>. Change the size, shape, barrels or inlet and save again to compare.</p>';return;}
