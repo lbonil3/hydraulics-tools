@@ -1,0 +1,6 @@
+/* Home / back-to-main button (all tool pages) */
+.homebtn{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 14px;margin:0 12px 6px 0;border-radius:22px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:inherit;font:600 15px/1 system-ui,-apple-system,sans-serif;text-decoration:none;vertical-align:middle;-webkit-tap-highlight-color:transparent}
+.homebtn:hover,.homebtn:focus-visible{background:rgba(255,255,255,.26);outline:none}
+@media (max-width:700px){header{padding-left:max(12px,env(safe-area-inset-left))!important}
+.homebtn{margin:max(2px,env(safe-area-inset-top)) 0 8px 0;display:flex;width:max-content}}
+@media print{.homebtn{display:none}}
