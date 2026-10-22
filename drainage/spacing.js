@@ -28,7 +28,10 @@ function chain(p,n,mode,Lfix){const rows=[];let co=p.Qco||0,sta=0;
   if(mode==='auto'){const m=maxL(q);L=isFinite(m.L)?Math.floor(m.L):20000;if(L<=0){rows.push({k,L:0,sta,fail:true,gov:m.gov,Qco:co});break;}}
   const r=evalL(q,L);sta+=L;rows.push(Object.assign(r,{k,sta,Qco:co}));co=r.Qb;}
  return rows;}
+// roadway width builder: (lanes x lane width + shoulder/parking + extra) x (0.5 if crowned: half drains here)
+function roadWidth(o){const full=o.nl*o.lw+(o.sh||0)+(o.ex||0);return o.crown==='half'?full/2:full;}
+const acres=(W,L)=>W*L/43560;
 const LABEL={Qb:'bypass limit',T:'allowable spread',d:'allowable depth'};
-const API={evalL,maxL,chain,LABEL};
+const API={evalL,maxL,chain,LABEL,roadWidth,acres};
 if(typeof module!=='undefined')module.exports=API;else root.SP=API;
 })(typeof window!=='undefined'?window:globalThis);

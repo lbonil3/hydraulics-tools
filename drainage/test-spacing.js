@@ -21,4 +21,10 @@ const p2=Object.assign({},p,{lim:{Qb:99,T:8,d:9}});const m2=SP.maxL(p2);chk('spr
 // chain: carryover passes down
 const ch=SP.chain(p,3,'fixed',200);chk('chain: inlet 2 carryover = inlet 1 bypass',ch[1].Qco,ch[0].Qb,1e-12);chk('chain: inlet 3 Q',ch[2].Q,0.9*6*40*200/43560+ch[1].Qb,1e-12);
 const ca=SP.chain(p,3,'auto');chk('auto chain: every inlet passes',ca.every(x=>x.ok)?1:0,1,0);
+chk('acres: 24 ft x 300 ft = 0.1653 ac',SP.acres(24,300),7200/43560,1e-12);chk('acres: 43,560 sq ft = 1 ac',SP.acres(100,435.6),1,1e-12);
+chk('lane width: 4 lanes x 12 crowned = 24',SP.roadWidth({nl:4,lw:12,sh:0,ex:0,crown:'half'}),24,1e-12);
+chk('lane width: 2x12 + 8 sh + 5 sw full = 37',SP.roadWidth({nl:2,lw:12,sh:8,ex:5,crown:'full'}),37,1e-12);
+// acres mode (W = 43560, x = acres) gives identical Q to width x length
+const pa=Object.assign({},p,{W:43560});chk('acres mode Q = W x L mode Q',SP.evalL(pa,SP.acres(40,300)).Q,SP.evalL(p,300).Q,1e-12);
+chk('acres mode max area = max length x W/43560',SP.maxL(pa).L,SP.maxL(p).L*40/43560,1e-6);
 console.log(`\n${pass} pass, ${fail} fail`);if(fail)process.exit(1);
