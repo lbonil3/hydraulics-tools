@@ -1,0 +1,12 @@
+const pp=require('puppeteer');(async()=>{const b=await pp.launch({args:['--no-sandbox']});const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.emulate(pp.KnownDevices['iPhone 13']);await p.goto('http://localhost:8766/culvert/?v='+Date.now(),{waitUntil:'networkidle0'});await new Promise(r=>setTimeout(r,800));
+await p.evaluate(()=>localStorage.removeItem('culvert.options'));
+const setv=async(id,v)=>p.evaluate((id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},id,v);
+await p.evaluate(()=>document.getElementById('cmpsave').click());await setv('barrels',2);await new Promise(r=>setTimeout(r,300));await p.evaluate(()=>document.getElementById('cmpsave').click());await new Promise(r=>setTimeout(r,300));
+console.log(await p.evaluate(()=>[document.querySelector('.kop')?.innerText,document.getElementById('opbody').innerText,[...document.querySelectorAll('#report .rop ~ ul li')].slice(0,4).map(l=>l.innerText),!!document.querySelector('#report .rcmp')]));
+const pdf=await p.evaluate(()=>{const d=ReportPDF.build();return d.output('datauristring').length});console.log('pdf bytes~',pdf);
+const txt=await p.evaluate(()=>{const d=ReportPDF.build();return d.internal.pages.flat().join('\n')});console.log('pdf has outlet',/Outlet protection/.test(txt),'options',/Options compared/.test(txt));
+await p.evaluate(()=>{[...document.querySelectorAll('#mtabs button')].find(e=>e.innerText.trim()==='Results').click()});await new Promise(r=>setTimeout(r,500));
+let c=await p.$('#opcard');await c.evaluate(e=>e.scrollIntoView({block:'start'}));await p.evaluate(()=>scrollBy(0,-60));await p.screenshot({path:'/workspace/iphone-outlet-card.png'});
+c=await p.$('#report .rop');await c.evaluate(e=>e.scrollIntoView({block:'start'}));await p.evaluate(()=>scrollBy(0,-60));await p.screenshot({path:'/workspace/iphone-outlet-report.png'});
+console.log('ow',await p.evaluate(()=>document.documentElement.scrollWidth),errs);await b.close()})();

@@ -91,4 +91,11 @@ chk('Fig 3.11C kt free flow at 0.6',ktFactor(0.6,'gravel'),1.0,0.1);
  for(const [N,Q] of [[2,600],[3,900],[4,400]]){const a=analyze({...b,barrels:N,Q}),s=analyze({...b,barrels:1,Q:Q/N});chk(`${N} barrels at ${Q} cfs = 1 barrel at ${Q/N} cfs (HW el)`,a.EL,s.EL,1e-9);chk(`${N} barrels: per-barrel Q`,a.Q,Q/N,1e-9);}
  const c={units:'US',shape:'circular',span:4,rise:4,length:150,invIn:100,invOut:99,n:0.012,inlet:pick('circular','c_sq_hw'),twMode:'none'};
  if(c.inlet){const a=analyze({...c,barrels:2,Q:200}),s=analyze({...c,barrels:1,Q:100});chk('2 pipes at 200 cfs = 1 pipe at 100 cfs (Vout)',a.Vout,s.Vout,1e-9);}}
+
+{console.log('\n-- Phase 4: HEC-14 riprap apron (Sec. 10.2 design examples) --');const {riprapApron:ra,dissipatorsFor:df}=require('./calc.js').Culvert;
+ const a=ra({US:true,Q:85,D:5,TW:1.6});chk('HEC-14 CU example D50 (ft)',a.D50,0.43,1.5);chk('CU class',a.cls,2,0);chk('CU length L=4D (ft)',a.L,20,0.01);chk('CU depth 3.3 D50 (ft)',a.depth,1.65,0.01);chk('CU end width (ft)',a.W,28.3,0.2);chk('CU TW raised to 0.4D',a.TW,2.0,0.01);
+ const b=ra({US:false,Q:2.33,D:1.5,TW:0.5});chk('HEC-14 SI example D50 (m)',b.D50,0.13,3);chk('SI class',b.cls,2,0);chk('SI length (m)',b.L,6,0.01);chk('SI depth (m)',b.depth,0.50,1.5);chk('SI end width (m)',b.W,8.5,0.01);
+ chk('Supercritical D\' = (D+yn)/2',ra({US:true,Q:85,D:5,TW:3,supercritical:true,yn:2}).Dp,3.5,1e-9);
+ chk('SG 2.40 scales D50 by 2.65/2.40',ra({US:true,Q:85,D:5,TW:1.6,SG:2.4}).D50/a.D50,2.65/2.4,1e-6);
+ const d=df(4).filter(x=>x.ok).map(x=>x.name);chk('Table 1.1 at Fr=4 includes USBR IV, excludes USBR III',(d.includes('USBR Type IV stilling basin')&&!d.includes('USBR Type III stilling basin'))?1:0,1,0);}
 console.log(ok?'\nALL CHECKS PASSED':'\nSOME CHECKS FAILED'); process.exit(ok?0:1);

@@ -285,6 +285,18 @@ function channelTW(ch,Q,US){const kM=US?1.486:1,g=US?32.174:9.81,gw=US?62.4:9810
   let hi=1;while(q(hi)<Q&&hi<1e4)hi*=2;const y=bisect(z=>q(z)-Q,1e-9,hi),G=chGeom(ch,y),V=Q/G.A;
   return {y,el:ch.inv+y,A:G.A,V,T:G.T,Fr:V/Math.sqrt(g*G.A/G.T),tau:gw*(G.A/G.P)*ch.S,inv:ch.inv};}
 function ratingTW(tab,Q){const t=tab.slice().sort((a,b)=>a[0]-b[0]);return {el:interp(t,Q)};}
-root.Culvert={chGeom,channelTW,ratingTW,makeSection,sectionFromHY8,rectSection,polySection,hy8Ratio,secN,momentum,conj,findJump,traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
+// FHWA HEC-14 (2006) Sec. 10.2: riprap apron, Eq. 10.4 (Fletcher & Grace), Eq. 10.5, Table 10.1 (FLHD example classes).
+const RIPRAP_T101=[[1,125,5,4,3.5],[2,150,6,4,3.3],[3,250,10,5,2.4],[4,350,14,6,2.2],[5,500,20,7,2.0],[6,550,22,8,2.0]];
+function riprapApron(o){const US=o.US!==false,g=US?32.2:9.81,D=o.D,SG=o.SG||2.65;
+  const Dp=o.supercritical&&o.yn>0?(D+o.yn)/2:D;let TW=o.TW,twNote='';
+  if(!(TW>0)){TW=0.4*D;twNote='unknown';}else if(TW<0.4*D){TW=0.4*D;twNote='raised';}else if(TW>D){twNote='high';TW=D;}
+  const D50=0.2*Dp*Math.pow(o.Q/(Math.sqrt(g)*Math.pow(Dp,2.5)),4/3)*(Dp/TW)*(2.65/SG);
+  const d50u=US?D50*12:D50*1000,row=RIPRAP_T101.find(r=>(US?r[2]:r[1])>=d50u-1e-9);
+  const out={D,Dp,TW,twNote,D50,d50u,SG};if(!row){out.over=true;return out;}
+  const cd=US?row[2]/12:row[1]/1000,L=row[3]*D;Object.assign(out,{cls:row[0],D50c:cd,L,depth:row[4]*cd,W:3*D+2/3*L,kL:row[3],kd:row[4]});return out;}
+// HEC-14 Table 1.1 (Froude number at the release point; TW requirement).
+const DISSIPATORS=[[4,'Flow transitions',null,null,'Desirable'],[5,'Scour hole',null,null,'Desirable'],[6,'Hydraulic jump',1,null,'Required'],[7,'Tumbling flow (4% < So < 25%)',1,null,'Not needed'],[7,'Increased resistance',null,null,'Not needed'],[7,'USBR Type IX baffled apron',null,1,'Not needed'],[7,'Broken-back culvert',1,null,'Desirable'],[7,'Outlet weir',2,7,'Not needed'],[7,'Outlet drop/weir',3.5,6,'Not needed'],[8,'USBR Type III stilling basin',4.5,17,'Required'],[8,'USBR Type IV stilling basin',2.5,4.5,'Required'],[8,'SAF stilling basin',1.7,17,'Required'],[9,'CSU rigid boundary basin',null,3,'Not needed'],[9,'Contra Costa basin',null,3,'< 0.5D'],[9,'Hook basin',1.8,3,'Not needed'],[9,'USBR Type VI impact basin (Q < 400 cfs, V < 50 ft/s)',null,null,'Desirable'],[10,'Riprap basin',null,3,'Not needed'],[10,'Riprap apron (rise <= 60 in)',null,null,'Not needed'],[11,'Straight drop structure (drop < 15 ft)',null,1,'Required'],[11,'Box inlet drop structure (drop < 12 ft)',null,1,'Required'],[12,'USACE stilling well',null,null,'Desirable']];
+function dissipatorsFor(Fr){return DISSIPATORS.map(([ch,name,lo,hi,tw])=>({ch,name,lo,hi,tw,range:lo==null&&hi==null?'na':lo!=null&&hi!=null?lo+' to '+hi:lo!=null?'> '+lo:'< '+hi,ok:(lo==null||Fr>lo)&&(hi==null||Fr<hi)}));}
+root.Culvert={riprapApron,dissipatorsFor,RIPRAP_T101,chGeom,channelTW,ratingTW,makeSection,sectionFromHY8,rectSection,polySection,hy8Ratio,secN,momentum,conj,findJump,traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
 
 })(typeof module!=='undefined'?module.exports:window);

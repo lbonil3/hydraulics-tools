@@ -21,9 +21,14 @@ function init(){const anchor=document.getElementById('inletcard');if(!anchor||do
  c.innerHTML='<h3>Compare options <small>(size, shape, barrels, inlet)</small></h3><p class="muted">Each barrel of a multi-barrel culvert carries an equal share of the flow (HY-8 identical barrels). Save several options to see headwater, control and outlet velocity side by side.</p><button id="cmpsave">Save current as option</button> <button id="cmpclear">Clear all</button><div id="cmpbody"></div>';
  anchor.after(c);
  c.addEventListener('click',e=>{const t=e.target,a=load();
-  if(t.id==='cmpsave'){const r=evalNow();if(!r)return;a.push({name:'Option '+String.fromCharCode(65+a.length%26),v:snap(),r});store(a);draw();}
-  else if(t.id==='cmpclear'){store([]);draw();}
-  else if(t.dataset.rm!=null){a.splice(+t.dataset.rm,1);a.forEach((o,i)=>o.name='Option '+String.fromCharCode(65+i));store(a);draw();}
+  if(t.id==='cmpsave'){const r=evalNow();if(!r)return;a.push({name:'Option '+String.fromCharCode(65+a.length%26),v:snap(),r});store(a);draw();run();}
+  else if(t.id==='cmpclear'){store([]);draw();run();}
+  else if(t.dataset.rm!=null){a.splice(+t.dataset.rm,1);a.forEach((o,i)=>o.name='Option '+String.fromCharCode(65+i));store(a);draw();run();}
   else if(t.dataset.ld!=null){apply(a[+t.dataset.ld].v);}});
  draw();window.CMP={evalNow,load,draw};}
+
+function report(){const R=document.getElementById('report');if(!R||!R.innerHTML||R.querySelector('.rcmp'))return;const a=load();if(!a.length)return;const L=state.units==='US'?'ft':'m',V=state.units==='US'?'ft/s':'m/s';
+ const h=`<h4 class="rcmp">Options compared</h4><table class="rt">${a.map(o=>{const r=o.r||{};return`<tr><th>${o.name}</th><td>${r.desc}, ${r.N} barrel${r.N>1?'s':''}, ${r.inlet}: HW El. ${f(r.EL)} ${L} (HW/D ${f(r.HWD)}, ${r.control} control), V<sub>out</sub> ${f(r.Vout)} ${V}, overtopping ${r.Qr>0?f(r.Qr,1):'none'}${r.ckEL!=null?`, check flood El. ${f(r.ckEL)} ${L}`:''}</td></tr>`}).join('')}</table><p class="rnote">Saved option snapshots; each barrel of a multi-barrel option carries an equal share of the flow.</p>`;
+ const an=[...R.querySelectorAll('h4')].find(x=>/Design checks/.test(x.textContent));if(an)an.insertAdjacentHTML('beforebegin',h);else R.insertAdjacentHTML('beforeend',h);if(window.ReportPDF)ReportPDF.prep();}
+const prevDP=window.drawProfile;window.drawProfile=function(...x){const o=prevDP?prevDP.apply(this,x):undefined;try{report();}catch(e){}return o;};
 init();})();
