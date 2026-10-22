@@ -33,11 +33,46 @@ function normal(shape,B,D,Q,n,S,k){
   if(q(top)<Q) return Infinity; // flows full
   return bisect(y=>q(y)-Q,1e-6*D,top);
 }
+
+function sfr(shape,B,D,Q,n,kM,y){const G=geom(shape,B,D,y),V=Q/G.A;return Math.pow(n*V/kM,2)/Math.pow(G.A/G.P,4/3);}
+function spE(shape,B,D,Q,g,y){const V=Q/geom(shape,B,D,y).A;return y+V*V/2/g;}
+function conj(shape,B,D,Q,g,y1){ // sequent depth via momentum (box exact, circle approx by equivalent rect at T)
+  const M=y=>{const G=geom(shape,B,D,y);return Q*Q/g/G.A+G.A*y/2;}; // centroid approx y/2
+  const m1=M(y1),top=D; if(M(top)<m1) return Infinity; return bisect(y=>M(y)-m1,critical(shape,B,D,Q,g),top);}
+// Direct step, supercritical: start at y0 (>= yn) at inlet, march downstream until length L.
+function traceSuper(shape,B,D,Q,n,S,kM,g,L,y0){
+  const yn=normal(shape,B,D,Q,n,S,kM),N=400; let x=0,y=Math.min(y0,D)*0.9999,pts=[[0,y]];
+  const yEnd=isFinite(yn)?yn:0; if(y<=yEnd*1.0001) return {pts:[[0,y],[L,y]],yOut:y};
+  for(let i=0;i<N&&x<L;i++){const y2=y-(y-yEnd)/ (N-i) *1; const dE=spE(shape,B,D,Q,g,y2)-spE(shape,B,D,Q,g,y);
+    const Sf=(sfr(shape,B,D,Q,n,kM,y)+sfr(shape,B,D,Q,n,kM,y2))/2,dx=dE/(S-Sf);
+    if(!(dx>0)||x+dx>=L){ // interpolate within step (sub-step bisection on remaining length)
+      const rem=L-x; const yy=bisect(z=>{const Sf2=(sfr(shape,B,D,Q,n,kM,y)+sfr(shape,B,D,Q,n,kM,z))/2;return (spE(shape,B,D,Q,g,z)-spE(shape,B,D,Q,g,y))-(S-Sf2)*rem;},y2,y);
+      pts.push([L,yy]);return {pts,yOut:yy};}
+    x+=dx;y=y2;pts.push([x,y]);}
+  pts.push([L,y]);return {pts,yOut:y};
+}
+// Standard step, subcritical: start at outlet with depth yd, march upstream distance L. Pressure flow where depth reaches crown.
+function traceSub(shape,B,D,Q,n,S,kM,g,L,yd,Rf,Pf){
+  const N=200,dx=L/N,yc=critical(shape,B,D,Q,g),Af=geom(shape,B,D,D).A,Vf=Q/Af,Sff=Math.pow(n*Vf/kM,2)/Math.pow(Rf,4/3);
+  let y=Math.min(yd,D),pts=[[L,y]],full=y>=D-1e-9,HGL=full?yd:null,fullAt=full?L:null; // HGL head above local invert
+  for(let i=1;i<=N;i++){const x=L-i*dx;
+    if(full){HGL=HGL+Sff*dx-S*dx; // pressure flow: HGL rises by friction, invert rises by S
+      if(HGL<D){full=false;y=D;} else {pts.push([x,D]);continue;}}
+    const E1=spE(shape,B,D,Q,g,y),S1=sfr(shape,B,D,Q,n,kM,y);
+    const f=z=>spE(shape,B,D,Q,g,z)+S*dx-E1-(S1+sfr(shape,B,D,Q,n,kM,z))/2*dx; // E_up + z_up = E_dn + z_dn + hf
+    let z;
+    if(f(D)<0){full=true;fullAt=x;HGL=D+(-f(D));pts.push([x,D]);continue;} // profile hits crown -> pressure flow
+    if(f(yc*1.0001)>0) z=yc; else z=bisect(f,yc*1.0001,D); // choke -> critical
+    y=z;pts.push([x,y]);}
+  pts.reverse();
+
+  return {pts,yIn:full?D:y,headIn:full?HGL:null,fullAt};
+}
 function analyze(p){
   const US=p.units!=='SI', g=US?32.174:9.81, Ku=US?1.0:1.811, kM=US?1.486:1.0, kf=US?29:19.63;
   const D=p.rise, B=p.shape==='box'?p.span:p.rise, N=p.barrels||1, Q=p.Q/N;
   const S=(p.invIn-p.invOut)/p.length, inl=p.inlet;
-  const full=geom(p.shape,B,D,D), A=full.A, R=A/full.P;
+  const full=geom(p.shape,B,D,D), A=full.A, Pf=p.shape==='box'?2*(B+D):Math.PI*D, R=A/Pf; // full barrel: wetted perimeter includes the crown
   const dc=critical(p.shape,B,D,Q,g), Gc=geom(p.shape,B,D,dc), Vc=Q/Gc.A, Hc=dc+Vc*Vc/2/g;
   const yn=normal(p.shape,B,D,Q,p.n,S,kM);
   const X=Ku*Q/(A*Math.sqrt(D));
@@ -50,20 +85,42 @@ function analyze(p){
   // transition uses equation values at the bounds (X expressed in US-equivalent scale)
   const HWi=ratio*D;
   const TW = p.twMode==='const' ? Math.max(0,p.twElev-p.invOut) : 0;
-  const ho=Math.max(TW,(dc+D)/2);
   const V=Q/A, hv=V*V/2/g;
   const Hf=kf*p.n*p.n*p.length/Math.pow(R,4/3)*hv;
   const He=inl.Ke*hv, Ho=hv, H=He+Hf+Ho;
-  const ELho=p.invOut+ho+H, HWo=ELho-p.invIn;
+  // HDS-5 full-flow energy method (used when barrel flows full or no subcritical profile can form)
+  const hoHDS=Math.max(TW,(dc+D)/2), ELhoHDS=p.invOut+hoHDS+H;
+  const steep=isFinite(yn)&&yn<dc;
+  // ---- Outlet control: HY-8-style subcritical profile from downstream control ----
+  let ho=hoHDS, ELho=ELhoHDS, ocMethod='full', ocProf=null, yinO=null;
+  const yd=Math.max(TW,dc);
+  if(TW>=D){ // outlet submerged: pressure flow, HDS-5 Eq. with ho=TW
+    ho=TW; ELho=p.invOut+TW+H; ocMethod='full';
+  } else if(!(steep&&TW<dc)){ // mild/horizontal, or steep with TW above dc
+    const tr=traceSub(p.shape,B,D,Q,p.n,S,kM,g,p.length,yd,R,Pf);
+    ocProf=tr.pts; ocMethod=tr.fullAt!=null?'profile+full':'profile';
+    const yi=tr.yIn; yinO=yi; const Vi=Q/geom(p.shape,B,D,yi).A;
+    // HW = inlet water depth + velocity head + entrance loss (Ke on barrel velocity at inlet)
+    const ELp=p.invIn+(tr.headIn!=null?tr.headIn:yi)+(1+inl.Ke)*Vi*Vi/2/g;
+    ELho=ELp; ho=yd;
+  } else ocMethod='steep-full'; // steep, low TW: no subcritical profile possible -> HDS-5 / HY-8 full-flow method
+  const HWo=ELho-p.invIn;
   const ELhi=p.invIn+HWi;
   const control=HWi>=HWo?'Inlet':'Outlet';
   const HW=Math.max(HWi,HWo);
-  // outlet depth & velocity
-  let yout;
-  if(control==='Inlet') yout=Math.min(isFinite(yn)?yn:D,D);
-  else yout=Math.min(D,Math.max(dc,TW));
+  // ---- outlet depth & velocity from profile ----
+  let yout, profile=null, outMethod;
+  if(control==='Inlet' && steep){ // S2 profile from dc at inlet downstream
+    const tr=traceSuper(p.shape,B,D,Q,p.n,S,kM,g,p.length,dc);
+    profile=tr.pts; yout=tr.yOut; outMethod='S2 profile from d<sub>c</sub> at inlet';
+    if(TW>yout){ // tailwater may force a jump; if TW conjugate exceeds supercritical depth, outlet depth = TW-controlled
+      const yc2=conj(p.shape,B,D,Q,g,yout); if(TW>=yc2){yout=Math.min(D,TW);outMethod='tailwater (jump in barrel)';}
+    }
+  } else if(control==='Inlet'){ // inlet control on mild slope (uncommon): subcritical profile from outlet
+    const tr=traceSub(p.shape,B,D,Q,p.n,S,kM,g,p.length,yd,R,Pf); profile=tr.pts; yout=Math.min(D,yd); outMethod='max(d<sub>c</sub>, TW) at outlet';
+  } else { profile=ocProf; yout=Math.min(D,yd); outMethod=TW>=D?'barrel full (TW ≥ D)':'max(d<sub>c</sub>, TW) at outlet'; }
   const Vout=Q/geom(p.shape,B,D,yout).A;
-  return {US,g,D,B,N,Q,S,A,R,dc,Vc,Hc,yn,X,regime,ratio,HWi,ELhi,TW,ho,V,hv,Hf,He,Ho,H,ELho,HWo,control,HW,EL:p.invIn+HW,yout,Vout,inlet:inl};
+  return {US,g,D,B,N,Q,S,A,R,dc,Vc,Hc,yn,X,regime,ratio,HWi,ELhi,TW,ho,V,hv,Hf,He,Ho,H,ELho,HWo,control,HW,EL:p.invIn+HW,yout,Vout,inlet:inl,steep,ocMethod,outMethod,profile,yinO,hoHDS,ELhoHDS};
 }
 
 // ---- Roadway overtopping (HDS-5 Eq. 3.9, Fig. 3.11; curves from HDS-1 / HY-7, as used in HY-8) ----
@@ -101,6 +158,6 @@ function balance(Qt,elOf,road){
     if(Math.abs(err)<=1e-4*Qt)break; if(err>0)b=Qc;else a=Qc;}
   return {Qc,Qr:rf.Q,EL,iter:it+1,over:true,road:rf};
 }
-root.Culvert={INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
+root.Culvert={traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
 
 })(typeof module!=='undefined'?module.exports:window);
