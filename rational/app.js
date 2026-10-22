@@ -40,7 +40,7 @@ function field(k,id,val,input){const h=H[k];return `<div class="f" data-k="${k}"
  <div class="help"><b>What:</b> ${h[2]}<br><b>Where:</b> ${h[3]}${h[4]?`<br><b>Typical:</b> ${h[4][0]}–${h[4][1]} ${h[1]}`:''}</div>${warn(k,val)}</div>`;}
 function sel(id,obj,cur){return `<select id="${id}">${Object.keys(obj).map(k=>`<option ${k===cur?'selected':''}>${k}</option>`).join('')}</select>`;}
 function form(){let h='';
- if(mode==='NRCS'){h+=`<fieldset><legend>Rainfall</legend>${field('P2','P2',S.P2)}</fieldset><fieldset><legend>Flow segments (upstream → downstream)</legend>`;
+ if(mode==='NRCS'){h+=`<fieldset><legend>Rainfall</legend>${field('P2','P2in',S.P2)}</fieldset><fieldset><legend>Flow segments (upstream → downstream)</legend>`;
   S.segs.forEach((s,j)=>{h+=`<div class="seg ${s.t}"><h4>${j+1}. ${NAME[s.t]} <button class="del" data-j="${j}">✕ remove</button></h4>`;
    if(s.t==='sheet')h+=field('sL',`L${j}`,s.L)+field('sS',`S${j}`,s.S)+field('sN',`nk${j}`,'',sel(`nk${j}`,{...T.SHEET_N,'Custom':0},s.nk))+field('sN',`n${j}`,s.n);
    if(s.t==='shallow')h+=field('hL',`L${j}`,s.L)+field('hS',`S${j}`,s.S)+field('hP',`pv${j}`,'',`<select id="pv${j}"><option value="0">Unpaved (K=16.13)</option><option value="1" ${s.paved?'selected':''}>Paved (K=20.32)</option></select>`);
@@ -56,7 +56,7 @@ function form(){let h='';
  c+=`<button class="add" data-addu="1">+ Sub-area (composite C)</button></fieldset>`;
  $('#form').innerHTML=top+c+`<fieldset><legend>3. Time of concentration — ${mode==='NRCS'?'NRCS velocity method (default)':'Kerby-Kirpich (secondary)'}</legend>${mode==='KK'?'<div class="flag">Kerby-Kirpich was developed for 0.25–150 sq mi (160–96,000 ac); its minimum exceeds TxDOT\'s 200-acre (0.31 sq mi) Rational Method limit, so it is offered only as a cross-check. TxDOT suggests running both methods and comparing.</div>':''}</fieldset>`+h.replace(/<\/?fieldset>/g,m=>m).replace('<legend>Rainfall</legend>','<legend>Sheet-flow rainfall</legend>');}
 function read(){const v=id=>{const e=$('#'+id);return e?e.value:undefined};
- if(mode==='NRCS'){S.P2=+v('P2');S.segs.forEach((s,j)=>{s.L=+v('L'+j);s.S=+v('S'+j);
+ if(mode==='NRCS'){S.P2=+v('P2in');S.segs.forEach((s,j)=>{s.L=+v('L'+j);s.S=+v('S'+j);
   if(s.t==='sheet'){const nk=v('nk'+j);if(nk!==s.nk&&nk!=='Custom'){s.n=T.SHEET_N[nk];}else s.n=+v('n'+j);s.nk=nk;}
   if(s.t==='shallow')s.paved=v('pv'+j)==='1';if(s.t==='channel'){s.n=+v('n'+j);s.A=+v('A'+j);s.P=+v('P'+j);}});}
  else{const k=S.kk;k.Lo=+v('Lo');k.No=v('No');k.So=+v('So');k.Lc=+v('Lc');k.Sc=+v('Sc');k.adj=$('#adj').checked;}

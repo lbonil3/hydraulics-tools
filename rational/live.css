@@ -1,0 +1,14 @@
+.card.live h3 small{font-weight:400;color:#667}
+.lvrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0}.lvclock{font-variant-numeric:tabular-nums;font-size:14px}.lvclock b{font-size:20px;color:#1f4e79}
+.lvbar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:6px 0 4px}.lvbar span{color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;transition:flex .5s ease}
+.lvnote{font-size:12.5px;color:#556}.seg2{display:inline-flex;border:1px solid #1f4e79;border-radius:8px;overflow:hidden}.seg2 button{border:0;background:#fff;color:#1f4e79;padding:6px 14px;cursor:pointer;font-weight:600}.seg2 button.on{background:#1f4e79;color:#fff}
+#lvsvg,#lvidfsvg,#lvsenssvg{width:100%;height:auto;touch-action:manipulation}#lvsvg{max-height:46vh}#lvidfsvg{max-height:44vh}#lvsenssvg{max-height:30vh}
+.lvs input[type=range]{width:100%;accent-color:#1f4e79;height:32px}.lvs output{font-weight:700;color:#1f4e79;font-variant-numeric:tabular-nums}
+.lvchip{display:inline-block;padding:1px 7px;border-radius:10px;background:#e3e8ef;margin:2px 2px 0 0}.lvchip.on{background:#1f4e79;color:#fff}
+@keyframes lvpop{0%{transform:scale(1)}40%{transform:scale(1.08);color:#c0392b}100%{transform:scale(1)}}.lvpop{display:inline-block;animation:lvpop .45s ease}
+@keyframes lvrain{0%{transform:translateY(-6px);opacity:0}30%{opacity:1}100%{transform:translateY(14px);opacity:0}}.lvrain{animation:lvrain 1.4s linear infinite}
+@keyframes lvgrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}.lvgrow{transform-box:fill-box;transform-origin:bottom;animation:lvgrow .5s ease-out}
+@media (max-width:700px){.seg2 button{min-height:44px;padding:6px 18px}.lvs input[type=range]{height:44px}#lvsvg{max-height:none}}
+@media (prefers-reduced-motion:reduce){.lvrain,.lvgrow,.lvpop{animation:none!important}.lvbar span{transition:none}}
+@media (min-width:701px){#lvflow,#lvidf,#lvsens{max-width:760px}}
+.f.lvs input[type=range]{width:100%;max-width:none;border:0;padding:0;min-height:0;background:none;box-shadow:none}
