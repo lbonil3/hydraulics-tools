@@ -22,6 +22,14 @@ const F=[
  ['Qmax','Flows','Rating curve maximum flow','Q',[450,12.7],'Highest flow plotted (often 1.5× design, to check the 100-yr / check flood).','Hydrology report or your choice.',null,'hw'],
  ['twMode','Tailwater','Tailwater condition','sel',['const'],'Water level downstream that can back up into the culvert. "None" = free outfall.','Hydraulic model of the downstream channel, normal-depth calc, or a known pond/river level.',null,'tw'],
  ['twElev','Tailwater','Tailwater elevation','L',[101.5,30.94],'Water surface elevation just downstream of the outlet at the design flow.','Downstream channel normal-depth calc (Manning) or a HEC-RAS model.',null,'tw'],
+ ['chB','Tailwater','Channel bottom width','L',[10,3.05],'Bottom width of the downstream channel (rectangular or trapezoidal).','Survey / plans typical section of the outfall channel.',null,'tw'],
+ ['chZ1','Tailwater','Left side slope (H:V)','num',[2,2],'Horizontal run per 1 vertical on the left bank (e.g., 2 = 2H:1V). Trapezoidal and triangular channels.','Survey / plans. 2:1 to 4:1 typical.',[0,10,0,10],'tw'],
+ ['chZ2','Tailwater','Right side slope (H:V)','num',[2,2],'Horizontal run per 1 vertical on the right bank.','Survey / plans.',[0,10,0,10],'tw'],
+ ['chS','Tailwater','Channel slope','num',[0.005,0.005],'Longitudinal slope of the downstream channel (ft/ft). Normal depth assumes uniform flow (Manning).','Survey profile of the channel downstream of the outlet.',[0.0001,0.1,0.0001,0.1],'tw'],
+ ['chN','Tailwater','Channel Manning n','num',[0.035,0.035],'Roughness of the downstream channel. Grass 0.030–0.035, natural stream 0.035–0.05, concrete 0.013–0.015.','TxDOT HDM / Chow; field inspection.',[0.01,0.15,0.01,0.15],'tw'],
+ ['chInv','Tailwater','Channel invert elevation','L',[98,29.87],'Lowest elevation of the channel just downstream of the outlet (HY-8 "Channel Invert Elevation"). Usually equal to the outlet invert.','Survey.',null,'tw'],
+ ['chPts','Tailwater','Irregular cross-section (station, elevation per line)','txt',['0, 104\n10, 100\n18, 98\n24, 98\n32, 100\n45, 104','0, 31.7\n3.05, 30.48\n5.49, 29.87\n7.32, 29.87\n9.75, 30.48\n13.7, 31.7'],'Surveyed cross-section of the downstream channel, left to right looking downstream. Normal depth is found with Manning on this section (single n).','Field survey or HEC-RAS cross-section.',null,'tw'],
+ ['chRating','Tailwater','Rating curve (Q, tailwater elevation per line)','txt',['0, 98\n100, 100\n300, 101.8\n600, 103.2','0, 29.87\n2.83, 30.48\n8.5, 31.03\n17, 31.46'],'Known tailwater elevation versus total discharge (e.g., from a HEC-RAS model or gauge). Linearly interpolated.','Hydraulic model or gauge rating.',null,'tw'],
  ['roadOn','Roadway','Model roadway overtopping?','sel',['on'],'When the headwater rises above the road, water flows over the road like a broad-crested weir. Turning this on splits the total flow between culvert and road (as HY-8 does).','Turn on whenever the road could flood during the check storm.',null,'road'],
  ['roadMode','Roadway','Road crest described by','sel',['const'],'"Constant crest" = a flat low section of road with a single elevation and length. "Profile" = station/elevation points along the road centerline (e.g., a sag vertical curve), split into segments and summed (HDS-5 Fig. 3.12A).','Roadway plans profile sheet, or survey shots along the road crown/shoulder.',null,'road'],
  ['crestEl','Roadway','Crest elevation (low point)','L',[110,33.53],'Elevation of the lowest point of the road surface where water would first spill over (usually the shoulder or crown at the sag).','Roadway plans profile or survey of the road low point.',null,'road'],
@@ -41,7 +49,7 @@ function opts(id){
  if(id==='roadOn')return[['on','Yes – include flow over the road'],['off','No – culvert only']];
  if(id==='roadMode')return[['const','Constant crest (one elevation)'],['profile','Roadway profile (points)']];
  if(id==='surface')return[['paved','Paved'],['gravel','Gravel'],['custom','Custom Cd']];
- if(id==='twMode')return[['const','Constant elevation'],['none','None (free outfall)']];
+ if(id==='twMode')return[['const','Constant elevation'],['rect','Rectangular channel (normal depth)'],['trap','Trapezoidal channel (normal depth)'],['tri','Triangular channel (normal depth)'],['irreg','Irregular channel (x, elevation points)'],['rating','Rating curve (Q, TW elevation)'],['none','None (free outfall)']];
  if(id==='inlet'){if(Shapes.isHY(sk))return Shapes.inlets(sk,val('material')).map(i=>[i.id,`${i.name} (Ke=${i.Ke}) — HY-8`]);return C.INLETS[sk||'box'].map(i=>[i.id,`${i.name} — HDS-5 ${i.chart}`]);}
 }
 function val(id){const e=document.getElementById(id);if(!e)return null;return (e.tagName==='SELECT'||e.tagName==='TEXTAREA')?e.value:parseFloat(e.value)}
@@ -49,6 +57,7 @@ function roadObj(p){if(val('roadOn')!=='on')return null;let segs;
  if(val('roadMode')==='profile'){segs=val('roadProfile').split(/\n/).map(l=>l.split(/[,;\s]+/).filter(Boolean).map(Number)).filter(q=>q.length>=2&&q.every(isFinite)).map(q=>[q[0],q[1]]).sort((x,y)=>x[0]-y[0]);if(segs.length<2)return {bad:true};}
  else segs=[[0,val('crestEl')],[val('crestLen'),val('crestEl')]];
  return {segs,Lr:val('topWidth'),surface:val('surface'),Cd:val('roadCd'),twElev:p.twMode==='const'?p.twElev:null,US:state.units==='US'};}
+function balQ(q,e,ro){const k=state.Qtot;state.Qtot=q;try{return C.balance(q,e,ro);}finally{state.Qtot=k;}}
 function elOf(Qc){return Qc<=1e-9?val('invIn'):C.analyze(params(Qc)).EL;}
 function build(){
  let h='',step='';const steps={Site:'1. Site',Culvert:'2. Culvert barrel',Inlet:'3. Inlet',Flows:'4. Flows',Tailwater:'5. Tailwater',Roadway:'6. Roadway overtopping'};
@@ -85,9 +94,15 @@ function secFor(){const k=val('shape');if(!Shapes.isHY(k))return null;
  return Shapes.section(k,{mat:val('material'),size:val('size'),units:state.units,n:val('n'),nb:val('nBed'),span:val('span'),rise:val('rise'),poly:val('udPoly')});}
 function fill(id){const e=document.getElementById(id),v=e.value;e.innerHTML=opts(id).map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('');if([...e.options].some(o=>o.value===v))e.value=v;}
 let hlTarget=null;function hl(t){hlTarget=t;document.querySelectorAll('[data-part]').forEach(e=>e.classList.toggle('hl',e.dataset.part===t));}
+function lines(id){return (val(id)||'').split(/\n/).map(l=>l.split(/[,;\s]+/).filter(Boolean).map(Number)).filter(q=>q.length>=2&&q.every(isFinite)).map(q=>[q[0],q[1]]);}
+function chObj(){const m=val('twMode');if(!['rect','trap','tri','irreg'].includes(m))return null;const o={type:m,b:val('chB'),z1:val('chZ1'),z2:val('chZ2'),S:val('chS'),n:val('chN'),inv:val('chInv')};if(m==='irreg')o.pts=lines('chPts').sort((a,b)=>a[0]-b[0]);return o;}
+// Tailwater from the downstream channel, at the TOTAL crossing discharge (as HY-8 does)
+function twFor(Qtot){const m=val('twMode');if(m==='const'||m==='none')return null;
+ try{if(m==='rating'){const t=lines('chRating');if(t.length<2)return null;return {el:C.ratingTW(t,Qtot).el,mode:m};}
+  const ch=chObj();if(m==='irreg'&&ch.pts.length<3)return null;if(!(ch.S>0&&ch.n>0))return null;const r=C.channelTW(ch,Qtot,state.units==='US');r.mode=m;return r;}catch(e){return null;}}
 function params(Q){const k=val('shape'),sec=secFor();
  const inl=Shapes.isHY(k)?Shapes.inletFor(k,val('material'),val('inlet'),sec?(sec.spanNom||sec.B):1,sec?(sec.riseNom||sec.D):1):C.INLETS[k].find(i=>i.id===val('inlet'));
- return{units:state.units,shape:k,section:sec,spanNom:sec&&sec.spanNom,riseNom:sec&&sec.riseNom,span:sec?(sec.spanNom||sec.B):val('span'),rise:sec?(sec.riseNom||sec.D):val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:inl,Q:Q??val('Q'),twMode:val('twMode'),twElev:val('twElev')};}
+ return{units:state.units,shape:k,section:sec,spanNom:sec&&sec.spanNom,riseNom:sec&&sec.riseNom,span:sec?(sec.spanNom||sec.B):val('span'),rise:sec?(sec.riseNom||sec.D):val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:inl,Q:Q??val('Q'),twMode:val('twMode')==='none'?'none':'const',twElev:(()=>{const t=twFor(state.Qtot??(Q??val('Q')));return t?t.el:val('twElev');})(),twCh:twFor(state.Qtot??(Q??val('Q')))};}
 function validate(p){const w={},us=state.units==='US';
  F.forEach(f=>{const v=val(f[0]);if(f[7]&&isFinite(v)){const lo=us?f[7][0]:f[7][2],hi=us?f[7][1]:f[7][3];if(v<lo||v>hi)w[f[0]]=`⚠ ${v} is outside the usual ${lo}–${hi}. Double-check the value and units.`;}
   if(f[3]!=='sel'&&f[3]!=='txt'&&!isFinite(v)&&!(f[1]==='Roadway'&&val('roadOn')!=='on'))w[f[0]]='⚠ Please enter a number.';});
@@ -95,6 +110,11 @@ function validate(p){const w={},us=state.units==='US';
  else if(p.S>0.1)w.invOut='⚠ Slope over 10% is unusually steep.';
  if(val('Qmin')>=val('Qmax'))w.Qmax='⚠ Maximum must be greater than minimum.';
  if(p.twMode==='const'&&p.twElev<p.invOut)w.twElev='ℹ Tailwater is below the outlet invert — it will have no effect.';
+ {const m=val('twMode'),sh=(id,on)=>{const d=document.getElementById('f_'+id);if(d)d.style.display=on?'':'none';};
+  sh('twElev',m==='const');sh('chB',m==='rect'||m==='trap');sh('chZ1',m==='trap'||m==='tri');sh('chZ2',m==='trap'||m==='tri');['chS','chN'].forEach(x=>sh(x,['rect','trap','tri','irreg'].includes(m)));sh('chInv',['rect','trap','tri'].includes(m));sh('chPts',m==='irreg');sh('chRating',m==='rating');
+  const t=p.twCh;if(t&&t.y!=null)w[m==='irreg'?'chPts':'chN']=`ℹ Normal depth ${fx(t.y)} → tailwater El. ${fx(t.el)}; channel velocity ${fx(t.V)}, Froude ${fx(t.Fr)}${t.Fr>1?' (supercritical channel — normal depth may not control)':''}.`;
+  else if(t&&m==='rating')w.chRating=`ℹ Tailwater El. ${fx(t.el)} at ${fx(state.Qtot)} (interpolated).`;
+  else if(!['const','none'].includes(m))w[m==='rating'?'chRating':m==='irreg'?'chPts':'chS']='⚠ Tailwater could not be computed — check the channel data.';}
  if(p.twMode==='none')w.twElev='ℹ Ignored (tailwater set to none).';
  if(Shapes.isHY(p.shape)&&!p.section)w[p.shape==='user'?'udPoly':'span']='⚠ Shape could not be built — check the size / points.';
  if(p.shape==='user'&&p.section)w.udPoly=`ℹ Outline: span ${p.section.B.toFixed(2)}, rise ${p.section.D.toFixed(2)}, area ${p.section.Afull.toFixed(2)}. Inlet uses HY-8 / HDS-5 Chart 52B coefficients (arch/embedded shapes).`;
@@ -106,14 +126,14 @@ function validate(p){const w={},us=state.units==='US';
    if(p.twMode==='const'&&p.twElev>zc)w.twElev='⚠ Tailwater is above the road crest — submergence is severe; results uncertain.';}}
  F.forEach(f=>$('#w_'+f[0]).textContent=w[f[0]]||'');return Object.keys(w).filter(k=>w[k].startsWith('⚠')).length;}
 const fx=(x,d=2)=>isFinite(x)?x.toFixed(d):'—';
-function checkFlood(ro){const Qk=val('Qcheck');if(!(Qk>0))return null;const p=params(Qk);p.S=(p.invIn-p.invOut)/p.length;if(!p.inlet)return null;
- let bal=null;if(ro&&!ro.bad){bal=C.balance(Qk,elOf,ro);p.Q=bal.Qc;}const r=C.analyze(p);
+function checkFlood(ro){const Qk=val('Qcheck');if(!(Qk>0))return null;const keep=state.Qtot;state.Qtot=Qk;const p=params(Qk);p.S=(p.invIn-p.invOut)/p.length;if(!p.inlet)return null;
+ let bal=null;if(ro&&!ro.bad){bal=balQ(Qk,elOf,ro);p.Q=bal.Qc;}const r=C.analyze(p);state.Qtot=keep;
  return {Qt:Qk,Qc:p.Q,Qr:bal?bal.Qr:0,over:!!(bal&&bal.over),EL:bal&&bal.over?bal.EL:r.EL,HW:(bal&&bal.over?bal.EL:r.EL)-p.invIn,Vout:r.Vout,control:r.control,r};}
 function run(){
- const p=params();p.S=(p.invIn-p.invOut)/p.length;const bad=validate(p);
+ state.Qtot=val('Q');const p=params();p.S=(p.invIn-p.invOut)/p.length;const bad=validate(p);
  if(!p.inlet||!(p.rise>0)||!(p.Q>0)||!(p.length>0)){$('#explain').textContent='Enter valid inputs to see results.';return;}
- const ro=roadObj(p),Qt=p.Q;let bal=null;
- if(ro&&!ro.bad){bal=C.balance(Qt,elOf,ro);p.Q=bal.Qc;}
+ const ro=roadObj(p),Qt=p.Q;let bal=null;state.Qtot=Qt;
+ if(ro&&!ro.bad){bal=balQ(Qt,elOf,ro);p.Q=bal.Qc;}
  const r=C.analyze(p),u=U[state.units],L=u.L,allow=val('allowHW');
  window.CHECK=checkFlood(ro);
  const flags=[];
@@ -184,14 +204,14 @@ function roadExplain(b,ro,Qt,u){const L=u.L,us=ro.US,zc=C.crestMin(ro);
  ${b.over?`The culvert alone would need headwater El. ${fx(elOf(Qt))} ${L} to pass ${fx(Qt)} ${u.Q}, which is above the crest, so flow splits. By bisection on culvert flow (${b.iter} iterations, tolerance 0.01% of Q) the balance is: culvert ${fx(b.Qc)} + road ${fx(b.Qr)} = ${fx(b.Qc+b.Qr)} ${u.Q} at headwater El. <b>${fx(b.EL)} ${L}</b>. Max depth over road HW<sub>r</sub> = ${fx(b.road.hmax)} ${L} over ${fx(b.road.wet)} ${L} of road; C<sub>r</sub> = ${fx(b.road.crMin,3)}${b.road.crMax-b.road.crMin>0.001?'–'+fx(b.road.crMax,3):''}${ro.surface==='custom'?' (custom)':` (Fig. 3.11${b.road.hmax/ro.Lr>0.15?'A, deep':'B, shallow'})`}, k<sub>t</sub> min = ${fx(b.road.ktMin,3)} (Fig. 3.11C). Steps 1–7 above are for the culvert's share, ${fx(b.Qc)} ${u.Q}.`:`Headwater El. ${fx(b.EL)} ${L} stays below the road crest, so no flow goes over the road at the design discharge.`}</li>`;}
 function drawSplit(p,ro){const box=$('#split');if(!ro){box.innerHTML='<p>Roadway overtopping is turned off (step 6).</p>';$('#splitchart').innerHTML='';return;}
  const q0=val('Qmin'),q1=val('Qmax'),u=U[state.units];if(!(q1>q0&&q0>=0))return;
- const rows=[];for(let k=0;k<=10;k++){const q=Math.max(q0+(q1-q0)*k/10,1e-6);rows.push([q,C.balance(q,elOf,ro)]);}
- const qd=val('Q');rows.push([qd,C.balance(qd,elOf,ro),1]);rows.sort((a,b)=>a[0]-b[0]);
+ const rows=[];for(let k=0;k<=10;k++){const q=Math.max(q0+(q1-q0)*k/10,1e-6);rows.push([q,balQ(q,elOf,ro)]);}
+ const qd=val('Q');rows.push([qd,balQ(qd,elOf,ro),1]);rows.sort((a,b)=>a[0]-b[0]);
  let t=`<div style="overflow-x:auto"><table class="split"><tr><th>Total Q (${u.Q})</th><th>Culvert Q</th><th>Roadway Q</th><th>HW elev (${u.L})</th><th>Iterations</th></tr>`+rows.map(([q,b,d])=>`<tr class="${d?'des':''}${b.over?' ov':''}"><td>${fx(q)}${d?' (design)':''}</td><td>${fx(b.Qc)}</td><td>${fx(b.Qr)}</td><td>${fx(b.EL)}</td><td>${b.iter}</td></tr>`).join('')+'</table></div>';
  const zc=C.crestMin(ro);let a=0,bq=Math.max(q1,qd)*4;
  if(elOf(bq)<zc)t+='<p>No overtopping up to '+fx(bq)+' '+u.Q+'.</p>';
  else{for(let i=0;i<60;i++){const m=(a+bq)/2;if(elOf(m)<zc)a=m;else bq=m;}t+=`<p><b>Overtopping discharge: overtopping begins at about ${fx(a)} ${u.Q}</b> (culvert headwater reaches road crest El. ${fx(zc)} ${u.L}). Shaded rows overtop.</p>`;}
  box.innerHTML=t;
- const pts=[];for(let k=0;k<=40;k++){const q=Math.max(q0+(q1-q0)*k/40,1e-6),b=C.balance(q,elOf,ro);pts.push([b.EL,b.Qc,b.Qr,q]);}
+ const pts=[];for(let k=0;k<=40;k++){const q=Math.max(q0+(q1-q0)*k/40,1e-6),b=balQ(q,elOf,ro);pts.push([b.EL,b.Qc,b.Qr,q]);}
  const W=600,H=320,m=50,e0=Math.min(...pts.map(t=>t[0])),e1=Math.max(...pts.map(t=>t[0]),zc)+0.3,qm=q1;
  const X=q=>m+q/qm*(W-m-15),Y=e=>H-35-(e-e0)/(e1-e0)*(H-55);
  const line=(i,c,d)=>`<polyline fill="none" stroke="${c}" stroke-width="2.5" ${d||''} points="${pts.filter(t=>i!==2||t[2]>0||t[0]>=zc-1e-9).map(t=>X(t[i])+','+Y(t[0])).join(' ')}"/>`;
@@ -205,7 +225,7 @@ function drawSplit(p,ro){const box=$('#split');if(!ro){box.innerHTML='<p>Roadway
 
 function drawRating(p,r){
  const q0=val('Qmin'),q1=val('Qmax');if(!(q1>q0&&q0>=0))return;
- const pts=[];for(let k=0;k<=40;k++){const q=q0+(q1-q0)*k/40;if(q<=0)continue;const a=C.analyze(params(q));pts.push([q,a.HWi,a.HWo]);}
+ const pts=[];for(let k=0;k<=40;k++){const q=q0+(q1-q0)*k/40;if(q<=0)continue;const k0=state.Qtot;state.Qtot=q;const a=C.analyze(params(q));state.Qtot=k0;pts.push([q,a.HWi,a.HWo]);}
  const W=600,H=320,m=45,hmax=Math.max(...pts.map(t=>Math.max(t[1],t[2])))*1.1;
  const X=q=>m+(q-q0)/(q1-q0)*(W-m-15),Y=h=>H-m+10-(h/hmax)*(H-m-20);
  const line=(i,c,d)=>`<polyline fill="none" stroke="${c}" stroke-width="2.5" ${d?'stroke-dasharray="6 4"':''} points="${pts.map(t=>X(t[0])+','+Y(t[i])).join(' ')}"/>`;

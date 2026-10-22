@@ -269,6 +269,22 @@ function balance(Qt,elOf,road){
     if(Math.abs(err)<=1e-4*Qt)break; if(err>0)b=Qc;else a=Qc;}
   return {Qc,Qr:rf.Q,EL,iter:it+1,over:true,road:rf};
 }
-root.Culvert={makeSection,sectionFromHY8,rectSection,polySection,hy8Ratio,secN,momentum,conj,findJump,traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
+// ---- Downstream channel tailwater (HY-8 8.0 "Channel Type" options): Manning normal depth in the outlet channel ----
+// ch = {type:'rect'|'trap'|'tri'|'irreg', b, z1, z2, S, n, inv, pts:[[x,el],...]} ; returns {y, el, A, V, T, Fr, tau}
+function chGeom(ch,y){const t=ch.type;
+  if(t==='irreg'){const P=ch.pts,el=ch.inv+y;let A=0,Pw=0,T=0;
+    for(let i=1;i<P.length;i++){const [x1,z1]=P[i-1],[x2,z2]=P[i];const d1=el-z1,d2=el-z2;if(d1<=0&&d2<=0)continue;
+      let xa=x1,xb=x2,da=d1,db=d2;if(d1<0){xa=x1+(x2-x1)*(-d1)/(d2-d1);da=0;}if(d2<0){xb=x1+(x2-x1)*d1/(d1-d2);db=0;}
+      const w=xb-xa;A+=w*(da+db)/2;T+=w;Pw+=Math.hypot(w,db-da);}
+    return {A,P:Pw,T};}
+  const b=t==='tri'?0:ch.b,z1=t==='rect'?0:ch.z1,z2=t==='rect'?0:(ch.z2??ch.z1);
+  return {A:y*(b+(z1+z2)*y/2),P:b+y*(Math.hypot(1,z1)+Math.hypot(1,z2)),T:b+(z1+z2)*y};}
+function channelTW(ch,Q,US){const kM=US?1.486:1,g=US?32.174:9.81,gw=US?62.4:9810;
+  if(ch.type==='irreg'){ch=Object.assign({},ch);ch.inv=Math.min(...ch.pts.map(p=>p[1]));}
+  const q=y=>{const G=chGeom(ch,y);return G.A>0?kM/ch.n*G.A*Math.pow(G.A/G.P,2/3)*Math.sqrt(ch.S):0;};
+  let hi=1;while(q(hi)<Q&&hi<1e4)hi*=2;const y=bisect(z=>q(z)-Q,1e-9,hi),G=chGeom(ch,y),V=Q/G.A;
+  return {y,el:ch.inv+y,A:G.A,V,T:G.T,Fr:V/Math.sqrt(g*G.A/G.T),tau:gw*(G.A/G.P)*ch.S,inv:ch.inv};}
+function ratingTW(tab,Q){const t=tab.slice().sort((a,b)=>a[0]-b[0]);return {el:interp(t,Q)};}
+root.Culvert={chGeom,channelTW,ratingTW,makeSection,sectionFromHY8,rectSection,polySection,hy8Ratio,secN,momentum,conj,findJump,traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
 
 })(typeof module!=='undefined'?module.exports:window);
