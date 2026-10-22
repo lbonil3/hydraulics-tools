@@ -19,28 +19,38 @@ function report(p,r,allow,ro,bal){const el=document.getElementById('report');if(
   :r.jumpType==='drowned'?'Tailwater is high enough to push the hydraulic jump up to the inlet (drowned inlet) — the barrel runs in the subcritical/outlet regime.'
   :r.steep&&p.twMode==='const'?'No hydraulic jump forms inside the barrel; the supercritical flow leaves the outlet, and a jump (if any) forms downstream in the channel.':'No hydraulic jump in the barrel.';
  const over=bal&&bal.over;
- // ---- checks ----
+ // ---- checks (TxDOT HDM first; FHWA where TxDOT gives no value; generic rules labelled) ----
+ const TX='https://www.txdot.gov/manuals/des/hyd/',
+  aHW=`<a href="${TX}chapter-8--culverts/section-2--design-considerations/allowable-headwater.html" target="_blank" rel="noopener">TxDOT HDM Ch. 8 §2, Allowable Headwater</a>`,
+  aOV=`<a href="${TX}chapter-8--culverts/section-2--design-considerations/outlet-velocity.html" target="_blank" rel="noopener">TxDOT HDM Ch. 8 §2, Outlet Velocity</a>`,
+  aDG=`<a href="${TX}chapter-8--culverts/section-2--design-considerations/design-guidelines-and-procedure-for-culverts.html" target="_blank" rel="noopener">TxDOT HDM Ch. 8 §2, Design Guidelines and Procedure for Culverts</a>`,
+  aT42=`<a href="${TX}chapter-4--hydrology/section-6--design-flood-and-check-flood-standards.html" target="_blank" rel="noopener">TxDOT HDM Ch. 4 §6, Table 4-2</a>`,
+  aHDS5=`<a href="https://www.fhwa.dot.gov/engineering/hydraulics/pubs/12026/hif12026.pdf" target="_blank" rel="noopener">FHWA HDS-5 (2012) §2.2.5 Allowable Headwater</a>`,
+  aHEC14=`<a href="https://www.fhwa.dot.gov/engineering/hydraulics/pubs/06086/hec14.pdf" target="_blank" rel="noopener">FHWA HEC-14 (FHWA-NHI-06-086)</a>`;
  const ck=[];
- if(isFinite(zc))ck.push(r.EL<zc?flag('pass',`Headwater El. ${f(r.EL)} ${L} is below the road crest low point El. ${f(zc)} ${L} (${f(zc-r.EL)} ${L} below). Compare this margin with the freeboard your project/agency criteria require for the design frequency.`)
-  :flag('fail',`Headwater El. ${f(r.EL)} ${L} is above the road crest El. ${f(zc)} ${L}: the road overtops at the design flow (${f(bal?bal.Qr:NaN)} ${Q} over the road). TxDOT HDM Ch. 8 sets design-frequency criteria for roadway overtopping — confirm this is acceptable for the road class.`));
- else ck.push(flag('info','Roadway overtopping is off — the report cannot check headwater against the road crest.'));
- if(isFinite(allow))ck.push(r.EL<=allow?flag('pass',`Headwater El. ${f(r.EL)} ${L} ≤ allowable El. ${f(allow)} ${L} (the limit you entered, e.g. from adjacent property, upstream structures or freeboard).`):flag('fail',`Headwater El. ${f(r.EL)} ${L} exceeds the allowable El. ${f(allow)} ${L} that you entered.`));
- ck.push(HWD<=1.2?flag('pass',`HW/D = ${f(HWD)}. Many agencies limit HW/D for the design flood (values around 1.2–1.5 are common); check the limit your agency uses — this tool does not assume a TxDOT number.`)
-  :flag('warn',`HW/D = ${f(HWD)} is high. Many agencies cap HW/D for the design flood (commonly in the 1.2–1.5 range); verify against your project criteria and consider a larger or additional barrel.`));
- const vh=US?15:4.5,vm=US?10:3,vlo=US?2.5:0.75;
- ck.push(r.Vout>vh?flag('fail',`Outlet velocity ${f(r.Vout)} ${V} is high — scour at the outlet is likely. Evaluate outlet protection / energy dissipation per FHWA HEC-14 (TxDOT HDM Ch. 8 discusses outlet velocity and protection). Threshold ${vh} ${V} is this tool's screening value.`)
-  :r.Vout>vm?flag('warn',`Outlet velocity ${f(r.Vout)} ${V} is moderately high; compare with the natural channel velocity and check whether riprap or other outlet protection is needed (FHWA HEC-14).`)
-  :flag('pass',`Outlet velocity ${f(r.Vout)} ${V} is moderate; still compare it with the downstream channel's natural velocity.`));
- ck.push(r.Vout<vlo?flag('warn',`Outlet velocity ${f(r.Vout)} ${V} is low — sediment may deposit in the barrel. A rule of thumb (not a TxDOT value) is to keep around ${vlo} ${V} or more at frequent flows; check at a low flow too.`)
-  :flag('pass',`Velocity is high enough that sediment deposition at the design flow is unlikely (rule-of-thumb screen ≈ ${vlo} ${V}; check self-cleaning at frequent, smaller flows too).`));
- if(r.jump)ck.push(flag('warn',`Hydraulic jump inside barrel at ${f(r.jump.x,1)} ${L} — check the joints and the structure for turbulence and uplift.`));
+ if(isFinite(zc))ck.push(r.EL<zc?flag('pass',`Headwater El. ${f(r.EL)} ${L} is below the road crest low point El. ${f(zc)} ${L} (${f(zc-r.EL)} ${L} margin). TxDOT: the allowable headwater for the design discharge "must also be below the roadway, that is, the roadway must be passable"; also check edge of pavement, sub-grade crown and top of headwall (${aHW}). TxDOT gives no numeric freeboard for culverts — use your district/project criteria.`)
+  :flag('fail',`Headwater El. ${f(r.EL)} ${L} is above the road crest El. ${f(zc)} ${L}; ${f(bal?bal.Qr:NaN)} ${Q} overtops. If ${f(Qt)} ${Q} is the design-AEP flow, this fails TxDOT's requirement that the design headwater be below the roadway (${aHW}).`));
+ else ck.push(flag('info','Roadway overtopping is off — headwater cannot be checked against the road (TxDOT requires the design headwater to be below the roadway).'));
+ if(isFinite(allow))ck.push(r.EL<=allow?flag('pass',`Headwater El. ${f(r.EL)} ${L} ≤ the allowable El. ${f(allow)} ${L} you entered (TxDOT: set it from potential damage to adjacent property, the roadway and the culvert — ${aHW}).`):flag('fail',`Headwater El. ${f(r.EL)} ${L} exceeds the allowable El. ${f(allow)} ${L} you entered.`));
+ ck.push(flag('info',`TxDOT: the change in 1% AEP (100-yr) headwater should be limited to 1.0 ft "if at all practicable" (${aHW}). Run the 1% AEP flow for existing and proposed conditions to check this.`));
+ ck.push(HWD>1.5?flag('warn',`HW/D = ${f(HWD)}. TxDOT gives no HW/D limit; FHWA HDS-5 notes agency limits "commonly range from 1.0 to 1.5" (${aHDS5}). This is above that range — confirm your agency allows it.`)
+  :HWD>=1.0?flag('pass',`HW/D = ${f(HWD)}, within the 1.0–1.5 range FHWA HDS-5 cites as common for agency limits (${aHDS5}); TxDOT sets no HW/D limit.`)
+  :flag('info',`HW/D = ${f(HWD)} < 1. TxDOT: "If the headwater is less than the depth, the configuration may not be efficient" — a smaller culvert may work (${aDG}).`));
+ const vx=US?12:3.66,vmin=US?3:0.91;
+ ck.push(r.Vout>vx?flag('fail',`Outlet velocity ${f(r.Vout)} ${V} > ${vx} ${V}. TxDOT: excessive velocity "is usually an engineering judgment … but as a general rule, anything over 12 fps is considered excessive" (${aDG}). Provide outlet protection or energy dissipation (${aOV}; TxDOT HDM Ch. 8 §5 Velocity Protection and Control Devices; ${aHEC14}).`)
+  :flag('pass',`Outlet velocity ${f(r.Vout)} ${V} ≤ ${vx} ${V}, TxDOT's general rule for "excessive" (${aDG}). TxDOT still asks you to set an allowable outlet velocity for each site and compare it with the erosive velocity of the downstream channel (${aOV}).`));
+ ck.push(r.Vout<vmin?flag('warn',`Outlet velocity ${f(r.Vout)} ${V} < ${vmin} ${V}. TxDOT: "Velocities of less than about 3 fps usually foster deposition of sediments. Therefore, 3 fps is recommended as a minimum for culvert design and operation" (${aOV}).`)
+  :flag('pass',`Outlet velocity ${f(r.Vout)} ${V} ≥ ${vmin} ${V}, the TxDOT recommended minimum for sediment (${aOV}). This is at the design flow; also check frequent, smaller flows.`));
+ ck.push(flag('info',`Design frequency (${aT42}): freeway main lanes culverts 2% AEP (50-yr); principal arterials 10–2% AEP, 4% (25-yr) recommended; minor arterials and collectors incl. frontage roads 20–4% AEP, 10% (10-yr) recommended; local roads and streets 50–10% AEP; off-system: FHWA "same or slightly better" than existing. "All facilities must be evaluated to the 1% AEP flood event." Make sure ${f(Qt)} ${Q} is the right AEP flow for this road class.`));
+ ck.push(flag('info','Minimum culvert size: the TxDOT HDM culvert chapter gives no minimum size. The 18-in minimum in the HDM applies to storm drain trunk lines and laterals, not culverts. Use your district/project criteria.'));
+ if(r.jump)ck.push(flag('warn',`Hydraulic jump inside the barrel at ${f(r.jump.x,1)} ${L} (located HY-8-style). Check the joints and the structure for turbulence and uplift; HEC-14 covers jumps used for energy dissipation (${aHEC14}).`));
  if(r.S<=0)ck.push(flag('warn','Zero or adverse barrel slope — sediment and ponding risk; results use outlet-control assumptions.'));
  // ---- narrative ----
  const nar=`This ${p.barrels>1?p.barrels+'-barrel ':''}${size} ${st('material').split(' (')[0].toLowerCase()} culvert, ${f(p.length,0)} ${L} long on a ${f(r.S*100)}% slope, has to pass a design flow of ${f(Qt)} ${Q}. `+
   (over?`The culvert cannot pass all of it below the road: about ${f(bal.Qc)} ${Q} goes through the barrel and ${f(bal.Qr)} ${Q} flows over the road. `:`All of the flow goes through the culvert. `)+
   `Water will pond upstream to elevation ${f(r.EL)} ${L}, ${f(r.HW)} ${L} above the inlet invert (${f(HWD)} times the barrel height). ${r.control} control governs${r.control==='Inlet'?', so the entrance shape limits capacity':', so barrel losses and tailwater limit capacity'}. `+
   `The barrel is ${r.steep?'steep, so flow is fast and shallow':'hydraulically mild'}, and water leaves the outlet about ${f(r.yout)} ${L} deep at ${f(r.Vout)} ${V}`+(r.jump?`, after a hydraulic jump ${f(r.jump.x,0)} ${L} into the barrel`:'')+`. `+
-  (r.Vout>vm?'That exit velocity is high enough that outlet scour protection should be designed. ':'')+
+  (r.Vout>(US?12:3.66)?'That exit velocity is above the 12 ft/s TxDOT treats as excessive, so outlet protection or energy dissipation needs to be designed. ':'')+
   `Check the PASS/CHECK/FAIL items above against your project's design criteria before finalizing.`;
  const tw=p.twMode==='const'?`El. ${f(p.twElev)} ${L} (depth ${f(r.TW)} ${L} above outlet invert)`:'none / free outfall';
  const road=ro&&!ro.bad?`crest low point El. ${f(zc)} ${L}, top width ${f(ro.Lr)} ${L}, ${ro.surface}`:'not modelled';
@@ -55,7 +65,7 @@ function report(p,r,allow,ro,bal){const el=document.getElementById('report');if(
  <h4>Why ${r.control.toLowerCase()} control?</h4><p>${ctrlWhy}</p><p>${slope} ${jump}</p>
  <h4>3. Design checks</h4><ul class="rchk">${ck.join('')}</ul>
  <h4>4. Summary</h4><p class="rnar">${nar}</p>
- <p class="rnote"><small>References: TxDOT Hydraulic Design Manual, Chapter 8 (Culverts); FHWA HDS-5 <i>Hydraulic Design of Highway Culverts</i> (3rd ed., 2012); FHWA HEC-14 (energy dissipators); FHWA HY-8. The screening thresholds above are this tool's generic values, not TxDOT limits. Confirm design frequency, allowable headwater, freeboard and velocity criteria in the current TxDOT HDM and your district's requirements. This is a screening tool, not a sealed design.</small></p>`;}
+ <p class="rnote"><small>References: TxDOT Hydraulic Design Manual (online edition, txdot.gov/manuals/des/hyd), Ch. 4 §6 and Ch. 8 §2; FHWA HDS-5 <i>Hydraulic Design of Highway Culverts</i>, 3rd ed. (FHWA-HIF-12-026 / FHWA-NHI-12-029, 2012) §2.2.5; FHWA HEC-14 <i>Hydraulic Design of Energy Dissipators for Culverts and Channels</i>, 3rd ed. (FHWA-NHI-06-086, 2006); FHWA HY-8 8.0 User Manual §5.2.7. Values are quoted from those sources. Where they give no number (freeboard, minimum culvert size), the report says so instead of making one up. Check your district's criteria too. This is a screening tool, not a sealed design.</small></p>`;}
 window.drawProfile=function(p,r,allow,ro,bal){const o=prev.apply(this,arguments);try{report(p,r,allow,ro,bal);}catch(e){console.error(e);}return o;};
 try{if(typeof run==="function")run();}catch(e){console.error(e);}
 })();

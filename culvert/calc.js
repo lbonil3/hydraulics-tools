@@ -53,12 +53,32 @@ function conj(shape,B,D,Q,g,y1){ // sequent (subcritical) depth; returns {y,head
 }
 function interpPts(pts,x,k){k=k||1;for(let i=1;i<pts.length;i++)if(x<=pts[i][0]){const a=pts[i-1],b=pts[i],t=(x-a[0])/((b[0]-a[0])||1);return a[k]+(b[k]-a[k])*t;}return pts[pts.length-1][k];}
 // Locate hydraulic jump between supercritical profile sup (from inlet) and subcritical profile sub (from outlet).
+// Locate hydraulic jump the way HY-8 does (HY-8 8.0 User Manual §5.2.7.1): compare the sequent depth of the
+// supercritical (S2) profile with the subcritical profile traced from the outlet. Behaviour calibrated against
+// HY-8 8.0.1.2 runs (see test.js): scanning upstream from the outlet over the free-surface part of the
+// subcritical profile, the jump sits at the first point where the sequent depth reaches the subcritical depth
+// (momentum M(y_super) >= M(y_sub)); if that happens right where the subcritical profile leaves a pressurised
+// reach, the jump sits at that crown point. If the barrel is pressurised all the way to the inlet, the jump
+// sits where the S2 sequent depth first reaches the crown, M(y_super) = M(D).
 function findJump(shape,B,D,Q,g,L,sup,sub){
-  const F=x=>{const y1=interpPts(sup,x),y2=interpPts(sub,x),h2=interpPts(sub,x,2);
-    return momentum(shape,B,D,Q,g,y1)-momentum(shape,B,D,Q,g,y2,h2>=D-1e-9?h2:null);};
-  if(F(L)>=0) return {type:'swept'};       // supercritical flow stronger all the way: jump pushed out of barrel
-  if(F(0)<=0) return {type:'drowned'};     // subcritical stronger even at inlet: inlet drowned
-  const x=bisect(F,0,L); return {type:'inside',x,y1:interpPts(sup,x),y2:interpPts(sub,x),head2:interpPts(sub,x,2)};
+  const Ms=x=>momentum(shape,B,D,Q,g,interpPts(sup,x)), Mo=y=>momentum(shape,B,D,Q,g,Math.min(D,y));
+  const pts=sub.slice().sort((p,q)=>q[0]-p[0]); // outlet -> inlet
+  const isFull=p=>p[1]>=D-1e-9, out=(x,t)=>({type:t||(x<=1e-6?'drowned':'inside'),x,y1:interpPts(sup,x),y2:Math.min(D,interpPts(sub,x)),head2:interpPts(sub,x,2)});
+  let prev=null,anyFree=false;
+  for(const p of pts){const x=p[0];
+    if(isFull(p)){prev=p;continue;}
+    if(p[3]){ if(anyFree) return out(x); break; } // free reach ends in a choke: jump at its upstream end
+    anyFree=true;
+    if(Ms(x)>=Mo(p[1])){
+      if(!prev) return {type:'swept'};                     // already satisfied at the outlet
+      if(isFull(prev)) return out(x);                      // crown point
+      const F=z=>Ms(z)-Mo(interpPts(sub,z)); return out(bisect(F,x,prev[0]));
+    }
+    prev=p;}
+  if(!anyFree){ // pressurised to the inlet
+    const F=x=>Ms(x)-Mo(D); if(F(0)>=0) return out(0,'drowned'); if(F(L)<0) return {type:'drowned'};
+    return out(bisect(F,0,L)); }
+  return {type:'drowned'};
 }
 // Direct step, supercritical: start at y0 (>= yn) at inlet, march downstream until length L.
 function traceSuper(shape,B,D,Q,n,S,kM,g,L,y0){
@@ -83,7 +103,7 @@ function traceSub(shape,B,D,Q,n,S,kM,g,L,yd,Rf,Pf){
     const f=z=>spE(shape,B,D,Q,g,z)+S*dx-E1-(S1+sfr(shape,B,D,Q,n,kM,z))/2*dx; // E_up + z_up = E_dn + z_dn + hf
     let z;
     if(f(D)<0){full=true;fullAt=x;HGL=D+(-f(D));pts.push([x,D,HGL]);continue;} // profile hits crown -> pressure flow
-    if(f(yc*1.0001)>0){z=yc;choked=true;} else z=bisect(f,yc*1.0001,D); // choke -> critical
+    if(f(yc*1.0001)>0){z=yc;choked=true;y=z;pts.push([x,y,y,1]);continue;} else z=bisect(f,yc*1.0001,D); // choke -> critical
     y=z;pts.push([x,y,y]);}
   pts.reverse();
 
