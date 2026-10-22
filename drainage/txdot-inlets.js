@@ -12,7 +12,7 @@ window.TXI=L;
 window.TXI_apply=function(s,id,mode){const x=L.find(i=>i.id===id);s.std=id;if(!x){s.stdName='';return s;}
  s.it=x.it;s.cl=x.cl;s.ca=x.ca;s.cw=x.cw;s.stdName='TxDOT '+x.code;
  if(mode==='sag')s.h=x.h;
- if(x.it==='combo'){s.gw=x.gw;s.gl=x.gl;if('gtype' in s||mode==='space')s.gtype=x.gtype;}
+ if(x.it==='combo'){s.gw=x.gw;s.gl=x.gl;if('gtype' in s||mode==='space')s.gtype=x.gtype;if(mode!=='sag')s.Vo='';}
  if(mode==='sag'&&s.it==='curb'){s.throat='vertical';}
  return s;};
 const note=x=>x?`<div class="txnote"><b>${x.sheet}</b> · curb opening ${x.cl} ft (main throat 5'-0"${x.ext?`, ${x.ext}× 4'-6" extension`:''}) · throat ${x.h*12} in · gutter depression 3 in over 2'-0" (CGT sheet)${x.it==='combo'?` · cast-iron grate under main throat ≈ ${x.gw} × ${x.gl} ft clear; mapped to HEC-22 <b>${x.hec}</b> (ASSUMPTION — sheet shows rectangular cast openings, bars not dimensioned; read Vo / Rf for that type and check the open-area ratio)`:''} · <a href="${x.url}" target="_blank" rel="noopener">sheet PDF</a> · <a href="${x.dep}" target="_blank" rel="noopener">depression sheet</a>. You can still edit any value below.</div>`:'';
@@ -21,6 +21,14 @@ window.form=function(){oForm();if(!['grade','sag','space'].includes(mode))return
  const opts=[['custom','Custom / HEC-22 (type my own)'],...L.map(i=>[i.id,i.name])];
  const h=`<fieldset class="txpick"><legend>TxDOT standard inlet</legend><div class="f" data-k="std"><label><span>Standard sheet</span><select id="txstd">${opts.map(([v,l])=>`<option value="${v}"${v===(s.std||'custom')?' selected':''}>${l}</option>`).join('')}</select></label></div>${note(x)}</fieldset>`;
  const fm=document.getElementById('form');const fs=fm.querySelector('fieldset');fs?fs.insertAdjacentHTML('beforebegin',h):fm.insertAdjacentHTML('afterbegin',h);};
+const needVo=()=>(mode==='grade'||mode==='space')&&S[mode].it!=='curb'&&!(+S[mode].Vo>0);
+const oRender=window.render;
+window.render=function(){if(needVo()){const m=`<div class="kpi gov">Grate splash-over velocity Vo<b>needs your input</b><span>Read Vo from HEC-22 Figure 7.8 for the ${S[mode].gtype||'selected'} grate (length ${S[mode].gl} ft) and type it in the Vo box. Results are hidden so a stale value is not used.</span></div>`;
+ document.getElementById('summary').innerHTML=m;['table','explain'].forEach(i=>{const e=document.getElementById(i);if(e)e.innerHTML='<p class="warn">⚠ Enter Vo to see results.</p>';});const pc=document.getElementById('plancard');if(pc)pc.style.display='none';return;}
+ const pc=document.getElementById('plancard');if(pc)pc.style.display='';oRender();};
+const oForm2=window.form;window.form=function(){oForm2();if(needVo()){const w=document.querySelector('#form .f[data-k="Vo"]');if(w){w.classList.add('need');const sp=w.querySelector('label span');if(sp&&!sp.querySelector('.req'))sp.insertAdjacentHTML('beforeend',' <b class="req">needs your input</b>');const i=w.querySelector('input');if(i)i.placeholder='from HEC-22 Fig. 7.8';}}};
+document.addEventListener('change',e=>{if(e.target.matches&&e.target.matches('select[data-v=gtype]')&&mode==='space'){S.space.Vo='';form();render();}});
+document.addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.v==='Vo'){const v=parseFloat(e.target.value);if(v>0&&needVo()===false&&document.querySelector('#form .f.need[data-k="Vo"]')){form();render();const i=document.querySelector('#form input[data-v=Vo]');if(i){i.focus();}}}});
 document.addEventListener('change',e=>{if(e.target.id!=='txstd')return;TXI_apply(S[mode],e.target.value,mode);form();render();});
 document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.v;if(!k||!S[mode]||!S[mode].std||S[mode].std==='custom')return;
  if(['cl','cl2','ca','cw','h','gw','gl'].includes(k)){S[mode].stdName=S[mode].stdName&&!/edited/.test(S[mode].stdName)?S[mode].stdName+' (edited)':S[mode].stdName;}});

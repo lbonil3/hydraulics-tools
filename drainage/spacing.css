@@ -7,3 +7,7 @@
 .spArea{background:#eef5ff;border-left:4px solid #1f4e79;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:14px;line-height:1.45}.spArea b{color:#1f4e79;font-size:16px}
 @media (min-width:701px){#plansvg{max-height:42vh}#detsvg{max-height:36vh}#plancard{max-width:820px}}
 .txpick .txnote{font-size:13px;line-height:1.4;color:#334;background:#f3f7fb;border-left:3px solid #1f4e79;padding:6px 8px;margin-top:6px;overflow-wrap:anywhere}
+.flsvg{width:100%;height:auto;display:block;margin:6px 0}
+#flcard ol.flex{padding-left:18px;font-size:14px;line-height:1.45}#flcard .muted{color:#666}
+.f.need input{border-color:#c0392b;background:#fff6f5}.req{color:#c0392b;font-weight:700;font-size:12px}
+#flcard table{width:100%;table-layout:fixed}#flcard td{overflow-wrap:anywhere;white-space:normal!important}#flcard td:first-child{width:52%}
