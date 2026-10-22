@@ -1,0 +1,19 @@
+/* profile animation + controls (desktop & phone) */
+.anim .flow,#mprofile .flow{stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:4 14;opacity:.85;animation:pflow 1s linear infinite}
+.anim .flow.f2{stroke-dasharray:2 22;opacity:.6}
+.ripple{stroke:#fff;stroke-width:1.5;stroke-dasharray:10 18;opacity:.55;animation:pflow 3.2s linear infinite}
+.spill{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-dasharray:6 12;opacity:.9;animation:pflow .8s linear infinite}
+@keyframes pflow{to{stroke-dashoffset:-36}}
+body.still .flow,body.still .ripple,body.still .spill{animation-play-state:paused}
+#mprof{display:none}
+#pctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
+#pctl button{padding:4px 10px;border:1px solid #1f4e79;border-radius:6px;background:#fff;color:#1f4e79;cursor:pointer;touch-action:manipulation}
+#pQ{flex:1;min-width:120px}#pStat{flex:1 1 100%;font-size:13px;color:#334}.bad{color:#c0392b}
+@media (max-width:700px){
+ #profile{display:none}#mprof{display:block}#mprofile{width:100%;height:auto;display:block;border-radius:8px}
+ #mkey{width:100%;border-collapse:collapse;margin-top:8px;font-size:13.5px!important;white-space:normal!important}
+ #mkey th{text-align:left;font-weight:500;padding:5px 4px}#mkey td{padding:5px 4px;text-align:right;position:static!important;box-shadow:none!important;background:none!important}
+ #mkey td:first-child{width:26px;text-align:center}#mkey td.n{color:#667;font-size:12.5px}#mkey tr{border-bottom:1px solid #eef1f5}
+ .kd{display:inline-flex;width:20px;height:20px;border-radius:50%;color:#fff;font-size:12px;font-weight:700;align-items:center;justify-content:center}
+ #pctl button{min-height:44px;font-size:15px;padding:6px 14px}#pQ{min-height:44px}
+}
