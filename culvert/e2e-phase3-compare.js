@@ -1,0 +1,10 @@
+const pp=require('puppeteer');(async()=>{const b=await pp.launch({args:['--no-sandbox']});const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.emulate(pp.KnownDevices['iPhone 13']);await p.goto('http://localhost:8766/culvert/?v='+Date.now(),{waitUntil:'networkidle0'});await new Promise(r=>setTimeout(r,800));
+await p.evaluate(()=>localStorage.removeItem('culvert.options'));await p.reload({waitUntil:'networkidle0'});await new Promise(r=>setTimeout(r,800));
+const setv=async(id,v)=>p.evaluate((id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));},id,v);
+const save=()=>p.evaluate(()=>document.getElementById('cmpsave').click());
+await save();await setv('barrels',2);await new Promise(r=>setTimeout(r,300));await save();await setv('barrels',3);await new Promise(r=>setTimeout(r,300));await save();
+const rows=await p.evaluate(()=>[...document.querySelectorAll('#cmpcard tbody tr')].map(t=>t.innerText.replace(/\s+/g,' ')));console.log(rows);
+await p.evaluate(()=>document.querySelector('[data-ld="0"]').click());await new Promise(r=>setTimeout(r,300));console.log('loaded barrels=',await p.evaluate(()=>document.getElementById('barrels').value));
+await p.evaluate(()=>{[...document.querySelectorAll('#mtabs button')].find(e=>e.innerText.trim()==='Results').click()});await new Promise(r=>setTimeout(r,500));const c=await p.$('#cmpcard');await c.evaluate(e=>e.scrollIntoView({block:'start'}));await p.evaluate(()=>scrollBy(0,-60));await p.screenshot({path:'/workspace/iphone-compare-options.png'});
+console.log('ow',await p.evaluate(()=>document.documentElement.scrollWidth),errs);await b.close()})();
