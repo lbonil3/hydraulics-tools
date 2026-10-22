@@ -6,7 +6,7 @@ const st=(id)=>{const e=document.getElementById(id);return e&&e.tagName==='SELEC
 const flag=(c,t)=>`<li class="rf ${c}"><span class="rb">${{pass:'PASS',warn:'CHECK',fail:'FAIL',info:'INFO'}[c]}</span>${t}</li>`;
 function report(p,r,allow,ro,bal){const el=document.getElementById('report');if(!el)return;
  const US=r.US,L=US?'ft':'m',Q=US?'cfs':'m³/s',V=US?'ft/s':'m/s',Qt=v('Q'),i=r.inlet,box=p.shape==='box';
- const size=box?`${f(p.span,1)} × ${f(p.rise,1)} ${L} box`:`${f(p.rise*(US?12:1000),0)}-${US?'in':'mm'} diameter pipe`;
+ const size=p.section&&window.Shapes?`${Shapes.label(p.shape)}, ${f(p.span,2)} × ${f(p.rise,2)} ${L} (span × rise${p.section.open?', natural streambed floor':''})`:box?`${f(p.span,1)} × ${f(p.rise,1)} ${L} box`:`${f(p.rise*(US?12:1000),0)}-${US?'in':'mm'} diameter pipe`;
  const zc=ro&&!ro.bad?C.crestMin(ro):NaN,HWD=r.HW/r.D;
  const ctrlWhy=r.control==='Inlet'
   ?`Inlet control governs because the headwater needed to push ${f(r.Q)} ${Q} through the entrance (${f(r.HWi)} ${L}) is higher than the headwater needed to overcome the barrel friction, entrance and exit losses against the tailwater (${f(r.HWo)} ${L}). The barrel can carry more water than the entrance lets in, so improving the inlet (bevels, flared wingwalls, a different end treatment) is what would lower the headwater; changing barrel roughness or length would not.`
@@ -56,7 +56,7 @@ function report(p,r,allow,ro,bal){const el=document.getElementById('report');if(
  const road=ro&&!ro.bad?`crest low point El. ${f(zc)} ${L}, top width ${f(ro.Lr)} ${L}, ${ro.surface}`:'not modelled';
  const row=(a,b)=>`<tr><th>${a}</th><td>${b}</td></tr>`;
  el.innerHTML=`<div class="rhead"><div><b>Culvert design report</b><br><small>Generated ${new Date().toLocaleString()} · Culvert Studio (FHWA HDS-5 methods, HY-8-style profile)</small></div><span class="rbtns"><button type="button" class="rprint rpdf" data-act="pdf">Save / Share PDF</button><button type="button" class="rprint rprt" data-act="print">Print</button></span></div>
- <h4>1. Inputs</h4><table class="rt">${row('Culvert',`${p.barrels} × ${size}, ${st('material')}, Manning n = ${p.n}`)}${row('Inlet',`${i.name} (HDS-5 ${i.chart}); entrance loss K<sub>e</sub> = ${i.Ke}`)}
+ <h4>1. Inputs</h4><table class="rt">${row('Culvert',`${p.barrels} × ${size}, ${st('material')}, Manning n = ${p.n}`)}${row('Inlet',`${i.name} (${i.t?i.chart:"HDS-5 "+i.chart}); entrance loss K<sub>e</sub> = ${i.Ke}`)}
  ${row('Length / slope',`${f(p.length,1)} ${L}; S = ${f(r.S*100)}%`)}${row('Inverts',`inlet El. ${f(p.invIn)} ${L}, outlet El. ${f(p.invOut)} ${L}`)}${row('Design flow',`${f(Qt)} ${Q}`)}${row('Tailwater',tw)}${row('Roadway',road)}${isFinite(allow)?row('Allowable HW',`El. ${f(allow)} ${L}`):''}</table>
  <h4>2. Results</h4><table class="rt">${row('Headwater',`El. <b>${f(r.EL)} ${L}</b>; depth HW = ${f(r.HW)} ${L}; HW/D = ${f(HWD)}`)}${row('Control',`<b>${r.control} control</b> (inlet HW ${f(r.HWi)} ${L}, outlet HW ${f(r.HWo)} ${L})`)}
  ${row('Flow type',flowType)}${row('Critical / normal depth',`d<sub>c</sub> = ${f(r.dc)} ${L}; d<sub>n</sub> = ${isFinite(r.yn)?f(r.yn)+' '+L:'—'} → ${!isFinite(r.yn)?'mild/undefined':r.steep?'steep':'mild'} barrel`)}

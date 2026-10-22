@@ -1,11 +1,15 @@
 /* Client-side PDF of the Design Report (vendored jsPDF; no CDN). Works in iOS home-screen apps where window.print() is a no-op. */
 (function(){
-let img=null,imgKey='';
+let img=null,imgKey='',iimg=null,iKey='';
 const W2A={'≤':'<=','≥':'>=','→':'->','←':'<-','≈':'~','₁':'1','₂':'2','ₙ':'n','ᶜ':'c','√':'sqrt','−':'-','\u00a0':' ','\u2009':' ','\u202f':' '};
 function clean(t){return String(t||'').replace(/[\s\S]/g,ch=>{if(W2A[ch]!=null)return W2A[ch];const c=ch.charCodeAt(0);
   if(c<256||'€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ'.includes(ch))return ch;return '?';}).replace(/[ \t]+/g,' ').trim();}
 // Rasterise the desktop profile SVG once per render so the click handler stays synchronous (keeps iOS user activation for share()).
-function prep(){const svg=document.getElementById('profile');if(!svg||!svg.innerHTML)return;const key=svg.innerHTML.length+':'+svg.innerHTML.slice(-200);if(key===imgKey)return;imgKey=key;
+function prepInlet(){const sv=document.querySelector('#report .rinlet svg');if(!sv)return;const k=sv.outerHTML;if(k===iKey)return;iKey=k;
+  const c=sv.cloneNode(true);c.setAttribute('width','720');c.setAttribute('height','420');c.insertAdjacentHTML('afterbegin','<style>text{font-family:Helvetica,Arial,sans-serif}</style>');
+  const im=new Image();im.onload=()=>{try{const cv=document.createElement('canvas');cv.width=1080;cv.height=630;const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,1080,630);g.drawImage(im,0,0,1080,630);iimg=cv.toDataURL('image/jpeg',0.9);}catch(e){iimg=null;}};
+  im.onerror=()=>{iimg=null;};im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(c));}
+function prep(){prepInlet();const svg=document.getElementById('profile');if(!svg||!svg.innerHTML)return;const key=svg.innerHTML.length+':'+svg.innerHTML.slice(-200);if(key===imgKey)return;imgKey=key;
   const c=svg.cloneNode(true);c.setAttribute('xmlns','http://www.w3.org/2000/svg');c.setAttribute('width','900');c.setAttribute('height','340');
   c.querySelectorAll('.anim').forEach(e=>e.remove());
   c.insertAdjacentHTML('afterbegin','<style>text{font-family:Helvetica,Arial,sans-serif;font-size:13px}</style>');
@@ -34,6 +38,7 @@ function build(){const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',forma
         doc.setFontSize(10);const lines=doc.splitTextToSize(body,CW-58),h=lines.length*13+6;need(h);
         doc.setFillColor(...col);doc.roundedRect(M,y+1,48,13,2,2,'F');doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(bt,M+24,y+10.5,{align:'center'});
         doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(20,20,20);doc.text(lines,M+58,y+11);y+=h;}}
+    else if(tag==='DIV'&&el.classList.contains('rinlet')){if(iimg){const w=CW*0.62,h=w*210/360;need(h+6);doc.addImage(iimg,'JPEG',M,y,w,h);y+=h+6;}}
     else if(tag==='P'){text(el.innerText,el.classList.contains('rnote')?8.5:10.5,'normal',el.classList.contains('rnote')?[90,90,90]:[20,20,20]);y+=5;}
   }
   const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(`Culvert Studio · page ${i} of ${n}`,PW/2,PH-24,{align:'center'});}

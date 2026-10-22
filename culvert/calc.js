@@ -14,8 +14,34 @@ const INLETS = {
   {id:'b_0',name:'Box, 0° wingwalls (sides extended), square edge',chart:'Chart 8, scale 3',form:1,K:0.061,M:0.75,c:0.0423,Y:0.82,Ks:-0.5,Ke:0.5}]
 };
 const MANNING = {concrete:0.012, cmp:0.024, hdpe:0.012};
+// ---- Generic cross-sections (HY-8 shapes): polygon -> depth tables ----
+// sec = {poly:[[x,y],...] closed, bed:[edge indices with bed roughness], nWall, nBed}; y measured up from invert.
+function clipBelow(P,z){const o=[];for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],ia=a[1]<=z,ib=b[1]<=z;
+  if(ia)o.push(a); if(ia!==ib){const t=(z-a[1])/(b[1]-a[1]);o.push([a[0]+t*(b[0]-a[0]),z]);}}return o;}
+function makeSection(poly,opt){opt=opt||{};
+  let P=poly.filter((p,i)=>i===0||p[0]!==poly[i-1][0]||p[1]!==poly[i-1][1]);
+  if(P.length>2&&P[0][0]===P[P.length-1][0]&&P[0][1]===P[P.length-1][1])P.pop();
+  const y0=Math.min(...P.map(p=>p[1]));P=P.map(p=>[p[0],p[1]-y0]);
+  const D=Math.max(...P.map(p=>p[1])),xs=P.map(p=>p[0]),B=Math.max(...xs)-Math.min(...xs);
+  const bed=opt.bed||(()=>false),nW=opt.nWall,nB=opt.nBed??opt.nWall,NL=400,tab=[];
+  for(let k=0;k<=NL;k++){const z=D*k/NL,C=clipBelow(P,z);let A=0,Sy=0;
+    for(let i=0;i<C.length;i++){const a=C[i],b=C[(i+1)%C.length],cr=a[0]*b[1]-b[0]*a[1];A+=cr;Sy+=cr*(a[1]+b[1]);}
+    A=Math.abs(A)/2;Sy=Math.abs(Sy)/6;
+    let T=0;const xi=[];for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length];if((a[1]<=z)!==(b[1]<=z))xi.push(a[0]+(z-a[1])/(b[1]-a[1])*(b[0]-a[0]));}
+    xi.sort((p,q)=>p-q);for(let i=0;i+1<xi.length;i+=2)T+=xi[i+1]-xi[i];
+    let Pw=0,Pb=0;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      const lo=Math.min(a[1],b[1]),hi=Math.max(a[1],b[1]);let f;
+      if(hi-lo<1e-12)f=lo<z||(lo===0&&z>0)?1:0; else f=Math.max(0,Math.min(1,(z-lo)/(hi-lo)));
+      if(bed(i,a,b))Pb+=f*L; else Pw+=f*L;}
+    tab.push([z,A,T,Pw,Pb,Sy]);}
+  let Pfull=0;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length];Pfull+=Math.hypot(b[0]-a[0],b[1]-a[1]);}
+  return {sec:true,poly:P,D,B,tab,nWall:nW,nBed:nB,Pfull,Afull:tab[NL][1]};}
+function secAt(s,y){const N=s.tab.length-1,f=Math.max(0,Math.min(N,y/s.D*N)),i=Math.min(N-1,Math.floor(f)),t=f-i,a=s.tab[i],b=s.tab[i+1],r=[];for(let k=0;k<6;k++)r.push(a[k]+(b[k]-a[k])*t);return r;}
+function secN(s,y,n){if(!s||!s.sec||s.nBed==null||s.nBed===s.nWall)return n; // Horton/Einstein composite n
+  const r=secAt(s,y),Pw=r[3],Pb=r[4],P=Pw+Pb; if(P<=0)return n; const nw=n; return Math.pow((Pw*Math.pow(nw,1.5)+Pb*Math.pow(s.nBed,1.5))/P,2/3);}
 function geom(shape,B,D,y){ // area, top width, wetted perimeter for depth y
   y=Math.max(1e-9,Math.min(y,D));
+  if(shape&&shape.sec){const r=secAt(shape,y);return {A:Math.max(r[1],1e-12),T:shape.flatTop?Math.max(secAt(shape,Math.min(y,shape.D*0.99999))[2],1e-9):(y>=shape.D?1e-9:Math.max(r[2],1e-9)),P:r[3]+r[4],Sy:r[5]};}
   if(shape==='box') return {A:B*y,T:B,P:B+2*y};
   const r=D/2, th=2*Math.acos(1-2*y/D);
   return {A:r*r*(th-Math.sin(th))/2, T:D*Math.sin(th/2)||1e-9, P:r*th};
@@ -23,22 +49,26 @@ function geom(shape,B,D,y){ // area, top width, wetted perimeter for depth y
 function bisect(f,a,b){let fa=f(a);for(let i=0;i<200;i++){const m=(a+b)/2,fm=f(m);if((fm>0)===(fa>0)){a=m;fa=fm}else b=m}return (a+b)/2}
 function critical(shape,B,D,Q,g){
   const f=y=>{const G=geom(shape,B,D,y);return Q*Q/g - G.A**3/G.T};
-  const top = shape==='box'?D:0.999*D;
+  const top = shape==='box'||(shape&&shape.sec&&shape.flatTop)?D:0.999*D;
   if(f(top)>0) return top; return bisect(f,1e-6*D,top);
 }
 function normal(shape,B,D,Q,n,S,k){
   if(S<=0) return Infinity;
-  const q=y=>{const G=geom(shape,B,D,y);return k/n*G.A*Math.pow(G.A/G.P,2/3)*Math.sqrt(S)};
-  const top = shape==='box'?D:0.938*D; // max capacity for circle occurs ~0.938D
+  const q=y=>{const G=geom(shape,B,D,y);return k/secN(shape,y,n)*G.A*Math.pow(G.A/G.P,2/3)*Math.sqrt(S)};
+  let top = shape==='box'?D:0.938*D; // max capacity for circle occurs ~0.938D
+  if(shape&&shape.sec){let best=0;for(let i=1;i<=200;i++){const y=D*i/200,v=q(i===200?D*0.99999:y);if(v>=best){best=v;top=y;}}}
   if(q(top)<Q) return Infinity; // flows full
   return bisect(y=>q(y)-Q,1e-6*D,top);
 }
 
-function sfr(shape,B,D,Q,n,kM,y){const G=geom(shape,B,D,y),V=Q/G.A;return Math.pow(n*V/kM,2)/Math.pow(G.A/G.P,4/3);}
+function sfr(shape,B,D,Q,n,kM,y){const G=geom(shape,B,D,y),V=Q/G.A;n=secN(shape,y,n);return Math.pow(n*V/kM,2)/Math.pow(G.A/G.P,4/3);}
 function spE(shape,B,D,Q,g,y){const V=Q/geom(shape,B,D,y).A;return y+V*V/2/g;}
 // Momentum function M = Q²/(gA) + A·ȳ (ȳ = centroid depth below water surface). Exact for box and circular segment.
 // head > D means pressurised section with piezometric head 'head' above invert (centroid of full section at D/2).
 function momentum(shape,B,D,Q,g,y,head){
+  if(shape&&shape.sec){const yc0=shape.tab[shape.tab.length-1];const Af=yc0[1],zf=yc0[5]/Af;
+    if(head!=null&&head>=D-1e-9)return Q*Q/g/Af+Af*(head-zf);
+    y=Math.max(1e-9,Math.min(y,D));const G=geom(shape,B,D,y);return Q*Q/g/G.A+(G.A*y-G.Sy);}
   if(head!=null&&head>=D-1e-9){const A=geom(shape,B,D,D).A;return Q*Q/g/A+A*(head-D/2);}
   y=Math.max(1e-9,Math.min(y,D));
   if(shape==='box'){const A=B*y;return Q*Q/g/A+A*y/2;}
@@ -49,7 +79,7 @@ function momentum(shape,B,D,Q,g,y,head){
 function conj(shape,B,D,Q,g,y1){ // sequent (subcritical) depth; returns {y,head} (head>D if pressurised)
   const m1=momentum(shape,B,D,Q,g,y1),yc=critical(shape,B,D,Q,g);
   if(momentum(shape,B,D,Q,g,D)>=m1) return {y:bisect(y=>momentum(shape,B,D,Q,g,y)-m1,yc,D),head:null};
-  const A=geom(shape,B,D,D).A; return {y:D,head:(m1-Q*Q/g/A)/A+D/2};
+  const A=geom(shape,B,D,D).A,zf=shape&&shape.sec?shape.tab[shape.tab.length-1][5]/A:D/2; return {y:D,head:(m1-Q*Q/g/A)/A+zf};
 }
 function interpPts(pts,x,k){k=k||1;for(let i=1;i<pts.length;i++)if(x<=pts[i][0]){const a=pts[i-1],b=pts[i],t=(x-a[0])/((b[0]-a[0])||1);return a[k]+(b[k]-a[k])*t;}return pts[pts.length-1][k];}
 // Locate hydraulic jump between supercritical profile sup (from inlet) and subcritical profile sub (from outlet).
@@ -94,7 +124,7 @@ function traceSuper(shape,B,D,Q,n,S,kM,g,L,y0){
 }
 // Standard step, subcritical: start at outlet with depth yd, march upstream distance L. Pressure flow where depth reaches crown.
 function traceSub(shape,B,D,Q,n,S,kM,g,L,yd,Rf,Pf){
-  const N=200,dx=L/N,yc=critical(shape,B,D,Q,g),Af=geom(shape,B,D,D).A,Vf=Q/Af,Sff=Math.pow(n*Vf/kM,2)/Math.pow(Rf,4/3);
+  const N=200,dx=L/N,yc=critical(shape,B,D,Q,g),Af=geom(shape,B,D,D).A,Vf=Q/Af,nF=secN(shape,D,n),Sff=Math.pow(nF*Vf/kM,2)/Math.pow(Rf,4/3);
   let choked=false,y=Math.min(yd,D),pts=[[L,y,Math.max(yd,y)]],full=y>=D-1e-9,HGL=full?yd:null,fullAt=full?L:null; // HGL head above local invert
   for(let i=1;i<=N;i++){const x=L-i*dx;
     if(full){HGL=HGL+Sff*dx-S*dx; // pressure flow: HGL rises by friction, invert rises by S
@@ -109,25 +139,55 @@ function traceSub(shape,B,D,Q,n,S,kM,g,L,yd,Rf,Pf){
 
   return {pts,choked,yIn:full?D:y,headIn:full?HGL:null,fullAt};
 }
+// HY-8 8.0 inlet control (User Manual §5.2.1): HW/D = A + B·X + C·X² + D·X³ + E·X⁴ + F·X⁵ (polynomial), or linear
+// interpolation in a table of HW/D at X = 0.5,1,2,...,9 (HDS-5 Chart 52B style), X = Q/(A·D^0.5) in US units; minus SR·S.
+const IX=[0.5,1,2,3,4,5,6,7,8,9];
+function hy8Ratio(inl,X){const c=inl.c;
+  if(inl.t==='poly')return c[0]+c[1]*X+c[2]*X*X+c[3]*X**3+c[4]*X**4+c[5]*X**5;
+  if(X<=IX[0])return c[0]*X/IX[0];
+  for(let i=1;i<IX.length;i++)if(X<=IX[i])return c[i-1]+(c[i]-c[i-1])*(X-IX[i-1])/(IX[i]-IX[i-1]);
+  const k=IX.length-1;return c[k]+(c[k]-c[k-1])*(X-IX[k]);}
+// HY-8 ShapeDB geometry: rows [x, yTop, yBottom] (ft). open=true -> bottom edges at the invert use the bed n.
+function sectionFromHY8(g,o){o=o||{};const sc=o.scale||1;let r=g.slice();while(r.length>2&&r[r.length-1][0]===0&&r[r.length-1][1]===0&&r[r.length-1][2]===0)r.pop();
+  let bot=r.map(q=>[q[0]*sc,q[2]*sc]),top=r.map(q=>[q[0]*sc,q[1]*sc]).reverse();
+  if(o.rise){const y0=Math.min(...bot.map(p=>p[1])),cap=y0+o.rise; top=top.map(p=>[p[0],Math.min(p[1],cap)]);} // HY-8 clips the shape at the nominal rise
+  const poly=bot.concat(top),nb=bot.length;
+  const ymin=Math.min(...poly.map(p=>p[1]));
+  const s=makeSection(poly,{nWall:o.nWall,nBed:o.open?o.nBed:o.nWall,bed:o.open?((i,a,b)=>i<nb-1&&Math.abs(a[1])<1e-6&&Math.abs(b[1])<1e-6):null});
+  s.open=!!o.open; if(o.rise&&s.poly.filter(p=>Math.abs(p[1]-s.D)<1e-9).length>1)s.flatTop=true; return s;}
+function rectSection(B,D,n){const s=makeSection([[0,0],[B,0],[B,D],[0,D]],{nWall:n});s.flatTop=true;return s;}
+function polySection(pts,o){o=o||{};const s=makeSection(pts,{nWall:o.nWall,nBed:o.nBed,bed:o.nBed!=null?((i,a,b)=>Math.abs(a[1])<1e-9&&Math.abs(b[1])<1e-9):null});return s;}
 function analyze(p){
   const US=p.units!=='SI', g=US?32.174:9.81, Ku=US?1.0:1.811, kM=US?1.486:1.0, kf=US?29:19.63;
-  const D=p.rise, B=p.shape==='box'?p.span:p.rise, N=p.barrels||1, Q=p.Q/N;
-  const S=(p.invIn-p.invOut)/p.length, inl=p.inlet;
-  const full=geom(p.shape,B,D,D), A=full.A, Pf=p.shape==='box'?2*(B+D):Math.PI*D, R=A/Pf; // full barrel: wetted perimeter includes the crown
+  const SEC=p.section&&p.section.sec?p.section:null; if(SEC)p=Object.assign({},p,{shape:SEC});
+  const D=SEC?SEC.D:p.rise, B=SEC?SEC.B:(p.shape==='box'?p.span:p.rise), N=p.barrels||1, Q=p.Q/N;
+  const S=(p.invIn-p.invOut)/p.length; let inl=p.inlet;
+  const full=geom(p.shape,B,D,D), A=SEC?SEC.Afull:full.A, Pf=SEC?SEC.Pfull:(p.shape==='box'?2*(B+D):Math.PI*D), R=A/Pf; // full barrel: wetted perimeter includes the crown
+  const nFull=SEC?secN(SEC,D,p.n):p.n;
   const dc=critical(p.shape,B,D,Q,g), Gc=geom(p.shape,B,D,dc), Vc=Q/Gc.A, Hc=dc+Vc*Vc/2/g;
   const yn=normal(p.shape,B,D,Q,p.n,S,kM);
-  const X=Ku*Q/(A*Math.sqrt(D));
+  const Di=SEC&&p.riseNom?p.riseNom:D, Bi=SEC&&p.spanNom?p.spanNom:B; // HY-8 uses the nominal span/rise for inlet control
+  const X=Ku*Q/(A*Math.sqrt(Di)), Xb=Ku*Q/(Bi*Math.pow(Di,1.5)); // HY-8 database inlets use X = Q/(B·D^1.5)
+  const hy8=inl.t==='poly'||inl.t==='interp';
   const unsub=x=> inl.form===1 ? Hc/D + inl.K*Math.pow(x,inl.M) + inl.Ks*S : inl.K*Math.pow(x,inl.M);
   const sub=x=> inl.c*x*x + inl.Y + inl.Ks*S;
   let ratio, regime;
-  if(X<=3.5){ratio=unsub(X);regime='unsubmerged';}
+  if(hy8)regime=inl.t==='poly'?'HY-8 polynomial':'HY-8 interpolation table';
+  if(hy8){const Xh=inl.t==='interp'||inl.xA?X:Xb; ratio=hy8Ratio(inl,Xh)-inl.SR*S;
+    if(ratio<0.5){ // HY-8 low-flow branch (calibrated to HY-8 8.0 runs): below HW/D = 0.5 the headwater follows the
+      // critical specific energy curve, scaled so it joins the inlet curve at HW/D = 0.5.
+      let a=0;while(a<10&&hy8Ratio(inl,a+0.01)-inl.SR*S<0.5)a+=0.01;let b=a+0.01;for(let k=0;k<40;k++){const m=(a+b)/2;(hy8Ratio(inl,m)-inl.SR*S<0.5)?a=m:b=m;}
+      const Qs=a*(inl.t==='interp'||inl.xA?A*Math.sqrt(Di):Bi*Math.pow(Di,1.5))/Ku,ys=critical(p.shape,B,D,Qs,g),As=geom(p.shape,B,D,ys).A,Hs=ys+Qs*Qs/As/As/2/g;
+      ratio=Hc/Hs*0.5; regime+=' (low-flow: scaled critical energy)';}}
+  else if(X<=3.5){ratio=unsub(X);regime='unsubmerged';}
   else if(X>=4.0){ratio=sub(X);regime='submerged';}
   else {const u=unsub(3.5/Ku*Ku), s=sub(4.0);ratio=u+(s-u)*(X-3.5)/0.5;regime='transition';}
   // transition uses equation values at the bounds (X expressed in US-equivalent scale)
-  const HWi=ratio*D;
+  const HWi=ratio*Di;
   const TW = p.twMode==='const' ? Math.max(0,p.twElev-p.invOut) : 0;
   const V=Q/A, hv=V*V/2/g;
-  const Hf=kf*p.n*p.n*p.length/Math.pow(R,4/3)*hv;
+  const Hf=kf*nFull*nFull*p.length/Math.pow(R,4/3)*hv;
+  const Ke=inl.Ke??inl.KE; inl=Object.assign({},inl,{Ke});
   const He=inl.Ke*hv, Ho=hv, H=He+Hf+Ho;
   // HDS-5 full-flow energy method (used when barrel flows full or no subcritical profile can form)
   const hoHDS=Math.max(TW,(dc+D)/2), ELhoHDS=p.invOut+hoHDS+H;
@@ -209,6 +269,6 @@ function balance(Qt,elOf,road){
     if(Math.abs(err)<=1e-4*Qt)break; if(err>0)b=Qc;else a=Qc;}
   return {Qc,Qr:rf.Q,EL,iter:it+1,over:true,road:rf};
 }
-root.Culvert={momentum,conj,findJump,traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
+root.Culvert={makeSection,sectionFromHY8,rectSection,polySection,hy8Ratio,secN,momentum,conj,findJump,traceSub,traceSuper,INLETS,MANNING,analyze,geom,critical,normal,roadFlow,balance,crestMin,weirCoef,ktFactor,CR_DEEP,CR_SHALLOW,KT};
 
 })(typeof module!=='undefined'?module.exports:window);

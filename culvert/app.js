@@ -6,12 +6,15 @@ const F=[
  ['invOut','Site','Outlet invert elevation','L',[98,29.87],'Elevation of the culvert bottom at the downstream end. Slope = (inlet − outlet) ÷ length.','Plans or survey. Usually follows the natural streambed slope.',null,'invout'],
  ['length','Site','Culvert length','L',[200,61],'Length of the barrel measured along the flowline, end to end.','Plans: roadway width + side slopes. Often 40–300 ft.',[20,500,6,150],'length'],
  ['allowHW','Site','Allowable headwater elevation','L',[108,32.9],'Highest water level you can accept upstream (e.g., road shoulder minus freeboard, or a building floor).','Design criteria in agency drainage manual; roadway plans.',null,'allow'],
- ['shape','Culvert','Barrel shape','sel',['circular'],'Circular pipe or rectangular box.','Product selection / existing structure inspection.',null,'barrel'],
- ['span','Culvert','Span (box width)','L',[6,1.83],'Inside width of a box culvert. Ignored for circular pipes.','Plans or standard box sizes (3–12 ft).',[2,20,0.6,6],'xs'],
+ ['shape','Culvert','Barrel shape','sel',['circular'],'All barrel shapes offered by FHWA HY-8 8.0: circular, box, elliptical, pipe arch, open-bottom arches, metal box, concrete open-bottom arch, South Dakota box, or your own x-y outline.','Product selection / existing structure inspection.',null,'barrel'],
+ ['size','Culvert','Standard size (HY-8 catalog)','sel',[''],'Standard sizes from the HY-8 8.0 shape database for the chosen shape and material (span × rise). The geometry, area and default Manning n come from the catalog.','Manufacturer catalog / plans. Pick the nominal size.',null,'xs'],
+ ['span','Culvert','Span (inside width)','L',[6,1.83],'Inside width of a box culvert (concrete or South Dakota box). Set by the catalog size for other shapes; ignored for circular pipes.','Plans or standard box sizes (3–12 ft).',[2,20,0.6,6],'xs'],
  ['rise','Culvert','Rise / diameter (D)','L',[5,1.52],'Inside height of a box, or inside diameter of a pipe. All HW/D ratios use this.','Plans, manufacturer catalog. Pipes 1.5–12 ft typical.',[1,15,0.3,4.5],'xs'],
  ['barrels','Culvert','Number of barrels','int',[1,1],'Identical barrels side by side. Flow is split equally.','Plans. 1–4 typical.',[1,6,1,6],'xs'],
- ['material','Culvert','Material (sets Manning n)','sel',['concrete'],'Roughness of the barrel wall. Concrete 0.012, corrugated metal 0.024, smooth HDPE 0.012.','HDS-5 Table 3.1 / manufacturer data.',null,'barrel'],
+ ['material','Culvert','Material (sets Manning n)','sel',['concrete'],'Roughness of the barrel wall. Concrete 0.012, corrugated metal 0.024, smooth HDPE 0.012. For HY-8 shapes the list and n values come from the HY-8 database.','HDS-5 Table 3.1 / HY-8 8.0 / manufacturer data.',null,'barrel'],
  ['n','Culvert','Manning n','num',[0.012,0.012],'Friction coefficient used in outlet-control losses. Edit for a custom value.','HDS-5 Table 3.1. Range 0.009–0.033.',[0.009,0.035,0.009,0.035],'barrel'],
+ ['nBed','Culvert','Manning n of open bottom (streambed)','num',[0.035,0.035],'Open-bottom shapes have a natural streambed floor. HY-8 asks for its own n; a composite n (Horton: equal velocity in each part) is used for the wet perimeter.','Streambed material: gravel 0.025–0.035, cobbles 0.035–0.05.',[0.015,0.07,0.015,0.07],'barrel'],
+ ['udPoly','Culvert','User-defined shape: x, y per line (closed outline)','txt',['0, 0\n8, 0\n8, 3\n6.5, 4.5\n1.5, 4.5\n0, 3','0, 0\n2.44, 0\n2.44, 0.91\n1.98, 1.37\n0.46, 1.37\n0, 0.91'],'Inside outline of the barrel, points in order around the shape (x across, y up from the invert). The polygon closes itself. Rise and span are taken from the outline.','Shop drawings or field measurements. 6–40 points is typical.',null,'xs'],
  ['inlet','Inlet','Inlet configuration','sel',[''],'How the upstream end is built. Sets the HDS-5 inlet-control coefficients (K, M, c, Y) and the entrance loss coefficient Ke.','Plans / standard drawings, or field inspection of the inlet.',null,'inlet'],
  ['Q','Flows','Design discharge','Q',[300,8.5],'Peak flow the culvert must pass (e.g., 25-yr or 50-yr storm).','Hydrology report (Rational method, USGS regression, TR-55, HEC-HMS).',[1,5000,0.03,140],'hw'],
  ['Qmin','Flows','Rating curve minimum flow','Q',[30,0.85],'Lowest flow plotted on the performance curve.','Your choice; often 10% of design.',null,'hw'],
@@ -29,13 +32,16 @@ const F=[
 ];
 const state={units:'US'};
 function opts(id){
- if(id==='shape')return[['circular','Circular pipe'],['box','Box (rectangular)']];
+ if(id==='shape')return Shapes.LIST;
+ const sk=val('shape');
+ if(id==='size')return Shapes.catalog(sk)&&Shapes.isHY(sk)?Shapes.sizes(sk,val('material')).map((z,i)=>['s'+i,z.l+' · A '+z.A+' ft²']):[['','— not used for this shape —']];
+ if(id==='material'&&Shapes.isHY(sk))return Shapes.mats(sk).map((m,i)=>['m'+i,`${m.name} (n=${m.n}${m.nb!=null&&Shapes.DB[sk].open?', bottom '+m.nb:''})`]);
  if(id==='material')return[['concrete','Concrete (n=0.012)'],['cmp','Corrugated metal (n=0.024)'],['hdpe','HDPE smooth (n=0.012)'],['custom','Custom n']];
  if(id==='roadOn')return[['on','Yes – include flow over the road'],['off','No – culvert only']];
  if(id==='roadMode')return[['const','Constant crest (one elevation)'],['profile','Roadway profile (points)']];
  if(id==='surface')return[['paved','Paved'],['gravel','Gravel'],['custom','Custom Cd']];
  if(id==='twMode')return[['const','Constant elevation'],['none','None (free outfall)']];
- if(id==='inlet')return C.INLETS[val('shape')||'box'].map(i=>[i.id,`${i.name} — HDS-5 ${i.chart}`]);
+ if(id==='inlet'){if(Shapes.isHY(sk))return Shapes.inlets(sk,val('material')).map(i=>[i.id,`${i.name} (Ke=${i.Ke}) — HY-8`]);return C.INLETS[sk||'box'].map(i=>[i.id,`${i.name} — HDS-5 ${i.chart}`]);}
 }
 function val(id){const e=document.getElementById(id);if(!e)return null;return (e.tagName==='SELECT'||e.tagName==='TEXTAREA')?e.value:parseFloat(e.value)}
 function roadObj(p){if(val('roadOn')!=='on')return null;let segs;
@@ -53,14 +59,34 @@ function build(){
   <div class="help"><b>What it is:</b> ${f[5]}<br><b>Where to get it:</b> ${f[6]}${rg}</div><div class="warn" id="w_${f[0]}"></div></div>`;});
  $('#form').innerHTML=h+'</fieldset>';
  ['shape','material','twMode','roadOn','roadMode','surface'].forEach(id=>fill(id));fill('inlet');
- $('#shape').value='box';fill('inlet');$('#inlet').value='b_90';
+ $('#shape').value='box';fill('inlet');fill('size');$('#inlet').value='b_90';
  document.querySelectorAll('.i').forEach(b=>b.onclick=()=>b.closest('.f').classList.toggle('open'));
  document.querySelectorAll('.f').forEach(d=>{const on=()=>hl(d.dataset.hl),off=()=>hl(null);d.onmouseenter=on;d.onmouseleave=off;d.addEventListener('focusin',on);d.addEventListener('focusout',off);});
- $('#form').oninput=e=>{if(e.target.id==='shape'){fill('inlet');}if(e.target.id==='material'&&e.target.value!=='custom')$('#n').value=C.MANNING[e.target.value];if(e.target.id==='n')$('#material').value='custom';run();};
+ $('#form').oninput=e=>{const id=e.target.id;
+  if(id==='shape'){fill('material');fill('size');pickSize();fill('inlet');shapeDefaults();}
+  else if(id==='material'){if(Shapes.isHY(val('shape'))){fill('size');pickSize();fill('inlet');shapeDefaults();}else if(e.target.value!=='custom')$('#n').value=C.MANNING[e.target.value];}
+  else if(id==='size')shapeDefaults();
+  if(id==='n'&&!Shapes.isHY(val('shape')))$('#material').value='custom';run();};
+ shapeVis();
 }
+// Shape-specific defaults & field visibility
+function pickSize(){const k=val('shape');if(!Shapes.catalog(k)||!Shapes.isHY(k))return;const L=Shapes.sizes(k,val('material'));let b=0;L.forEach((z,i)=>{if(Math.abs(Math.log(z.A/32))<Math.abs(Math.log(L[b].A/32)))b=i;});$('#size').value='s'+b;}
+function shapeDefaults(){const k=val('shape');if(!Shapes.isHY(k)){if(C.MANNING[val('material')])$('#n').value=C.MANNING[val('material')];shapeVis();return;}
+ const m=Shapes.mat(k,val('material')),z=Shapes.catalog(k)?Shapes.size(k,val('material'),val('size')):null,si=state.units==='SI'?0.3048:1;
+ $('#n').value=(z&&z.n)||m.n; if(m.nb!=null&&Shapes.DB[k].open)$('#nBed').value=m.nb;
+ if(z){$('#span').value=+(z.s*si).toFixed(3);$('#rise').value=+(z.r*si).toFixed(3);}
+ shapeVis();}
+function shapeVis(){const k=val('shape'),show=(id,on)=>{const d=document.getElementById('f_'+id);if(d)d.style.display=on?'':'none';};
+ show('size',Shapes.catalog(k)&&Shapes.isHY(k));show('nBed',Shapes.isHY(k)&&Shapes.DB[k].open);show('udPoly',k==='user');
+ show('span',k!=='circular'&&k!=='user');show('rise',k!=='user');
+ ['span','rise'].forEach(id=>{const e=document.getElementById(id);if(e)e.readOnly=Shapes.isHY(k)&&Shapes.catalog(k);});}
+function secFor(){const k=val('shape');if(!Shapes.isHY(k))return null;
+ return Shapes.section(k,{mat:val('material'),size:val('size'),units:state.units,n:val('n'),nb:val('nBed'),span:val('span'),rise:val('rise'),poly:val('udPoly')});}
 function fill(id){const e=document.getElementById(id),v=e.value;e.innerHTML=opts(id).map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('');if([...e.options].some(o=>o.value===v))e.value=v;}
 let hlTarget=null;function hl(t){hlTarget=t;document.querySelectorAll('[data-part]').forEach(e=>e.classList.toggle('hl',e.dataset.part===t));}
-function params(Q){return{units:state.units,shape:val('shape'),span:val('span'),rise:val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:C.INLETS[val('shape')].find(i=>i.id===val('inlet')),Q:Q??val('Q'),twMode:val('twMode'),twElev:val('twElev')};}
+function params(Q){const k=val('shape'),sec=secFor();
+ const inl=Shapes.isHY(k)?Shapes.inletFor(k,val('material'),val('inlet'),sec?(sec.spanNom||sec.B):1,sec?(sec.riseNom||sec.D):1):C.INLETS[k].find(i=>i.id===val('inlet'));
+ return{units:state.units,shape:k,section:sec,spanNom:sec&&sec.spanNom,riseNom:sec&&sec.riseNom,span:sec?(sec.spanNom||sec.B):val('span'),rise:sec?(sec.riseNom||sec.D):val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:inl,Q:Q??val('Q'),twMode:val('twMode'),twElev:val('twElev')};}
 function validate(p){const w={},us=state.units==='US';
  F.forEach(f=>{const v=val(f[0]);if(f[7]&&isFinite(v)){const lo=us?f[7][0]:f[7][2],hi=us?f[7][1]:f[7][3];if(v<lo||v>hi)w[f[0]]=`⚠ ${v} is outside the usual ${lo}–${hi}. Double-check the value and units.`;}
   if(f[3]!=='sel'&&f[3]!=='txt'&&!isFinite(v)&&!(f[1]==='Roadway'&&val('roadOn')!=='on'))w[f[0]]='⚠ Please enter a number.';});
@@ -69,7 +95,9 @@ function validate(p){const w={},us=state.units==='US';
  if(val('Qmin')>=val('Qmax'))w.Qmax='⚠ Maximum must be greater than minimum.';
  if(p.twMode==='const'&&p.twElev<p.invOut)w.twElev='ℹ Tailwater is below the outlet invert — it will have no effect.';
  if(p.twMode==='none')w.twElev='ℹ Ignored (tailwater set to none).';
- if(p.shape!=='box')w.span='ℹ Ignored for circular pipe.';
+ if(Shapes.isHY(p.shape)&&!p.section)w[p.shape==='user'?'udPoly':'span']='⚠ Shape could not be built — check the size / points.';
+ if(p.shape==='user'&&p.section)w.udPoly=`ℹ Outline: span ${p.section.B.toFixed(2)}, rise ${p.section.D.toFixed(2)}, area ${p.section.Afull.toFixed(2)}. Inlet uses HY-8 / HDS-5 Chart 52B coefficients (arch/embedded shapes).`;
+ if(p.shape==='coba'&&p.inlet&&p.inlet.ratioUsed){const r=p.span/p.rise;w.inlet=`ℹ Span:rise ${r.toFixed(2)}:1 → HY-8 uses the ${p.inlet.ratioUsed} curves${r<2||r>4?' (outside the tested 2:1–4:1 range)':''}.`;}
  if(val('roadOn')==='on'){const ro=roadObj(p);
   if(val('roadMode')==='const'){w.roadProfile='ℹ Ignored (constant crest selected).';}else{w.crestEl=w.crestLen='ℹ Ignored (profile selected).';if(ro.bad)w.roadProfile='⚠ Need at least 2 lines of "station, elevation".';}
   if(val('surface')!=='custom')w.roadCd='ℹ Ignored (Cr comes from HDS-5 Fig. 3.11 curves).';
@@ -100,7 +128,7 @@ function run(){
   <div class="kpi">Outlet velocity<b>${fx(r.Vout)} ${u.V}</b></div><div class="kpi">Slope<b>${fx(r.S*100,2)} %</b></div>${bal?`<div class="kpi ${bal.over?'gov':''}">Roadway overtopping Q<b>${fx(bal.Qr)} ${u.Q}</b>Culvert ${fx(bal.Qc)} of ${fx(Qt)} ${u.Q}</div>`:''}`;
  const i=r.inlet,ku=r.US?'1.0':'1.811';
  $('#explain').innerHTML=`<ol>
- <li><b>Geometry.</b> Barrel ${p.shape==='box'?fx(r.B)+' × '+fx(r.D):fx(r.D)+' diameter'} ${L}, full area A = ${fx(r.A)} ${L}², hydraulic radius R = ${fx(r.R,3)} ${L}. Slope S = (${p.invIn} − ${p.invOut}) / ${p.length} = ${fx(r.S,4)}. Flow per barrel Q = ${fx(r.Q)} ${u.Q} (${r.N} barrel${r.N>1?'s':''}).</li>
+ <li><b>Geometry.</b> Barrel ${p.section?Shapes.label(p.shape)+' '+fx(p.span)+' × '+fx(p.rise):p.shape==='box'?fx(r.B)+' × '+fx(r.D):fx(r.D)+' diameter'} ${L}, full area A = ${fx(r.A)} ${L}², hydraulic radius R = ${fx(r.R,3)} ${L}. Slope S = (${p.invIn} − ${p.invOut}) / ${p.length} = ${fx(r.S,4)}. Flow per barrel Q = ${fx(r.Q)} ${u.Q} (${r.N} barrel${r.N>1?'s':''}).</li>
  <li><b>Critical depth</b> d<sub>c</sub> = ${fx(r.dc)} ${L} (solves Q²/g = A³/T). Specific head at critical H<sub>c</sub> = d<sub>c</sub> + V<sub>c</sub>²/2g = ${fx(r.dc)} + ${fx(r.Vc)}²/(2·${fx(r.g,2)}) = ${fx(r.Hc)} ${L}.</li>
  <li><b>Normal depth</b> y<sub>n</sub> = ${isFinite(r.yn)?fx(r.yn)+' '+L+' (Manning, n = '+p.n+')':'— (barrel would flow full or slope ≤ 0)'}. ${isFinite(r.yn)?(r.yn<r.dc?'y<sub>n</sub> &lt; d<sub>c</sub>: steep (supercritical) barrel.':'y<sub>n</sub> &gt; d<sub>c</sub>: mild (subcritical) barrel.'):''}</li>
  <li><b>Inlet control</b> (HDS-5 ${i.chart}: K=${i.K}, M=${i.M}, c=${i.c}, Y=${i.Y}, K<sub>s</sub>=${i.Ks}). Discharge factor K<sub>u</sub>Q/(A·D<sup>0.5</sup>) = ${ku}·${fx(r.Q)}/(${fx(r.A)}·${fx(Math.sqrt(r.D),3)}) = ${fx(r.X,3)} → <b>${r.regime}</b> (unsubmerged ≤ 3.5, submerged ≥ 4.0).
@@ -190,10 +218,12 @@ function drawX(p,r){
  const W=300,H=320,N=r.N,sc=Math.min(240/(N*r.B+(N-1)*r.B*0.25),200/r.D),bw=r.B*sc,bh=r.D*sc,gap=r.B*0.25*sc,tot=N*bw+(N-1)*gap,x0=(W-tot)/2,yb=270;
  const wl=Math.min(r.HW,r.D*1.6)*sc;let s=`<rect x="0" y="${yb-wl}" width="${W}" height="${wl}" fill="#4a90d9" opacity=".25" data-part="hw"/>`;
  for(let k=0;k<N;k++){const x=x0+k*(bw+gap);
-  s+=p.shape==='box'?`<rect data-part="xs" x="${x}" y="${yb-bh}" width="${bw}" height="${bh}" fill="#fff" stroke="#444" stroke-width="3"/>`:`<circle data-part="xs" cx="${x+bw/2}" cy="${yb-bh/2}" r="${bh/2}" fill="#fff" stroke="#444" stroke-width="3"/>`;}
+  s+=p.section?`<path data-part="xs" d="${Shapes.path(p.section,sc,x,yb)}" fill="#fff" stroke="#444" stroke-width="3"/>${p.section.open?`<line x1="${x-4}" x2="${x+bw+4}" y1="${yb}" y2="${yb}" stroke="#8d6e3f" stroke-width="4" stroke-dasharray="3 2"/>`:''}`:p.shape==='box'?`<rect data-part="xs" x="${x}" y="${yb-bh}" width="${bw}" height="${bh}" fill="#fff" stroke="#444" stroke-width="3"/>`:`<circle data-part="xs" cx="${x+bw/2}" cy="${yb-bh/2}" r="${bh/2}" fill="#fff" stroke="#444" stroke-width="3"/>`;}
  s+=`<line x1="0" x2="${W}" y1="${yb-r.HW*sc}" y2="${yb-r.HW*sc}" stroke="#2b6cb0" stroke-width="2"/><text x="6" y="${yb-r.HW*sc-5}" font-size="12">HW ${fx(r.HW)}</text>
- <text x="${W/2}" y="${yb+20}" text-anchor="middle" font-size="12">${N} × ${p.shape==='box'?fx(r.B)+' × '+fx(r.D):'Ø '+fx(r.D)} ${U[state.units].L}</text>`;
+ <text x="${W/2}" y="${yb+20}" text-anchor="middle" font-size="12">${N} × ${p.section?fx(p.span)+' × '+fx(p.rise):p.shape==='box'?fx(r.B)+' × '+fx(r.D):'Ø '+fx(r.D)} ${U[state.units].L}</text>`;
  $('#xsec').innerHTML=s;
 }
 $('#units').onchange=e=>{state.units=e.target.value;build();run();};
-build();new URLSearchParams(location.search).forEach((v,k)=>{const e=document.getElementById(k);if(e)e.value=v;});run();
+build();(()=>{const q=new URLSearchParams(location.search),set=k=>{const e=document.getElementById(k);if(e&&q.has(k))e.value=q.get(k);};
+ set('shape');if(q.has('shape')){fill('material');set('material');fill('size');if(q.has('size'))set('size');else pickSize();fill('inlet');shapeDefaults();}
+ q.forEach((v,k)=>{if(!['shape','material','size'].includes(k))set(k);});})();run();

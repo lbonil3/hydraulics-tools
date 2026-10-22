@@ -25,3 +25,8 @@
 #report .rlink{display:block;margin-top:6px;font-weight:600}
 @media print{#report .rbtns,#report .rlink{display:none}}
 @media (display-mode: standalone){#report .rprt{display:none}}
+#report .rinlet svg{width:100%;max-width:420px;height:auto;display:block;border:1px solid #eee;border-radius:6px}
+#inletsk .isk svg{width:100%;max-width:460px;height:auto;display:block}
+#inletsk .idesc{margin:8px 0 2px;line-height:1.4}
+#inletsk .icoef{margin:2px 0;color:#555;font-size:13px}
+@media (max-width:700px){#inletsk .isk svg{max-width:100%}#inletsk .idesc{font-size:14px}}
