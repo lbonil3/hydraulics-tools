@@ -32,7 +32,7 @@ function overlay(p,r,allow,ro,bal){const svg=document.getElementById('profile');
  const zmin=Math.min(p.invOut,p.invIn)-r.D*0.6,zmax=Math.max(r.EL,isFinite(allow)?allow:0,p.invIn+r.D*1.8,zc)+r.D*0.3;
  const Y=z=>H-30-(z-zmin)/(zmax-zmin)*(H-60),yi=Y(p.invIn),yo=Y(p.invOut),road=Y(zc);
  const twEl=p.twMode==='const'?Math.max(p.twElev,p.invOut):p.invOut;
- const wsIn=Math.min(r.D,r.control==='Inlet'?r.dc:Math.max(r.dc,r.D)),wsOut=Math.min(r.D,r.yout);
+ const wsIn=Math.min(r.D,r.profile?r.profile[0][1]:r.dc),wsOut=Math.min(r.D,r.yout);
  const ma=(yi+Y(p.invIn+wsIn))/2,mb=(yo+Y(p.invOut+wsOut))/2,d=flowDur(r.V);
  let g=`<g class="anim" pointer-events="none">
  <line class="flow" x1="${x0+4}" y1="${ma}" x2="${x1-4}" y2="${mb}" style="animation-duration:${d}"/>
@@ -44,7 +44,7 @@ function overlay(p,r,allow,ro,bal){const svg=document.getElementById('profile');
 // ---------- phone profile ----------
 function geom(p,r,allow,ro,bal){const zc=ro?C.crestMin(ro):p.invIn+r.D*1.6,tw=p.twMode==='const'?Math.max(p.twElev,p.invOut):p.invOut;
  return {EL:r.EL,tw,zc,allow:isFinite(allow)?allow:NaN,invIn:p.invIn,invOut:p.invOut,D:r.D,
-  wsIn:Math.min(r.D,r.control==='Inlet'?r.dc:Math.max(r.dc,r.D)),wsOut:Math.min(r.D,r.yout),h:bal&&bal.over?bal.road.hmax:0,V:r.V,
+  wsIn:Math.min(r.D,r.profile?r.profile[0][1]:r.dc),wsOut:Math.min(r.D,r.yout),L:p.length,prof:r.profile||null,jump:r.jump||null,US:r.US,h:bal&&bal.over?bal.road.hmax:0,V:r.V,
   hasTw:p.twMode==='const',road:!!ro};}
 function drawPhone(g){const W=340,H=230,svg=document.getElementById('mprofile');
  const zmin=Math.min(g.invOut,g.invIn)-0.45*g.D,zmax=Math.max(g.EL,g.zc+g.h,isFinite(g.allow)?g.allow:-1e9,g.invIn+g.D,g.tw)+0.3*g.D;
@@ -53,11 +53,14 @@ function drawPhone(g){const W=340,H=230,svg=document.getElementById('mprofile');
  // upstream embankment face line from (xi,ti) up to (c0,road); pool reaches it at the HW level
  const xs=yE<ti?Math.min(c0,xi+(c0-xi)*(ti-yE)/(ti-road)):xi;
  const ws1=Y(g.invIn+g.wsIn),ws2=Y(g.invOut+g.wsOut);
+ const PX=x=>xi+(xo-xi)*x/g.L,PZ=(x,y)=>Y(g.invIn-(g.invIn-g.invOut)*x/g.L+Math.min(y,g.D));
+ const wsP=g.prof?g.prof.map((q,i)=>`${i?'L':'M'}${PX(q[0]).toFixed(1)} ${PZ(q[0],q[1]).toFixed(1)}`).join(' '):`M${xi} ${ws1} L${xo} ${ws2}`;
+ const jm=g.jump?(()=>{const jx=PX(g.jump.x),a=PZ(g.jump.x,g.jump.y1),b=PZ(g.jump.x,g.jump.y2),lx=Math.max(xi+34,Math.min(xo-34,jx));return `<line x1="${jx}" x2="${jx}" y1="${b-3}" y2="${a+3}" stroke="#c0392b" stroke-width="2.5"/><circle cx="${jx}" cy="${b}" r="3" fill="#c0392b"/><text x="${lx}" y="${Math.max(11,PZ(g.jump.x,g.D)-6)}" text-anchor="middle" font-size="11" font-weight="700" fill="#c0392b">Jump @ ${fmt(g.jump.x)} ${g.US?'ft':'m'}</text>`;})():'';
  let s=`<rect width="${W}" height="${H}" fill="#eaf4fb"/>
  <path d="M0 ${yi} L${xi} ${yi} L${xi} ${ti} L${c0} ${road} L${c1} ${road} L${xo} ${to} L${xo} ${yo} L${W} ${yo} L${W} ${H} L0 ${H}Z" fill="#cdb98f" stroke="#8a7550" stroke-width="1.5"/>
  <path d="M0 ${yi} L${xi} ${yi} L${xo} ${yo} L${W} ${yo} L${W} ${H} L0 ${H}Z" fill="#b39c6e"/>
  <path d="M${xi} ${yi} L${xo} ${yo} L${xo} ${to} L${xi} ${ti}Z" fill="#fff"/>
- <path d="M${xi} ${ws1} L${xo} ${ws2} L${xo} ${yo} L${xi} ${yi}Z" fill="#3d8fdc" opacity=".8"/>
+ <path d="${wsP} L${xo} ${yo} L${xi} ${yi}Z" fill="#3d8fdc" opacity=".8"/>${jm}
  <line class="flow" x1="${xi+4}" y1="${(yi+ws1)/2}" x2="${xo-4}" y2="${(yo+ws2)/2}" style="animation-duration:${flowDur(g.V)}"/>
  <path d="M${xi} ${yi} L${xo} ${yo} M${xi} ${ti} L${xo} ${to}" stroke="#4a4f57" stroke-width="3" fill="none"/>
  <line x1="${xi}" y1="${yi+2}" x2="${xi}" y2="${ti-6}" stroke="#2b2f36" stroke-width="5"/><line x1="${xo}" y1="${yo+2}" x2="${xo}" y2="${to-6}" stroke="#2b2f36" stroke-width="5"/>
@@ -77,6 +80,7 @@ function keyTable(p,r,allow,ro,bal,g){const L=r.US?'ft':'m',Q=r.US?'cfs':'m³/s'
  if(isFinite(allow))rows.push([dot(6,'#c0392b'),'Allowable HW El.',`${fmt(allow)} ${L}`,r.EL>allow?'<span class="bad">exceeded</span>':'OK']);
  rows.push(['','Depth over road',ro?(bal&&bal.over?`${fmt(bal.road.hmax)} ${L}`:'none'):'off',bal&&bal.over?`Qr ${fmt(bal.Qr)} ${Q}`:''],
   ['','Barrel rise D',`${fmt(r.D)} ${L}`,''],['','Critical depth d<sub>c</sub>',`${fmt(r.dc)} ${L}`,''],['','Normal depth d<sub>n</sub>',isFinite(r.yn)?`${fmt(r.yn)} ${L}`:'—',''],['','Outlet depth',`${fmt(r.yout)} ${L}`,`V ${fmt(r.Vout)} ${r.US?'ft/s':'m/s'}`]);
+ if(r.jump)rows.push(['','Hydraulic jump',`${fmt(r.jump.x)} ${L} in`,`y₁ ${fmt(r.jump.y1)} → y₂ ${fmt(r.jump.y2)}`]);
  document.getElementById('mkey').innerHTML=rows.map(x=>`<tr><td>${x[0]}</td><th>${x[1]}</th><td><b>${x[2]}</b></td><td class="n">${x[3]}</td></tr>`).join('');}
 // smooth level transitions on the phone drawing
 const TK=['EL','tw','zc','allow','invIn','invOut','D','wsIn','wsOut','h'];let tw=null;

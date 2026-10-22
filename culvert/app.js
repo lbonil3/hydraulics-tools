@@ -108,7 +108,7 @@ function run(){
  <li><b>Outlet control</b> (${r.ocMethod==='steep-full'?'steep barrel with low tailwater — no subcritical profile can form, so HY-8/HDS-5 full-barrel losses are used':r.ocMethod==='full'?'outlet submerged — pressure flow':'HY-8-style standard-step water-surface profile traced upstream from max(d<sub>c</sub>, TW) at the outlet'+(r.ocMethod==='profile+full'?', with pressure flow where it reaches the crown':'')+'; HW = inlet depth + (1+K<sub>e</sub>)·V²/2g'}). V = Q/A = ${fx(r.V)} ${u.V}, velocity head = ${fx(r.hv,3)} ${L}. Entrance loss K<sub>e</sub>·V²/2g = ${i.Ke}·${fx(r.hv,3)} = ${fx(r.He,3)}; friction ${r.US?29:19.63}·n²·L/R<sup>1.33</sup>·V²/2g = ${fx(r.Hf,3)}; exit loss 1.0·V²/2g = ${fx(r.Ho,3)}; total H = ${fx(r.H,3)} ${L}.
   Tailwater depth TW = ${fx(r.TW)} ${L}; (d<sub>c</sub>+D)/2 = ${fx((r.dc+r.D)/2)} → h<sub>o</sub> = ${fx(r.ho)} ${L}. Headwater El. = outlet invert + h<sub>o</sub> + H = ${p.invOut} + ${fx(r.ho)} + ${fx(r.H,3)} = ${fx(r.ELho)}, so HW<sub>o</sub> = <b>${fx(r.HWo)} ${L}</b>.</li>
  <li><b>Which governs?</b> The larger headwater controls: <b>${r.control} control</b> (${fx(Math.max(r.HWi,r.HWo))} vs ${fx(Math.min(r.HWi,r.HWo))} ${L}). ${r.control==='Inlet'?'The entrance is the bottleneck — improving the inlet edge (bevels, wingwalls) helps; barrel roughness does not.':'The barrel/tailwater is the bottleneck — a smoother, shorter, larger barrel or lower tailwater helps; inlet improvements only reduce the small entrance loss.'}</li>
- <li><b>Outlet velocity</b> ≈ ${fx(r.Vout)} ${u.V} at depth ${fx(r.yout)} ${L} (${r.outMethod}).</li>${bal?roadExplain(bal,ro,Qt,u):''}</ol>
+ ${r.jump?`<li><b>Hydraulic jump</b> forms ${fx(r.jump.x)} ${L} into the barrel: supercritical depth y<sub>1</sub> = ${fx(r.jump.y1)} ${L} jumps to sequent depth y<sub>2</sub> = ${fx(r.jump.y2)} ${L}${r.jump.head2>r.D?' (pressurised, head '+fx(r.jump.head2)+' '+L+')':''}, where the momentum function of the S2 profile from the inlet equals that of the subcritical profile traced upstream from the outlet.</li>`:r.jumpType==='drowned'?`<li><b>Hydraulic jump</b> would sit upstream of the inlet — tailwater drowns the inlet, so the barrel runs in the outlet-control (subcritical) regime.</li>`:''}<li><b>Outlet velocity</b> ≈ ${fx(r.Vout)} ${u.V} at depth ${fx(r.yout)} ${L} (${r.outMethod}).</li>${bal?roadExplain(bal,ro,Qt,u):''}</ol>
  ${flags.length?flags.map(f=>`<div class="flag">⚠ ${f}</div>`).join(''):'<div class="flag ok">✓ No warnings.</div>'}`;
  drawProfile(p,r,allow,ro&&!ro.bad?ro:null,bal);drawRating(p,r);drawSplit(p,ro&&!ro.bad?ro:null);drawX(p,r);hl(hlTarget);
 }
@@ -119,7 +119,9 @@ function drawProfile(p,r,allow,ro,bal){
  const Y=z=>H-30-(z-zmin)/(zmax-zmin)*(H-60);
  const yi=Y(p.invIn),yo=Y(p.invOut),ti=Y(p.invIn+r.D),to=Y(p.invOut+r.D),road=Y(zc);
  const twEl=p.twMode==='const'?Math.max(p.twElev,p.invOut):p.invOut;
- const wsIn=Math.min(r.D,r.control==='Inlet'?r.dc:Math.max(r.dc,r.D)),wsOut=Math.min(r.D,r.yout);
+ const wsIn=Math.min(r.D,r.profile?r.profile[0][1]:r.dc),wsOut=Math.min(r.D,r.yout);
+ const PX=x=>x0+(x1-x0)*x/p.length,PZ=(x,y)=>Y(p.invIn-(p.invIn-p.invOut)*x/p.length+Math.min(y,r.D));
+ const prof=(r.profile||[[0,wsIn],[p.length,wsOut]]),wsPath=prof.map((q,i)=>`${i?'L':'M'}${PX(q[0]).toFixed(1)} ${PZ(q[0],q[1]).toFixed(1)}`).join(' ');
  let s=`<rect width="${W}" height="${H}" fill="#eaf4fb"/>
  <path data-part="embank" d="M60 ${yi} L${x0-40} ${yi} L${x0+60} ${road} L${x1-60} ${road} L${x1+40} ${yo} L840 ${yo} L840 ${H} L60 ${H}Z" fill="#c9b48a" stroke="#8a7550"/>
  <text x="${(x0+x1)/2}" y="${road+18}" text-anchor="middle" fill="#5a4a2c">${ro?'Road crest El. '+fx(zc):'Roadway embankment (overtopping off)'}</text>
@@ -127,7 +129,8 @@ function drawProfile(p,r,allow,ro,bal){
  ${bal&&bal.over?`<path d="M${x0+60-(road-Y(r.EL))} ${Y(r.EL)} L${x1-60} ${Y(r.EL)+(road-Y(r.EL))*0.45} L${x1-60} ${road} L${x0+60} ${road}Z" fill="#4a90d9" opacity=".6"/><text x="${(x0+x1)/2}" y="${Y(r.EL)-8}" text-anchor="middle" font-weight="700" fill="#174a7c">Overtopping ${fx(bal.Qr)} ${r.US?'cfs':'m³/s'} · HWr = ${fx(bal.road.hmax)} ${L}</text>`:''}
  <path d="M${x0} ${yi} L${x1} ${yo} L${x1} ${to} L${x0} ${ti}Z" fill="#fff" stroke="none"/>
  <path data-part="hw" d="M40 ${Y(r.EL)} L${x0+ (Y(r.EL)>ti? 0:0)} ${Y(r.EL)} L${x0} ${yi} L40 ${yi}Z" fill="#4a90d9" opacity=".55"/>
- <path d="M${x0} ${Y(p.invIn+wsIn)} L${x1} ${Y(p.invOut+wsOut)} L${x1} ${yo} L${x0} ${yi}Z" fill="#4a90d9" opacity=".55"/>
+ <path data-part="ws" d="${wsPath} L${x1} ${yo} L${x0} ${yi}Z" fill="#4a90d9" opacity=".55"/><path d="${wsPath}" fill="none" stroke="#1659a3" stroke-width="1.5"/>
+ ${r.jump?`<line x1="${PX(r.jump.x)}" x2="${PX(r.jump.x)}" y1="${PZ(r.jump.x,r.jump.y2)-4}" y2="${PZ(r.jump.x,r.jump.y1)+4}" stroke="#c0392b" stroke-width="2.5"/><text x="${PX(r.jump.x)}" y="${PZ(r.jump.x,r.D)-8}" text-anchor="middle" font-size="12" fill="#c0392b" font-weight="700">Hydraulic jump @ ${fx(r.jump.x)} ${L}</text>`:''}
  <path data-part="tw" d="M${x1} ${Y(twEl)} L860 ${Y(twEl)} L860 ${yo} L${x1} ${yo}Z" fill="#4a90d9" opacity=".45" stroke="#2b6cb0"/>
  <path data-part="barrel" d="M${x0} ${yi} L${x1} ${yo} M${x0} ${ti} L${x1} ${to}" stroke="#555" stroke-width="3" fill="none"/>
  <line data-part="inlet" x1="${x0}" y1="${yi}" x2="${x0}" y2="${ti-8}" stroke="#333" stroke-width="5"/>
