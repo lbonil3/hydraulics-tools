@@ -24,4 +24,15 @@ const over = M.goalSeekRow(M.computeRow(Object.assign(M.emptyRow(), {
 assert.strictEqual(over.flowDepth, null);
 assert.ok(over.err);
 
+assert.ok(/capacity/i.test(over.err));
+const re = M.computeRow(over);
+assert.strictEqual(re.flowDepth, null);
+assert.ok(/capacity/i.test(re.err));
+
+const inc = M.goalSeekRow(M.computeRow(Object.assign(M.emptyRow(), {
+  B: 2.5, Z1: 6, Z2: 5, flFrom: 17, flTo: null, length: 100, Dd: 2, n: 0.035, Q: 20
+})));
+assert.strictEqual(inc.flowDepth, null);
+assert.ok(/Incomplete/i.test(inc.err));
+
 console.log('ok');

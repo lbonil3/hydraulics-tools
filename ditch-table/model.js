@@ -73,6 +73,9 @@
       const gFull = DT.geom(s, out.Dd);
       out.Qfull = DT.qAt(s, L, out.Dd);
       out.topElevDS = out.flTo != null ? out.flTo + out.Dd : null;
+      if (out.Q != null && out.Qfull != null && out.Q > out.Qfull && out.flowDepth == null) {
+        out.err = 'Design Q exceeds full-depth capacity';
+      }
       if (out.flowDepth != null && out.flowDepth > 0 && out.Q != null) {
         const g = DT.geom(s, out.flowDepth);
         out.area = g.A; out.P = g.P; out.R = g.A / g.P;
@@ -104,7 +107,7 @@
   }
   function goalSeekRow(row) {
     const base = computeRow(Object.assign({}, row, { flowDepth: null }));
-    if (base.err && !base.grade) return Object.assign(base, { flowDepth: null, err: base.err || 'Incomplete inputs' });
+    if (!(base.grade > 0) || !(base.Qfull > 0)) return Object.assign(base, { flowDepth: null, err: (base.grade != null && base.grade <= 0) ? 'Grade must be > 0' : 'Incomplete inputs' });
     if (!(base.Q > 0)) return Object.assign(base, { flowDepth: null, err: 'Enter design Q' });
     const s = shapeFromRow(base);
     const L = { type: 'fixed', n: Number(base.n) };
