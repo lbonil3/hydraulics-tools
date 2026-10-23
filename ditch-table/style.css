@@ -32,3 +32,16 @@ td.out.ok{background:#e8f7ec;color:#1e6b34;font-weight:600}
 td.out.bad{background:#fdecea;color:#a93226;font-weight:600}
 .err{display:block;background:#fff4e0;color:#9a5b00;font-size:11px;line-height:1.3;padding:3px 5px;margin:0 0 4px;border-radius:3px;max-width:160px;white-space:normal;text-align:left}
 .cite{font-size:12px;color:#556;padding:8px 14px 20px;line-height:1.45;max-width:960px}
+#grid tbody tr.selected{outline:2px solid #1f4e79;outline-offset:-2px;background:#eaf1f8}
+.toolbar button.toggle{background:#fff;color:#1f4e79}
+.toolbar button.toggle.on{background:#1f4e79;color:#fff}
+.viz{display:flex;flex-direction:column;gap:12px;padding:12px 14px;background:#f3f5f8}
+.viz-card{background:#fff;border:1px solid #d5dce5;border-radius:10px;padding:10px 12px}
+.viz-card h2{margin:0 0 8px;font-size:15px;color:#1f4e79}
+.viz-svg{min-height:160px;width:100%}
+.viz-svg svg{width:100%;height:auto;display:block}
+@media (min-width:900px){
+  .layout{display:grid;grid-template-columns:1fr minmax(280px,360px);align-items:start}
+  .layout .wrap{grid-column:1}
+  .layout .viz{grid-column:2;position:sticky;top:8px;max-height:calc(100vh - 16px);overflow:auto}
+}

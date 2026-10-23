@@ -19,3 +19,4 @@ html{-webkit-text-size-adjust:100%}
   .toolbar button,.toolbar a.toolbtn,#grid button.del,#grid button.gs{touch-action:manipulation;min-height:44px;font-size:16px}
   #grid input,#grid select,.toolbar .storm input{min-height:44px;font-size:16px}
 }
+/* New toolbar helpers (copy/fill/chain) keep 44px touch targets via .toolbar button */

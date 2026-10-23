@@ -6,6 +6,8 @@
 
   /** @type {ReturnType<typeof M.emptyRow>[]} */
   let rows = [];
+  let selectedRowId = null;
+  let chainQn = false;
 
   const COLS = [
     { key: 'staFrom', label: 'Sta From', kind: 'in', type: 'text' },
@@ -55,6 +57,7 @@
   function save() {
     const payload = {
       stormLabel: stormEl.value || '5-YR',
+      chainQn: !!chainQn,
       rows: rows
     };
     try {
@@ -66,16 +69,73 @@
     rows = rows.map(function (r) { return M.computeRow(r); });
   }
 
+  function selectedIndex() {
+    if (!rows.length) return 0;
+    const i = rows.findIndex(function (r) { return r.id === selectedRowId; });
+    return i < 0 ? 0 : i;
+  }
+
+  function refreshViz() {
+    const V = window.DitchTableViz;
+    if (!V) return;
+    const idx = selectedIndex();
+    selectedRowId = rows[idx] ? rows[idx].id : null;
+    const sec = document.getElementById('sectionSvg');
+    const prof = document.getElementById('profileSvg');
+    const title = document.getElementById('sectionTitle');
+    if (title && rows[idx]) {
+      title.textContent = 'Cross-section @ ' + (rows[idx].staFrom || '') + '–' + (rows[idx].staTo || '');
+    }
+    if (sec) V.renderSection(sec, rows[idx] || null);
+    if (prof) V.renderProfile(prof, rows);
+  }
+
+  function updateChainButton() {
+    const btn = document.getElementById('chainQn');
+    if (!btn) return;
+    btn.setAttribute('aria-pressed', chainQn ? 'true' : 'false');
+    btn.textContent = chainQn ? 'Chain Q/n: On' : 'Chain Q/n: Off';
+    btn.classList.toggle('on', chainQn);
+  }
+
+  function onCopySection() {
+    const i = selectedIndex();
+    rows = M.copySectionDown(rows, i).map(function (r) { return M.computeRow(r); });
+    save(); render();
+  }
+
+  function onFillFl() {
+    const probe = M.fillFlFromGrade(rows);
+    if (!probe.changed) return;
+    const wouldOverwrite = rows.some(function (r, idx) {
+      const n = probe.rows[idx];
+      return r.flFrom != null && r.flTo != null &&
+        (Math.abs(Number(r.flFrom) - Number(n.flFrom)) > 1e-9 ||
+         Math.abs(Number(r.flTo) - Number(n.flTo)) > 1e-9);
+    });
+    if (wouldOverwrite && !confirm('Update existing flow-line elevations from grade?')) return;
+    rows = probe.rows.map(function (r) { return M.computeRow(r); });
+    save(); render();
+  }
+
+  function onToggleChain() {
+    chainQn = !chainQn;
+    updateChainButton();
+    save();
+  }
+
   function init() {
     const data = load();
     if (data && Array.isArray(data.rows) && data.rows.length) {
       if (data.stormLabel) stormEl.value = data.stormLabel;
+      if (typeof data.chainQn === 'boolean') chainQn = data.chainQn;
       rows = data.rows.map(function (r) { return M.computeRow(r); });
     } else {
       rows = [M.computeRow(M.emptyRow())];
     }
     render();
     save();
+    updateChainButton();
   }
 
   /** @type {{id:string,key:string,selStart?:number,selEnd?:number}|null} */
@@ -150,11 +210,16 @@
       const acts = '<td class="act">' + errBlock +
         '<button type="button" class="gs" data-gs="' + row.id + '" aria-label="Goal Seek row">GS</button> ' +
         '<button type="button" class="del" data-del="' + row.id + '" aria-label="Delete row">Delete</button></td>';
-      return '<tr data-idx="' + idx + '"' + (row.err ? ' class="has-err"' : '') + '>' + cells + acts + '</tr>';
+      const classes = [];
+      if (row.err) classes.push('has-err');
+      if (row.id === selectedRowId) classes.push('selected');
+      const clsAttr = classes.length ? ' class="' + classes.join(' ') + '"' : '';
+      return '<tr data-idx="' + idx + '" data-row-id="' + row.id + '"' + clsAttr + '>' + cells + acts + '</tr>';
     }).join('');
 
     grid.innerHTML = thead + '<tbody>' + body + '</tbody>';
     restoreFocus();
+    refreshViz();
   }
 
   function escapeAttr(s) {
@@ -198,6 +263,16 @@
       row.flowDepth = null;
     }
 
+    // Chain Q/n: edited row already has new value; propagate down then recompute all
+    const numVal = key === 'Q' || key === 'n' ? row[key] : null;
+    if (chainQn && (key === 'Q' || key === 'n')) {
+      rows[i] = row;
+      rows = M.applyChainQn(rows, i, key, numVal);
+      rows = rows.map(function (r) { return M.computeRow(r); });
+      save(); render();
+      return;
+    }
+
     rows[i] = M.computeRow(row);
     save();
     render();
@@ -216,6 +291,7 @@
     if (i < 0) return;
     rows.splice(i, 1);
     if (!rows.length) rows.push(M.emptyRow());
+    if (selectedRowId === id) selectedRowId = rows[0] ? rows[0].id : null;
     recomputeAll();
     save();
     render();
@@ -227,6 +303,7 @@
     }
     stormEl.value = '5-YR (example)';
     rows = M.exampleRows().map(function (r) { return M.computeRow(r); });
+    selectedRowId = rows[0] ? rows[0].id : null;
     save();
     render();
   }
@@ -234,6 +311,7 @@
   function clearAll() {
     if (!confirm('Clear the entire table? This cannot be undone.')) return;
     rows = [M.computeRow(M.emptyRow())];
+    selectedRowId = rows[0] ? rows[0].id : null;
     save();
     render();
   }
@@ -256,6 +334,9 @@
   document.getElementById('loadExample').addEventListener('click', loadExample);
   document.getElementById('clearAll').addEventListener('click', clearAll);
   document.getElementById('goalSeekAll').addEventListener('click', goalSeekAll);
+  document.getElementById('copySection').addEventListener('click', onCopySection);
+  document.getElementById('fillFl').addEventListener('click', onFillFl);
+  document.getElementById('chainQn').addEventListener('click', onToggleChain);
 
   stormEl.addEventListener('change', save);
   stormEl.addEventListener('input', save);
@@ -279,7 +360,15 @@
       return;
     }
     const btn = e.target.closest('[data-del]');
-    if (btn) deleteRow(btn.getAttribute('data-del'));
+    if (btn) {
+      deleteRow(btn.getAttribute('data-del'));
+      return;
+    }
+    const tr = e.target.closest('tr[data-row-id]');
+    if (tr) {
+      selectedRowId = tr.getAttribute('data-row-id');
+      render();
+    }
   });
 
   init();

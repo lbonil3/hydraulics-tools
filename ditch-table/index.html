@@ -20,14 +20,30 @@
   <button type="button" id="addRow">Add Row</button>
   <button type="button" id="loadExample">Load example</button>
   <button type="button" id="goalSeekAll">Goal Seek</button>
+  <button type="button" id="copySection">Copy section</button>
+  <button type="button" id="fillFl">Fill FL from grade</button>
+  <button type="button" id="chainQn" class="toggle" aria-pressed="false" title="When on, Q or n edits copy down the table">Chain Q/n: Off</button>
   <a class="toolbtn" href="../ditch/studio.html">Single section</a>
   <button type="button" id="clearAll" class="danger">Clear table</button>
   <label class="storm">Design storm label <input id="stormLabel" value="5-YR" maxlength="24"></label>
 </div>
+<div class="layout">
 <div class="wrap"><table id="grid"></table></div>
+<div id="viz" class="viz">
+  <div class="viz-card">
+    <h2 id="sectionTitle">Cross-section</h2>
+    <div id="sectionSvg" class="viz-svg"></div>
+  </div>
+  <div class="viz-card">
+    <h2>Profile (FL + WSEL)</h2>
+    <div id="profileSvg" class="viz-svg"></div>
+  </div>
+</div>
+</div>
 <p class="cite">Hydraulics: Manning equation. Shear τ = γRS. Freeboard criterion: FHWA HEC-15 §2.3.4 (0.5 ft permanent lining) — labeled because TxDOT HDM Ch. 7 Sec. 3 does not publish a freeboard value. Verify with your judgment.</p>
 <script src="../ditch/calc.js"></script>
 <script src="model.js"></script>
+<script src="viz.js"></script>
 <script src="table.js"></script>
 </body>
 </html>
