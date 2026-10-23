@@ -78,6 +78,45 @@
     save();
   }
 
+  /** @type {{id:string,key:string,selStart?:number,selEnd?:number}|null} */
+  let pendingFocus = null;
+
+  function captureFocusHint(editedEl) {
+    const active = document.activeElement;
+    if (active && active !== editedEl && active.matches && active.matches('input[data-id][data-key]')) {
+      pendingFocus = {
+        id: active.getAttribute('data-id'),
+        key: active.getAttribute('data-key'),
+        selStart: active.selectionStart,
+        selEnd: active.selectionEnd
+      };
+    } else if (editedEl) {
+      pendingFocus = {
+        id: editedEl.getAttribute('data-id'),
+        key: editedEl.getAttribute('data-key'),
+        selStart: editedEl.selectionStart,
+        selEnd: editedEl.selectionEnd
+      };
+    } else {
+      pendingFocus = null;
+    }
+  }
+
+  function restoreFocus() {
+    if (!pendingFocus) return;
+    const sel = 'input[data-id="' + pendingFocus.id + '"][data-key="' + pendingFocus.key + '"]';
+    const inp = grid.querySelector(sel);
+    if (inp) {
+      inp.focus();
+      try {
+        if (typeof pendingFocus.selStart === 'number' && typeof pendingFocus.selEnd === 'number') {
+          inp.setSelectionRange(pendingFocus.selStart, pendingFocus.selEnd);
+        }
+      } catch (_) { /* non-text inputs */ }
+    }
+    pendingFocus = null;
+  }
+
   function render() {
     const thead = '<thead><tr>' +
       COLS.map(function (c) { return '<th scope="col">' + c.label + '</th>'; }).join('') +
@@ -105,14 +144,17 @@
         const text = fmt(row[c.key], c.fmt);
         return '<td class="' + cls + '">' + escapeHtml(text) + '</td>';
       }).join('');
-      const err = row.err ? '<span class="err-hint" title="' + escapeAttr(row.err) + '">⚠</span> ' : '';
-      const acts = '<td class="act">' + err +
+      const errBlock = row.err
+        ? '<div class="err" title="' + escapeAttr(row.err) + '">' + escapeHtml(row.err) + '</div>'
+        : '';
+      const acts = '<td class="act">' + errBlock +
         '<button type="button" class="gs" data-gs="' + row.id + '" aria-label="Goal Seek row">GS</button> ' +
         '<button type="button" class="del" data-del="' + row.id + '" aria-label="Delete row">Delete</button></td>';
-      return '<tr data-idx="' + idx + '">' + cells + acts + '</tr>';
+      return '<tr data-idx="' + idx + '"' + (row.err ? ' class="has-err"' : '') + '>' + cells + acts + '</tr>';
     }).join('');
 
     grid.innerHTML = thead + '<tbody>' + body + '</tbody>';
+    restoreFocus();
   }
 
   function escapeAttr(s) {
@@ -136,12 +178,10 @@
   function onInputChange(id, key, raw) {
     const i = findRow(id);
     if (i < 0) return;
-    const row = Object.assign({}, rows[i]);
+    let row = Object.assign({}, rows[i]);
 
     if (key === 'gradePct') {
-      const pct = parseNum(raw);
-      row.grade = pct == null ? null : pct / 100;
-      row.gradeOverride = true;
+      row = M.applyGradeInput(row, raw);
     } else if (key === 'staFrom' || key === 'staTo' || key === 'offFrom' || key === 'offTo' || key === 'comment') {
       row[key] = raw;
     } else {
@@ -153,7 +193,11 @@
       }
     }
 
-    // Keep existing flowDepth until Goal Seek; computeRow preserves it when present.
+    // Clear stale Goal Seek depth when Q(d) inputs change
+    if (M.DEPTH_INVALIDATING[key]) {
+      row.flowDepth = null;
+    }
+
     rows[i] = M.computeRow(row);
     save();
     render();
@@ -208,6 +252,7 @@
   grid.addEventListener('change', function (e) {
     const t = e.target;
     if (t && t.matches('input[data-id][data-key]')) {
+      captureFocusHint(t);
       onInputChange(t.getAttribute('data-id'), t.getAttribute('data-key'), t.value);
     }
   });

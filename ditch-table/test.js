@@ -42,5 +42,50 @@ const r2 = M.goalSeekRow(Object.assign(M.emptyRow(), {
 assert.ok(Math.abs(r2.flowDepth - DT.normalDepth(M.shapeFromRow(r2), {type:'fixed', n:0.013}, 50).d) < 1e-6);
 assert.strictEqual(r2.passCap, true);
 
-console.log('ok');
+// (1) Clearing flowDepth drops V/freeboard (stale-depth path after Q/geom edits)
+const solved = Object.assign({}, g);
+assert.ok(solved.flowDepth != null && solved.V != null);
+const cleared = M.computeRow(Object.assign({}, solved, { flowDepth: null }));
+assert.strictEqual(cleared.flowDepth, null);
+assert.strictEqual(cleared.V, null);
+assert.strictEqual(cleared.freeboard, null);
+assert.ok(cleared.Qfull > 0);
+assert.ok(M.DEPTH_INVALIDATING.Q && M.DEPTH_INVALIDATING.B && M.DEPTH_INVALIDATING.gradePct);
 
+// (2) Grade clear restores override false; elev-based grade returns
+const overridden = M.applyGradeInput(Object.assign(M.emptyRow(), {
+  flFrom: 10, flTo: 9, length: 100, Dd: 2, n: 0.035, gradeOverride: false
+}), '5');
+assert.strictEqual(overridden.gradeOverride, true);
+assert.ok(Math.abs(overridden.grade - 0.05) < 1e-12);
+const clearedGrade = M.applyGradeInput(overridden, '');
+assert.strictEqual(clearedGrade.gradeOverride, false);
+assert.strictEqual(clearedGrade.grade, null);
+const restored = M.computeRow(clearedGrade);
+assert.strictEqual(restored.gradeOverride, false);
+assert.ok(Math.abs(restored.grade - 0.01) < 1e-12);
+
+// Invalid / ≤0 override grade surfaces a clear err
+const badGrade = M.computeRow(Object.assign(M.emptyRow(), {
+  flFrom: 10, flTo: 9, length: 100, Dd: 2, n: 0.035, gradeOverride: true, grade: 0
+}));
+assert.ok(/Grade must be > 0/i.test(badGrade.err));
+assert.strictEqual(badGrade.V, null);
+const nullOverride = M.computeRow(Object.assign(M.emptyRow(), {
+  flFrom: 10, flTo: 9, length: 100, Dd: 2, n: 0.035, gradeOverride: true, grade: null
+}));
+assert.ok(/Grade must be > 0/i.test(nullOverride.err));
+
+// (4) emptyRow preserves slope, not absolute ΔFL, when prev.length ≠ new length
+const prevLong = Object.assign(M.emptyRow(), {
+  staFrom: '0+00', staTo: '2+00', flFrom: 20, flTo: 18, length: 200,
+  Z1: 3, B: 2, Z2: 3, Dd: 2, n: 0.035
+});
+const next = M.emptyRow(prevLong);
+assert.strictEqual(next.length, 100);
+assert.strictEqual(next.flFrom, 18);
+// slope = (20-18)/200 = 0.01 → flTo = 18 - 0.01*100 = 17 (not 18-2=16)
+assert.ok(Math.abs(next.flTo - 17) < 1e-9);
+assert.ok(Math.abs(M.gradeFromElevs(next.flFrom, next.flTo, next.length) - 0.01) < 1e-12);
+
+console.log('ok');

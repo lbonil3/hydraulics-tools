@@ -35,6 +35,24 @@
       S: S || 0, Dd: Number(row.Dd) || 0
     };
   }
+  /** Apply Grade % cell edit: empty clears override; typed value latches override. */
+  function applyGradeInput(row, rawPct) {
+    const out = Object.assign({}, row);
+    if (rawPct == null || String(rawPct).trim() === '') {
+      out.grade = null;
+      out.gradeOverride = false;
+    } else {
+      const pct = Number(String(rawPct).trim());
+      if (!Number.isFinite(pct)) {
+        out.grade = null;
+        out.gradeOverride = true;
+      } else {
+        out.grade = pct / 100;
+        out.gradeOverride = true;
+      }
+    }
+    return out;
+  }
   function emptyRow(prev) {
     const id = 'r' + Math.random().toString(36).slice(2, 9);
     if (!prev) {
@@ -49,17 +67,29 @@
     }
     const fromFt = parseStation(prev.staTo) ?? ((parseStation(prev.staFrom) || 0) + (prev.length || 100));
     const len = 100;
-    const dFL = (prev.flFrom != null && prev.flTo != null) ? (prev.flFrom - prev.flTo) : null;
+    let flTo = null;
+    const flFrom = prev.flTo != null ? prev.flTo : null;
+    if (flFrom != null && prev.length > 0 && prev.flFrom != null && prev.flTo != null) {
+      const slope = (prev.flFrom - prev.flTo) / prev.length;
+      flTo = flFrom - slope * len;
+    }
     return Object.assign(emptyRow(), {
       id, staFrom: formatStation(fromFt), staTo: formatStation(fromFt + len),
       offFrom: prev.offFrom, offTo: prev.offTo,
-      flFrom: prev.flTo, flTo: dFL != null && prev.flTo != null ? prev.flTo - dFL : null,
+      flFrom: flFrom, flTo: flTo,
       length: len, Z1: prev.Z1, B: prev.B, Z2: prev.Z2, Dd: prev.Dd, n: prev.n, comment: prev.comment
     });
   }
   function computeRow(row) {
     const out = Object.assign({}, row, { err: null });
-    if (!out.gradeOverride) {
+    if (out.gradeOverride) {
+      if (out.grade == null || !Number.isFinite(Number(out.grade)) || !(Number(out.grade) > 0)) {
+        out.err = 'Grade must be > 0';
+        out.grade = out.grade == null || !Number.isFinite(Number(out.grade)) ? null : Number(out.grade);
+        return clearComputed(out);
+      }
+      out.grade = Number(out.grade);
+    } else {
       out.grade = gradeFromElevs(out.flFrom, out.flTo, out.length);
     }
     out.topW = (out.Dd != null) ? topWidth(out.B, out.Z1, out.Z2, out.Dd) : null;
@@ -70,7 +100,6 @@
     const s = shapeFromRow(out);
     const L = { type: 'fixed', n: Number(out.n) };
     try {
-      const gFull = DT.geom(s, out.Dd);
       out.Qfull = DT.qAt(s, L, out.Dd);
       out.topElevDS = out.flTo != null ? out.flTo + out.Dd : null;
       if (out.Q != null && out.Qfull != null && out.Q > out.Qfull && out.flowDepth == null) {
@@ -122,7 +151,16 @@
     return computeRow(Object.assign(base, { flowDepth: r.d, err: null }));
   }
 
-  const API = { parseStation, formatStation, gradeFromElevs, topWidth, shapeFromRow, emptyRow, computeRow, goalSeekRow };
+  /** Fields whose edit invalidates a previously Goal-Seek'd flowDepth. */
+  const DEPTH_INVALIDATING = {
+    Q: 1, B: 1, Z1: 1, Z2: 1, Dd: 1, n: 1,
+    gradePct: 1, flFrom: 1, flTo: 1, length: 1, grade: 1
+  };
+
+  const API = {
+    parseStation, formatStation, gradeFromElevs, topWidth, shapeFromRow,
+    emptyRow, computeRow, goalSeekRow, applyGradeInput, DEPTH_INVALIDATING
+  };
   if (typeof module !== 'undefined') module.exports = API;
   else root.DitchTableModel = API;
 })(typeof window !== 'undefined' ? window : globalThis);
