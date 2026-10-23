@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1f4e79">
+  <title>Bid Cost – TxDOT unit prices</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="mobile.css">
+  <link rel="stylesheet" href="../home-btn.css">
+</head>
+<body>
+<header>
+  <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">← Home</a>
+  <h1>Bid Cost</h1>
+  <span>Houston District TxDOT bid-code averages (low bidder). Statewide used when Houston has no data — labeled. Planning-level only.</span>
+</header>
+<p class="disclaimer" id="disclaimer" role="note">
+  Planning-level averages from TxDOT Bid Tabulations (low bidder). Not an official bid. ESBD / Electronic Bidding System remain official.
+</p>
+<p class="meta" id="metaLine"></p>
+<div class="toolbar">
+  <label class="search-label">Search
+    <input id="search" type="search" inputmode="search" autocomplete="off"
+           placeholder="Bid code or description" aria-label="Search bid code or description">
+  </label>
+  <span class="count" id="count" aria-live="polite"></span>
+</div>
+<div class="wrap">
+  <table id="grid">
+    <thead>
+      <tr>
+        <th>Bid code</th>
+        <th>Description</th>
+        <th>Unit</th>
+        <th>Avg unit price</th>
+        <th>n</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+<p class="cite" id="sources">
+  Sources: Texas Open Data Bid Tabulations (dataset de7b-7dna), low bidder rank = 1.
+  TxDOT Bid Item Averages dashboard replaces legacy ALBUP PDFs; this tool ships a static extract for offline phone use.
+</p>
+<script src="lookup.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
