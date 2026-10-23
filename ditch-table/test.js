@@ -1,0 +1,27 @@
+const assert = require('assert');
+const M = require('./model.js');
+const DT = require('../ditch/calc.js');
+
+assert.strictEqual(M.parseStation('1123+00'), 112300);
+assert.strictEqual(M.formatStation(112300), '1123+00');
+assert.strictEqual(M.parseStation('1123+50'), 112350);
+assert.ok(Math.abs(M.gradeFromElevs(17.07, 15.80, 100) - 0.0127) < 1e-9);
+assert.strictEqual(M.topWidth(2.5, 6, 5, 1), 2.5 + 11);
+assert.strictEqual(M.topWidth(0, 6, 5, 2), 22);
+
+const row = M.emptyRow();
+row.B = 2.5; row.Z1 = 6; row.Z2 = 5; row.flFrom = 17.07; row.flTo = 15.80;
+row.length = 100; row.Dd = 2; row.n = 0.035; row.Q = 20;
+const g = M.goalSeekRow(M.computeRow(row));
+assert.ok(g.flowDepth > 0 && g.flowDepth < g.Dd);
+assert.ok(Math.abs(DT.qAt(M.shapeFromRow(g), {type:'fixed', n:g.n}, g.flowDepth) - 20) < 0.05);
+assert.ok(g.Qfull > g.Q);
+assert.ok(Math.abs(g.freeboard - (g.flTo + g.Dd - (g.flTo + g.flowDepth))) < 1e-9);
+
+const over = M.goalSeekRow(M.computeRow(Object.assign(M.emptyRow(), {
+  B: 2.5, Z1: 6, Z2: 5, flFrom: 17, flTo: 16.9, length: 100, Dd: 1, n: 0.035, Q: 500
+})));
+assert.strictEqual(over.flowDepth, null);
+assert.ok(over.err);
+
+console.log('ok');
