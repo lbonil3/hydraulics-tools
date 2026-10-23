@@ -27,24 +27,11 @@
   </label>
   <span class="count" id="count" aria-live="polite"></span>
 </div>
-<div class="wrap">
-  <table id="grid">
-    <thead>
-      <tr>
-        <th>Bid code</th>
-        <th>Description</th>
-        <th>Unit</th>
-        <th>Avg unit price</th>
-        <th>n</th>
-        <th>Source</th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
-</div>
+<div class="wrap" id="sections" aria-live="polite"></div>
 <p class="cite" id="sources">
   Sources: Texas Open Data Bid Tabulations (dataset de7b-7dna), low bidder rank = 1.
-  TxDOT Bid Item Averages dashboard replaces legacy ALBUP PDFs; this tool ships a static extract for offline phone use.
+  Spec links: TxDOT 2024 Standard Specifications item PDFs (ftp.txdot.gov).
+  Planning-level only; ESBD / EBS remain official.
 </p>
 <script src="lookup.js"></script>
 <script src="app.js"></script>

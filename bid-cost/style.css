@@ -19,3 +19,50 @@ header span{opacity:.85;flex:1;min-width:200px;font-size:13px;line-height:1.35}
 #grid tbody td:nth-child(4){text-align:right;font-variant-numeric:tabular-nums}
 #grid tbody td:nth-child(5){text-align:right}
 .cite{font-size:12px;color:#556;padding:8px 14px 20px;line-height:1.45;max-width:960px}
+
+.item-section {
+  border: 1px solid #c5d4e3;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  background: #fff;
+  overflow: hidden;
+}
+.item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  background: #eef4fa;
+  border: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+}
+.item-header .item-id { font-weight: 700; color: #1f4e79; }
+.item-header .item-count { color: #555; font-size: 0.9em; margin-left: auto; }
+.spec-link {
+  flex-shrink: 0;
+  color: #1f4e79;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 0.35rem 0.5rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.item-body { display: none; overflow-x: auto; }
+.item-section.open .item-body { display: block; }
+.item-body table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.item-body th, .item-body td { padding: 0.4rem 0.5rem; border-top: 1px solid #e3eaf2; vertical-align: middle; }
+.price-bars { width: 88px; }
+.price-bars .bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  margin: 2px 0;
+  max-width: 100%;
+}
+.price-bars .bar.houston { background: #1f4e79; }
+.price-bars .bar.statewide { background: #8aa4bf; }
