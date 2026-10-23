@@ -88,4 +88,36 @@ assert.strictEqual(next.flFrom, 18);
 assert.ok(Math.abs(next.flTo - 17) < 1e-9);
 assert.ok(Math.abs(M.gradeFromElevs(next.flFrom, next.flTo, next.length) - 0.01) < 1e-12);
 
+// Load example factory
+assert.strictEqual(typeof M.exampleRows, 'function');
+const ex = M.exampleRows();
+assert.strictEqual(ex.length, 5);
+assert.strictEqual(ex[0].staFrom, '0+00');
+assert.strictEqual(ex[0].staTo, '1+00');
+assert.strictEqual(ex[4].staFrom, '4+00');
+assert.strictEqual(ex[4].staTo, '5+00');
+assert.strictEqual(ex[0].comment, 'Example — replace with your alignment');
+assert.ok(ex.every((r) => r.Z1 === 3 && r.B === 2 && r.Z2 === 3 && r.Dd === 2 && r.n === 0.035));
+assert.ok(ex.every((r) => r.length === 100 && r.Q === 20 && r.offFrom === 'LT'));
+assert.ok(Math.abs(ex[0].flFrom - 100) < 1e-9);
+assert.ok(Math.abs(ex[0].flTo - 99.5) < 1e-9);
+assert.ok(Math.abs(ex[4].flFrom - 98) < 1e-9);
+assert.ok(Math.abs(ex[4].flTo - 97.5) < 1e-9);
+const ids = new Set(ex.map((r) => r.id));
+assert.strictEqual(ids.size, 5);
+const ex2 = M.exampleRows();
+assert.notStrictEqual(ex[0].id, ex2[0].id);
+for (const r of ex) {
+  const c = M.computeRow(r);
+  assert.ok(c.Qfull > c.Q, 'Qfull should exceed design Q');
+  assert.ok(!c.err || !/Grade/i.test(c.err));
+  const g = M.goalSeekRow(c);
+  assert.ok(g.flowDepth > 0 && g.flowDepth < g.Dd);
+  assert.strictEqual(g.passCap, true);
+}
+assert.strictEqual(M.isTableEmpty([]), true);
+assert.strictEqual(M.isTableEmpty([M.emptyRow()]), true);
+assert.strictEqual(M.isTableEmpty([Object.assign(M.emptyRow(), { Q: 5 })]), false);
+assert.strictEqual(M.isTableEmpty(ex), false);
+
 console.log('ok');

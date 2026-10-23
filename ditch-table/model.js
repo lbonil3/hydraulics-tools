@@ -157,9 +157,48 @@
     gradePct: 1, flFrom: 1, flTo: 1, length: 1, grade: 1
   };
 
+  function isTableEmpty(rows) {
+    if (!rows || !rows.length) return true;
+    if (rows.length > 1) return false;
+    const r = rows[0];
+    function blank(v) {
+      return v == null || v === '' || (typeof v === 'string' && !String(v).trim());
+    }
+    return blank(r.Q) && blank(r.flFrom) && blank(r.flTo) && blank(r.comment);
+  }
+
+  /** Five-station demo ditch (0+00→5+00). Fresh ids each call. */
+  function exampleRows() {
+    const out = [];
+    let fl = 100;
+    for (let i = 0; i < 5; i++) {
+      const flFrom = fl;
+      const flTo = fl - 0.5;
+      const row = Object.assign(emptyRow(), {
+        staFrom: formatStation(i * 100),
+        staTo: formatStation((i + 1) * 100),
+        offFrom: 'LT',
+        offTo: 'LT',
+        flFrom: flFrom,
+        flTo: flTo,
+        length: 100,
+        Z1: 3, B: 2, Z2: 3, Dd: 2, n: 0.035,
+        grade: null,
+        gradeOverride: false,
+        Q: 20,
+        comment: i === 0 ? 'Example — replace with your alignment' : '',
+        flowDepth: null
+      });
+      out.push(row);
+      fl = flTo;
+    }
+    return out;
+  }
+
   const API = {
     parseStation, formatStation, gradeFromElevs, topWidth, shapeFromRow,
-    emptyRow, computeRow, goalSeekRow, applyGradeInput, DEPTH_INVALIDATING
+    emptyRow, computeRow, goalSeekRow, applyGradeInput, DEPTH_INVALIDATING,
+    exampleRows, isTableEmpty
   };
   if (typeof module !== 'undefined') module.exports = API;
   else root.DitchTableModel = API;
