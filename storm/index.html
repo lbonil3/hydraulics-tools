@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1f4e79">
+  <title>Storm Sewer – network + HGL</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="mobile.css">
+  <link rel="stylesheet" href="../home-btn.css">
+</head>
+<body>
+<header>
+  <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">← Home</a>
+  <h1>Storm Sewer</h1>
+  <span>Branched network checker and sizer. Design Q at nodes (auto-sum on pipes). HGL from outfall TW upstream with HEC-22 structure losses. TxDOT HDM first; HEC-22 when HDM has no number (labeled).</span>
+</header>
+<div class="toolbar">
+  <button type="button" id="addNode">Add node</button>
+  <button type="button" id="addPipe">Add pipe</button>
+  <button type="button" id="loadExample">Load example</button>
+  <button type="button" id="suggestSizes">Suggest sizes</button>
+  <button type="button" id="deleteSelected" class="danger">Delete</button>
+  <label class="tw">Outfall TW (ft)
+    <input id="outfallTw" type="number" inputmode="decimal" step="any" placeholder="elev">
+  </label>
+</div>
+<div id="results" class="results" aria-live="polite"></div>
+<div class="layout">
+  <div class="tables">
+    <h2 class="tbl-title">Nodes</h2>
+    <div class="wrap"><table id="nodesGrid"></table></div>
+    <h2 class="tbl-title">Pipes</h2>
+    <div class="wrap"><table id="pipesGrid"></table></div>
+  </div>
+  <div id="viz" class="viz">
+    <div class="viz-card">
+      <h2>HGL profile</h2>
+      <label class="path-pick">Path end
+        <select id="pathEnd"></select>
+      </label>
+      <div id="profileSvg" class="viz-svg"></div>
+    </div>
+  </div>
+</div>
+<p class="cite" id="sources">
+  Sources: TxDOT Hydraulic Design Manual — storm sewer / conduit criteria (as implemented).
+  FHWA HEC-22 (Urban Drainage Design Manual) — access-hole / junction loss Hs = K V²/(2g) with approximate K by deflection angle (full relative-energy-loss factors out of v1); labeled where HDM has no number.
+  Geometry / Manning: Culvert Studio helpers (<code>Culvert.geom</code>, <code>Culvert.normal</code>, <code>Culvert.MANNING</code>).
+  Freeboard: HGL ≤ rim (DEFAULTS.freeboardFt = 0) — HDM universal freeboard not applied; engineering check labeled.
+  Standard sizes: common RCP diameters and box span×rise increments in <code>STANDARD_SIZES</code>.
+</p>
+<script src="../culvert/calc.js"></script>
+<script src="calc.js"></script>
+<script src="viz.js"></script>
+<script src="table.js"></script>
+<script src="mobile.js"></script>
+</body>
+</html>
