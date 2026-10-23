@@ -260,12 +260,167 @@
     return out;
   }
 
+  const DEFAULTS = {
+    ahDiameterFt: 4,
+    freeboardFt: 0, // HDM has no universal freeboard here; HGL ≤ rim (labeled)
+    KbyAngle: [
+      { maxDeg: 22.5, K: 0.10 },
+      { maxDeg: 45, K: 0.30 },
+      { maxDeg: 60, K: 0.50 },
+      { maxDeg: 90, K: 0.80 },
+      { maxDeg: Infinity, K: 1.00 }
+    ]
+  };
+
+  function KfromTheta(thetaDeg) {
+    const t = Math.abs(Number(thetaDeg) || 0);
+    for (let i = 0; i < DEFAULTS.KbyAngle.length; i++) {
+      if (t <= DEFAULTS.KbyAngle[i].maxDeg) return DEFAULTS.KbyAngle[i].K;
+    }
+    return 1;
+  }
+
+  function structureK(node, inflowPipes, outflowPipe) {
+    if (!node || node.kind === 'outfall') {
+      return { K: 0, thetaDeg: 0, note: 'outfall' };
+    }
+    let theta = node.bendDeg;
+    let note = 'bendDeg entered';
+    if (theta == null || theta === '') {
+      const nIn = (inflowPipes || []).length;
+      if (node.kind === 'junction' && nIn >= 2) {
+        theta = 90;
+        note = 'default θ=90° junction (≥2 inflows); HEC-22 approx K';
+      } else {
+        theta = 0;
+        note = 'default θ=0° inline; HEC-22 approx K';
+      }
+    }
+    return { K: KfromTheta(theta), thetaDeg: Number(theta), note: note };
+  }
+
+  function structureLoss(node, inflowPipes, outflowPipe, Qout, Vout) {
+    const sk = structureK(node, inflowPipes, outflowPipe);
+    const V = Number(Vout);
+    if (!(V > 0) || sk.K === 0) return { Hs: 0, K: sk.K, note: sk.note };
+    return { Hs: sk.K * (V * V) / (2 * G), K: sk.K, note: sk.note };
+  }
+
+  function analyzeNetwork(nodes, pipes, outfallTw) {
+    const warnings = [];
+    const top = validateTopology(nodes, pipes);
+    if (!top.ok) {
+      return {
+        nodes: (nodes || []).map(function (n) { return Object.assign({}, n); }),
+        pipes: (pipes || []).map(function (p) { return Object.assign({}, p); }),
+        outfallId: top.outfallId,
+        networkQ: null,
+        worstSurcharge: null,
+        passCount: 0,
+        failCount: 0,
+        errors: top.errors.slice(),
+        warnings: warnings
+      };
+    }
+    const acc = accumulate(nodes, pipes);
+    const nodeById = Object.create(null);
+    (nodes || []).forEach(function (n) {
+      nodeById[n.id] = Object.assign({}, n, { HGL: null, Hs: null, surcharge: null });
+    });
+    let worked = acc.pipes.map(function (p) { return conveyPipe(p); });
+    const pipeById = Object.create(null);
+    worked.forEach(function (p) { pipeById[p.id] = p; });
+
+    const inflowsOf = Object.create(null);
+    worked.forEach(function (p) {
+      (inflowsOf[p.toId] = inflowsOf[p.toId] || []).push(p);
+    });
+
+    const tw = outfallTw == null || outfallTw === '' ? null : Number(outfallTw);
+    if (tw == null || !Number.isFinite(tw)) {
+      warnings.push('Set outfall water-surface elevation (TW) to compute HGL');
+      worked = worked.map(function (p) {
+        return Object.assign({}, p, {
+          HGLup: null, HGLdn: null, HsAtUp: null, surcharge: null, passHgl: null
+        });
+      });
+    } else {
+      nodeById[top.outfallId].HGL = tw;
+      nodeById[top.outfallId].Hs = 0;
+      nodeById[top.outfallId].surcharge =
+        nodeById[top.outfallId].rim != null ? tw > Number(nodeById[top.outfallId].rim) : null;
+
+      const pending = worked.slice();
+      let guard = 0;
+      while (pending.length && guard++ < 10000) {
+        let progressed = false;
+        for (let i = 0; i < pending.length; i++) {
+          const p = pending[i];
+          const dn = nodeById[p.toId];
+          if (dn.HGL == null) continue;
+          const up = nodeById[p.fromId];
+          const sp = sectionProps(p);
+          const Vout = p.V != null ? p.V : (sp.A > 0 && p.Q != null ? p.Q / sp.A : 0);
+          const loss = structureLoss(up, inflowsOf[p.fromId] || [], p, p.Q, Vout);
+          const hf = p.hf != null ? p.hf : 0;
+          const HGLdn = dn.HGL;
+          const HGLup = HGLdn + hf + loss.Hs;
+          up.HGL = HGLup;
+          up.Hs = loss.Hs;
+          up.surcharge = up.rim != null ? HGLup > Number(up.rim) + DEFAULTS.freeboardFt : null;
+          pipeById[p.id] = Object.assign({}, p, {
+            HGLdn: HGLdn,
+            HGLup: HGLup,
+            HsAtUp: loss.Hs,
+            surcharge: up.surcharge,
+            passHgl: up.surcharge == null ? null : !up.surcharge
+          });
+          pending.splice(i, 1);
+          i--;
+          progressed = true;
+        }
+        if (!progressed) break;
+      }
+      worked = worked.map(function (p) { return pipeById[p.id] || p; });
+    }
+
+    let passCount = 0, failCount = 0, worst = null;
+    worked.forEach(function (p) {
+      if (p.passCap == null && p.passHgl == null) return;
+      const capOk = p.passCap !== false;
+      const hglOk = p.passHgl !== false;
+      if (capOk && hglOk) passCount++;
+      else failCount++;
+    });
+    Object.keys(nodeById).forEach(function (id) {
+      const n = nodeById[id];
+      if (n.surcharge && n.HGL != null && n.rim != null) {
+        const s = n.HGL - Number(n.rim);
+        if (worst == null || s > worst) worst = s;
+      }
+    });
+
+    return {
+      nodes: (nodes || []).map(function (n) { return nodeById[n.id]; }),
+      pipes: worked,
+      outfallId: top.outfallId,
+      networkQ: acc.nodeQinThru[top.outfallId] != null ? acc.nodeQinThru[top.outfallId] : null,
+      worstSurcharge: worst,
+      passCount: passCount,
+      failCount: failCount,
+      errors: [],
+      warnings: warnings
+    };
+  }
+
   const API = {
     KM: KM, G: G, emptyNode: emptyNode, emptyPipe: emptyPipe,
     validateTopology: validateTopology, accumulate: accumulate,
     STANDARD_SIZES: STANDARD_SIZES, sectionProps: sectionProps, slopeOf: slopeOf,
     fullFlowCapacity: fullFlowCapacity, frictionHf: frictionHf, conveyPipe: conveyPipe,
-    getCulvert: getCulvert
+    getCulvert: getCulvert,
+    DEFAULTS: DEFAULTS, structureK: structureK, structureLoss: structureLoss,
+    analyzeNetwork: analyzeNetwork, KfromTheta: KfromTheta
   };
   if (typeof module !== 'undefined') module.exports = API;
   else root.StormCalc = API;

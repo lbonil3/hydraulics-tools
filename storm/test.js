@@ -74,4 +74,29 @@ assert.ok(C.STANDARD_SIZES.boxFt.some(function (s) { return s[0] === 3 && s[1] =
 const stub = C.sectionProps(C.emptyPipe({ shape: 'ellip', span: 3, rise: 2 }));
 assert.ok(stub.err); // v1 stub for non circular/box
 
+// --- HGL + structure loss ---
+const net = branched();
+const tw = 91.5;
+const analyzed = C.analyzeNetwork(net.nodes, net.pipes, tw);
+assert.strictEqual(analyzed.errors.length, 0);
+assert.ok(Math.abs(analyzed.networkQ - 10) < 1e-9);
+const p1 = analyzed.pipes.find(function (p) { return p.id === 'p1'; });
+const p2 = analyzed.pipes.find(function (p) { return p.id === 'p2'; });
+assert.ok(p1.HGLdn != null);
+assert.ok(Math.abs(p1.HGLdn - tw) < 1e-9);
+assert.ok(p1.HGLup > p1.HGLdn);
+assert.ok(p2.HGLup > p2.HGLdn);
+const mh = analyzed.nodes.find(function (n) { return n.id === 'mh1'; });
+assert.ok(mh.HGL != null);
+assert.ok(mh.HGL >= p1.HGLup - 1e-9);
+
+const noTw = C.analyzeNetwork(net.nodes, net.pipes, null);
+assert.ok(noTw.pipes.every(function (p) { return p.HGLup == null; }));
+
+const sk = C.structureK(
+  C.emptyNode({ id: 'j', kind: 'junction', bendDeg: 90 }),
+  [p2], p1
+);
+assert.ok(Math.abs(sk.K - 0.80) < 1e-9);
+
 console.log('ok');
