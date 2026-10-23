@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1f4e79">
+  <title>Ditch Table – station-by-station ditch design</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="mobile.css">
+  <link rel="stylesheet" href="../home-btn.css">
+</head>
+<body>
+<header>
+  <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">← Home</a>
+  <h1>Ditch Table</h1>
+  <span>Evaluate ditch sections along the alignment (default 100 ft). Goal Seek finds flow depth for design Q (Manning). Freeboard check uses HEC-15 0.5 ft (TxDOT HDM Ch. 7 gives no number).</span>
+</header>
+<div class="toolbar">
+  <button type="button" id="addRow">Add Row</button>
+  <button type="button" id="goalSeekAll">Goal Seek</button>
+  <button type="button" id="clearAll" class="danger">Clear table</button>
+  <label class="storm">Design storm label <input id="stormLabel" value="5-YR" maxlength="12"></label>
+</div>
+<div class="wrap"><table id="grid"></table></div>
+<p class="cite">Hydraulics: Manning equation. Shear τ = γRS. Freeboard criterion: FHWA HEC-15 §2.3.4 (0.5 ft permanent lining) — labeled because TxDOT HDM Ch. 7 Sec. 3 does not publish a freeboard value. Verify with your judgment.</p>
+<script src="../ditch/calc.js"></script>
+<script src="model.js"></script>
+<script src="table.js"></script>
+</body>
+</html>
