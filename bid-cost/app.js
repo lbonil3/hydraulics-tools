@@ -6,6 +6,8 @@
   const metaLine = document.getElementById('metaLine');
   let allRows = [];
   const openItems = Object.create(null); // item -> true when user toggled open
+  const bodyCache = Object.create(null); // item -> { sig, html }
+  let rowsByItem = Object.create(null); // item -> rows for current filter
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -31,6 +33,35 @@
       '</tr>';
   }
 
+  function rowsSignature(rows) {
+    return rows.map(function (r) { return r.bid_code; }).join('\0');
+  }
+
+  function tableHtml(rows) {
+    return '<table><thead><tr>' +
+      '<th>Bid code</th><th>Description</th><th>Unit</th><th>Avg</th><th>n</th><th>Source</th><th>H / SW</th>' +
+      '</tr></thead><tbody>' + rows.map(rowHtml).join('') + '</tbody></table>';
+  }
+
+  function getBodyHtml(item, rows) {
+    const sig = rowsSignature(rows);
+    const cached = bodyCache[item];
+    if (cached && cached.sig === sig) return cached.html;
+    const html = tableHtml(rows);
+    bodyCache[item] = { sig: sig, html: html };
+    return html;
+  }
+
+  function ensureBodyFilled(section) {
+    const body = section.querySelector('.item-body');
+    if (!body || body.getAttribute('data-filled') === '1') return;
+    const item = section.getAttribute('data-item');
+    const rows = rowsByItem[item];
+    if (!rows) return;
+    body.innerHTML = getBodyHtml(item, rows);
+    body.setAttribute('data-filled', '1');
+  }
+
   function render(filtered) {
     const withPrice = filtered.filter(function (r) {
       return L.resolvePrice(r).price != null;
@@ -40,14 +71,19 @@
     count.textContent = withPrice.length + ' code' + (withPrice.length === 1 ? '' : 's') +
       ' · ' + groups.length + ' item' + (groups.length === 1 ? '' : 's');
 
+    rowsByItem = Object.create(null);
     if (!groups.length) {
       sectionsEl.innerHTML = '<p class="empty">No matches</p>';
       return;
     }
 
+    groups.forEach(function (g) {
+      rowsByItem[g.item] = g.rows;
+    });
+
     sectionsEl.innerHTML = groups.map(function (g) {
       const forceOpen = !!q || openItems[g.item];
-      const rowsHtml = g.rows.map(rowHtml).join('');
+      const bodyInner = forceOpen ? getBodyHtml(g.item, g.rows) : '';
       const spec = L.specPdfUrl(g.item);
       return '<section class="item-section' + (forceOpen ? ' open' : '') + '" data-item="' + escapeHtml(g.item) + '">' +
         '<div class="item-header-row" style="display:flex;align-items:stretch">' +
@@ -57,11 +93,7 @@
           '</button>' +
           '<a class="spec-link" href="' + escapeHtml(spec) + '" target="_blank" rel="noopener noreferrer">Spec</a>' +
         '</div>' +
-        '<div class="item-body">' +
-          '<table><thead><tr>' +
-            '<th>Bid code</th><th>Description</th><th>Unit</th><th>Avg</th><th>n</th><th>Source</th><th>H / SW</th>' +
-          '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
-        '</div>' +
+        '<div class="item-body"' + (forceOpen ? ' data-filled="1"' : '') + '>' + bodyInner + '</div>' +
       '</section>';
     }).join('');
   }
@@ -79,8 +111,12 @@
     const open = !section.classList.contains('open');
     section.classList.toggle('open', open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    if (open) openItems[item] = true;
-    else delete openItems[item];
+    if (open) {
+      openItems[item] = true;
+      ensureBodyFilled(section);
+    } else {
+      delete openItems[item];
+    }
   });
 
   fetch('./prices.json')
