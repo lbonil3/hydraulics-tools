@@ -35,4 +35,12 @@ const inc = M.goalSeekRow(M.computeRow(Object.assign(M.emptyRow(), {
 assert.strictEqual(inc.flowDepth, null);
 assert.ok(/Incomplete/i.test(inc.err));
 
+// Trapezoid B=4, Z=2/2, S=0.01, n=0.013, Q=50 — depth from DT must match goalSeekRow
+const r2 = M.goalSeekRow(Object.assign(M.emptyRow(), {
+  B: 4, Z1: 2, Z2: 2, flFrom: 10, flTo: 9, length: 100, Dd: 5, n: 0.013, Q: 50
+}));
+assert.ok(Math.abs(r2.flowDepth - DT.normalDepth(M.shapeFromRow(r2), {type:'fixed', n:0.013}, 50).d) < 1e-6);
+assert.strictEqual(r2.passCap, true);
+
 console.log('ok');
+

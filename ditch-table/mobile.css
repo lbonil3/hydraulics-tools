@@ -16,5 +16,6 @@ html{-webkit-text-size-adjust:100%}
   .cite{padding:8px 12px 24px;font-size:12.5px}
 }
 @media (hover:none),(pointer:coarse){
-  .toolbar button,#grid button.del,#grid button.gs{touch-action:manipulation}
+  .toolbar button,#grid button.del,#grid button.gs{touch-action:manipulation;min-height:44px;font-size:16px}
+  #grid input,#grid select,.toolbar .storm input{min-height:44px;font-size:16px}
 }

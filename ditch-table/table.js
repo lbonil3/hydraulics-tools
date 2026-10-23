@@ -107,6 +107,7 @@
       }).join('');
       const err = row.err ? '<span class="err-hint" title="' + escapeAttr(row.err) + '">⚠</span> ' : '';
       const acts = '<td class="act">' + err +
+        '<button type="button" class="gs" data-gs="' + row.id + '" aria-label="Goal Seek row">GS</button> ' +
         '<button type="button" class="del" data-del="' + row.id + '" aria-label="Delete row">Delete</button></td>';
       return '<tr data-idx="' + idx + '">' + cells + acts + '</tr>';
     }).join('');
@@ -152,7 +153,7 @@
       }
     }
 
-    // Keep existing flowDepth until Goal Seek (Task 3); computeRow preserves it when present.
+    // Keep existing flowDepth until Goal Seek; computeRow preserves it when present.
     rows[i] = M.computeRow(row);
     save();
     render();
@@ -183,12 +184,23 @@
     render();
   }
 
+  function goalSeekOne(id) {
+    const i = findRow(id);
+    if (i < 0) return;
+    rows[i] = M.goalSeekRow(rows[i]);
+    save();
+    render();
+  }
+
+  function goalSeekAll() {
+    rows = rows.map(function (r) { return M.goalSeekRow(r); });
+    save();
+    render();
+  }
+
   document.getElementById('addRow').addEventListener('click', addRow);
   document.getElementById('clearAll').addEventListener('click', clearAll);
-  // Task 3 wires Goal Seek; stub keeps the button in the shell.
-  document.getElementById('goalSeekAll').addEventListener('click', function () {
-    /* Task 3: map DitchTableModel.goalSeekRow over rows */
-  });
+  document.getElementById('goalSeekAll').addEventListener('click', goalSeekAll);
 
   stormEl.addEventListener('change', save);
   stormEl.addEventListener('input', save);
@@ -205,6 +217,11 @@
     }
   });
   grid.addEventListener('click', function (e) {
+    const gs = e.target.closest('[data-gs]');
+    if (gs) {
+      goalSeekOne(gs.getAttribute('data-gs'));
+      return;
+    }
     const btn = e.target.closest('[data-del]');
     if (btn) deleteRow(btn.getAttribute('data-del'));
   });
