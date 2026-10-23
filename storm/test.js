@@ -182,4 +182,19 @@ assert.strictEqual(C.nextSize(C.emptyPipe({ shape: 'circular', diameter: maxIn /
 assert.strictEqual(C.isNetworkEmpty([], []), true);
 assert.strictEqual(C.isNetworkEmpty(ex.nodes, ex.pipes), false);
 
+// --- viz path + svg smoke ---
+const V = require('./viz.js');
+const demo = C.analyzeNetwork(C.exampleNetwork().nodes, C.exampleNetwork().pipes, 91.5);
+const pathIds = V.pathFromOutfall(demo, 'in2');
+assert.ok(pathIds.indexOf('of') >= 0);
+assert.ok(pathIds.indexOf('mh1') >= 0 && pathIds.indexOf('in2') >= 0);
+assert.strictEqual(pathIds[0], 'of');
+const el = { innerHTML: '' };
+V.renderProfile(el, demo, pathIds);
+assert.ok(/svg/i.test(el.innerHTML));
+assert.ok(/path/i.test(el.innerHTML));
+const emptyEl = { innerHTML: '' };
+V.renderProfile(emptyEl, C.analyzeNetwork(C.exampleNetwork().nodes, C.exampleNetwork().pipes, null), pathIds);
+assert.ok(/TW|outfall|water-surface|empty/i.test(emptyEl.innerHTML));
+
 console.log('ok');
