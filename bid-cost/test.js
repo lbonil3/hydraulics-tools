@@ -117,4 +117,22 @@ assert.strictEqual(L.resolveDetail(detailMap, 'no-such'), null);
 assert.strictEqual(L.resolveDetail(null, '465-6001'), null);
 assert.strictEqual(L.resolveDetail(detailMap, '465-6001').label.length > 0, true);
 
+// Real generated map: statewide drainage sheets keyed on description
+const real = require('./detail-map.json');
+const pick = function (c) { return L.resolveDetail(real, c); };
+assert.strictEqual(pick('465-6001').source, 'Houston');
+assert.strictEqual(pick('466-6024').label, 'CH-FW-15');
+assert.strictEqual(pick('466-6024').source, 'Statewide');
+assert.strictEqual(pick('466-6143').label, 'FW-0');
+assert.strictEqual(pick('467-6045').label, 'SETB-CD');
+assert.strictEqual(pick('467-6110').label, 'SETB-PD');
+assert.strictEqual(pick('467-7001'), null); // pipe runner
+assert.strictEqual(pick('467-6006'), null); // TY I pipe SET, skew unknown
+assert.strictEqual(pick('462-6001'), null); // box: CIP vs precast unknown
+Object.keys(real.by_code).forEach(function (c) {
+  const e = real.by_code[c];
+  const u = e.houston_url || e.statewide_url;
+  assert.ok(/^https:\/\/ftp\.dot\.state\.tx\.us\/pub\/txdot-info\//.test(u), c);
+});
+
 console.log('ok');

@@ -34,6 +34,32 @@ const HOUSTON = {
     'https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/OD-25%20(HOU).pdf'
 };
 
+/**
+ * Statewide TxDOT Bridge Division culvert & drainage standards, verified as
+ * listed on the official index STATEWIDE_INDEX (no Houston district versions
+ * exist for these sheets on the Houston 2024 list).
+ */
+const STATEWIDE_INDEX =
+  'https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/standard/bridge-e.htm';
+const SW_BASE = 'https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/';
+const STATEWIDE = {};
+[
+  'CH-FW-0:CD-CH-FW0-20', 'CH-FW-15:CD-CH-FW15-20', 'CH-FW-30:CD-CH-FW30-20',
+  'CH-FW-45:CD-CH-FW45-20', 'CH-FW-A-0:CD-CH-FWA0-20', 'CH-FW-A-15:CD-CH-FWA15-20',
+  'CH-FW-A-30:CD-CH-FWA30-20', 'CH-FW-A-45:CD-CH-FWA45-20', 'CH-PW-0:CD-CH-PW0-20',
+  'CH-PW-S:CD-CH-PWS-20', 'CH-PW-A-0:CD-CH-PWA0-20', 'CH-PW-A-S:CD-CH-PWAS-20',
+  'SW-0:CD-SW0-20', 'FW-0:CD-FW0-20', 'FW-S:CD-FWS-20', 'PW:CD-PW-20',
+  'SETB-CD:CD-SETBCD-20', 'SETB-PD:CD-SETBPD-22', 'SETP-CD:CD-SETP-CD-20',
+  'SETP-PD:CD-SETP-PD-20', 'SETP-CD-A:CD-SETP-CDA-20', 'SETP-PD-A:CD-SETP-PDA-20'
+].forEach(function (pair) {
+  const i = pair.indexOf(':');
+  STATEWIDE[pair.slice(0, i)] = SW_BASE + pair.slice(i + 1) + '.pdf';
+});
+
+function swEntry(label) {
+  return { houston_url: null, statewide_url: STATEWIDE[label], label: label };
+}
+
 function entry(label) {
   return {
     houston_url: HOUSTON[label],
@@ -72,8 +98,37 @@ function matchDetail(bidCode, description) {
   // 7: outfall
   if (desc.includes('OUTFALL')) return entry('OD-25');
 
-  // 8: Item 466 headwalls — leave unmapped (no clear HOU PDF invented)
-  // 9: 460/462/464/467 pipe/box/SET — skip statewide unless verified (v1: skip)
+  // 8: Item 466 headwalls / wingwalls (statewide; keyed on wing type in desc)
+  const d = desc.replace(/\s+/g, '');
+  if (item === '466') {
+    let m = d.match(/\(CH-(FW|PW)-(A-)?(0|15|30|45|S)\)/);
+    if (m) {
+      const label = 'CH-' + m[1] + '-' + (m[2] || '') + m[3];
+      return STATEWIDE[label] ? swEntry(label) : null;
+    }
+    if (d.indexOf('WINGWALL') === 0) {
+      if (/\(PW-MSE\)/.test(d) || /\(SPL\)/.test(d)) return null;
+      m = d.match(/\((FW|SW|PW)(?:-(0|S|\d+))?\)/);
+      if (!m) return null;
+      if (m[1] === 'PW') return swEntry('PW');
+      const label = m[1] + '-' + m[2];
+      return STATEWIDE[label] ? swEntry(label) : null;
+    }
+    return null;
+  }
+
+  // 9: Item 467 safety end treatments. (C)=cross, (P)=parallel drainage.
+  if (item === '467') {
+    const cp = /\(C\)$/.test(d) ? 'CD' : /\(P\)$/.test(d) ? 'PD' : null;
+    if (!cp) return null; // pipe runners, remove/reinstall, etc.
+    if (/^SET\(TYI\)\(S=/.test(d)) return swEntry('SETB-' + cp); // box SET
+    if (/^SET\(TYII\)\(DES\d/.test(d)) return swEntry('SETP-' + cp + '-A'); // arch pipe
+    if (/^SET\(TYII\)\(\d+(IN|")\)/.test(d)) return swEntry('SETP-' + cp);
+    return null; // TY I pipe SET (wing skew not stated) left unmapped
+  }
+
+  // 460 CMP, 462 box (C-I-P vs precast, single vs multi not stated),
+  // 464 RCP, 432, 400, 496: no single verified sheet fits → unmapped.
   return null;
 }
 
@@ -130,9 +185,14 @@ async function main() {
     meta: {
       accessed: iso,
       houston_index: HOUSTON_INDEX,
+      statewide_index: STATEWIDE_INDEX,
       note:
         'Houston-first: 465 INLET/INL/INLT→HIL-C-25 (AD/AAD→HIL-AD_AAD-25), MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; ' +
-        'TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25; 466/pipe-family left unmapped in v1'
+        'TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25. ' +
+        'Statewide (Bridge Div. culvert stds, no HOU version): 466 CH-FW/CH-PW (incl. A, skew)→CD-CH-*, ' +
+        'WINGWALL FW-0/FW-S/SW-0/PW→CD-FW0/FWS/SW0/PW; 467 SET TY I box (S=,HW=)→SETB-CD/PD, ' +
+        'SET TY II pipe→SETP-CD/PD, arch (DES)→SETP-CD-A/PD-A by (C)/(P). ' +
+        'Unmapped: 460 CMP, 462 box (CIP vs precast/single vs multi not in desc), 464 RCP, TY I pipe SETs, pipe runners, 432/400/496'
     },
     by_code: by_code
   };

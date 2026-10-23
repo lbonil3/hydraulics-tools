@@ -2,7 +2,8 @@
   "meta": {
     "accessed": "2026-10-23",
     "houston_index": "https://www.dot.state.tx.us/hou/specinfo/specs.htm",
-    "note": "Houston-first: 465 INLET/INL/INLT→HIL-C-25 (AD/AAD→HIL-AD_AAD-25), MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25; 466/pipe-family left unmapped in v1"
+    "statewide_index": "https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/standard/bridge-e.htm",
+    "note": "Houston-first: 465 INLET/INL/INLT→HIL-C-25 (AD/AAD→HIL-AD_AAD-25), MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25. Statewide (Bridge Div. culvert stds, no HOU version): 466 CH-FW/CH-PW (incl. A, skew)→CD-CH-*, WINGWALL FW-0/FW-S/SW-0/PW→CD-FW0/FWS/SW0/PW; 467 SET TY I box (S=,HW=)→SETB-CD/PD, SET TY II pipe→SETP-CD/PD, arch (DES)→SETP-CD-A/PD-A by (C)/(P). Unmapped: 460 CMP, 462 box (CIP vs precast/single vs multi not in desc), 464 RCP, TY I pipe SETs, pipe runners, 432/400/496"
   },
   "by_code": {
     "104-6044": {
@@ -1714,6 +1715,2446 @@
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
       "statewide_url": null,
       "label": "JB-25"
+    },
+    "466-6003": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-6005": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-6024": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW15-20.pdf",
+      "label": "CH-FW-15"
+    },
+    "466-6039": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-6043": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-6052": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW45-20.pdf",
+      "label": "CH-FW-45"
+    },
+    "466-6087": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FWA45-20.pdf",
+      "label": "CH-FW-A-45"
+    },
+    "466-6095": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-6097": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-6099": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-6101": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-6102": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-6103": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-6105": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-6120": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWAS-20.pdf",
+      "label": "CH-PW-A-S"
+    },
+    "466-6128": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-6130": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-6132": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-6143": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-6152": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-6155": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-6156": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-6158": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-6165": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-6166": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-6167": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-6170": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-6171": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6173": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6174": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6176": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6178": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6179": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6180": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6181": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6182": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6183": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6184": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6187": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6194": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6207": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-6208": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-6215": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-6230": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6245": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6253": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-6272": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7001": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7003": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7005": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7007": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7009": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7010": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7011": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7012": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7013": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7015": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW0-20.pdf",
+      "label": "CH-FW-0"
+    },
+    "466-7020": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW15-20.pdf",
+      "label": "CH-FW-15"
+    },
+    "466-7024": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW15-20.pdf",
+      "label": "CH-FW-15"
+    },
+    "466-7025": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW15-20.pdf",
+      "label": "CH-FW-15"
+    },
+    "466-7026": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW15-20.pdf",
+      "label": "CH-FW-15"
+    },
+    "466-7028": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW15-20.pdf",
+      "label": "CH-FW-15"
+    },
+    "466-7029": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW15-20.pdf",
+      "label": "CH-FW-15"
+    },
+    "466-7035": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-7037": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-7039": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-7040": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-7041": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-7042": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-7045": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW30-20.pdf",
+      "label": "CH-FW-30"
+    },
+    "466-7048": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW45-20.pdf",
+      "label": "CH-FW-45"
+    },
+    "466-7050": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW45-20.pdf",
+      "label": "CH-FW-45"
+    },
+    "466-7052": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW45-20.pdf",
+      "label": "CH-FW-45"
+    },
+    "466-7054": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW45-20.pdf",
+      "label": "CH-FW-45"
+    },
+    "466-7056": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW45-20.pdf",
+      "label": "CH-FW-45"
+    },
+    "466-7057": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW45-20.pdf",
+      "label": "CH-FW-45"
+    },
+    "466-7058": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FW45-20.pdf",
+      "label": "CH-FW-45"
+    },
+    "466-7063": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-FWA0-20.pdf",
+      "label": "CH-FW-A-0"
+    },
+    "466-7097": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7099": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7101": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7102": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7103": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7104": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7105": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7106": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7107": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7108": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7109": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7110": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7111": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7114": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7116": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7118": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7119": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7120": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7121": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7122": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7123": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7124": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7125": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7126": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7130": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWA0-20.pdf",
+      "label": "CH-PW-A-0"
+    },
+    "466-7145": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7146": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7147": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7148": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7149": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7150": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7151": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7152": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7153": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7154": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7155": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7156": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7158": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FW0-20.pdf",
+      "label": "FW-0"
+    },
+    "466-7159": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7160": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7161": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7162": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7163": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7164": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7165": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7166": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7167": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7168": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-FWS-20.pdf",
+      "label": "FW-S"
+    },
+    "466-7173": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7174": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7175": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7176": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7177": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7178": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7179": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7180": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7181": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7182": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7183": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7184": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7185": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7186": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7187": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7188": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7189": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7190": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7191": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7192": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7193": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7194": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7195": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7196": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7198": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7199": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7200": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7202": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7203": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7204": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7205": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7206": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7207": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7208": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7209": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7210": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7211": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7215": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7217": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7218": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7219": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PWS-20.pdf",
+      "label": "CH-PW-S"
+    },
+    "466-7220": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7221": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-CH-PW0-20.pdf",
+      "label": "CH-PW-0"
+    },
+    "466-7225": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "466-7226": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7227": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-PW-20.pdf",
+      "label": "PW"
+    },
+    "466-7228": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
+      "label": "SW-0"
+    },
+    "467-6045": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6098": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6104": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6106": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6109": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6110": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-6112": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6115": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6117": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6119": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6124": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6139": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6141": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6143": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6144": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6146": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6147": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-6150": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6158": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6160": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6162": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6172": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6173": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6174": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-6175": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6179": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6180": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-6183": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6184": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-6186": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6204": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6212": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6214": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6215": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-6219": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6220": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6221": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-6223": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6224": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6245": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6246": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6273": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-6280": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6284": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6287": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6289": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6290": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6313": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-6323": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6348": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6356": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6358": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6359": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6362": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6363": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6375": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6377": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6388": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6390": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6391": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6394": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6395": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6410": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6417": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6419": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6420": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6422": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6423": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6439": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6450": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6454": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6463": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6474": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6480": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6494": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-6495": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-6518": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-6519": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-6530": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7036": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7037": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7038": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7039": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7040": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7041": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7042": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7043": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7044": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7045": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7046": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7047": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7048": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7049": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7050": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7051": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7052": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7053": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7063": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7064": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7065": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7066": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7067": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7068": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7069": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7070": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7071": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7072": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7073": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7074": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7075": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7076": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7077": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7078": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7080": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7083": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7092": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7093": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7095": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7096": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7097": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7098": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7099": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7100": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7101": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7102": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7103": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7104": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7105": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7107": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7108": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7109": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7111": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7112": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7114": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7122": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7124": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7125": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7126": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7127": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7128": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7129": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7130": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7131": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7132": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7133": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7134": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7135": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7136": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7137": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7138": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7140": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7141": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7143": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7144": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7145": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7147": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7153": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7154": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7155": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7156": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7157": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7158": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7159": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7161": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7162": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7165": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7166": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7179": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7180": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7181": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7182": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7183": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7184": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7185": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7186": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7187": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7188": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7189": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7191": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7192": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7195": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7196": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7199": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7205": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7206": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7209": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7210": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7217": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7218": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7220": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7222": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7227": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7228": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7230": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7233": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7234": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7236": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7237": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7238": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7273": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7276": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7288": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7289": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7290": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7291": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7292": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7296": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7297": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7298": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7300": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7302": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7303": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7304": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7305": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7306": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7307": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7308": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7309": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7310": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7311": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7312": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7316": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7318": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7320": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7321": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7322": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7323": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7324": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7325": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7326": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7327": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7328": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7330": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7332": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7336": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7340": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7341": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7342": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7343": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7344": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7345": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7346": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7347": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7348": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7350": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7352": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7362": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7363": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7364": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7365": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7366": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7367": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7368": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7369": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7370": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7372": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7376": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7377": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7378": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7379": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7380": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7381": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7384": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7388": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7389": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7390": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7391": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7392": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7397": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7398": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7399": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7400": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7406": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7407": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7408": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7414": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-7416": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7417": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7418": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-7420": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7422": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-7425": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7426": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-7427": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7428": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7429": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7430": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-7431": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7432": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7433": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7434": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-7436": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7437": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7438": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-7440": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7441": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7444": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7446": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PDA-20.pdf",
+      "label": "SETP-PD-A"
+    },
+    "467-7448": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7456": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
+      "label": "SETP-CD-A"
+    },
+    "467-7467": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7468": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7469": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7470": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7471": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7473": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
+      "label": "SETB-CD"
+    },
+    "467-7474": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7479": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
+    },
+    "467-7480": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7481": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7482": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7483": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CD-20.pdf",
+      "label": "SETP-CD"
+    },
+    "467-7484": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7486": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-PD-20.pdf",
+      "label": "SETP-PD"
+    },
+    "467-7488": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBPD-22.pdf",
+      "label": "SETB-PD"
     },
     "474-6021": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/TDD-25%20(HOU).pdf",
