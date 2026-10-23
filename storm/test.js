@@ -44,4 +44,34 @@ cycle.pipes.push(C.emptyPipe({
 }));
 assert.strictEqual(C.validateTopology(cycle.nodes, cycle.pipes).ok, false);
 
+// --- conveyance + hf ---
+const circ = C.emptyPipe({
+  id: 'c', fromId: 'a', toId: 'b', shape: 'circular', diameter: 2, n: 0.013,
+  length: 200, ieUp: 100, ieDn: 99, Q: 10
+});
+const props = C.sectionProps(circ);
+assert.ok(Math.abs(props.A - Math.PI) < 1e-9); // π·1²
+assert.ok(Math.abs(props.R - 0.5) < 1e-9);     // D/4
+const S = C.slopeOf(circ);
+assert.ok(Math.abs(S - 0.005) < 1e-12);
+const Qf = C.fullFlowCapacity(circ);
+assert.ok(Qf > 10); // 24 in @ 0.5% concrete should carry >10 cfs
+const hf = C.frictionHf(circ, 10);
+assert.ok(hf > 0 && hf < 200);
+const conv = C.conveyPipe(Object.assign({}, circ, { Q: 10 }));
+assert.ok(conv.Qfull > 0);
+assert.strictEqual(conv.passCap, true);
+assert.ok(conv.hf > 0);
+
+const box = C.emptyPipe({
+  id: 'bx', shape: 'box', span: 3, rise: 2, n: 0.013, length: 100,
+  ieUp: 50, ieDn: 49.5, Q: 20
+});
+assert.ok(C.fullFlowCapacity(box) > 0);
+assert.ok(C.STANDARD_SIZES.circularIn.indexOf(24) >= 0);
+assert.ok(C.STANDARD_SIZES.boxFt.some(function (s) { return s[0] === 3 && s[1] === 2; }));
+
+const stub = C.sectionProps(C.emptyPipe({ shape: 'ellip', span: 3, rise: 2 }));
+assert.ok(stub.err); // v1 stub for non circular/box
+
 console.log('ok');
