@@ -160,4 +160,26 @@ assert.strictEqual(ex.version, 1);
 assert.ok(ex.outfallTw != null);
 assert.ok(ex.nodes.length >= 4 && ex.pipes.length >= 3);
 
+function sameConn(a, b) {
+  assert.strictEqual(a.pipes.length, b.pipes.length);
+  assert.strictEqual(a.nodes.length, b.nodes.length);
+  a.pipes.forEach(function (p) {
+    const q = b.pipes.find(function (x) { return x.id === p.id; });
+    assert.ok(q);
+    ['fromId', 'toId', 'ieUp', 'ieDn', 'length'].forEach(function (k) { assert.strictEqual(q[k], p[k], k); });
+  });
+}
+sameConn(small, sug);
+const all = C.suggestSizesAll(small.nodes, small.pipes, 91.5);
+assert.ok(Array.isArray(all.resized) && all.resized.length > 0);
+assert.ok(all.changed);
+assert.ok(all.pipes.find(function (p) { return p.id === 'p1'; }).diameter > 1.0);
+sameConn(small, all);
+const bx = C.nextSize(C.emptyPipe({ shape: 'box', span: 4, rise: 3 }));
+assert.ok(bx && bx.span === 4 && bx.rise === 4); // 4x3 -> 4x4
+const maxIn = 72; // largest standard circular (in)
+assert.strictEqual(C.nextSize(C.emptyPipe({ shape: 'circular', diameter: maxIn / 12 })), null);
+assert.strictEqual(C.isNetworkEmpty([], []), true);
+assert.strictEqual(C.isNetworkEmpty(ex.nodes, ex.pipes), false);
+
 console.log('ok');

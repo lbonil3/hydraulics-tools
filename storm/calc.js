@@ -558,7 +558,7 @@
     const resized = [];
     let changed = false;
     let guard = 0;
-    while (guard++ < 50) {
+    while (guard++ < 500) {
       const an = analyzeNetwork(curN, curP, outfallTw);
       const failing = an.pipes.filter(function (p) {
         return !pipePassing(an, p.id) && (p.shape === 'circular' || p.shape === 'box');
@@ -566,8 +566,16 @@
       if (!failing.length) {
         return { nodes: an.nodes, pipes: an.pipes, changed: changed, resized: resized };
       }
+      // Intentional: resize the failing pipe nearest the outfall first (downstream-first), one step, then re-analyze.
+      const depthOf = function (pid) {
+        let d = 0; let p = curP.find(function (x) { return x.id === pid; }); const seen = {};
+        while (p && !seen[p.id]) { seen[p.id] = true; d++; const to = p.toId; p = curP.find(function (x) { return x.fromId === to; }); }
+        return d;
+      };
       let any = false;
-      failing.forEach(function (fp) {
+      const ordered = failing.slice().sort(function (a, b) { return depthOf(a.id) - depthOf(b.id); });
+      for (let k = 0; k < ordered.length && !any; k++) {
+        const fp = ordered[k];
         const idx = curP.findIndex(function (p) { return p.id === fp.id; });
         const bigger = nextSize(curP[idx]);
         if (bigger) {
@@ -576,7 +584,7 @@
           any = true;
           changed = true;
         }
-      });
+      }
       if (!any) {
         const last = analyzeNetwork(curN, curP, outfallTw);
         return { nodes: last.nodes, pipes: last.pipes, changed: changed, resized: resized };
