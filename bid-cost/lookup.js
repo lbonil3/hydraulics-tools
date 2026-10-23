@@ -63,7 +63,20 @@
     };
   }
 
+  function resolveDetail(map, bidCode) {
+    if (!map || !map.by_code) return null;
+    const entry = map.by_code[String(bidCode || '')];
+    if (!entry) return null;
+    const hou = entry.houston_url && String(entry.houston_url).trim();
+    const sw = entry.statewide_url && String(entry.statewide_url).trim();
+    const label = (entry.label && String(entry.label).trim()) || 'Detail';
+    if (hou) return { url: hou, source: 'Houston', label: label };
+    if (sw) return { url: sw, source: 'Statewide', label: label };
+    return null;
+  }
   const api = {
+    resolveDetail: resolveDetail,
+
     resolvePrice: resolvePrice,
     filterRows: filterRows,
     formatMoney: formatMoney,

@@ -84,4 +84,37 @@ const b3 = L.barPercents(null, null);
 assert.strictEqual(b3.houston, 0);
 assert.strictEqual(b3.statewide, 0);
 
+const detailMap = {
+  by_code: {
+    '465-6001': {
+      houston_url: 'https://example.com/hil.pdf',
+      statewide_url: 'https://example.com/sw.pdf',
+      label: 'HIL-C-25'
+    },
+    '464-6001': {
+      houston_url: null,
+      statewide_url: 'https://example.com/pipe.pdf',
+      label: 'SCP'
+    },
+    '999-6001': {
+      houston_url: '',
+      statewide_url: null
+    }
+  }
+};
+
+const d1 = L.resolveDetail(detailMap, '465-6001');
+assert.strictEqual(d1.source, 'Houston');
+assert.strictEqual(d1.url, 'https://example.com/hil.pdf');
+assert.strictEqual(d1.label, 'HIL-C-25');
+
+const d2 = L.resolveDetail(detailMap, '464-6001');
+assert.strictEqual(d2.source, 'Statewide');
+assert.strictEqual(d2.url, 'https://example.com/pipe.pdf');
+
+assert.strictEqual(L.resolveDetail(detailMap, '999-6001'), null);
+assert.strictEqual(L.resolveDetail(detailMap, 'no-such'), null);
+assert.strictEqual(L.resolveDetail(null, '465-6001'), null);
+assert.strictEqual(L.resolveDetail(detailMap, '465-6001').label.length > 0, true);
+
 console.log('ok');
