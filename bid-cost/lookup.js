@@ -29,7 +29,49 @@
     });
   }
 
-  const api = { resolvePrice: resolvePrice, filterRows: filterRows, formatMoney: formatMoney };
+  function itemFromBidCode(bidCode) {
+    const m = String(bidCode || '').match(/^(\d{3})/);
+    return m ? m[1] : null;
+  }
+
+  function groupByItem(rows) {
+    const map = Object.create(null);
+    (rows || []).forEach(function (r) {
+      const item = itemFromBidCode(r.bid_code);
+      if (!item) return;
+      if (!map[item]) map[item] = [];
+      map[item].push(r);
+    });
+    return Object.keys(map)
+      .sort(function (a, b) { return Number(a) - Number(b); })
+      .map(function (item) { return { item: item, rows: map[item] }; });
+  }
+
+  function specPdfUrl(item) {
+    return 'https://ftp.txdot.gov/pub/txdot-info/cmd/cserve/specs/2024/standard/s' +
+      String(item) + '.pdf';
+  }
+
+  function barPercents(houstonAvg, statewideAvg) {
+    const h = houstonAvg == null || Number.isNaN(Number(houstonAvg)) ? null : Number(houstonAvg);
+    const s = statewideAvg == null || Number.isNaN(Number(statewideAvg)) ? null : Number(statewideAvg);
+    const max = Math.max(h == null ? 0 : h, s == null ? 0 : s);
+    if (max <= 0) return { houston: 0, statewide: 0 };
+    return {
+      houston: h == null ? 0 : Math.round((h / max) * 100),
+      statewide: s == null ? 0 : Math.round((s / max) * 100)
+    };
+  }
+
+  const api = {
+    resolvePrice: resolvePrice,
+    filterRows: filterRows,
+    formatMoney: formatMoney,
+    itemFromBidCode: itemFromBidCode,
+    groupByItem: groupByItem,
+    specPdfUrl: specPdfUrl,
+    barPercents: barPercents
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.BidCostLookup = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

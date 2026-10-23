@@ -54,4 +54,34 @@ assert.strictEqual(L.filterRows(rows, 'no-match-xyz').length, 0);
 assert.strictEqual(L.formatMoney(1234.5), '$1,234.50');
 assert.strictEqual(L.formatMoney(null), '—');
 
+assert.strictEqual(L.itemFromBidCode('464-6001'), '464');
+assert.strictEqual(L.itemFromBidCode('100-6001'), '100');
+assert.strictEqual(L.itemFromBidCode('bad'), null);
+
+const grouped = L.groupByItem([
+  { bid_code: '465-6001' },
+  { bid_code: '464-6001' },
+  { bid_code: '464-6002' },
+  { bid_code: 'nope' }
+]);
+assert.strictEqual(grouped.length, 2);
+assert.strictEqual(grouped[0].item, '464');
+assert.strictEqual(grouped[0].rows.length, 2);
+assert.strictEqual(grouped[1].item, '465');
+
+assert.strictEqual(
+  L.specPdfUrl('464'),
+  'https://ftp.txdot.gov/pub/txdot-info/cmd/cserve/specs/2024/standard/s464.pdf'
+);
+
+const b1 = L.barPercents(100, 50);
+assert.strictEqual(b1.houston, 100);
+assert.strictEqual(b1.statewide, 50);
+const b2 = L.barPercents(null, 80);
+assert.strictEqual(b2.houston, 0);
+assert.strictEqual(b2.statewide, 100);
+const b3 = L.barPercents(null, null);
+assert.strictEqual(b3.houston, 0);
+assert.strictEqual(b3.statewide, 0);
+
 console.log('ok');
