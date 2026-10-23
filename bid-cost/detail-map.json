@@ -2,7 +2,7 @@
   "meta": {
     "accessed": "2026-10-23",
     "houston_index": "https://www.dot.state.tx.us/hou/specinfo/specs.htm",
-    "note": "Houston-first: 465 INLET→HIL-C-25, MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25; 466/pipe-family left unmapped in v1"
+    "note": "Houston-first: 465 INLET/INL/INLT→HIL-C-25 (AD/AAD→HIL-AD_AAD-25), MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25; 466/pipe-family left unmapped in v1"
   },
   "by_code": {
     "104-6044": {
@@ -501,9 +501,9 @@
       "label": "HIL-C-25"
     },
     "465-6167": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "HIL-C-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-6170": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
@@ -621,9 +621,9 @@
       "label": "HIL-C-25"
     },
     "465-6559": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-C-25"
     },
     "465-6678": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
@@ -1161,24 +1161,24 @@
       "label": "HIL-C-25"
     },
     "465-7163": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-C-25"
     },
     "465-7165": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-C-25"
     },
     "465-7166": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-C-25"
     },
     "465-7167": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-C-25"
     },
     "465-7168": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
@@ -1271,14 +1271,14 @@
       "label": "HIL-C-25"
     },
     "465-7210": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-C-25"
     },
     "465-7223": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-C-25"
     },
     "465-7230": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
@@ -1291,29 +1291,29 @@
       "label": "HIL-C-25"
     },
     "465-7234": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "HIL-C-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7236": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7238": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7243": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/JB-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "JB-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7256": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "HIL-C-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7257": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
@@ -1476,14 +1476,14 @@
       "label": "HIL-C-25"
     },
     "465-7314": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "HIL-C-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7315": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "HIL-C-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7316": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
@@ -1636,9 +1636,9 @@
       "label": "MH-A_B-25"
     },
     "465-7382": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "HIL-C-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7383": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
@@ -1661,9 +1661,9 @@
       "label": "HIL-C-25"
     },
     "465-7397": {
-      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
+      "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-AD_AAD-25%20(HOU).pdf",
       "statewide_url": null,
-      "label": "HIL-C-25"
+      "label": "HIL-AD_AAD-25"
     },
     "465-7398": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",

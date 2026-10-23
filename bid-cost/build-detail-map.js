@@ -52,7 +52,10 @@ function matchDetail(bidCode, description) {
 
   // 1–4: Item 465 inlet / manhole / junction family
   if (item === '465') {
-    if (desc.includes('INLET')) return entry('HIL-C-25');
+    if (/\bINL(?:ET|T)?\b/.test(desc)) {
+      if (/\(AD\)|\bAAD\b|\bAD\b/.test(desc)) return entry('HIL-AD_AAD-25');
+      return entry('HIL-C-25');
+    }
     if (desc.includes('MANH') || desc.includes('MANHOLE')) return entry('MH-A_B-25');
     if (desc.includes('JB') || desc.includes('JUNCTION')) return entry('JB-25');
     return entry('JB-25'); // remaining 465 → JB family fallback
@@ -128,7 +131,7 @@ async function main() {
       accessed: iso,
       houston_index: HOUSTON_INDEX,
       note:
-        'Houston-first: 465 INLET→HIL-C-25, MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; ' +
+        'Houston-first: 465 INLET/INL/INLT→HIL-C-25 (AD/AAD→HIL-AD_AAD-25), MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; ' +
         'TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25; 466/pipe-family left unmapped in v1'
     },
     by_code: by_code
