@@ -8,6 +8,8 @@ header span{opacity:.85;flex:1;min-width:200px;font-size:13px;line-height:1.35}
 .toolbar button:hover,.toolbar a.toolbtn:hover{background:#163a5c}
 .toolbar button.danger{background:#fff;color:#c0392b;border-color:#c0392b}
 .toolbar button.danger:hover{background:#fdecea}
+.toolbar button#loadExample{background:#fff;color:#1f4e79;border:1px solid #1f4e79}
+.toolbar button#loadExample:hover{background:#eaf1f8}
 .toolbar .storm{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:13px;color:#556}
 .toolbar .storm input{width:72px;padding:4px 8px;border:1px solid #c9d2dd;border-radius:6px;font-size:14px}
 .wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 0 12px;background:#fff;margin:0 0 8px}
