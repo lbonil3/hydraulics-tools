@@ -120,4 +120,50 @@ assert.strictEqual(M.isTableEmpty([M.emptyRow()]), true);
 assert.strictEqual(M.isTableEmpty([Object.assign(M.emptyRow(), { Q: 5 })]), false);
 assert.strictEqual(M.isTableEmpty(ex), false);
 
+// --- helpers: copy / fill FL / chain ---
+const baseA = Object.assign(M.emptyRow(), {
+  id: 'a', staFrom: '0+00', staTo: '1+00', Z1: 4, B: 3, Z2: 4, Dd: 2.5, n: 0.04,
+  offFrom: 'LT', offTo: 'LT', Q: 10, flFrom: 100, flTo: 99.5, length: 100
+});
+const baseB = Object.assign(M.emptyRow(), {
+  id: 'b', staFrom: '1+00', staTo: '2+00', Z1: 2, B: 1, Z2: 2, Dd: 1, n: 0.03,
+  offFrom: '', offTo: '', Q: 5, flFrom: 99.5, flTo: 99, length: 100
+});
+const copied = M.copySectionDown([baseA, baseB], 0);
+assert.strictEqual(copied[1].Z1, 4);
+assert.strictEqual(copied[1].B, 3);
+assert.strictEqual(copied[1].Z2, 4);
+assert.strictEqual(copied[1].Dd, 2.5);
+assert.strictEqual(copied[1].n, 0.04);
+assert.strictEqual(copied[1].offFrom, 'LT');
+assert.strictEqual(copied[1].staFrom, '1+00');
+assert.strictEqual(copied[1].Q, 5);
+assert.strictEqual(copied[0].Z1, 4);
+
+const chain = M.applyChainQn([
+  Object.assign(M.emptyRow(), { id: '1', Q: 10, n: 0.035 }),
+  Object.assign(M.emptyRow(), { id: '2', Q: 5, n: 0.03 }),
+  Object.assign(M.emptyRow(), { id: '3', Q: 5, n: 0.03 })
+], 0, 'Q', 12);
+assert.strictEqual(chain[0].Q, 12);
+assert.strictEqual(chain[1].Q, 12);
+assert.strictEqual(chain[2].Q, 12);
+assert.strictEqual(chain[1].n, 0.03);
+
+const flRows = [
+  Object.assign(M.emptyRow(), {
+    id: 'f0', staFrom: '0+00', staTo: '1+00', flFrom: 100, flTo: null,
+    length: 100, gradeOverride: true, grade: 0.005, Z1: 3, B: 2, Z2: 3, Dd: 2, n: 0.035
+  }),
+  Object.assign(M.emptyRow(), {
+    id: 'f1', staFrom: '1+00', staTo: '2+00', flFrom: null, flTo: null,
+    length: 100, gradeOverride: true, grade: 0.005, Z1: 3, B: 2, Z2: 3, Dd: 2, n: 0.035
+  })
+];
+const filled = M.fillFlFromGrade(flRows);
+assert.ok(filled.changed);
+assert.ok(Math.abs(filled.rows[0].flTo - 99.5) < 1e-9);
+assert.ok(Math.abs(filled.rows[1].flFrom - 99.5) < 1e-9);
+assert.ok(Math.abs(filled.rows[1].flTo - 99) < 1e-9);
+
 console.log('ok');

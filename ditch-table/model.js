@@ -195,10 +195,70 @@
     return out;
   }
 
+  function copySectionDown(rows, fromIndex) {
+    if (!rows || !rows.length) return [];
+    const i = Math.max(0, Math.min(fromIndex | 0, rows.length - 1));
+    const src = rows[i];
+    return rows.map(function (r, idx) {
+      if (idx <= i) return Object.assign({}, r);
+      return Object.assign({}, r, {
+        Z1: src.Z1, B: src.B, Z2: src.Z2, Dd: src.Dd, n: src.n,
+        offFrom: src.offFrom, offTo: src.offTo,
+        flowDepth: null
+      });
+    });
+  }
+
+  function fillFlFromGrade(rows) {
+    if (!rows || !rows.length) return { rows: [], changed: false };
+    let changed = false;
+    const out = rows.map(function (r) { return Object.assign({}, r); });
+    for (let i = 0; i < out.length; i++) {
+      const r = out[i];
+      let g = null;
+      if (r.gradeOverride && r.grade != null && Number(r.grade) > 0) {
+        g = Number(r.grade);
+      } else if (r.flFrom != null && r.flTo != null && r.length > 0) {
+        g = gradeFromElevs(r.flFrom, r.flTo, r.length);
+      } else if (!r.gradeOverride && r.grade != null && Number(r.grade) > 0) {
+        g = Number(r.grade);
+      }
+      if (r.flFrom == null && i > 0 && out[i - 1].flTo != null) {
+        r.flFrom = out[i - 1].flTo;
+        changed = true;
+      }
+      if (g != null && g > 0 && r.flFrom != null && r.length > 0) {
+        const nextTo = r.flFrom - g * r.length;
+        if (r.flTo == null || Math.abs(Number(r.flTo) - nextTo) > 1e-9) {
+          r.flTo = nextTo;
+          changed = true;
+        }
+        if (!r.gradeOverride) r.grade = g;
+        r.flowDepth = null;
+      }
+      out[i] = r;
+    }
+    return { rows: out, changed: changed };
+  }
+
+  function applyChainQn(rows, fromIndex, key, value) {
+    if (key !== 'Q' && key !== 'n') return rows.map(function (r) { return Object.assign({}, r); });
+    const i = Math.max(0, fromIndex | 0);
+    return rows.map(function (r, idx) {
+      const copy = Object.assign({}, r);
+      if (idx >= i) {
+        copy[key] = value;
+        if (key === 'Q' || key === 'n') copy.flowDepth = null;
+      }
+      return copy;
+    });
+  }
+
   const API = {
     parseStation, formatStation, gradeFromElevs, topWidth, shapeFromRow,
     emptyRow, computeRow, goalSeekRow, applyGradeInput, DEPTH_INVALIDATING,
-    exampleRows, isTableEmpty
+    exampleRows, isTableEmpty,
+    copySectionDown, fillFlFromGrade, applyChainQn
   };
   if (typeof module !== 'undefined') module.exports = API;
   else root.DitchTableModel = API;
