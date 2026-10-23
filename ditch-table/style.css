@@ -4,8 +4,8 @@ header{background:#1f4e79;color:#fff;padding:10px 18px;display:flex;gap:16px;ali
 header h1{margin:0;font-size:20px}
 header span{opacity:.85;flex:1;min-width:200px;font-size:13px;line-height:1.35}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid #d5dce5}
-.toolbar button{min-height:36px;padding:6px 14px;border-radius:6px;border:1px solid #1f4e79;background:#1f4e79;color:#fff;font:600 14px system-ui,sans-serif;cursor:pointer}
-.toolbar button:hover{background:#163a5c}
+.toolbar button,.toolbar a.toolbtn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:6px 14px;border-radius:6px;border:1px solid #1f4e79;background:#1f4e79;color:#fff;font:600 14px system-ui,sans-serif;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.toolbar button:hover,.toolbar a.toolbtn:hover{background:#163a5c}
 .toolbar button.danger{background:#fff;color:#c0392b;border-color:#c0392b}
 .toolbar button.danger:hover{background:#fdecea}
 .toolbar .storm{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:13px;color:#556}

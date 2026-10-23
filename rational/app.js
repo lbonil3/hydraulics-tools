@@ -102,7 +102,7 @@ function sendBox(Q,I,C,A,tc){const I100=T.intensity(idfAt(100),tc),Q100=C*I100*A
  const url='../culvert/?'+new URLSearchParams({from:'rational',Q:d.Q,Qcheck:d.Qcheck,rp:d.rp,county:d.county,zone:d.zone,ser:d.ser,tc:d.tc,C:d.C,A:d.A,i:d.i,i100:d.i100}).toString();
  let el=$('#sendc');if(!el){el=document.createElement('div');el.id='sendc';el.className='card';$('#summary').after(el);}
  el.innerHTML=`<h3>Send to culvert tool</h3><p style="margin:4px 0 8px">Design flow <b>${f(Q,1)} cfs</b> (${S.rp}-yr) and check flood <b>${f(Q100,1)} cfs</b> (100-yr, 1% AEP: same county IDF, Tc = ${f(tc,1)} min and C = ${f(C,3)}; i<sub>100</sub> = ${f(I100,2)} in/hr). TxDOT HDM Ch. 4 §6: “All facilities must be evaluated to the 1% AEP flood event.” Pick the design frequency from HDM Table 4-2 for your facility (e.g., freeway main-lane culverts: 2% AEP, 50-yr).</p><a class="sendbtn" href="${url}" style="display:inline-block;background:#1f4e79;color:#fff;padding:10px 16px;border-radius:8px;font-weight:600;text-decoration:none">Send to culvert tool →</a>`;
- const durl='../ditch/?'+new URLSearchParams({from:'rational',Q:d.Q,Qcheck:d.Qcheck,rp:d.rp,tc:d.tc,C:d.C,A:d.A,i:d.i}).toString();
+ const durl='../ditch/studio.html?'+new URLSearchParams({from:'rational',Q:d.Q,Qcheck:d.Qcheck,rp:d.rp,tc:d.tc,C:d.C,A:d.A,i:d.i}).toString();
  el.querySelector('a').insertAdjacentHTML('afterend',` <a class="sendbtn sendditch" href="${durl}" style="display:inline-block;background:#2e7d32;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:700;margin-top:6px">Send to ditch tool &#8594;</a>`);
  el.querySelectorAll('a.sendbtn').forEach(x=>x.onclick=()=>{try{localStorage.setItem('hydro.handoff',JSON.stringify(d));}catch(e){}});
  window.HANDOFF=d;}

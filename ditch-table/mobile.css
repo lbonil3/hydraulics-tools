@@ -5,7 +5,7 @@ html{-webkit-text-size-adjust:100%}
   header h1{font-size:18px}
   header span{flex:1 1 100%;font-size:12px}
   .toolbar{padding:8px 10px;gap:8px}
-  .toolbar button{min-height:44px;font-size:16px;padding:8px 14px}
+  .toolbar button,.toolbar a.toolbtn{min-height:44px;font-size:16px;padding:8px 14px}
   .toolbar .storm{margin-left:0;width:100%;font-size:14px}
   .toolbar .storm input{min-height:44px;font-size:16px;width:96px;padding:6px 10px}
   #grid{font-size:13px}
@@ -16,6 +16,6 @@ html{-webkit-text-size-adjust:100%}
   .cite{padding:8px 12px 24px;font-size:12.5px}
 }
 @media (hover:none),(pointer:coarse){
-  .toolbar button,#grid button.del,#grid button.gs{touch-action:manipulation;min-height:44px;font-size:16px}
+  .toolbar button,.toolbar a.toolbtn,#grid button.del,#grid button.gs{touch-action:manipulation;min-height:44px;font-size:16px}
   #grid input,#grid select,.toolbar .storm input{min-height:44px;font-size:16px}
 }

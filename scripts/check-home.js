@@ -7,11 +7,10 @@ if (!html.includes('home.css')) fail('missing home.css link');
 const hrefs = [
   'rational/index.html',
   'drainage/index.html',
-  'ditch/index.html',
   'ditch-table/index.html',
   'culvert/index.html',
 ];
-const classes = ['tool-tc', 'tool-drainage', 'tool-ditch', 'tool-table', 'tool-culvert'];
+const classes = ['tool-tc', 'tool-drainage', 'tool-ditch', 'tool-culvert'];
 for (const h of hrefs) {
   if (!html.includes('href="' + h + '"')) fail('missing href ' + h);
 }
@@ -22,8 +21,11 @@ const idx = hrefs.map((h) => html.indexOf('href="' + h + '"'));
 for (let k = 1; k < idx.length; k++) {
   if (idx[k] < idx[k - 1]) fail('wrong card order near ' + hrefs[k]);
 }
-for (const name of ['Tc Studio', 'Ditch Studio', 'Ditch Table', 'Culvert Studio']) {
+for (const name of ['Tc Studio', 'Drainage Studio', 'Ditch', 'Culvert Studio']) {
   if (!html.includes(name)) fail('missing label ' + name);
 }
+// Ensure old separate ditch cards are gone
+if (html.includes('Ditch Studio') || html.includes('Ditch Table')) fail('old separate ditch cards still present');
+if (html.includes('href="ditch/index.html"')) fail('home still links to ditch/index.html');
 if (bad) process.exit(1);
 console.log('ok');
