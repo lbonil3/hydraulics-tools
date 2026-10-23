@@ -221,6 +221,16 @@
     render();
   }
 
+  function loadExample() {
+    if (!M.isTableEmpty(rows)) {
+      if (!confirm('Replace your table with the 5-station example?')) return;
+    }
+    stormEl.value = '5-YR (example)';
+    rows = M.exampleRows().map(function (r) { return M.computeRow(r); });
+    save();
+    render();
+  }
+
   function clearAll() {
     if (!confirm('Clear the entire table? This cannot be undone.')) return;
     rows = [M.computeRow(M.emptyRow())];
@@ -243,6 +253,7 @@
   }
 
   document.getElementById('addRow').addEventListener('click', addRow);
+  document.getElementById('loadExample').addEventListener('click', loadExample);
   document.getElementById('clearAll').addEventListener('click', clearAll);
   document.getElementById('goalSeekAll').addEventListener('click', goalSeekAll);
 
