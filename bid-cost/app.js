@@ -5,6 +5,7 @@
   const count = document.getElementById('count');
   const metaLine = document.getElementById('metaLine');
   let allRows = [];
+  let detailMap = null;
   const openItems = Object.create(null); // item -> true when user toggled open
   const bodyCache = Object.create(null); // item -> { sig, html }
   let rowsByItem = Object.create(null); // item -> rows for current filter
@@ -19,6 +20,12 @@
     const x = L.resolvePrice(r);
     if (x.price == null) return '';
     const bars = L.barPercents(r.houston_avg, r.statewide_avg);
+    const d = L.resolveDetail(detailMap, r.bid_code);
+    const detailCell = d
+      ? '<a class="detail-link" href="' + escapeHtml(d.url) +
+        '" target="_blank" rel="noopener noreferrer" title="' +
+        escapeHtml(d.source + ' · ' + d.label) + '">' + escapeHtml(d.label) + '</a>'
+      : '';
     return '<tr>' +
       '<td>' + escapeHtml(r.bid_code) + '</td>' +
       '<td>' + escapeHtml(r.description) + '</td>' +
@@ -26,6 +33,7 @@
       '<td>' + L.formatMoney(x.price) + '</td>' +
       '<td>' + (x.n == null ? '—' : String(x.n)) + '</td>' +
       '<td>' + escapeHtml(x.source || '—') + '</td>' +
+      '<td class="detail-cell">' + detailCell + '</td>' +
       '<td class="price-bars" title="Houston vs Statewide">' +
         '<span class="bar houston" style="width:' + bars.houston + '%"></span>' +
         '<span class="bar statewide" style="width:' + bars.statewide + '%"></span>' +
@@ -34,12 +42,13 @@
   }
 
   function rowsSignature(rows) {
-    return rows.map(function (r) { return r.bid_code; }).join('\0');
+    // Include map-loaded bit so late detail-map.json refresh invalidates cache
+    return (detailMap ? '1' : '0') + '\0' + rows.map(function (r) { return r.bid_code; }).join('\0');
   }
 
   function tableHtml(rows) {
     return '<table><thead><tr>' +
-      '<th>Bid code</th><th>Description</th><th>Unit</th><th>Avg</th><th>n</th><th>Source</th><th>H / SW</th>' +
+      '<th>Bid code</th><th>Description</th><th>Unit</th><th>Avg</th><th>n</th><th>Source</th><th>Detail</th><th>H / SW</th>' +
       '</tr></thead><tbody>' + rows.map(rowHtml).join('') + '</tbody></table>';
   }
 
@@ -102,6 +111,10 @@
     render(L.filterRows(allRows, search.value));
   }
 
+  function maybeRender() {
+    if (allRows.length) onSearch();
+  }
+
   sectionsEl.addEventListener('click', function (ev) {
     const btn = ev.target.closest('.item-header');
     if (!btn) return;
@@ -128,11 +141,21 @@
         'Data accessed ' + (m.accessed || '—') +
         '. Lettings ' + (m.let_date_min || '—') + ' → ' + (m.let_date_max || '—') +
         '. All codes by Spec Item; Houston price first, statewide fallback labeled.';
-      onSearch();
+      maybeRender();
     })
     .catch(function (err) {
       metaLine.textContent = 'Could not load prices.json';
       console.error(err);
+    });
+
+  fetch('./detail-map.json')
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      detailMap = data;
+      maybeRender();
+    })
+    .catch(function () {
+      detailMap = null;
     });
 
   search.addEventListener('input', onSearch);

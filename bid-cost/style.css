@@ -66,3 +66,14 @@ header span{opacity:.85;flex:1;min-width:200px;font-size:13px;line-height:1.35}
 }
 .price-bars .bar.houston { background: #1f4e79; }
 .price-bars .bar.statewide { background: #8aa4bf; }
+
+.detail-link {
+  color: #1f4e79;
+  font-weight: 600;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.25rem 0.35rem;
+}
+.detail-cell { white-space: nowrap; }
