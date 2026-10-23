@@ -74,8 +74,36 @@
     if (sw) return { url: sw, source: 'Statewide', label: label };
     return null;
   }
+  /**
+   * Items with a 2024 standard spec PDF listed in the official directory
+   * https://ftp.txdot.gov/pub/txdot-info/cmd/cserve/specs/2024/standard/ (accessed 2026-10-23).
+   * 8xx and other non-listed Items are excluded (no verified spec URL).
+   */
+  const SPEC_ITEMS = new Set('001 002 003 004 005 006 007 008 009 010 100 103 104 105 106 110 112 132 134 150 152 154 156 158 160 161 162 164 166 168 169 170 180 192 193 194 204 210 216 247 250 251 260 275 276 290 291 292 295 300 301 302 305 310 314 315 316 320 330 334 341 342 344 346 347 348 350 351 354 356 358 360 361 400 401 402 403 404 405 406 407 409 410 411 416 419 420 421 422 423 424 425 426 427 429 431 432 434 438 439 440 441 442 445 446 447 448 449 450 451 454 458 459 460 462 464 465 466 467 468 471 472 474 476 479 480 481 483 490 491 492 495 496 499 500 502 503 504 505 506 508 510 512 514 520 527 528 529 530 531 533 536 538 540 542 543 544 545 550 552 556 560 585 610 613 614 616 617 618 619 620 621 623 624 625 627 628 636 644 647 650 654 656 658 662 666 667 668 672 677 678 680 681 682 684 685 686 687 688 690 700 712 713 720 721 730 731 734 735 738 740 745 751 752 760 764 770 771 772 774 776 777 778 780 784 785 786 787 788 790'.split(' '));
+
+  function hasSpecPdf(item) {
+    return SPEC_ITEMS.has(String(item || ''));
+  }
+
+  /** Sheet if mapped, else Item spec PDF (if verified), else null. */
+  function detailOrSpec(map, bidCode) {
+    const d = resolveDetail(map, bidCode);
+    if (d) return Object.assign({ kind: 'sheet' }, d);
+    const item = String(bidCode || '').slice(0, 3);
+    if (!/^\d{3}$/.test(item) || !hasSpecPdf(item)) return null;
+    return {
+      kind: 'spec',
+      url: specPdfUrl(item),
+      source: 'Spec',
+      label: 'Spec',
+      title: 'No standard sheet; spec only'
+    };
+  }
+
   const api = {
     resolveDetail: resolveDetail,
+    detailOrSpec: detailOrSpec,
+    hasSpecPdf: hasSpecPdf,
 
     resolvePrice: resolvePrice,
     filterRows: filterRows,

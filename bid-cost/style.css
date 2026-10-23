@@ -77,3 +77,10 @@ header span{opacity:.85;flex:1;min-width:200px;font-size:13px;line-height:1.35}
   padding: 0.25rem 0.35rem;
 }
 .detail-cell { white-space: nowrap; }
+
+.detail-link.spec-link {
+  color: #6b7280;
+  font-style: italic;
+  font-weight: normal;
+  opacity: 0.85;
+}

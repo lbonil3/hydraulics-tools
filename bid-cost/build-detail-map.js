@@ -149,9 +149,188 @@ function matchDetail(bidCode, description) {
   // multi-box count) → assumed precast single box misc details SCP-MD.
   if (item === '462' && /BOX/.test(desc)) return assumedEntry('SCP-MD');
 
-  // 460 CMP, 462 box (C-I-P vs precast, single vs multi not stated),
-  // 464 RCP, 432, 400, 496: no single verified sheet fits → unmapped.
-  return null;
+  // 11+: non-drainage groups (traffic, roadway, bridge rail). See matchGeneral.
+  return matchGeneral(item, desc, d);
+}
+
+/* ---- Non-drainage standards (all hrefs copied from official index pages) ---- */
+const TRAFFIC_INDEX = 'https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/standard/toc.htm';
+const ROADWAY_INDEX = 'https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/standard/rdwylse.htm';
+const STD = 'https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/';
+const HOU24 = 'https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/';
+const GEN = {
+  // traffic (Traffic Safety Division index)
+  'RID (set)': STD + 'traffic/RID-20.pdf',
+  'ED(1)-25': STD + 'traffic/ed1-25.pdf',
+  'ED(3)-25': STD + 'traffic/ed3-25.pdf',
+  'ED(4)-25': STD + 'traffic/ed4-25.pdf',
+  'ED(12)-25': STD + 'traffic/ed12-25.pdf',
+  'ED (set)': STD + 'traffic/ED.pdf',
+  'SMD (set)': STD + 'traffic/SMD.pdf',
+  'SMD(2) (set)': STD + 'traffic/SMD(2)-24.pdf',
+  'D&OM (set)': STD + 'traffic/D%26OM-25.pdf',
+  'PM (set)': STD + 'traffic/PM-22.pdf',
+  'PM(2)-22': STD + 'traffic/pm2-22.pdf',
+  'RRPM-24': STD + 'traffic/rrpm-24.pdf',
+  'WZ(STPM)-23': STD + 'traffic/wz(stpm)-23.pdf',
+  'BC (set)': STD + 'traffic/bcsm-21.pdf',
+  'TS-BP-20': STD + 'traffic/ts-bp-20.pdf',
+  'LD(1)-03': STD + 'traffic/ld-03.pdf',
+  // roadway (Design Division roadway index)
+  'EC(1)-16': STD + 'roadway/ec116.pdf',
+  'EC(2)-16': STD + 'roadway/ec216.pdf',
+  'EC(3)-16': STD + 'roadway/ec316.pdf',
+  'EC(9)-16': STD + 'roadway/ec916.pdf',
+  'CCCG-22': STD + 'roadway/cccg22.pdf',
+  'PED-18': STD + 'roadway/ped18.pdf',
+  'REPCP-25': STD + 'roadway/repcp25.pdf',
+  'CPCD-24': STD + 'roadway/cpcd24.pdf',
+  'TRANS-20': STD + 'roadway/transitslab20.pdf',
+  'GF(31)-19': STD + 'roadway/gf3119.pdf',
+  'GF(31)LS-19': STD + 'roadway/gf31ls19.pdf',
+  'GF(31)DAT-19': STD + 'roadway/gf31dat19.pdf',
+  'GF(31)TRTL3-20': STD + 'roadway/gf31trtl320.pdf',
+  'SRG(TL-2)-21': STD + 'roadway/srgtl221.pdf',
+  'SRG(TL-3)-21': STD + 'roadway/srgtl321.pdf',
+  'LPCB-26': STD + 'roadway/lpcb26.pdf',
+  'CSB(1)-10': STD + 'roadway/csb110.pdf',
+  'CSB(4)-19': STD + 'roadway/csb419.pdf',
+  'CSB(6)-10': STD + 'roadway/csb610.pdf',
+  'SSCB(1)-16': STD + 'roadway/sscb116.pdf',
+  'SSCB(3)-10': STD + 'roadway/sscb310.pdf',
+  'SSCB(4)-19': STD + 'roadway/sscb419.pdf',
+  'SSCHEB-21': STD + 'roadway/sscheb21.pdf',
+  'SSCHEB2-21': STD + 'roadway/sscheb221.pdf'
+};
+// Houston District 2024 list (name match only)
+const GEN_HOU = {
+  'SSCB(2)-25': HOU24 + 'SSCB(2)-25%20(HOU).pdf',
+  'CRCP-HS-25': HOU24 + 'CRCP-HS-25%20(HOU).pdf',
+  'JRCP-25': HOU24 + 'JRCP-25%20(HOU).pdf',
+  'CLF-25': HOU24 + 'CLF-25%20(HOU).pdf'
+};
+// Bridge rail sheets listed on bridge-e.htm (type → file stem)
+const RAIL = {};
+['C-RAIL-R-20', 'C1W-19', 'C221-19', 'C223-19', 'C2P-19', 'C402-19', 'C411-20', 'C412-19', 'C66-19',
+  'CLF-RO-19', 'PR11-19', 'PR22-19', 'PR3-19', 'SSTR-19', 'T1F-19', 'T1W-19', 'T221-19', 'T221P-19',
+  'T222-19', 'T223-19', 'T224-19', 'T2P-19', 'T402-19', 'T411-20', 'T551-19', 'T552-19', 'T631-23',
+  'T631LS-23', 'T66-19', 'T80HT-19', 'T80PP-RF-20', 'T80PP-TS-20', 'T80SS-19'
+].forEach(function (f) {
+  RAIL[f.replace(/-\d\d$/, '')] = f;
+});
+
+function gen(label, assumed) {
+  const e = { houston_url: null, statewide_url: GEN[label], label: label };
+  if (assumed) { e.label += ' (assumed)'; e.assumed = true; }
+  return e;
+}
+function genHou(label) {
+  return { houston_url: GEN_HOU[label], statewide_url: null, label: label };
+}
+
+function matchGeneral(item, desc, d) {
+  switch (item) {
+    case '360':
+      if (/JCT|TERMINAL/.test(desc)) return null;
+      if (/TRANSITION/.test(desc)) return gen('TRANS-20');
+      if (/CPCD/.test(desc)) return gen('CPCD-24');
+      if (/CRCP|CONT REINF/.test(desc)) return genHou('CRCP-HS-25');
+      if (/JOINT REINF|CPJR|JRCP/.test(desc)) return genHou('JRCP-25');
+      return null;
+    case '361':
+      return /DEPTH REP/.test(desc) ? gen('REPCP-25') : null;
+    case '450': {
+      if (/CLF-RO/.test(d)) return railEntry('CLF-RO');
+      const m = d.match(/\(TY([A-Z0-9]+(?:-[A-Z]+)?)\)/);
+      const r = m ? railEntry(m[1]) : null;
+      if (r && /\(MOD\)/.test(d)) { r.label += ' (assumed)'; r.assumed = true; }
+      return r;
+    }
+    case '502':
+      return /BARR.*SIGN.*TRAF/.test(desc) ? gen('BC (set)') : null;
+    case '506':
+      if (/ROCK FILTER DAM/.test(desc)) return gen('EC(2)-16');
+      if (/CONSTRUCTION EXIT/.test(desc)) return gen('EC(3)-16');
+      if (/SEDMT CONT FENCE|SEDIMENT CONTROL FENCE/.test(desc)) return gen('EC(1)-16');
+      if (/EROSN CONT LOG|EROSION CONTROL LOG/.test(desc)) return gen('EC(9)-16');
+      return null;
+    case '512':
+      if (/CONNECT/.test(desc) || /OR\s*\(STL\)|SSCB OR CSB/.test(desc)) return null;
+      if (/LOW PROF/.test(desc)) return gen('LPCB-26');
+      if (/F-?\s?SHAPE/.test(desc)) return gen('CSB(1)-10');
+      if (/SGL SL|SINGLE SLOPE/.test(desc)) return genHou('SSCB(2)-25');
+      return null;
+    case '514':
+      if (/MOD|TRAN|SPECIAL|SPLIT/.test(desc)) return null;
+      if (/HEB/.test(desc)) return /RGD/.test(desc) ? gen('SSCHEB-21') : /FLEX/.test(desc) ? gen('SSCHEB2-21') : null;
+      if (/SGL SLOPE|SSCB/.test(desc)) {
+        if (/\(TY3\)/.test(d)) return gen('SSCB(3)-10');
+        if (/\(TY4\)/.test(d)) return gen('SSCB(4)-19');
+        if (/\(TY1\)/.test(d)) return gen('SSCB(1)-16', true); // CIP TY1 rigid vs flexible (1F) not stated
+        return null;
+      }
+      if (/F-SHAPE/.test(desc)) {
+        if (/\(TY2\)/.test(d)) return gen('CSB(4)-19');
+        if (/\(TY3\)/.test(d)) return gen('CSB(6)-10');
+        return null;
+      }
+      return null;
+    case '529':
+      return /CURB|GUTTER|C&G/.test(desc) && !/U-TURN/.test(desc) ? gen('CCCG-22') : null;
+    case '531':
+      return /CURB RAMP/.test(desc) ? gen('PED-18') : null;
+    case '540':
+      if (/ADJUST|SPECIAL|LOW FILL|NESTED|CONNECTOR|DRIVEWAY/.test(desc)) return null;
+      if (/SHORT RADIUS/.test(desc)) {
+        if (/TL-?3/.test(desc)) return gen('SRG(TL-3)-21');
+        if (/TL-?2/.test(desc)) return gen('SRG(TL-2)-21');
+        return null;
+      }
+      if (/DOWNSTREAM ANCHOR/.test(desc)) return gen('GF(31)DAT-19');
+      if (/TRANS/.test(desc)) return /THRIE/.test(desc) ? gen('GF(31)TRTL3-20', true) : null;
+      if (/LONG SPAN/.test(desc)) return gen('GF(31)LS-19', true);
+      if (/W\s?-\s?BEAM GD FEN/.test(desc)) return gen('GF(31)-19', true); // 31" vs 28" MBGF not stated
+      return null;
+    case '550':
+      return /CHAIN LINK|CL FENCE/.test(desc) ? genHou('CLF-25') : null;
+    case '610':
+      return /\bRD IL\b/.test(desc) ? gen('RID (set)') : null;
+    case '618':
+      return /^CONDT|^CONDUIT/.test(desc) ? gen('ED(1)-25') : null;
+    case '620':
+      return /ELEC CONDR/.test(desc) ? gen('ED(3)-25') : null;
+    case '624':
+      if (/GROUND BOX TY BATTERY/.test(desc)) return gen('ED(12)-25');
+      return /GROUND BOX TY [A-E]\b/.test(desc) ? gen('ED(4)-25') : null;
+    case '628':
+      return /ELC SRV TY/.test(desc) ? gen('ED (set)') : null;
+    case '644':
+      return /SM RD SN SUP|SRSS/.test(desc) ? gen('SMD (set)') : null;
+    case '647':
+      return /LRSS|LRSA/.test(desc) ? gen('SMD(2) (set)') : null;
+    case '658':
+      return /DEL|OM |OBJECT MARKER/.test(desc) ? gen('D&OM (set)') : null;
+    case '662':
+      return /SHT TERM/.test(desc) ? gen('WZ(STPM)-23') : null;
+    case '666':
+      if (/SEALER|SLER|ELIM/.test(desc)) return null;
+      return /PAV MRK|\bPM\b/.test(desc) ? gen('PM (set)') : null;
+    case '672':
+      if (/RECESSED/.test(desc)) return gen('RRPM-24');
+      return /REFL PAV MRKR/.test(desc) ? gen('PM(2)-22') : null;
+    case '682':
+      return /BACK\s?PLATE/.test(desc) ? gen('TS-BP-20') : null;
+    case '688':
+      return /VEH LP DETECT/.test(desc) ? gen('LD(1)-03') : null;
+    default:
+      return null;
+  }
+}
+
+function railEntry(type) {
+  const f = RAIL[type];
+  if (!f) return null;
+  return { houston_url: null, statewide_url: SW_BASE + 'RL-' + f + '.pdf', label: 'RL-' + f };
 }
 
 function headOk(url) {
@@ -208,6 +387,8 @@ async function main() {
       accessed: iso,
       houston_index: HOUSTON_INDEX,
       statewide_index: STATEWIDE_INDEX,
+      traffic_index: TRAFFIC_INDEX,
+      roadway_index: ROADWAY_INDEX,
       note:
         'Houston-first: 465 INLET/INL/INLT→HIL-C-25 (AD/AAD→HIL-AD_AAD-25), MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; ' +
         'TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25. ' +
@@ -216,6 +397,12 @@ async function main() {
         'SET TY II pipe→SETP-CD/PD, arch (DES)→SETP-CD-A/PD-A by (C)/(P). ' +
         'ASSUMED links (label ends \' (assumed)\', assumed:true; verify type): 462 box→SCP-MD precast single-box misc details ' +
         '(desc lacks CIP/precast and box count); 467 SET TY I pipe with no skew→SETP-FW-0 (15/30 sheet unassumed if skew stated). ' +
+        'Non-drainage (statewide traffic/roadway/bridge-rail indexes; HOU 2024 where same sheet exists): ' +
+        '360 CRCP→CRCP-HS-25(HOU), JRCP→JRCP-25(HOU), CPCD→CPCD-24, transition→TRANS-20; 361→REPCP-25; 450 RAIL (TY x)→RL-x; ' +
+        '502 BC set; 506 EC(1/2/3/9); 512 low prof→LPCB, F-shape→CSB(1), single slope→SSCB(2)-25(HOU); 514 by type (TY1 SSCB assumed); ' +
+        '529→CCCG; 531 curb ramps→PED-18; 540 W-beam/long span/thrie trans→GF(31) (assumed), DAT, SRG TL-2/3; 550 chain link→CLF-25(HOU); ' +
+        '610→RID set; 618→ED(1); 620→ED(3); 624→ED(4)/ED(12); 628→ED set; 644→SMD set; 647→SMD(2); 658→D&OM; 662 short term→WZ(STPM); ' +
+        '666→PM set; 672→PM(2)/RRPM; 682 backplate→TS-BP; 688 loop→LD. UI falls back to Item spec PDF when no sheet. ' +
         'Unmapped (no sheet): 460 CMP, 464 RCP, pipe runners, SPL/MSE wingwalls, 432/400/496'
     },
     by_code: by_code

@@ -20,12 +20,16 @@
     const x = L.resolvePrice(r);
     if (x.price == null) return '';
     const bars = L.barPercents(r.houston_avg, r.statewide_avg);
-    const d = L.resolveDetail(detailMap, r.bid_code);
-    const detailCell = d
-      ? '<a class="detail-link" href="' + escapeHtml(d.url) +
+    const d = L.detailOrSpec(detailMap, r.bid_code);
+    let detailCell = '';
+    if (d && d.kind === 'spec') {
+      detailCell = '<a class="detail-link spec-link" href="' + escapeHtml(d.url) +
+        '" target="_blank" rel="noopener noreferrer" title="' + escapeHtml(d.title) + '">Spec</a>';
+    } else if (d) {
+      detailCell = '<a class="detail-link" href="' + escapeHtml(d.url) +
         '" target="_blank" rel="noopener noreferrer" title="' +
-        escapeHtml(d.source + ' · ' + d.label + (/\(assumed\)$/.test(d.label) ? ' · assumed sheet, verify type' : '')) + '">' + escapeHtml(d.label) + '</a>'
-      : '';
+        escapeHtml(d.source + ' · ' + d.label + (/\(assumed\)$/.test(d.label) ? ' · assumed sheet, verify type' : '')) + '">' + escapeHtml(d.label) + '</a>';
+    }
     return '<tr>' +
       '<td>' + escapeHtml(r.bid_code) + '</td>' +
       '<td>' + escapeHtml(r.description) + '</td>' +

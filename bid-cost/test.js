@@ -141,4 +141,19 @@ Object.keys(real.by_code).forEach(function (c) {
   assert.ok(/^https:\/\/ftp\.dot\.state\.tx\.us\/pub\/txdot-info\//.test(u), c);
 });
 
+// detailOrSpec fallback
+const ds1 = L.detailOrSpec(real, '465-6001');
+assert.strictEqual(ds1.kind, 'sheet');
+assert.strictEqual(ds1.source, 'Houston');
+const ds2 = L.detailOrSpec(real, '104-6001'); // removing concrete: no sheet
+assert.strictEqual(ds2.kind, 'spec');
+assert.strictEqual(ds2.url, L.specPdfUrl('104'));
+assert.strictEqual(ds2.title, 'No standard sheet; spec only');
+assert.strictEqual(L.detailOrSpec(real, '800-6001'), null); // 8xx: no verified spec
+assert.strictEqual(L.detailOrSpec(real, '999-6001'), null);
+assert.strictEqual(L.detailOrSpec(null, '420-6001').kind, 'spec');
+assert.strictEqual(L.hasSpecPdf('801'), false);
+assert.strictEqual(L.detailOrSpec(real, '666-6017') && L.detailOrSpec(real, '666-6017').kind, 'sheet');
+assert.strictEqual(L.detailOrSpec(real, '450-6122').kind, 'spec'); // T80PP RF vs TS ambiguous
+
 console.log('ok');
