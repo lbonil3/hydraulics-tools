@@ -18,6 +18,8 @@ a.tool .body p{margin:0;font-size:14px;color:#445}
 a.tool .chip{display:inline-block;margin-top:6px;font-size:11px;color:#667;background:#f0f3f8;border-radius:999px;padding:2px 8px}
 .tool-tc .accent{background:#0d9488}.tool-tc .icon{background:#ccfbf1;color:#0f766e}
 .tool-drainage .accent{background:#2563eb}.tool-drainage .icon{background:#dbeafe;color:#1d4ed8}
+.tool-storm .accent{background:#0e7490}
+.tool-storm .icon{background:#cffafe;color:#0e7490}
 .tool-ditch .accent{background:#16a34a}.tool-ditch .icon{background:#dcfce7;color:#15803d}
 .tool-culvert .accent{background:#4f46e5}.tool-culvert .icon{background:#e0e7ff;color:#4338ca}
 footer{text-align:center;font-size:12px;color:#667;padding:16px calc(14px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
