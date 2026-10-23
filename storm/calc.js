@@ -483,6 +483,142 @@
     };
   }
 
+  function nextSize(pipe) {
+    if (!pipe) return null;
+    if (pipe.shape === 'circular' || !pipe.shape) {
+      const dIn = Math.round(Number(pipe.diameter) * 12);
+      const list = STANDARD_SIZES.circularIn;
+      let idx = -1;
+      for (let i = 0; i < list.length; i++) {
+        if (list[i] > dIn + 1e-9) { idx = i; break; }
+        if (Math.abs(list[i] - dIn) < 1e-9) { idx = i + 1; break; }
+      }
+      if (idx < 0 || idx >= list.length) return null;
+      return Object.assign({}, pipe, { diameter: list[idx] / 12, span: null, rise: null });
+    }
+    if (pipe.shape === 'box') {
+      const B = Number(pipe.span);
+      const D = Number(pipe.rise);
+      const list = STANDARD_SIZES.boxFt;
+      let found = false;
+      for (let i = 0; i < list.length; i++) {
+        if (!found) {
+          if (Math.abs(list[i][0] - B) < 1e-9 && Math.abs(list[i][1] - D) < 1e-9) {
+            found = true;
+            continue;
+          }
+          if (list[i][0] * list[i][1] > B * D + 1e-9) {
+            return Object.assign({}, pipe, { span: list[i][0], rise: list[i][1], diameter: null });
+          }
+        } else {
+          return Object.assign({}, pipe, { span: list[i][0], rise: list[i][1], diameter: null });
+        }
+      }
+      return null;
+    }
+    return null;
+  }
+
+  function pipePassing(analyzed, pipeId) {
+    const p = analyzed.pipes.find(function (x) { return x.id === pipeId; });
+    if (!p) return false;
+    const up = analyzed.nodes.find(function (n) { return n.id === p.fromId; });
+    const capOk = p.passCap === true;
+    const hglOk = up && up.rim != null ? up.surcharge === false : p.passCap === true;
+    return capOk && hglOk;
+  }
+
+  function suggestSizePipe(nodes, pipes, outfallTw, pipeId) {
+    let cur = (pipes || []).map(function (p) { return Object.assign({}, p); });
+    const ns = (nodes || []).map(function (n) { return Object.assign({}, n); });
+    let steps = 0;
+    let changed = false;
+    const maxSteps = 30;
+    while (steps++ < maxSteps) {
+      const an = analyzeNetwork(ns, cur, outfallTw);
+      if (pipePassing(an, pipeId)) {
+        return { nodes: an.nodes, pipes: an.pipes, changed: changed, pipeId: pipeId, steps: steps - 1 };
+      }
+      const idx = cur.findIndex(function (p) { return p.id === pipeId; });
+      if (idx < 0) break;
+      const bigger = nextSize(cur[idx]);
+      if (!bigger) {
+        return { nodes: an.nodes, pipes: an.pipes, changed: changed, pipeId: pipeId, steps: steps - 1 };
+      }
+      cur[idx] = bigger;
+      changed = true;
+    }
+    const finalAn = analyzeNetwork(ns, cur, outfallTw);
+    return { nodes: finalAn.nodes, pipes: finalAn.pipes, changed: changed, pipeId: pipeId, steps: steps };
+  }
+
+  function suggestSizesAll(nodes, pipes, outfallTw) {
+    let curP = (pipes || []).map(function (p) { return Object.assign({}, p); });
+    const curN = (nodes || []).map(function (n) { return Object.assign({}, n); });
+    const resized = [];
+    let changed = false;
+    let guard = 0;
+    while (guard++ < 50) {
+      const an = analyzeNetwork(curN, curP, outfallTw);
+      const failing = an.pipes.filter(function (p) {
+        return !pipePassing(an, p.id) && (p.shape === 'circular' || p.shape === 'box');
+      });
+      if (!failing.length) {
+        return { nodes: an.nodes, pipes: an.pipes, changed: changed, resized: resized };
+      }
+      let any = false;
+      failing.forEach(function (fp) {
+        const idx = curP.findIndex(function (p) { return p.id === fp.id; });
+        const bigger = nextSize(curP[idx]);
+        if (bigger) {
+          curP[idx] = bigger;
+          if (resized.indexOf(fp.id) < 0) resized.push(fp.id);
+          any = true;
+          changed = true;
+        }
+      });
+      if (!any) {
+        const last = analyzeNetwork(curN, curP, outfallTw);
+        return { nodes: last.nodes, pipes: last.pipes, changed: changed, resized: resized };
+      }
+    }
+    const last = analyzeNetwork(curN, curP, outfallTw);
+    return { nodes: last.nodes, pipes: last.pipes, changed: changed, resized: resized };
+  }
+
+  function exampleNetwork() {
+    const of = emptyNode({ id: 'of', name: 'OF', kind: 'outfall', rim: 102, invert: 90, Qin: 0 });
+    const mh1 = emptyNode({ id: 'mh1', name: 'MH-1', kind: 'manhole', rim: 105, invert: 94, Qin: 5, bendDeg: 0 });
+    const in2 = emptyNode({ id: 'in2', name: 'IN-2', kind: 'inlet', rim: 106, invert: 96, Qin: 3 });
+    const in3 = emptyNode({ id: 'in3', name: 'IN-3', kind: 'inlet', rim: 107, invert: 97, Qin: 2 });
+    const exPipes = [
+      emptyPipe({
+        id: 'p1', fromId: 'mh1', toId: 'of', shape: 'circular', diameter: 1.5, n: 0.013,
+        length: 200, ieUp: 94, ieDn: 90
+      }),
+      emptyPipe({
+        id: 'p2', fromId: 'in2', toId: 'mh1', shape: 'circular', diameter: 1.25, n: 0.013,
+        length: 100, ieUp: 96, ieDn: 94.2
+      }),
+      emptyPipe({
+        id: 'p3', fromId: 'in3', toId: 'mh1', shape: 'circular', diameter: 1.0, n: 0.013,
+        length: 80, ieUp: 97, ieDn: 94.5
+      })
+    ];
+    return { version: 1, outfallTw: 91.5, nodes: [of, mh1, in2, in3], pipes: exPipes };
+  }
+
+  function isNetworkEmpty(nodes, pipes) {
+    const n = nodes || [];
+    const p = pipes || [];
+    if (p.length > 0) return false;
+    if (n.length === 0) return true;
+    if (n.length === 1 && (!n[0].Qin || Number(n[0].Qin) === 0) && n[0].kind === 'outfall') return true;
+    return n.every(function (x) {
+      return (!x.Qin || Number(x.Qin) === 0) && (x.name === '' || x.name == null);
+    }) && p.length === 0;
+  }
+
   const API = {
     KM: KM, G: G, emptyNode: emptyNode, emptyPipe: emptyPipe,
     validateTopology: validateTopology, accumulate: accumulate,
@@ -491,7 +627,9 @@
     getCulvert: getCulvert,
     DEFAULTS: DEFAULTS, structureK: structureK, structureLoss: structureLoss,
     analyzeNetwork: analyzeNetwork, KfromTheta: KfromTheta,
-    isPipeSurcharged: isPipeSurcharged, hglLowerBound: hglLowerBound, normalDepthYn: normalDepthYn
+    isPipeSurcharged: isPipeSurcharged, hglLowerBound: hglLowerBound, normalDepthYn: normalDepthYn,
+    nextSize: nextSize, suggestSizePipe: suggestSizePipe, suggestSizesAll: suggestSizesAll,
+    exampleNetwork: exampleNetwork, isNetworkEmpty: isNetworkEmpty, pipePassing: pipePassing
   };
   if (typeof module !== 'undefined') module.exports = API;
   else root.StormCalc = API;

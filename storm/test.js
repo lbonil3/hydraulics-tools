@@ -138,4 +138,26 @@ const skSur = C.structureK(mhSur, [surAnalyzed.pipes.find(function (p) { return 
 const HsExpect = skSur.K * (Vfull * Vfull) / (2 * C.G);
 assert.ok(Math.abs(mhSur.Hs - HsExpect) < 1e-6, 'Hs should use full-flow V when surcharged');
 
+// --- suggestSize ---
+const small = branched();
+small.pipes = small.pipes.map(function (p) {
+  if (p.id === 'p1') return Object.assign({}, p, { diameter: 1.0 }); // 12 in undersized for 10 cfs
+  return p;
+});
+const sug = C.suggestSizePipe(small.nodes, small.pipes, 91.5, 'p1');
+assert.ok(sug.changed);
+const resized = sug.pipes.find(function (p) { return p.id === 'p1'; });
+assert.ok(resized.diameter > 1.0);
+const re = C.analyzeNetwork(sug.nodes, sug.pipes, 91.5);
+const p1b = re.pipes.find(function (p) { return p.id === 'p1'; });
+assert.strictEqual(p1b.passCap, true);
+
+const nxt = C.nextSize(C.emptyPipe({ shape: 'circular', diameter: 2 })); // 24 in → 27 in
+assert.ok(Math.abs(nxt.diameter - 27 / 12) < 1e-9);
+
+const ex = C.exampleNetwork();
+assert.strictEqual(ex.version, 1);
+assert.ok(ex.outfallTw != null);
+assert.ok(ex.nodes.length >= 4 && ex.pipes.length >= 3);
+
 console.log('ok');
