@@ -24,7 +24,7 @@
     const detailCell = d
       ? '<a class="detail-link" href="' + escapeHtml(d.url) +
         '" target="_blank" rel="noopener noreferrer" title="' +
-        escapeHtml(d.source + ' · ' + d.label) + '">' + escapeHtml(d.label) + '</a>'
+        escapeHtml(d.source + ' · ' + d.label + (/\(assumed\)$/.test(d.label) ? ' · assumed sheet, verify type' : '')) + '">' + escapeHtml(d.label) + '</a>'
       : '';
     return '<tr>' +
       '<td>' + escapeHtml(r.bid_code) + '</td>' +

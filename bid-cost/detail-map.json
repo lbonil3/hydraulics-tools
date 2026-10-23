@@ -3,7 +3,7 @@
     "accessed": "2026-10-23",
     "houston_index": "https://www.dot.state.tx.us/hou/specinfo/specs.htm",
     "statewide_index": "https://www.dot.state.tx.us/insdtdot/orgchart/cmd/cserve/standard/bridge-e.htm",
-    "note": "Houston-first: 465 INLET/INL/INLT→HIL-C-25 (AD/AAD→HIL-AD_AAD-25), MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25. Statewide (Bridge Div. culvert stds, no HOU version): 466 CH-FW/CH-PW (incl. A, skew)→CD-CH-*, WINGWALL FW-0/FW-S/SW-0/PW→CD-FW0/FWS/SW0/PW; 467 SET TY I box (S=,HW=)→SETB-CD/PD, SET TY II pipe→SETP-CD/PD, arch (DES)→SETP-CD-A/PD-A by (C)/(P). Unmapped: 460 CMP, 462 box (CIP vs precast/single vs multi not in desc), 464 RCP, TY I pipe SETs, pipe runners, 432/400/496"
+    "note": "Houston-first: 465 INLET/INL/INLT→HIL-C-25 (AD/AAD→HIL-AD_AAD-25), MANH→MH-A_B-25, JB/JUNCTION/else→JB-25; TRENCH DRAIN→TDD-25; FLUME→FD-25; OUTFALL→OD-25. Statewide (Bridge Div. culvert stds, no HOU version): 466 CH-FW/CH-PW (incl. A, skew)→CD-CH-*, WINGWALL FW-0/FW-S/SW-0/PW→CD-FW0/FWS/SW0/PW; 467 SET TY I box (S=,HW=)→SETB-CD/PD, SET TY II pipe→SETP-CD/PD, arch (DES)→SETP-CD-A/PD-A by (C)/(P). ASSUMED links (label ends ' (assumed)', assumed:true; verify type): 462 box→SCP-MD precast single-box misc details (desc lacks CIP/precast and box count); 467 SET TY I pipe with no skew→SETP-FW-0 (15/30 sheet unassumed if skew stated). Unmapped (no sheet): 460 CMP, 464 RCP, pipe runners, SPL/MSE wingwalls, 432/400/496"
   },
   "by_code": {
     "104-6044": {
@@ -50,6 +50,948 @@
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/FD-25%20(HOU).pdf",
       "statewide_url": null,
       "label": "FD-25"
+    },
+    "462-6001": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6002": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6003": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6004": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6005": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6006": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6007": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6008": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6009": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6010": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6011": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6012": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6013": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6014": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6015": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6016": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6017": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6018": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6019": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6020": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6021": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6024": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6025": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6029": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6030": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6031": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6033": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6034": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6038": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6041": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6044": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6048": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6051": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6052": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6054": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6055": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6056": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6058": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6059": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6060": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6065": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6068": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6070": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6072": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6076": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6078": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6096": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6099": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6101": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6204": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6205": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6215": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6216": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6217": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6218": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-6219": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7001": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7002": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7003": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7004": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7005": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7006": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7007": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7008": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7009": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7010": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7011": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7012": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7013": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7014": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7015": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7016": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7017": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7018": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7019": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7020": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7021": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7022": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7023": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7024": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7025": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7026": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7027": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7028": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7029": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7030": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7031": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7032": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7033": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7034": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7035": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7036": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7037": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7038": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7043": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7044": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7047": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7048": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7052": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7053": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7056": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7057": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7058": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7059": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7060": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7061": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7062": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7063": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7064": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7065": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7066": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7067": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7068": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7069": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7070": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7071": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7072": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7073": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7074": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7075": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7076": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7077": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7078": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7079": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7080": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7081": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7082": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7083": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7084": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7085": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7086": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7087": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7088": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7089": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7090": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7091": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7092": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7093": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7109": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7111": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7112": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7113": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7118": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7119": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7121": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7122": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7123": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7125": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7126": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7128": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7129": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7130": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7131": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7133": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7135": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7136": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
+    },
+    "462-7137": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SCP-MD-20.pdf",
+      "label": "SCP-MD (assumed)",
+      "assumed": true
     },
     "465-6001": {
       "houston_url": "https://ftp.dot.state.tx.us/pub/txdot-info/hou/specinfo/2024/pdf/HIL-C-25%20(HOU).pdf",
@@ -2581,6 +3523,48 @@
       "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SW0-20.pdf",
       "label": "SW-0"
     },
+    "467-6006": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-6007": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-6009": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-6010": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-6014": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-6015": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-6016": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
     "467-6045": {
       "houston_url": null,
       "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETBCD-20.pdf",
@@ -2975,6 +3959,66 @@
       "houston_url": null,
       "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-CDA-20.pdf",
       "label": "SETP-CD-A"
+    },
+    "467-7005": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7006": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7007": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7012": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7017": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7018": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7020": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7024": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7025": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
+    },
+    "467-7029": {
+      "houston_url": null,
+      "statewide_url": "https://ftp.dot.state.tx.us/pub/txdot-info/cmd/cserve/standard/bridge/CD-SETP-FW0-20.pdf",
+      "label": "SETP-FW-0 (assumed)",
+      "assumed": true
     },
     "467-7036": {
       "houston_url": null,

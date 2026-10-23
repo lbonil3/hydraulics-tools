@@ -50,7 +50,9 @@ const STATEWIDE = {};
   'CH-PW-S:CD-CH-PWS-20', 'CH-PW-A-0:CD-CH-PWA0-20', 'CH-PW-A-S:CD-CH-PWAS-20',
   'SW-0:CD-SW0-20', 'FW-0:CD-FW0-20', 'FW-S:CD-FWS-20', 'PW:CD-PW-20',
   'SETB-CD:CD-SETBCD-20', 'SETB-PD:CD-SETBPD-22', 'SETP-CD:CD-SETP-CD-20',
-  'SETP-PD:CD-SETP-PD-20', 'SETP-CD-A:CD-SETP-CDA-20', 'SETP-PD-A:CD-SETP-PDA-20'
+  'SETP-PD:CD-SETP-PD-20', 'SETP-CD-A:CD-SETP-CDA-20', 'SETP-PD-A:CD-SETP-PDA-20',
+  'SETP-FW-0:CD-SETP-FW0-20', 'SETP-FW-15:CD-SETP-FW15-20', 'SETP-FW-30:CD-SETP-FW30-20',
+  'SCP-MD:CD-SCP-MD-20'
 ].forEach(function (pair) {
   const i = pair.indexOf(':');
   STATEWIDE[pair.slice(0, i)] = SW_BASE + pair.slice(i + 1) + '.pdf';
@@ -58,6 +60,16 @@ const STATEWIDE = {};
 
 function swEntry(label) {
   return { houston_url: null, statewide_url: STATEWIDE[label], label: label };
+}
+
+/** Assumed sheet: description does not pin the sheet; label ends ' (assumed)'. */
+function assumedEntry(label) {
+  return {
+    houston_url: null,
+    statewide_url: STATEWIDE[label],
+    label: label + ' (assumed)',
+    assumed: true
+  };
 }
 
 function entry(label) {
@@ -124,8 +136,18 @@ function matchDetail(bidCode, description) {
     if (/^SET\(TYI\)\(S=/.test(d)) return swEntry('SETB-' + cp); // box SET
     if (/^SET\(TYII\)\(DES\d/.test(d)) return swEntry('SETP-' + cp + '-A'); // arch pipe
     if (/^SET\(TYII\)\(\d+(IN|")\)/.test(d)) return swEntry('SETP-' + cp);
-    return null; // TY I pipe SET (wing skew not stated) left unmapped
+    if (/^SET\(TYI\)\(\d+(IN|")\)/.test(d)) {
+      // TY I pipe SET = SETP-FW. Use stated skew if any, else assume 0 deg.
+      const sk = d.match(/(?:SKEW=?|\()(15|30)(?:DEG|°)/);
+      if (sk) return swEntry('SETP-FW-' + sk[1]);
+      return assumedEntry('SETP-FW-0');
+    }
+    return null;
   }
+
+  // 10: Item 462 box culverts. Desc gives size only (no CIP/precast, no
+  // multi-box count) → assumed precast single box misc details SCP-MD.
+  if (item === '462' && /BOX/.test(desc)) return assumedEntry('SCP-MD');
 
   // 460 CMP, 462 box (C-I-P vs precast, single vs multi not stated),
   // 464 RCP, 432, 400, 496: no single verified sheet fits → unmapped.
@@ -192,7 +214,9 @@ async function main() {
         'Statewide (Bridge Div. culvert stds, no HOU version): 466 CH-FW/CH-PW (incl. A, skew)→CD-CH-*, ' +
         'WINGWALL FW-0/FW-S/SW-0/PW→CD-FW0/FWS/SW0/PW; 467 SET TY I box (S=,HW=)→SETB-CD/PD, ' +
         'SET TY II pipe→SETP-CD/PD, arch (DES)→SETP-CD-A/PD-A by (C)/(P). ' +
-        'Unmapped: 460 CMP, 462 box (CIP vs precast/single vs multi not in desc), 464 RCP, TY I pipe SETs, pipe runners, 432/400/496'
+        'ASSUMED links (label ends \' (assumed)\', assumed:true; verify type): 462 box→SCP-MD precast single-box misc details ' +
+        '(desc lacks CIP/precast and box count); 467 SET TY I pipe with no skew→SETP-FW-0 (15/30 sheet unassumed if skew stated). ' +
+        'Unmapped (no sheet): 460 CMP, 464 RCP, pipe runners, SPL/MSE wingwalls, 432/400/496'
     },
     by_code: by_code
   };

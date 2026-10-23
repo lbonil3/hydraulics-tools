@@ -127,8 +127,14 @@ assert.strictEqual(pick('466-6143').label, 'FW-0');
 assert.strictEqual(pick('467-6045').label, 'SETB-CD');
 assert.strictEqual(pick('467-6110').label, 'SETB-PD');
 assert.strictEqual(pick('467-7001'), null); // pipe runner
-assert.strictEqual(pick('467-6006'), null); // TY I pipe SET, skew unknown
-assert.strictEqual(pick('462-6001'), null); // box: CIP vs precast unknown
+assert.strictEqual(pick('467-6006').label, 'SETP-FW-0 (assumed)');
+assert.strictEqual(pick('462-6001').label, 'SCP-MD (assumed)');
+assert.strictEqual(pick('460-6001'), null); // CMP: no sheet
+Object.keys(real.by_code).forEach(function (c) {
+  const e = real.by_code[c];
+  if (e.assumed) assert.ok(/ \(assumed\)$/.test(e.label), c);
+  if (/assumed/.test(e.label)) assert.ok(e.assumed, c);
+});
 Object.keys(real.by_code).forEach(function (c) {
   const e = real.by_code[c];
   const u = e.houston_url || e.statewide_url;
