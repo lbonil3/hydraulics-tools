@@ -299,11 +299,62 @@
     return { K: KfromTheta(theta), thetaDeg: Number(theta), note: note };
   }
 
+  // Approximate HEC-22: structure loss Hs = K·V²/(2g). When the outflow
+  // pipe is surcharged, callers pass full-flow V = Q/Afull (and hf likewise
+  // uses full-flow A,R via frictionHf). Free-surface uses normal-depth V.
   function structureLoss(node, inflowPipes, outflowPipe, Qout, Vout) {
     const sk = structureK(node, inflowPipes, outflowPipe);
     const V = Number(Vout);
     if (!(V > 0) || sk.K === 0) return { Hs: 0, K: sk.K, note: sk.note };
     return { Hs: sk.K * (V * V) / (2 * G), K: sk.K, note: sk.note };
+  }
+
+  function pipeRise(pipe) {
+    const sp = sectionProps(pipe);
+    if (sp.err) return null;
+    return sp.D != null && Number(sp.D) > 0 ? Number(sp.D) : null;
+  }
+
+  function isPipeSurcharged(pipe, HGLdn) {
+    const Q = pipe.Q == null ? null : Number(pipe.Q);
+    const Qf = pipe.Qfull == null ? null : Number(pipe.Qfull);
+    if (Q != null && Qf != null && Number.isFinite(Qf) && Q >= Qf - 1e-12) return true;
+    const D = pipeRise(pipe);
+    if (D != null && HGLdn != null && pipe.ieDn != null && Number.isFinite(Number(HGLdn))) {
+      if (Number(HGLdn) >= Number(pipe.ieDn) + D - 1e-9) return true;
+    }
+    return false;
+  }
+
+  function normalDepthYn(pipe, Q) {
+    const Culvert = getCulvert();
+    const sp = sectionProps(pipe);
+    const S = slopeOf(pipe);
+    const q = Number(Q);
+    if (!Culvert || !Culvert.normal || sp.err || !(S > 0) || !(q > 0)) return null;
+    const yn = Culvert.normal(sp.shapeKey, sp.B, sp.D, q, Number(pipe.n), S, KM);
+    if (Number.isFinite(yn) && yn > 0) return yn;
+    return null;
+  }
+
+  function hglLowerBound(pipe, HGLdn) {
+    const ieUp = pipe.ieUp == null ? null : Number(pipe.ieUp);
+    if (ieUp == null || !Number.isFinite(ieUp)) return { floor: null, kind: null };
+    const D = pipeRise(pipe);
+    const Q = pipe.Q == null ? null : Number(pipe.Q);
+    const Qf = pipe.Qfull == null ? null : Number(pipe.Qfull);
+    const fullOrSurch =
+      (Q != null && Qf != null && Number.isFinite(Qf) && Q >= Qf - 1e-12) ||
+      (D != null && HGLdn != null && pipe.ieDn != null &&
+        Number(HGLdn) >= Number(pipe.ieDn) + D - 1e-9);
+    if (fullOrSurch && D != null) {
+      return { floor: ieUp + D, kind: 'crown' };
+    }
+    const yn = Q != null ? normalDepthYn(pipe, Q) : null;
+    if (yn != null) {
+      return { floor: ieUp + yn, kind: 'yn' };
+    }
+    return { floor: ieUp, kind: 'ieUp' };
   }
 
   function analyzeNetwork(nodes, pipes, outfallTw) {
@@ -360,11 +411,27 @@
           if (dn.HGL == null) continue;
           const up = nodeById[p.fromId];
           const sp = sectionProps(p);
-          const Vout = p.V != null ? p.V : (sp.A > 0 && p.Q != null ? p.Q / sp.A : 0);
+          const HGLdn = dn.HGL;
+          // Approximate HEC-22: surcharged uses full-flow V and hf (Afull/Rfull).
+          const surcharged = isPipeSurcharged(p, HGLdn);
+          let Vout;
+          if (surcharged && sp.A > 0 && p.Q != null) {
+            Vout = Number(p.Q) / sp.A;
+          } else if (p.V != null) {
+            Vout = p.V;
+          } else {
+            Vout = sp.A > 0 && p.Q != null ? Number(p.Q) / sp.A : 0;
+          }
           const loss = structureLoss(up, inflowsOf[p.fromId] || [], p, p.Q, Vout);
           const hf = p.hf != null ? p.hf : 0;
-          const HGLdn = dn.HGL;
-          const HGLup = HGLdn + hf + loss.Hs;
+          let HGLup = HGLdn + hf + loss.Hs;
+          const bound = hglLowerBound(p, HGLdn);
+          if (bound.floor != null && Number.isFinite(bound.floor) && HGLup < bound.floor - 1e-9) {
+            HGLup = bound.floor;
+            warnings.push(
+              'Pipe ' + p.id + ': HGL raised to pipe water surface / crown (HEC-22-style lower bound)'
+            );
+          }
           up.HGL = HGLup;
           up.Hs = loss.Hs;
           up.surcharge = up.rim != null ? HGLup > Number(up.rim) + DEFAULTS.freeboardFt : null;
@@ -373,7 +440,10 @@
             HGLup: HGLup,
             HsAtUp: loss.Hs,
             surcharge: up.surcharge,
-            passHgl: up.surcharge == null ? null : !up.surcharge
+            passHgl: up.surcharge == null ? null : !up.surcharge,
+            hglFloored: bound.floor != null && Number.isFinite(bound.floor)
+              ? (HGLdn + hf + loss.Hs < bound.floor - 1e-9)
+              : false
           });
           pending.splice(i, 1);
           i--;
@@ -420,7 +490,8 @@
     fullFlowCapacity: fullFlowCapacity, frictionHf: frictionHf, conveyPipe: conveyPipe,
     getCulvert: getCulvert,
     DEFAULTS: DEFAULTS, structureK: structureK, structureLoss: structureLoss,
-    analyzeNetwork: analyzeNetwork, KfromTheta: KfromTheta
+    analyzeNetwork: analyzeNetwork, KfromTheta: KfromTheta,
+    isPipeSurcharged: isPipeSurcharged, hglLowerBound: hglLowerBound, normalDepthYn: normalDepthYn
   };
   if (typeof module !== 'undefined') module.exports = API;
   else root.StormCalc = API;

@@ -99,4 +99,43 @@ const sk = C.structureK(
 );
 assert.ok(Math.abs(sk.K - 0.80) < 1e-9);
 
+// --- HGL lower bound (Important 1) + surcharged full-flow Hs (Important 2) ---
+const lowTwNet = branched();
+const lowTw = C.analyzeNetwork(lowTwNet.nodes, lowTwNet.pipes, 85); // well below inverts
+assert.strictEqual(lowTw.errors.length, 0);
+lowTw.pipes.forEach(function (p) {
+  if (p.HGLup == null || !Number.isFinite(p.HGLup)) return;
+  assert.ok(
+    p.HGLup >= Number(p.ieUp) - 1e-6,
+    'pipe ' + p.id + ' HGLup=' + p.HGLup + ' below ieUp=' + p.ieUp
+  );
+});
+assert.ok(
+  lowTw.warnings.some(function (w) { return /HGL raised|lower bound/i.test(w); }),
+  'expected HGL floor warning'
+);
+
+// Q > Qfull → surcharged path: no throw; passHgl/surcharge set; Hs finite via full-flow V
+const surNet = branched();
+// Shrink main so Q=10 exceeds Qfull; high TW so HGL walks without needing floor only
+surNet.pipes = surNet.pipes.map(function (p) {
+  if (p.id !== 'p1') return p;
+  return Object.assign({}, p, { diameter: 0.75, length: 200, ieUp: 94, ieDn: 90 });
+});
+const surAnalyzed = C.analyzeNetwork(surNet.nodes, surNet.pipes, 93);
+assert.strictEqual(surAnalyzed.errors.length, 0);
+const surP1 = surAnalyzed.pipes.find(function (p) { return p.id === 'p1'; });
+assert.ok(surP1.Qfull != null && surP1.Q > surP1.Qfull, 'expect Q>Qfull on p1');
+assert.ok(Number.isFinite(surP1.HsAtUp), 'HsAtUp finite under surcharge');
+assert.ok(surP1.passHgl !== undefined);
+assert.ok(surP1.surcharge !== undefined);
+const mhSur = surAnalyzed.nodes.find(function (n) { return n.id === 'mh1'; });
+assert.ok(mhSur.Hs != null && Number.isFinite(mhSur.Hs));
+// Full-flow V path: Hs should match K·(Q/Afull)²/(2g) for manhole default θ=0 → K=0.10
+const spSur = C.sectionProps(surP1);
+const Vfull = surP1.Q / spSur.A;
+const skSur = C.structureK(mhSur, [surAnalyzed.pipes.find(function (p) { return p.id === 'p2'; }), surAnalyzed.pipes.find(function (p) { return p.id === 'p3'; })], surP1);
+const HsExpect = skSur.K * (Vfull * Vfull) / (2 * C.G);
+assert.ok(Math.abs(mhSur.Hs - HsExpect) < 1e-6, 'Hs should use full-flow V when surcharged');
+
 console.log('ok');
