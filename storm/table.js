@@ -299,6 +299,75 @@
     save(); refreshViz();
   });
 
+  function captureFocus() {
+    const a = document.activeElement;
+    if (!a || !a.dataset || !a.dataset.k || !(a.dataset.n || a.dataset.p)) return null;
+    return { attr: a.dataset.n ? 'data-n' : 'data-p', id: a.dataset.n || a.dataset.p, k: a.dataset.k };
+  }
+
+  function restoreFocus(f) {
+    if (!f) return;
+    const el = document.querySelector('[' + f.attr + '="' + f.id + '"][data-k="' + f.k + '"]');
+    if (!el) return;
+    el.focus();
+    if (el.tagName === 'INPUT' && typeof el.setSelectionRange === 'function') {
+      const len = el.value.length;
+      try { el.setSelectionRange(len, len); } catch (e) {}
+    }
+  }
+
+  function renderKeepFocus() {
+    const f = captureFocus();
+    render();
+    restoreFocus(f);
+  }
+
+  function swapSelectedClass() {
+    document.querySelectorAll('#nodesGrid tr[data-node-id]').forEach(function (tr) {
+      tr.classList.toggle('selected', tr.getAttribute('data-node-id') === selectedNodeId);
+    });
+    document.querySelectorAll('#pipesGrid tr[data-pipe-id]').forEach(function (tr) {
+      tr.classList.toggle('selected', tr.getAttribute('data-pipe-id') === selectedPipeId);
+    });
+  }
+
+  function selectNodeRow(tr) {
+    const id = tr.getAttribute('data-node-id');
+    if (id === selectedNodeId && selectedPipeId === null) return;
+    selectedNodeId = id;
+    selectedPipeId = null;
+    const pathChanged = pathEndNodeId !== id;
+    pathEndNodeId = id;
+    swapSelectedClass();
+    if (pathChanged) {
+      const sel = document.getElementById('pathEnd');
+      if (sel) sel.value = id;
+      refreshViz();
+    }
+    save();
+  }
+
+  function selectPipeRow(tr) {
+    const id = tr.getAttribute('data-pipe-id');
+    if (id === selectedPipeId && selectedNodeId === null) return;
+    selectedPipeId = id;
+    selectedNodeId = null;
+    const p = pipes.find(function (x) { return x.id === id; });
+    const pathChanged = !!p && pathEndNodeId !== p.fromId;
+    if (p) pathEndNodeId = p.fromId;
+    swapSelectedClass();
+    if (pathChanged) {
+      const sel = document.getElementById('pathEnd');
+      if (sel) sel.value = pathEndNodeId;
+      refreshViz();
+    }
+    save();
+  }
+
+  function isControl(t) {
+    return !!(t && t.closest && t.closest('button, input, select'));
+  }
+
   document.getElementById('nodesGrid').addEventListener('change', function (e) {
     const t = e.target;
     if (!t.dataset.n) return;
@@ -307,15 +376,18 @@
     const k = t.dataset.k;
     if (k === 'name' || k === 'kind') n[k] = t.value;
     else n[k] = parseNum(t.value);
-    save(); render();
+    save(); renderKeepFocus();
   });
   document.getElementById('nodesGrid').addEventListener('click', function (e) {
+    if (isControl(e.target)) return;
     const tr = e.target.closest('tr[data-node-id]');
-    if (!tr) return;
-    selectedNodeId = tr.getAttribute('data-node-id');
-    selectedPipeId = null;
-    pathEndNodeId = selectedNodeId;
-    save(); render();
+    if (tr) selectNodeRow(tr);
+  });
+  document.getElementById('nodesGrid').addEventListener('focusin', function (e) {
+    const t = e.target;
+    if (!t.matches || !t.matches('input[data-n], select[data-n]')) return;
+    const tr = t.closest('tr[data-node-id]');
+    if (tr) selectNodeRow(tr);
   });
 
   document.getElementById('pipesGrid').addEventListener('change', function (e) {
@@ -326,16 +398,18 @@
     const k = t.dataset.k;
     if (k === 'fromId' || k === 'toId' || k === 'shape') p[k] = t.value;
     else p[k] = parseNum(t.value);
-    save(); render();
+    save(); renderKeepFocus();
   });
   document.getElementById('pipesGrid').addEventListener('click', function (e) {
+    if (isControl(e.target)) return;
     const tr = e.target.closest('tr[data-pipe-id]');
-    if (!tr) return;
-    selectedPipeId = tr.getAttribute('data-pipe-id');
-    selectedNodeId = null;
-    const p = pipes.find(function (x) { return x.id === selectedPipeId; });
-    if (p) pathEndNodeId = p.fromId;
-    save(); render();
+    if (tr) selectPipeRow(tr);
+  });
+  document.getElementById('pipesGrid').addEventListener('focusin', function (e) {
+    const t = e.target;
+    if (!t.matches || !t.matches('input[data-p], select[data-p]')) return;
+    const tr = t.closest('tr[data-pipe-id]');
+    if (tr) selectPipeRow(tr);
   });
 
   init();
