@@ -364,12 +364,27 @@
       deleteRow(btn.getAttribute('data-del'));
       return;
     }
+    if (e.target.closest('button')) return;
     const tr = e.target.closest('tr[data-row-id]');
-    if (tr) {
-      selectedRowId = tr.getAttribute('data-row-id');
-      render();
-    }
+    if (tr) selectRowEl(tr);
   });
+  grid.addEventListener('focusin', function (e) {
+    const input = e.target.closest('input[data-id]');
+    if (!input) return;
+    const tr = input.closest('tr[data-row-id]');
+    if (tr) selectRowEl(tr);
+  });
+
+  function selectRowEl(tr) {
+    const id = tr.getAttribute('data-row-id');
+    if (id === selectedRowId) return;
+    selectedRowId = id;
+    grid.querySelectorAll('tr.selected').forEach(function (el) {
+      if (el !== tr) el.classList.remove('selected');
+    });
+    tr.classList.add('selected');
+    refreshViz();
+  }
 
   init();
 })();
