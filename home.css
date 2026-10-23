@@ -20,6 +20,7 @@ a.tool .chip{display:inline-block;margin-top:6px;font-size:11px;color:#667;backg
 .tool-drainage .accent{background:#2563eb}.tool-drainage .icon{background:#dbeafe;color:#1d4ed8}
 .tool-storm .accent{background:#0e7490}
 .tool-storm .icon{background:#cffafe;color:#0e7490}
+.tool-bid-cost .accent{background:#047857}.tool-bid-cost .icon{background:#d1fae5;color:#047857}
 .tool-ditch .accent{background:#16a34a}.tool-ditch .icon{background:#dcfce7;color:#15803d}
 .tool-culvert .accent{background:#4f46e5}.tool-culvert .icon{background:#e0e7ff;color:#4338ca}
 footer{text-align:center;font-size:12px;color:#667;padding:16px calc(14px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}

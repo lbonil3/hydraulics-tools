@@ -8,10 +8,11 @@ const hrefs = [
   'rational/index.html',
   'drainage/index.html',
   'storm/index.html',
+  'bid-cost/index.html',
   'ditch-table/index.html',
   'culvert/index.html',
 ];
-const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-ditch', 'tool-culvert'];
+const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-bid-cost', 'tool-ditch', 'tool-culvert'];
 for (const h of hrefs) {
   if (!html.includes('href="' + h + '"')) fail('missing href ' + h);
 }
@@ -22,7 +23,7 @@ const idx = hrefs.map((h) => html.indexOf('href="' + h + '"'));
 for (let k = 1; k < idx.length; k++) {
   if (idx[k] < idx[k - 1]) fail('wrong card order near ' + hrefs[k]);
 }
-for (const name of ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Ditch', 'Culvert Studio']) {
+for (const name of ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Bid Cost', 'Ditch', 'Culvert Studio']) {
   if (!html.includes(name)) fail('missing label ' + name);
 }
 if (html.includes('Ditch Studio') || html.includes('Ditch Table')) fail('old separate ditch cards still present');
