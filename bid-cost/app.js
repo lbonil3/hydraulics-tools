@@ -97,14 +97,14 @@
     sectionsEl.innerHTML = groups.map(function (g) {
       const forceOpen = !!q || openItems[g.item];
       const bodyInner = forceOpen ? getBodyHtml(g.item, g.rows) : '';
-      const spec = L.specPdfUrl(g.item);
+      const spec = L.hasSpecPdf(g.item) ? L.specPdfUrl(g.item) : null;
       return '<section class="item-section' + (forceOpen ? ' open' : '') + '" data-item="' + escapeHtml(g.item) + '">' +
         '<div class="item-header-row" style="display:flex;align-items:stretch">' +
           '<button type="button" class="item-header" aria-expanded="' + (forceOpen ? 'true' : 'false') + '">' +
             '<span class="item-id">Item ' + escapeHtml(g.item) + '</span>' +
             '<span class="item-count">' + g.rows.length + '</span>' +
           '</button>' +
-          '<a class="spec-link" href="' + escapeHtml(spec) + '" target="_blank" rel="noopener noreferrer">Spec</a>' +
+          (spec ? '<a class="spec-link" href="' + escapeHtml(spec) + '" target="_blank" rel="noopener noreferrer">Spec</a>' : '') +
         '</div>' +
         '<div class="item-body"' + (forceOpen ? ' data-filled="1"' : '') + '>' + bodyInner + '</div>' +
       '</section>';

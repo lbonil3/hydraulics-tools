@@ -157,3 +157,14 @@ assert.strictEqual(L.detailOrSpec(real, '666-6017') && L.detailOrSpec(real, '666
 assert.strictEqual(L.detailOrSpec(real, '450-6122').kind, 'spec'); // T80PP RF vs TS ambiguous
 
 console.log('ok');
+
+// Items without a 2024 standard spec PDF (e.g. 704, 708) must not get a header Spec link.
+{
+  const assert = require('assert');
+  const L2 = require('./lookup.js');
+  ['704', '708', '701', '800'].forEach(function (i) { assert.strictEqual(L2.hasSpecPdf(i), false, i); });
+  ['700', '712', '464'].forEach(function (i) { assert.strictEqual(L2.hasSpecPdf(i), true, i); });
+  const appSrc = require('fs').readFileSync(require('path').join(__dirname, 'app.js'), 'utf8');
+  assert.ok(/L\.hasSpecPdf\(g\.item\) \? L\.specPdfUrl/.test(appSrc), 'header spec link gated');
+  console.log('ok header spec gating');
+}
