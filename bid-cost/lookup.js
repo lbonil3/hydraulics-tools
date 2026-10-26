@@ -11,13 +11,23 @@
     return { price: null, n: null, source: null };
   }
 
-  function filterRows(rows, query) {
+  /** itemInfo (optional): item-info.json; also matches Item title/summary. */
+  function filterRows(rows, query, itemInfo) {
     const q = String(query || '').trim().toLowerCase();
     if (!q) return rows.slice();
+    const items = (itemInfo && itemInfo.items) || null;
+    const itemHit = Object.create(null);
     return rows.filter(function (r) {
       const code = String(r.bid_code || '').toLowerCase();
       const desc = String(r.description || '').toLowerCase();
-      return code.indexOf(q) !== -1 || desc.indexOf(q) !== -1;
+      if (code.indexOf(q) !== -1 || desc.indexOf(q) !== -1) return true;
+      if (!items) return false;
+      const it = itemFromBidCode(r.bid_code);
+      if (!(it in itemHit)) {
+        const e = items[it];
+        itemHit[it] = !!e && ((e.title || '') + ' ' + (e.summary || '')).toLowerCase().indexOf(q) !== -1;
+      }
+      return itemHit[it];
     });
   }
 

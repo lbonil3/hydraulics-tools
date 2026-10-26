@@ -1,0 +1,1328 @@
+{
+ "meta": {
+  "source": "TxDOT 2024 Standard Specifications, ftp.txdot.gov/pub/txdot-info/cmd/cserve/specs/2024/standard/",
+  "note": "source \"bid-data\" = title derived from bid-code descriptions; no official spec"
+ },
+ "items": {
+  "100": {
+   "title": "Preparing Right of Way",
+   "summary": "Prepare the right of way and designated easements for construction operations by removing and disposing of all obstructions when removal of such obstructions is not specifically shown on the plans to be paid by other Items.",
+   "source": "spec-2024"
+  },
+  "102": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: TUNNEL BORING MACHINE.",
+   "source": "bid-data"
+  },
+  "103": {
+   "title": "Disposal of Wells",
+   "summary": "Remove and dispose of contaminated and uncontaminated water, petroleum, or sulfur wells. Remove appurtenances, seal and plug wells, and restore the area.",
+   "source": "spec-2024"
+  },
+  "104": {
+   "title": "Removing Concrete",
+   "summary": "Break, remove, and salvage or dispose of existing hydraulic cement concrete.",
+   "source": "spec-2024"
+  },
+  "105": {
+   "title": "Removing Treated and Untreated Base and Asphalt Pavement",
+   "summary": "Break, remove, and store or dispose of existing asphalt pavement, including surface treatments, and treated or untreated base materials.",
+   "source": "spec-2024"
+  },
+  "106": {
+   "title": "Obliterating Abandoned Roadway",
+   "summary": "Obliterate designated sections of abandoned roadway.",
+   "source": "spec-2024"
+  },
+  "110": {
+   "title": "Excavation",
+   "summary": "Excavate areas as shown on the plans or as directed. Remove materials encountered to the lines, grades, and typical sections shown on the plans and cross-sections.",
+   "source": "spec-2024"
+  },
+  "112": {
+   "title": "Subgrade Widening",
+   "summary": "Widen the existing subgrade in conformance with the typical sections.",
+   "source": "spec-2024"
+  },
+  "132": {
+   "title": "Embankment",
+   "summary": "Furnish, place, and compact materials for construction of roadways, embankments, levees, dikes, or any designated section of the roadway where additional material is required.",
+   "source": "spec-2024"
+  },
+  "134": {
+   "title": "Backfilling Pavement Edges",
+   "summary": "Backfill pavement edges in conformance with the typical sections shown on the plans.",
+   "source": "spec-2024"
+  },
+  "150": {
+   "title": "Blading",
+   "summary": "Blade portions of the project limits as shown on the plans or as directed.",
+   "source": "spec-2024"
+  },
+  "152": {
+   "title": "Road Grader Work",
+   "summary": "Construct subgrade and adjacent slopes. Construct portions of the roadway in conformance with the typical sections as shown on the plans where finished grade is uncontrolled.",
+   "source": "spec-2024"
+  },
+  "156": {
+   "title": "Bulldozer Work",
+   "summary": "Excavate, remove, use, or dispose of materials using a bulldozer. Construct, shape, and finish earthwork in conformance with the required lines, grades, and typical cross-sections as shown on the plans, or as directed.",
+   "source": "spec-2024"
+  },
+  "158": {
+   "title": "Specialized Excavation Work",
+   "summary": "Excavate, remove, use, or dispose of materials for erosion control or other specialized needs.",
+   "source": "spec-2024"
+  },
+  "160": {
+   "title": "Topsoil",
+   "summary": "Furnish and place topsoil to the depths and on the areas shown on the plans.",
+   "source": "spec-2024"
+  },
+  "161": {
+   "title": "Compost",
+   "summary": "Furnish and place compost as shown on the plans.",
+   "source": "spec-2024"
+  },
+  "162": {
+   "title": "Sodding for Erosion Control",
+   "summary": "Provide and install grass sod as shown on the plans or as directed.",
+   "source": "spec-2024"
+  },
+  "164": {
+   "title": "Seeding for Erosion Control",
+   "summary": "Prepare the surface and provide and distribute temporary or permanent seeding for erosion control as shown on the plans or as directed.",
+   "source": "spec-2024"
+  },
+  "166": {
+   "title": "Fertilizer",
+   "summary": "Furnish and distribute fertilizer over areas specified on the plans.",
+   "source": "spec-2024"
+  },
+  "168": {
+   "title": "Vegetative Watering",
+   "summary": "Provide and distribute water to promote growth of vegetation as directed.",
+   "source": "spec-2024"
+  },
+  "169": {
+   "title": "Soil Retention Blankets",
+   "summary": "Provide and install soil retention blankets (SRB) as shown on the plans or as directed.",
+   "source": "spec-2024"
+  },
+  "170": {
+   "title": "Irrigation System",
+   "summary": "Furnish and install an irrigation system as shown on the plans or as directed.",
+   "source": "spec-2024"
+  },
+  "180": {
+   "title": "Wildflower Seeding",
+   "summary": "Prepare the surface and provide and distribute wildflower seed as shown on the plans or as directed.",
+   "source": "spec-2024"
+  },
+  "192": {
+   "title": "Landscape Planting",
+   "summary": "Provide and install plants and related materials at designated locations. Transplant plant material, including trees, shrubs, palms, and grasses as shown on the plans.",
+   "source": "spec-2024"
+  },
+  "193": {
+   "title": "Landscape Establishment",
+   "summary": "Establish landscape plantings and maintain landscaped areas at designated locations.",
+   "source": "spec-2024"
+  },
+  "194": {
+   "title": "Roadside Amenity",
+   "summary": "Install the amenity as shown on the plans or as directed.",
+   "source": "spec-2024"
+  },
+  "200": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ASPHALT-STABILIZED FLEXIBLE BASE; FILTER FABRIC.",
+   "source": "bid-data"
+  },
+  "204": {
+   "title": "Sprinkling",
+   "summary": "Apply water for dust control, earthwork, or base construction.",
+   "source": "spec-2024"
+  },
+  "216": {
+   "title": "Proof Rolling",
+   "summary": "Proof-roll earthwork, base, or both to locate unstable areas.",
+   "source": "spec-2024"
+  },
+  "247": {
+   "title": "Flexible Base",
+   "summary": "Construct a foundation course composed of flexible base.",
+   "source": "spec-2024"
+  },
+  "250": {
+   "title": "Geogrid Base Reinforcement",
+   "summary": "Use geogrid to reinforce flexible base placed on embankment material. Geogrid consists of a synthetic planar structure formed by a regular network of integrally connected polymeric tensile elements with apertures designed to interlock…",
+   "source": "spec-2024"
+  },
+  "251": {
+   "title": "Reworking Base Courses",
+   "summary": "Refinish or rework existing base material with or without asphaltic concrete pavement. Incorporate new base material when shown on the plans.",
+   "source": "spec-2024"
+  },
+  "260": {
+   "title": "Lime Treatment (Road-Mixed)",
+   "summary": "Mix and compact lime, water, and subgrade or base (with or without asphaltic concrete pavement) in the roadway.",
+   "source": "spec-2024"
+  },
+  "275": {
+   "title": "Cement Treatment (Road-Mixed)",
+   "summary": "Mix and compact cement, water, and subgrade or base (with or without asphalt concrete pavement) in the roadway.",
+   "source": "spec-2024"
+  },
+  "276": {
+   "title": "Cement Treatment (Plant-Mixed)",
+   "summary": "Construct a base course composed of flexible base, hydraulic cement, and water, mixed in an approved plant.",
+   "source": "spec-2024"
+  },
+  "290": {
+   "title": "Emulsified Asphalt Treatment (Road-Mixed)",
+   "summary": "Perform full-depth reclamation (FDR) using an in-place mixing process to obtain a homogenous mixture of the existing surface and the underlying base material (with or without new material and additive added) using an emulsified asphalt.",
+   "source": "spec-2024"
+  },
+  "291": {
+   "title": "Foamed Asphalt Treatment (Road-Mixed)",
+   "summary": "Perform full-depth reclamation (FDR) using an in-place mixing process to obtain a homogenous mixture of the existing surface and the underlying base material (with or without new material and additive added) using a foamed asphalt.",
+   "source": "spec-2024"
+  },
+  "292": {
+   "title": "Asphalt Treatment (Plant-Mixed)",
+   "summary": "Construct a base or subbase of asphalt-treated material composed of a compacted mixture of aggregate and asphalt binder mixed hot in a mixing plant.",
+   "source": "spec-2024"
+  },
+  "295": {
+   "title": "Ultra-High-Pressure Water Cutting Treatment",
+   "summary": "Use ultra-high-pressure (UHP) water cutting treatment equipment to remove excess asphalt to improve the pavement surface texture.",
+   "source": "spec-2024"
+  },
+  "300": {
+   "title": "Asphalts, Oils, and Emulsions",
+   "summary": "Provide asphalt cements, cutback and emulsified asphalts, performance-graded asphalt binders, and other miscellaneous asphalt materials as shown on the plans.",
+   "source": "spec-2024"
+  },
+  "301": {
+   "title": "Asphalt Antistripping Agents",
+   "summary": "Furnish and incorporate all required asphalt antistripping agents in asphalt concrete paving mixtures and asphalt-stabilized base mixtures to meet moisture resistance testing requirements.",
+   "source": "spec-2024"
+  },
+  "302": {
+   "title": "Aggregates for Surface Treatments",
+   "summary": "Furnish aggregate for surface treatments in conformance with the type, grade, and Surface Aggregate Classification (SAC) shown on the plans.",
+   "source": "spec-2024"
+  },
+  "303": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ASPH FOR REINF FAB (PG76-28); REINFORCED FAB FOR ASPH PVMNT OVERLAYS.",
+   "source": "bid-data"
+  },
+  "305": {
+   "title": "Salvaging, Hauling, and Stockpiling Reclaimable Asphalt Pavement",
+   "summary": "Salvage, haul, and stockpile existing asphalt material.",
+   "source": "spec-2024"
+  },
+  "307": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: TACK COAT; D-GR HMA TY-B PG64-22.",
+   "source": "bid-data"
+  },
+  "308": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ASPHALT BINDER (PG 64-22); BONDING COURSE.",
+   "source": "bid-data"
+  },
+  "310": {
+   "title": "Prime Coat",
+   "summary": "Prepare and treat existing or newly constructed surface with an asphalt binder or other specialty prime coat binder material.",
+   "source": "spec-2024"
+  },
+  "314": {
+   "title": "Emulsified Asphalt Treatment",
+   "summary": "Apply a mixture of water and emulsion as a base or subgrade treatment; for erosion control, including dust prevention; or as a prime coat.",
+   "source": "spec-2024"
+  },
+  "315": {
+   "title": "Fog Seal",
+   "summary": "Apply a mixture of water and emulsion as an aggregate loss preventative or surface seal.",
+   "source": "spec-2024"
+  },
+  "316": {
+   "title": "Seal Coat",
+   "summary": "Construct a surface treatment consisting of one or more applications of a single layer of asphalt material covered with a single layer of aggregate.",
+   "source": "spec-2024"
+  },
+  "330": {
+   "title": "Limestone Rock Asphalt Pavement",
+   "summary": "Construct a base course, a surface course, a level-up course, or any combination of these courses of the types and grades shown on the plans using a cold-mixed material consisting of native limestone rock asphalt (LRA) aggregate,…",
+   "source": "spec-2024"
+  },
+  "334": {
+   "title": "Hot-Mix Cold-Laid Asphalt Concrete Pavement",
+   "summary": "Construct a cold-laid pavement layer consisting of a compacted mixture of aggregate and asphalt material mixed hot in a mixing plant.",
+   "source": "spec-2024"
+  },
+  "341": {
+   "title": "Dense-Graded Hot-Mix Asphalt",
+   "summary": "Construct a hot-mix asphalt (HMA) pavement layer composed of a compacted, dense-graded mixture of aggregate, asphalt binder, and additives mixed hot in a mixing plant.",
+   "source": "spec-2024"
+  },
+  "342": {
+   "title": "Permeable Friction Course",
+   "summary": "Construct a hot-mix asphalt (HMA) surface course composed of a compacted permeable mixture of aggregate, asphalt binder, and additives mixed hot in a mixing plant.",
+   "source": "spec-2024"
+  },
+  "344": {
+   "title": "Superpave Mixtures",
+   "summary": "Construct a hot-mix asphalt (HMA) pavement layer composed of a compacted, Superpave (SP) mixture of aggregate, asphalt binder, and additives mixed hot in a mixing plant.",
+   "source": "spec-2024"
+  },
+  "346": {
+   "title": "Stone-Matrix Asphalt",
+   "summary": "Construct a hot-mix asphalt (HMA) pavement layer composed of compacted stone-matrix asphalt (SMA) or stone-matrix asphalt rubber (SMAR) mixture of aggregate, asphalt binder, and additives mixed hot in a mixing plant.",
+   "source": "spec-2024"
+  },
+  "347": {
+   "title": "Thin Overlay Mixtures",
+   "summary": "Construct a thin surface course composed of a compacted mixture of aggregate, asphalt binder, and additives mixed hot in a mixing plant.",
+   "source": "spec-2024"
+  },
+  "348": {
+   "title": "Thin Bonded Friction Course",
+   "summary": "Construct a hot-mix asphalt (HMA) surface course composed of a warm spray-applied polymer-modified emulsion membrane followed immediately by a compacted permeable mixture of aggregate, asphalt binder, and additives mixed hot in a mixing…",
+   "source": "spec-2024"
+  },
+  "350": {
+   "title": "Microsurfacing",
+   "summary": "Furnish and place a microsurfacing system consisting of a mixture of cationic polymer-modified asphalt emulsion, mineral aggregate, mineral filler, water, and other additives.",
+   "source": "spec-2024"
+  },
+  "351": {
+   "title": "Flexible Pavement Structure Repair",
+   "summary": "Repair localized sections of flexible pavement structure, including subgrade, base, and surfacing, as shown on the plans.",
+   "source": "spec-2024"
+  },
+  "354": {
+   "title": "Planing and Texturing Pavement",
+   "summary": "Plane, or plane and texture, existing asphalt concrete pavement, asphalt-stabilized base, or concrete pavement.",
+   "source": "spec-2024"
+  },
+  "356": {
+   "title": "Fabric Underseal",
+   "summary": "Furnish and place fabric underseal in a longitudinal, full-road-width application or over pavement joints.",
+   "source": "spec-2024"
+  },
+  "358": {
+   "title": "Hot In-Place Recycling of Asphalt Concrete Surfaces",
+   "summary": "Use the hot in-place process to recycle the existing pavement in one of the following subcategories.",
+   "source": "spec-2024"
+  },
+  "360": {
+   "title": "Concrete Pavement",
+   "summary": "Construct hydraulic cement concrete pavement with or without curbs on the concrete pavement.",
+   "source": "spec-2024"
+  },
+  "361": {
+   "title": "Full-Depth Repair of Concrete Pavement",
+   "summary": "Repair concrete pavement to full depth in accordance with the details shown on the plans and the requirements of this Item.",
+   "source": "spec-2024"
+  },
+  "400": {
+   "title": "Excavation and Backfill for Structures",
+   "summary": "Excavate for placement and construction of structures and backfill structures. Cut and restore pavement.",
+   "source": "spec-2024"
+  },
+  "401": {
+   "title": "Flowable Backfill",
+   "summary": "Furnish and place flowable backfill for trench, hole, or other void.",
+   "source": "spec-2024"
+  },
+  "402": {
+   "title": "Trench Excavation Protection",
+   "summary": "Furnish and place excavation protection for trenches 5 ft. or greater in depth for pipe, box culvert, electrical or telephone conduit, duct, or other utility installation.",
+   "source": "spec-2024"
+  },
+  "403": {
+   "title": "Temporary Special Shoring",
+   "summary": "Furnish and install temporary shoring to hold the surrounding earth, water, or both out of the work area.",
+   "source": "spec-2024"
+  },
+  "404": {
+   "title": "Driving Piling",
+   "summary": "Drive piling.",
+   "source": "spec-2024"
+  },
+  "405": {
+   "title": "Foundation Load Test",
+   "summary": "Load-test piling or drilled shafts.",
+   "source": "spec-2024"
+  },
+  "406": {
+   "title": "Timber Piling",
+   "summary": "Furnish and place treated or untreated timber piling.",
+   "source": "spec-2024"
+  },
+  "407": {
+   "title": "Steel Piling",
+   "summary": "Furnish and place steel H-piling, pipe piling, and sheet piling.",
+   "source": "spec-2024"
+  },
+  "409": {
+   "title": "Prestressed Concrete Piling",
+   "summary": "Furnish and place prestressed concrete piling.",
+   "source": "spec-2024"
+  },
+  "410": {
+   "title": "Soil Nail Anchors",
+   "summary": "Construct reinforced soil nail anchors.",
+   "source": "spec-2024"
+  },
+  "411": {
+   "title": "Rock Nail Anchors",
+   "summary": "Construct reinforced rock nail anchors.",
+   "source": "spec-2024"
+  },
+  "412": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: THERMO PIPE(18\")(PP)(TY S)(TY II); THERMO PIPE(24\")(PP)(TY S)(TY II).",
+   "source": "bid-data"
+  },
+  "416": {
+   "title": "Drilled Shaft Foundations",
+   "summary": "Construct foundations consisting of reinforced or non-reinforced concrete drilled shafts.",
+   "source": "spec-2024"
+  },
+  "417": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: INSTALL BRIDGE IDENTIFICATION NUMBERS.",
+   "source": "bid-data"
+  },
+  "419": {
+   "title": "Concrete Sound (Noise) Walls",
+   "summary": "Furnish materials and construct concrete sound (noise) walls as shown on the plans and in accordance with this Item.",
+   "source": "spec-2024"
+  },
+  "420": {
+   "title": "Concrete Substructures",
+   "summary": "Construct concrete substructures including footings, columns, caps, abutments, piers, culverts, other bridge substructure elements, and other concrete structures as indicated.",
+   "source": "spec-2024"
+  },
+  "421": {
+   "title": "Hydraulic Cement Concrete",
+   "summary": "Furnish hydraulic cement concrete for concrete pavements, concrete structures, and other concrete construction.",
+   "source": "spec-2024"
+  },
+  "422": {
+   "title": "Concrete Superstructures",
+   "summary": "Construct reinforced concrete bridge slabs, decks, flat slabs, slab and girder units (pan formed), approach slabs, or other bridge superstructure elements as specified.",
+   "source": "spec-2024"
+  },
+  "423": {
+   "title": "Retaining Walls",
+   "summary": "Furnish, construct, and install retaining walls.",
+   "source": "spec-2024"
+  },
+  "425": {
+   "title": "Precast Prestressed Concrete Structural Members",
+   "summary": "Furnish and erect precast prestressed concrete members fabricated by pre-tensioning, post-tensioning, or a combination of the two.",
+   "source": "spec-2024"
+  },
+  "426": {
+   "title": "Post-Tensioning",
+   "summary": "Furnish, store, and handle post-tensioning materials, and perform post-tensioning of cast-in-place and precast structural units.",
+   "source": "spec-2024"
+  },
+  "427": {
+   "title": "Surface Finishes for Concrete",
+   "summary": "Finish concrete surface as specified.",
+   "source": "spec-2024"
+  },
+  "428": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: PENETRATING CONCRETE SURFACE TREATMENT.",
+   "source": "bid-data"
+  },
+  "429": {
+   "title": "Concrete Structure Repair",
+   "summary": "Remove and repair unsound, delaminated, or spalled concrete.",
+   "source": "spec-2024"
+  },
+  "431": {
+   "title": "Pneumatically Placed Concrete",
+   "summary": "Furnish and place pneumatically applied concrete for the construction of portions of structures, repairing concrete structures, encasement of structural steel members, lining ditches and tunnels, soil-nail walls, retaining walls, and…",
+   "source": "spec-2024"
+  },
+  "432": {
+   "title": "Riprap",
+   "summary": "Furnish and place concrete, stone, cement-stabilized, or special riprap.",
+   "source": "spec-2024"
+  },
+  "434": {
+   "title": "Bridge Bearings",
+   "summary": "Furnish and install bearings for the support of bridge superstructure and substructure members.",
+   "source": "spec-2024"
+  },
+  "438": {
+   "title": "Cleaning and Sealing Joints",
+   "summary": "Clean and seal joints in new or existing rigid concrete pavements and bridge decks. Resize joints in rigid concrete pavements and approach slabs as shown on the plans.",
+   "source": "spec-2024"
+  },
+  "439": {
+   "title": "Bridge Deck Overlays",
+   "summary": "Overlay concrete bridge deck surface with concrete overlay (CO), latex-modified concrete overlay (LMC), multi-layer polymer overlay (MLPO), or polyester polymer concrete overlay (PPC).",
+   "source": "spec-2024"
+  },
+  "442": {
+   "title": "Metal for Structures",
+   "summary": "Provide structural steel, high-strength bolts, forgings, steel castings, iron castings, wrought iron, steel pipe and tubing, aluminum castings and tubing, or other metals used in structures, except reinforcing steel and metal culvert pipe.",
+   "source": "spec-2024"
+  },
+  "446": {
+   "title": "Field Cleaning and Painting Steel",
+   "summary": "Prepare steel surfaces for painting and apply paint.",
+   "source": "spec-2024"
+  },
+  "449": {
+   "title": "Anchor Bolts",
+   "summary": "Fabricate and install anchor bolts to be embedded in or attached to concrete. Anchor bolts are also referred to as anchor rods.",
+   "source": "spec-2024"
+  },
+  "450": {
+   "title": "Railing",
+   "summary": "Construct railing of concrete, steel, aluminum, or a combination of these materials, including necessary anchorage for the railing on bridges, culverts, walls, or other structures as shown on the plans.",
+   "source": "spec-2024"
+  },
+  "451": {
+   "title": "Retrofit Railing",
+   "summary": "Retrofit or replace railing.",
+   "source": "spec-2024"
+  },
+  "454": {
+   "title": "Bridge Expansion Joints",
+   "summary": "Furnish and install bridge expansion joints.",
+   "source": "spec-2024"
+  },
+  "458": {
+   "title": "Waterproofing Membranes for Structures",
+   "summary": "Furnish and place waterproofing membranes on concrete and steel bridge decks of railroad and other types of structures.",
+   "source": "spec-2024"
+  },
+  "459": {
+   "title": "Gabions and Gabion Mattresses",
+   "summary": "Furnish and install gabions and gabion mattresses.",
+   "source": "spec-2024"
+  },
+  "460": {
+   "title": "Corrugated Metal Pipe",
+   "summary": "Furnish and install corrugated metal pipes, materials for constructing corrugated metal pipe culverts, or corrugated metal storm drain mains, laterals, stubs, and inlet leads.",
+   "source": "spec-2024"
+  },
+  "462": {
+   "title": "Concrete Box Culverts and Drains",
+   "summary": "Furnish, construct, and install concrete box culverts and drains.",
+   "source": "spec-2024"
+  },
+  "464": {
+   "title": "Reinforced Concrete Pipe",
+   "summary": "Furnish and install reinforced concrete pipe, materials for precast concrete pipe culverts, or precast concrete storm drain mains, laterals, stubs, and inlet leads.",
+   "source": "spec-2024"
+  },
+  "465": {
+   "title": "Junction Boxes, Manholes, and Inlets",
+   "summary": "Construct junction boxes, manholes, and inlets, complete in place or to the stage detailed, including furnishing and installing frames, grates, rings, and covers.",
+   "source": "spec-2024"
+  },
+  "466": {
+   "title": "Headwalls and Wingwalls",
+   "summary": "Furnish, construct, and install concrete headwalls and wingwalls for drainage structures and underpasses.",
+   "source": "spec-2024"
+  },
+  "467": {
+   "title": "Safety End Treatment",
+   "summary": "Furnish, construct, and install safety end treatments for drainage structures, or install or replace pipe runners or pipe runner assemblies on existing drainage structures.",
+   "source": "spec-2024"
+  },
+  "468": {
+   "title": "Thermoplastic Pipe Culverts and Drains",
+   "summary": "Furnish and install thermoplastic pipe for constructing thermoplastic pipe culverts and drains.",
+   "source": "spec-2024"
+  },
+  "471": {
+   "title": "Frames, Grates, Rings, and Covers",
+   "summary": "Furnish and install frames, grates, rings, and covers for inlets, manholes, and other structures.",
+   "source": "spec-2024"
+  },
+  "472": {
+   "title": "Removing and Re-Laying Culvert",
+   "summary": "Remove, transport, clean, and re-lay existing precast concrete box culvert and storm drain pipe.",
+   "source": "spec-2024"
+  },
+  "474": {
+   "title": "Linear Drains",
+   "summary": "Furnish and install linear drains of the sizes and descriptions shown on the plans as cast-in-place trench drain, precast trench drain, or slotted drain.",
+   "source": "spec-2024"
+  },
+  "476": {
+   "title": "Jacking, Boring, or Tunneling Pipe or Box",
+   "summary": "Furnish and install pipe or box by jacking, boring, or tunneling.",
+   "source": "spec-2024"
+  },
+  "479": {
+   "title": "Adjusting Manholes and Inlets",
+   "summary": "Adjust or cap existing manholes or inlets. Drainage junction boxes will be classified as manholes.",
+   "source": "spec-2024"
+  },
+  "480": {
+   "title": "Cleaning Existing Culverts",
+   "summary": "Remove all extraneous material from existing culvert barrels and pipes.",
+   "source": "spec-2024"
+  },
+  "481": {
+   "title": "Pipe for Drains",
+   "summary": "Furnish and install pipe for drains.",
+   "source": "spec-2024"
+  },
+  "483": {
+   "title": "Concrete Bridge Deck Surfacing",
+   "summary": "Surface concrete bridge deck as specified to provide prepared substrate for concrete overlay or to remediate a finished surface.",
+   "source": "spec-2024"
+  },
+  "491": {
+   "title": "Timber for Structures",
+   "summary": "Furnish and place lumber and timber.",
+   "source": "spec-2024"
+  },
+  "495": {
+   "title": "Raising Existing Structures",
+   "summary": "Raise and support existing structures as shown on the plans. Raising a bridge may be associated with permanent raising to increase vertical clearance or temporary raising to accomplish other work.",
+   "source": "spec-2024"
+  },
+  "496": {
+   "title": "Removing Structures",
+   "summary": "Remove and either dispose of or salvage structures.",
+   "source": "spec-2024"
+  },
+  "499": {
+   "title": "Adjusting Steel Shoes",
+   "summary": "Adjust and reset steel shoes as shown on the plans.",
+   "source": "spec-2024"
+  },
+  "500": {
+   "title": "Mobilization",
+   "summary": "Establish and remove offices, plants, and facilities. Move personnel, equipment, and supplies to and from the project or the vicinity of the project site to begin work or complete work on Contract Items.",
+   "source": "spec-2024"
+  },
+  "501": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CONST PERIM FENCE WITH SCREEN (INSTALL); CONST PERIM FENCE WITH SCREEN (MOVE).",
+   "source": "bid-data"
+  },
+  "502": {
+   "title": "Barricades, Signs, and Traffic Handling",
+   "summary": "Provide, install, move, replace, maintain, clean, and remove all traffic control devices shown on the plans and as directed.",
+   "source": "spec-2024"
+  },
+  "503": {
+   "title": "Portable Changeable Message Sign",
+   "summary": "Furnish, operate, and maintain trailer-mounted portable changeable message sign (PCMS) units.",
+   "source": "spec-2024"
+  },
+  "504": {
+   "title": "Field Office and Laboratory",
+   "summary": "Provide field offices and laboratories for exclusive use of the Engineer and inspection staff of the type shown on the plans.",
+   "source": "spec-2024"
+  },
+  "505": {
+   "title": "Truck-Mounted Attenuator (TMA) and Trailer Attenuator (TA)",
+   "summary": "Furnish, operate, maintain, and remove upon completion of work, a truck-mounted attenuator (TMA) or trailer attenuator (TA).",
+   "source": "spec-2024"
+  },
+  "506": {
+   "title": "Temporary Erosion, Sedimentation, and Environmental Controls",
+   "summary": "Install, maintain, and remove erosion, sedimentation, and environmental control measures to prevent or reduce the discharge of pollutants and protect environmental resources in accordance with the Stormwater Pollution Prevention Plan…",
+   "source": "spec-2024"
+  },
+  "507": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: 12\" GATE VALVE; 12\" PVC RST JT. WATER LINE, JACK & BORE.",
+   "source": "bid-data"
+  },
+  "508": {
+   "title": "Constructing Detours",
+   "summary": "Construct and maintain detours. Remove detours unless otherwise directed or shown on the plans.",
+   "source": "spec-2024"
+  },
+  "510": {
+   "title": "One-Way Traffic Control",
+   "summary": "Provide one-way traffic control using one of the methods shown on the plans.",
+   "source": "spec-2024"
+  },
+  "512": {
+   "title": "Portable Traffic Barrier",
+   "summary": "Furnish, install, move, and remove portable traffic barrier.",
+   "source": "spec-2024"
+  },
+  "513": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: LEAD CONTAINING COATING MANAGEMENT.",
+   "source": "bid-data"
+  },
+  "514": {
+   "title": "Permanent Concrete Traffic Barrier",
+   "summary": "Construct permanent concrete traffic barrier.",
+   "source": "spec-2024"
+  },
+  "516": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CONST PERIM FENCE W/SCN (INST) (ALT 1A); CONST PERIM FENCE W/SCN (MOVE) (ALT 1A).",
+   "source": "bid-data"
+  },
+  "519": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: #11 RH POTO 136# WD, SW STD IN (MAT); #11 RH POTO 136# WD, SW STD OUT(MAT).",
+   "source": "bid-data"
+  },
+  "527": {
+   "title": "Colored Textured Concrete",
+   "summary": "Furnish and place colored textured concrete.",
+   "source": "spec-2024"
+  },
+  "528": {
+   "title": "Landscape Pavers",
+   "summary": "1. Landscape Pavers.",
+   "source": "spec-2024"
+  },
+  "529": {
+   "title": "Concrete Curb, Gutter, and Combined Curb and Gutter",
+   "summary": "Construct hydraulic cement concrete curb, gutter, and combined curb and gutter.",
+   "source": "spec-2024"
+  },
+  "530": {
+   "title": "Intersections, Driveways, and Turnouts",
+   "summary": "Construct and pave intersections, driveways, and turnouts. Pave existing intersections, driveways, and turnouts.",
+   "source": "spec-2024"
+  },
+  "531": {
+   "title": "Sidewalks",
+   "summary": "Construct hydraulic cement concrete sidewalks, Americans with Disabilities Act ramps, and steps.",
+   "source": "spec-2024"
+  },
+  "533": {
+   "title": "Rumble Strips",
+   "summary": "Construct milled rumble strips. This Item also includes filling rumble strips in asphalt and concrete pavement to provide a smooth, stable surface with the line and grade conforming to the adjacent pavement.",
+   "source": "spec-2024"
+  },
+  "536": {
+   "title": "Concrete Medians and Directional Islands",
+   "summary": "Construct cast-in-place concrete medians and directional islands.",
+   "source": "spec-2024"
+  },
+  "538": {
+   "title": "Right of Way Markers",
+   "summary": "Install cast-in-place concrete right of way markers.",
+   "source": "spec-2024"
+  },
+  "540": {
+   "title": "Metal Beam Guard Fence",
+   "summary": "Furnish, install, replace, or adjust metal beam guard fence consisting of metal beam rail elements, hardware, blocks, and support posts.",
+   "source": "spec-2024"
+  },
+  "542": {
+   "title": "Removing Metal Beam Guard Fence",
+   "summary": "Remove existing metal beam guard fence and store at locations shown on the plans or as directed.",
+   "source": "spec-2024"
+  },
+  "543": {
+   "title": "Cable Barrier System",
+   "summary": "Furnish and install, relocate, or remove cable barrier systems and cable barrier terminal sections at the locations shown on the plans.",
+   "source": "spec-2024"
+  },
+  "544": {
+   "title": "Guardrail End Treatments",
+   "summary": "Furnish and install, move, or remove guardrail end treatments.",
+   "source": "spec-2024"
+  },
+  "545": {
+   "title": "Crash Cushion Attenuators",
+   "summary": "For permanent placement or temporary work zone locations, furnish and install, move and reset, or remove crash cushion attenuators.",
+   "source": "spec-2024"
+  },
+  "550": {
+   "title": "Chain Link Fence",
+   "summary": "Furnish, install, remove, repair, or replace chain link fence and gates.",
+   "source": "spec-2024"
+  },
+  "552": {
+   "title": "Wire Fence",
+   "summary": "Furnish and construct fence of barbed wire or a combination of woven fence fabric and barbed wire, supported on metal or wood posts.",
+   "source": "spec-2024"
+  },
+  "556": {
+   "title": "Pipe Underdrains",
+   "summary": "Install pipe underdrains.",
+   "source": "spec-2024"
+  },
+  "560": {
+   "title": "Mailbox Assemblies",
+   "summary": "Install, remove, temporarily relocate, or replace mailbox assemblies of the type specified.",
+   "source": "spec-2024"
+  },
+  "585": {
+   "title": "Ride Quality for Pavement Surfaces",
+   "summary": "Measure and evaluate the ride quality of pavement surfaces.",
+   "source": "spec-2024"
+  },
+  "600": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: FIBER OPTIC PATCH PANEL (12 POSITION); FIBER OPTIC PATCH PANEL (6 POSITION).",
+   "source": "bid-data"
+  },
+  "601": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CCTV FIELD EQUIPMENT (DIGITAL); CCTV MOUNT (POLE).",
+   "source": "bid-data"
+  },
+  "602": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: PREVENTIVE MAINTENANCE; RELOCATE FIBER OPTIC CABLE.",
+   "source": "bid-data"
+  },
+  "603": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: AUTO PORT SMART TRAFFIC MONITORING SYS; COFW EMR VEH (EV) PREEMPT (INST ONLY).",
+   "source": "bid-data"
+  },
+  "604": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ANTENNA (UNI-DIRECTIONAL); ANTENNA(OMNI-DIRECTIONAL).",
+   "source": "bid-data"
+  },
+  "605": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: AIR TEMP/RELATIVE HUMIDITY SENSOR; ALL-IN-ONE ATMOSPHERIC SENSOR.",
+   "source": "bid-data"
+  },
+  "606": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: AUTOMATED PEDESTRIAN DETECTION SYSTEM; BLUETOOTH DETECTION SYSTEM.",
+   "source": "bid-data"
+  },
+  "607": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ALUMINUM ELECTRICAL COND (#2 XHHW); ALUMINUM ELECTRICAL COND (#4 XHHW).",
+   "source": "bid-data"
+  },
+  "608": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CAT 5 ETHERNET CABLE; DECORATIVE ILLUM ASSEMBLY (PILASTER).",
+   "source": "bid-data"
+  },
+  "609": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CCTV ON HIGH MAST ILLUMIN. ASSEM.; LCS SIGNAL UNIT.",
+   "source": "bid-data"
+  },
+  "610": {
+   "title": "Roadway Illumination Assemblies",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "611": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ELECTRIC UNDERGROUND VAULT; FIRE DETECTION CCTV SYSTEM.",
+   "source": "bid-data"
+  },
+  "612": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CONCRETE ENCASED DUCT BANK; ETHERNET SWITCH (INSTALL ONLY).",
+   "source": "bid-data"
+  },
+  "613": {
+   "title": "High Mast Illumination Poles",
+   "summary": "Furnish and install high mast illumination poles.",
+   "source": "spec-2024"
+  },
+  "614": {
+   "title": "High Mast Illumination Assemblies",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "615": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: AUTOMATIC TRANSFER SWITCH; DECORATIVE MEDALLION W/ LED BACKLIGHT.",
+   "source": "bid-data"
+  },
+  "616": {
+   "title": "Performance Testing of Lighting Systems",
+   "summary": "Test the performance of roadway and high mast lighting systems.",
+   "source": "spec-2024"
+  },
+  "617": {
+   "title": "Temporary Roadway Illumination",
+   "summary": " Setup and Removal. Furnish, install, relocate, and remove temporary roadway illumination.",
+   "source": "spec-2024"
+  },
+  "618": {
+   "title": "Conduit",
+   "summary": "Furnish and install conduit; prepare existing conduit.",
+   "source": "spec-2024"
+  },
+  "619": {
+   "title": "Intelligent Transportation System (ITS) Multi-Duct Conduit",
+   "summary": "Furnish and install intelligent transportation system (ITS) multi-duct conduit identified for fiber optic communication use of the type and size specified.",
+   "source": "spec-2024"
+  },
+  "620": {
+   "title": "Electrical Conductors",
+   "summary": "Furnish and install electrical conductors, except conductors specifically covered by other Items.",
+   "source": "spec-2024"
+  },
+  "621": {
+   "title": "Tray Cable",
+   "summary": "Furnish and install tray cable.",
+   "source": "spec-2024"
+  },
+  "622": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: SOLAR POWERED LED WARNING SIGN.",
+   "source": "bid-data"
+  },
+  "623": {
+   "title": "Intelligent Transportation System (ITS) Ground Boxes",
+   "summary": "Construct, furnish, install, or remove Intelligent Transportation System (ITS) ground boxes for fiber optic communication infrastructure complete with lids.",
+   "source": "spec-2024"
+  },
+  "624": {
+   "title": "Ground Boxes",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "625": {
+   "title": "Zinc-Coated Steel Wire Strand",
+   "summary": "Furnish and install zinc-coated steel wire strand.",
+   "source": "spec-2024"
+  },
+  "627": {
+   "title": "Treated Timber Poles",
+   "summary": "Furnish and install treated timber poles.",
+   "source": "spec-2024"
+  },
+  "628": {
+   "title": "Electrical Services",
+   "summary": " Installation. Furnish and install electrical services.",
+   "source": "spec-2024"
+  },
+  "629": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: RVDS(ADVANCE DET ONLY)(INSTALL ONLY); RVDS(ADVANCE DETECTION ONLY).",
+   "source": "bid-data"
+  },
+  "630": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ITS RVSD (DATA COLLECT & WWA) SYS; ITS RVSD (DATA COLLECT ONLY) SYS.",
+   "source": "bid-data"
+  },
+  "632": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: INSTALL OF FIELD HARD ETHERNET SWITCH; INSTALL OF HARD ETHERNET SWITCH.",
+   "source": "bid-data"
+  },
+  "635": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: LEAD LED CHEVRON; LED CHEVRON.",
+   "source": "bid-data"
+  },
+  "636": {
+   "title": "Signs",
+   "summary": " Installation. Furnish, fabricate, and erect aluminum signs.",
+   "source": "spec-2024"
+  },
+  "638": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: INSTALLATION OF CELLULAR MODEM.",
+   "source": "bid-data"
+  },
+  "639": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: 3\" ITS FIBERGLASS CONDUIT; CELLULAR ROUTER.",
+   "source": "bid-data"
+  },
+  "641": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: PORTABLE ROADWAY ILLUMINATION.",
+   "source": "bid-data"
+  },
+  "642": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: REMOVE DYNAMIC MESSAGE SIGN SYSTEM.",
+   "source": "bid-data"
+  },
+  "643": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: INST OF FIELD HARDENED ETHERNET SWITCH; INSTALLATION OF CELLULAR MODEM.",
+   "source": "bid-data"
+  },
+  "644": {
+   "title": "Small Roadside Sign Assemblies",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "647": {
+   "title": "Large Roadside Sign Supports and Assemblies",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "650": {
+   "title": "Overhead Sign Supports",
+   "summary": " Installation. Furnish, fabricate, and erect overhead sign supports.",
+   "source": "spec-2024"
+  },
+  "652": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: AIR TEMP/RELATIVE HUMIDITY SENSOR; ALL-IN-ONE ATMOSPHERIC SENSOR.",
+   "source": "bid-data"
+  },
+  "653": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: HIGH MAST ASSEMBLY FOR ITS; IN RD IL(TY SA)40T-8\"(.25KW EQW)LED.",
+   "source": "bid-data"
+  },
+  "654": {
+   "title": "Sign Walkways",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "658": {
+   "title": "Delineator and Object Marker Assemblies",
+   "summary": " Installation. Install delineator or object marker assembly.",
+   "source": "spec-2024"
+  },
+  "662": {
+   "title": "Work Zone Pavement Markings",
+   "summary": "Furnish, place, and maintain work zone pavement markings.",
+   "source": "spec-2024"
+  },
+  "666": {
+   "title": "Retroreflectorized Pavement Markings",
+   "summary": "Furnish and place retroreflectorized or non-retroreflectorized (shadow) pavement markings.",
+   "source": "spec-2024"
+  },
+  "667": {
+   "title": "Mobile Retroreflectivity Data Collection for Pavement Markings",
+   "summary": "Furnish mobile retroreflectivity data collection (MRDC) for pavement markings on roadways as shown on the plans or as designated by the Engineer.",
+   "source": "spec-2024"
+  },
+  "668": {
+   "title": "Prefabricated Pavement Markings and Rumble Strips",
+   "summary": "Furnish and place retroreflectorized or non-reflectorized (contrast) prefabricated pavement markings and rumble strips.",
+   "source": "spec-2024"
+  },
+  "672": {
+   "title": "Raised Pavement Markers",
+   "summary": "Furnish and install raised pavement markers (RPMs).",
+   "source": "spec-2024"
+  },
+  "677": {
+   "title": "Eliminating Existing Pavement Markings and Markers",
+   "summary": "Eliminate existing pavement markings and raised pavement markers (RPMs).",
+   "source": "spec-2024"
+  },
+  "678": {
+   "title": "Pavement Surface Preparation for Markings",
+   "summary": "Prepare pavement surface areas before placement of pavement markings and raised pavement markers (RPMs).",
+   "source": "spec-2024"
+  },
+  "680": {
+   "title": "Highway Traffic Signals",
+   "summary": " Installation. Install highway traffic signals.",
+   "source": "spec-2024"
+  },
+  "681": {
+   "title": "Temporary Traffic Signals",
+   "summary": "Furnish, install, operate, maintain, reconfigure, and remove temporary traffic signals.",
+   "source": "spec-2024"
+  },
+  "682": {
+   "title": "Vehicle and Pedestrian Signal Heads",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "684": {
+   "title": "Traffic Signal Cables",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "685": {
+   "title": "Roadside Flashing Beacon Assemblies",
+   "summary": " Installation. Furnish, fabricate, and erect roadside flashing beacon assemblies.",
+   "source": "spec-2024"
+  },
+  "686": {
+   "title": "Traffic Signal Pole Assemblies",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "687": {
+   "title": "Pedestal Pole Assemblies",
+   "summary": " Installation. Furnish and install pedestal pole assemblies for vehicle and pedestrian signals.",
+   "source": "spec-2024"
+  },
+  "688": {
+   "title": "Pedestrian and Vehicle Detectors",
+   "summary": "1. Installation.",
+   "source": "spec-2024"
+  },
+  "690": {
+   "title": "Maintenance of Traffic Signals and Illumination",
+   "summary": "Furnish, install, modify, repair, replace, reroute, or remove components of a traffic signal or illumination system.",
+   "source": "spec-2024"
+  },
+  "700": {
+   "title": "Pothole Repair",
+   "summary": "Repair potholes, spalled areas, depressions, and raveled or damaged pavement edges in roadway surfaces.",
+   "source": "spec-2024"
+  },
+  "701": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CURB INLET SEDIMENT PROTECTION; JANITORIAL MAINTENANCE.",
+   "source": "bid-data"
+  },
+  "702": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: 16IN STEEL CASING (OPEN CUT); 2\" TEMPORARY WATER SERVICES (MISC ONLY).",
+   "source": "bid-data"
+  },
+  "703": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: TEMP POWER POLE BRACING; ACCESS CONTROL SYSTEM SOFTWARE/FIRMWARE.",
+   "source": "bid-data"
+  },
+  "704": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: DUCTILE IRON FITTINGS; FIRE HYDRANT ASSEMBLY.",
+   "source": "bid-data"
+  },
+  "705": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: 13'9\" DONUT FNDR UPPR UNT REPL ANY LDG; 24 IN STEEL CASING (OPEN CUT).",
+   "source": "bid-data"
+  },
+  "706": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: 1N NARROW PROF DOUBLE SUPP CONSTR; 8\" GATE VALVE.",
+   "source": "bid-data"
+  },
+  "707": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: #9700 AUTO FLUSH DEVICE; 12\" C900 PVC WTR LINE.",
+   "source": "bid-data"
+  },
+  "708": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: FIRE HYDRANT ASSEMBLY; HYDROSTATIC PRESSURE TEST.",
+   "source": "bid-data"
+  },
+  "709": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: REM/REPL 3 IN. BUTTERFLY VALVES; 10\" STORM WATER (INSUL & HEAT TRACE).",
+   "source": "bid-data"
+  },
+  "710": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: AIR RELEASE VALVE 2 IN; COMPLETE ABG REPLACEMENTS.",
+   "source": "bid-data"
+  },
+  "712": {
+   "title": "Cleaning and Sealing Joints and Cracks (Asphalt Concrete)",
+   "summary": "Clean and seal joints and cracks in asphalt concrete roadway surfaces.",
+   "source": "spec-2024"
+  },
+  "713": {
+   "title": "Cleaning and Sealing Joints and Cracks (Concrete Pavement)",
+   "summary": "Clean and seal joints and cracks in concrete pavement.",
+   "source": "spec-2024"
+  },
+  "720": {
+   "title": "Repair of Spalling in Concrete Pavement",
+   "summary": "Repair spalling and up to half-depth failures in concrete pavement.",
+   "source": "spec-2024"
+  },
+  "721": {
+   "title": "Fiber Reinforced Polymer Patching Material",
+   "summary": "Repair spalled areas, potholes, and joints on concrete and asphalt pavements using a fiber reinforced polymer patching material, bulking aggregates, and finishing aggregates as specified below.",
+   "source": "spec-2024"
+  },
+  "725": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: Subsurface Util Locate (Outside Rdbed); Subsurface Util Locate (Within Rdbed).",
+   "source": "bid-data"
+  },
+  "726": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ABND/RMV/DISP EXIST 2.25\"WL, ALL DEPTH; ABND/RMV/DISP EXIST 6\"WL, ALL DEPTH.",
+   "source": "bid-data"
+  },
+  "730": {
+   "title": "Roadside Mowing",
+   "summary": "Mow roadside vegetation.",
+   "source": "spec-2024"
+  },
+  "731": {
+   "title": "Herbicide Treatment",
+   "summary": "Apply herbicide to control undesirable vegetation within the highway right of way.",
+   "source": "spec-2024"
+  },
+  "734": {
+   "title": "Litter Removal",
+   "summary": "Remove and dispose of litter, including objects not part of the highway facility, such as trash, garbage, scrap metal, paper, wood, plastic, glass products, animal remains, rubber products, tires, auto parts, furniture, mattresses,…",
+   "source": "spec-2024"
+  },
+  "735": {
+   "title": "Debris Removal",
+   "summary": "Remove and dispose of debris discarded or deposited on or adjacent to the pavement. Debris includes all objects not part of the highway facility, such as dead animals, tires, tire fragments, wood, furniture, mattresses, household…",
+   "source": "spec-2024"
+  },
+  "736": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: 10\" PVC PRESSURE RATED WASTEWATER PIPE; 12\" DUCTILE IRON PIPE.",
+   "source": "bid-data"
+  },
+  "737": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: ABG ASSEMBLY (VERT) (TY V).",
+   "source": "bid-data"
+  },
+  "738": {
+   "title": "Cleaning and Sweeping Highways",
+   "summary": "Clean and sweep highway facilities.",
+   "source": "spec-2024"
+  },
+  "740": {
+   "title": "Graffiti Removal and Anti-Graffiti Coating",
+   "summary": "Remove graffiti or apply anti-graffiti coating on concrete or steel.",
+   "source": "spec-2024"
+  },
+  "745": {
+   "title": "Picnic Area Maintenance",
+   "summary": "Perform janitorial and grounds maintenance at picnic areas.",
+   "source": "spec-2024"
+  },
+  "751": {
+   "title": "Landscape Maintenance",
+   "summary": "Perform landscape maintenance, litter pickup, mowing and edging, and irrigation repair of landscaped areas.",
+   "source": "spec-2024"
+  },
+  "752": {
+   "title": "Tree and Brush Removal",
+   "summary": "Remove and dispose of trees, brush, shrubs, and vines. Trim trees and shrubs.",
+   "source": "spec-2024"
+  },
+  "760": {
+   "title": "Cleaning and Reshaping Ditches",
+   "summary": "Clean and reshape ditches.",
+   "source": "spec-2024"
+  },
+  "764": {
+   "title": "Pump Stations and Drainage System Cleaning",
+   "summary": "Perform hydraulic cleaning, vacuum removal and disposal of debris in drain inlets, pump station wells, basket and inlet pipes, downspouts, sumps, storm sewers, and slotted drains.",
+   "source": "spec-2024"
+  },
+  "770": {
+   "title": "Guard Fence Repair",
+   "summary": "Repair guard fence elements, posts, terminal anchor sections, single guard fence terminals, and other appurtenances.",
+   "source": "spec-2024"
+  },
+  "771": {
+   "title": "Repair Cable Barrier System",
+   "summary": "Repair cable barrier system and cable barrier terminal sections of the type shown.",
+   "source": "spec-2024"
+  },
+  "772": {
+   "title": "Post and Cable Fence",
+   "summary": "Install, repair, or remove post and cable fence.",
+   "source": "spec-2024"
+  },
+  "774": {
+   "title": "Attenuator Repair",
+   "summary": "Repair or replace damaged attenuators or crash cushions.",
+   "source": "spec-2024"
+  },
+  "776": {
+   "title": "Metal Rail Repair",
+   "summary": "Repair or replace damaged metal traffic or pedestrian railing on bridges, culverts, parapet walls, retaining walls, or other structures as shown on the plans and as directed.",
+   "source": "spec-2024"
+  },
+  "777": {
+   "title": "Permanent Concrete Traffic Barrier Repair",
+   "summary": "Repair or replace damaged permanent concrete traffic barrier as shown on the plans and as directed.",
+   "source": "spec-2024"
+  },
+  "778": {
+   "title": "Concrete Rail Repair",
+   "summary": "Repair or replace damaged concrete railing on bridges, culverts, parapet walls, retaining walls, or other structures as shown on the plans and as directed.",
+   "source": "spec-2024"
+  },
+  "780": {
+   "title": "Concrete Crack Repair",
+   "summary": "Repair cracks in concrete members by epoxy injection, gravity filling, routing and sealing, or surface sealing.",
+   "source": "spec-2024"
+  },
+  "784": {
+   "title": "Steel Member Repair",
+   "summary": "Repair steel bridge members, such as beams, girders, diaphragms, trusses, and piling.",
+   "source": "spec-2024"
+  },
+  "785": {
+   "title": "Bridge Joint Repair or Replacement",
+   "summary": "Repair or replace damaged bridge joint as shown on the plans.",
+   "source": "spec-2024"
+  },
+  "786": {
+   "title": "Carbon Fiber Reinforced Polymer",
+   "summary": "Furnish and install a carbon fiber reinforced polymer (CFRP) system for protecting or strengthening concrete members.",
+   "source": "spec-2024"
+  },
+  "787": {
+   "title": "Replacing Elastomeric Bearing Pads",
+   "summary": "Replace elastomeric bridge bearings.",
+   "source": "spec-2024"
+  },
+  "788": {
+   "title": "Concrete Beam Repair",
+   "summary": "Repair damaged concrete beams. Beam damage may include delamination, surface spalling, section loss, reinforcement damage, and cracking.",
+   "source": "spec-2024"
+  },
+  "790": {
+   "title": "Lane Closures",
+   "summary": "Install, maintain, and remove lane closures as shown on the plans, or as directed. This Specification is intended for lane closures approximately 24 hr.",
+   "source": "spec-2024"
+  },
+  "800": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: COMPLEX CHLORIDE(SLD)(DEL)(SITE 1); COMPLEX CHLORIDE(SLD)(DEL)(SITE 1)(EXP).",
+   "source": "bid-data"
+  },
+  "801": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CAT 4A SODIUM CHLORIDE (DEL)(SITE 1); CAT 8A-B BRINE SALT (DEL)(SITE 1).",
+   "source": "bid-data"
+  },
+  "802": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: 1.75M KISTLER QRTZ PIEZO SNSR W/130' LD; 1.75M KISTLER QRTZ PIEZO SNSR W/328' LD.",
+   "source": "bid-data"
+  },
+  "803": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: CAT 4A SOD CHLORIDE (DEL)(SITE 1); CAT 4A SOD CHLORIDE (DEL)(SITE 1)(EXP).",
+   "source": "bid-data"
+  },
+  "805": {
+   "title": "Special/project item (no 2024 standard spec)",
+   "summary": "Bid codes include: 6\" SANITARY SEWER CLEANOUT; CONCRETE PAVEMENT STITCHING.",
+   "source": "bid-data"
+  }
+ }
+}

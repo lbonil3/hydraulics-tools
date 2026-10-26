@@ -168,3 +168,27 @@ console.log('ok');
   assert.ok(/L\.hasSpecPdf\(g\.item\) \? L\.specPdfUrl/.test(appSrc), 'header spec link gated');
   console.log('ok header spec gating');
 }
+
+// item-info.json: official titles + search on title/summary
+{
+  const assert = require('assert');
+  const L3 = require('./lookup.js');
+  const info = require('./item-info.json');
+  assert.strictEqual(info.items['451'].title, 'Retrofit Railing');
+  assert.strictEqual(info.items['451'].source, 'spec-2024');
+  assert.strictEqual(info.items['464'].title, 'Reinforced Concrete Pipe');
+  assert.strictEqual(info.items['800'].source, 'bid-data');
+  Object.keys(info.items).forEach(function (k) {
+    const e = info.items[k];
+    assert.ok(e.title && e.title.length < 80, k);
+    assert.strictEqual(e.source === 'spec-2024', L3.hasSpecPdf(k), k);
+    if (e.summary) assert.ok(e.summary.length <= 300, k);
+  });
+  const rows = [{ bid_code: '451-6001', description: 'RAIL (TY T)' }, { bid_code: '464-6001', description: 'RC PIPE' }];
+  assert.strictEqual(L3.filterRows(rows, 'retrofit').length, 0);
+  assert.deepStrictEqual(L3.filterRows(rows, 'retrofit', info).map(r => r.bid_code), ['451-6001']);
+  assert.deepStrictEqual(L3.filterRows(rows, 'storm drain', info).map(r => r.bid_code), ['464-6001']);
+  const app = require('fs').readFileSync(require('path').join(__dirname, 'app.js'), 'utf8');
+  assert.ok(/fetch\('\.\/item-info\.json'\)/.test(app));
+  console.log('ok item-info');
+}

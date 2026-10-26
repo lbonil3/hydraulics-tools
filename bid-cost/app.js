@@ -6,6 +6,7 @@
   const metaLine = document.getElementById('metaLine');
   let allRows = [];
   let detailMap = null;
+  let itemInfo = null;
   const openItems = Object.create(null); // item -> true when user toggled open
   const bodyCache = Object.create(null); // item -> { sig, html }
   let rowsByItem = Object.create(null); // item -> rows for current filter
@@ -97,11 +98,15 @@
     sectionsEl.innerHTML = groups.map(function (g) {
       const forceOpen = !!q || openItems[g.item];
       const bodyInner = forceOpen ? getBodyHtml(g.item, g.rows) : '';
+      const info = itemInfo && itemInfo.items ? itemInfo.items[g.item] : null;
       const spec = L.hasSpecPdf(g.item) ? L.specPdfUrl(g.item) : null;
       return '<section class="item-section' + (forceOpen ? ' open' : '') + '" data-item="' + escapeHtml(g.item) + '">' +
         '<div class="item-header-row" style="display:flex;align-items:stretch">' +
           '<button type="button" class="item-header" aria-expanded="' + (forceOpen ? 'true' : 'false') + '">' +
-            '<span class="item-id">Item ' + escapeHtml(g.item) + '</span>' +
+            '<span class="item-text">' +
+              '<span class="item-id">' + escapeHtml(g.item) + (info ? ' · ' + escapeHtml(info.title) : '') + '</span>' +
+              (info && info.summary ? '<span class="item-summary' + (info.source === 'bid-data' ? ' item-summary-data' : '') + '">' + escapeHtml(info.summary) + '</span>' : '') +
+            '</span>' +
             '<span class="item-count">' + g.rows.length + '</span>' +
           '</button>' +
           (spec ? '<a class="spec-link" href="' + escapeHtml(spec) + '" target="_blank" rel="noopener noreferrer">Spec</a>' : '') +
@@ -112,7 +117,7 @@
   }
 
   function onSearch() {
-    render(L.filterRows(allRows, search.value));
+    render(L.filterRows(allRows, search.value, itemInfo));
   }
 
   function maybeRender() {
@@ -160,6 +165,16 @@
     })
     .catch(function () {
       detailMap = null;
+    });
+
+  fetch('./item-info.json')
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      itemInfo = data;
+      maybeRender();
+    })
+    .catch(function () {
+      itemInfo = null;
     });
 
   search.addEventListener('input', onSearch);

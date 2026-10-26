@@ -208,7 +208,7 @@
         ? '<div class="err" title="' + escapeAttr(row.err) + '">' + escapeHtml(row.err) + '</div>'
         : '';
       const acts = '<td class="act">' + errBlock +
-        '<button type="button" class="gs" data-gs="' + row.id + '" aria-label="Goal Seek row">GS</button> ' +
+        '<button type="button" class="gs" data-gs="' + row.id + '" title="Goal Seek: solve flow depth for this row\'s design Q" aria-label="Goal Seek row">GS</button> ' +
         '<button type="button" class="del" data-del="' + row.id + '" aria-label="Delete row">Delete</button></td>';
       const classes = [];
       if (row.err) classes.push('has-err');

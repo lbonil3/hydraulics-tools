@@ -40,8 +40,11 @@ header span{opacity:.85;flex:1;min-width:200px;font-size:13px;line-height:1.35}
   cursor: pointer;
   min-height: 44px;
 }
-.item-header .item-id { font-weight: 700; color: #1f4e79; }
-.item-header .item-count { color: #555; font-size: 0.9em; margin-left: auto; }
+.item-header .item-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.item-header .item-id { font-weight: 700; color: #1f4e79; overflow-wrap: anywhere; }
+.item-header .item-summary { font-size: 0.8em; color: #555; line-height: 1.3; margin-top: 0.15rem; overflow-wrap: anywhere; }
+.item-header .item-summary-data { font-style: italic; }
+.item-header .item-count { color: #555; font-size: 0.9em; margin-left: auto; flex: 0 0 auto; }
 .spec-link {
   flex-shrink: 0;
   color: #1f4e79;
