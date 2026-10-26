@@ -1,0 +1,933 @@
+{
+  "meta": {
+    "spec_source": "TxDOT 2024 Standard Specifications, items read 2026-10-26 from the standard-spec PDF for each item (sNNN.pdf).",
+    "samples": "code-example-samples.json is rebuilt by build-example-samples.js from data/bid-unit-prices-houston.csv and data/bid-unit-prices-statewide.csv. It stores min, median, max, n, and total quantity. It does not store projects.",
+    "drainage_set": {
+      "every_code": ["402", "403", "432", "459", "460", "462", "464", "465", "466", "467", "468", "471", "472", "474", "476", "480", "481", "506"],
+      "partial": {
+        "400": "Structural excavation, cement-stabilized backfill, cut-and-restore pavement, and sand or rock backfill. Shaft, launch, adit, tunnel, and tee excavation are omitted.",
+        "479": "Manholes and inlets only. Water, sanitary, electric, utility, meter, and valve adjustments are omitted.",
+        "496": "Removal of pipe, box culvert, inlet, manhole, junction box, headwall, wingwall, safety end treatment, driveway culvert, riprap, gabion, or drainage flume. Bridge and other non-drainage removals are omitted."
+      },
+      "not_included": "Item 401 flowable backfill is cited as a separate pay item from the pipe and excavation notes. It does not get its own diagram in this pass."
+    },
+    "extend": "Add a category by appending rules to this file. A rule matches the first three digits of the bid code (item). Optional when means the description must contain every listed phrase. when_any means it must contain at least one. unless skips the rule when any phrase matches. Phrases are matched in uppercase. Put specific rules before the item default. Each rule needs diagram (a key drawn in bid-cost/examples.js), unit_how, included, separate, and spec. Write included and separate only from that item's Measurement and Payment articles. Add a DRAW function if the picture is new; otherwise reuse one. Run node bid-cost/build-example-samples.js so the new codes pick up min, median, and max from the CSVs. Unmatched codes show nothing. A missing code-examples.json leaves prices, Spec, and Detail unchanged. Do not add photo links or plan-sheet links. To show real bid lines instead of min/median/max, change the build scripts as described in docs/superpowers/specs/2026-10-26-bid-cost-code-examples-design.md."
+  },
+  "rules": [
+    {
+      "id": "400-cut",
+      "item": "400",
+      "when": "CUT",
+      "diagram": "cut-pav",
+      "unit_how": "Square yard of cutting and restoring pavement as shown on the plans. Excavation below the pavement or base is measured as structural excavation of the pertinent type, not inside this square-yard price (Item 400.4.3).",
+      "included": [
+        "Cutting pavement and base to neat lines and restoring the pavement, paid as Cutting and Restoring Pavement (Item 400.5.5)."
+      ],
+      "separate": [
+        "Excavation below the pavement is the structural excavation bid.",
+        "The pipe or structure, and flowable backfill (Item 401), are not this price."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 400.4.3 and 400.5.5."
+    },
+    {
+      "id": "400-cement",
+      "item": "400",
+      "when_any": ["CEM STABIL", "CEMENT STAB"],
+      "diagram": "cement-bkfl",
+      "unit_how": "Cubic yard of cement-stabilized backfill as shown on the plans (Item 400.4.2).",
+      "included": [
+        "Cement-stabilized backfill at the unit price bid for that material (Item 400.5.4)."
+      ],
+      "separate": [
+        "Ordinary structural excavation, when it is its own bid, is a different Item 400 code.",
+        "Flowable backfill is Item 401. The structure itself is its own item."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 400.4.2 and 400.5.4."
+    },
+    {
+      "id": "400-sand",
+      "item": "400",
+      "when": "SAND BACKFILL",
+      "diagram": "backfill-other",
+      "unit_how": "Cubic yard, the unit on this bid code. Item 400 measures cement-stabilized backfill by the cubic yard shown on the plans (400.4.2). It does not name a measurement article for sand backfill.",
+      "included": [
+        "The bid description is sand backfill under Item 400. When the plans require a special backfill and that material is a bid item, Item 400.5.2 pays it at that bid price."
+      ],
+      "separate": [
+        "This is not the pipe price and it is not flowable backfill (Item 401).",
+        "Ordinary structural excavation is a different Item 400 code when it is bid."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 400.5.2. The spec text does not name sand backfill as its own pay article."
+    },
+    {
+      "id": "400-rock",
+      "item": "400",
+      "when": "ROCK BACKFILL",
+      "diagram": "backfill-other",
+      "unit_how": "Cubic yard, the unit on this bid code. Item 400 measures cement-stabilized backfill by the cubic yard shown on the plans (400.4.2). It does not name a measurement article for rock backfill.",
+      "included": [
+        "The bid description is rock backfill under Item 400. When the plans require a special backfill and that material is a bid item, Item 400.5.2 pays it at that bid price."
+      ],
+      "separate": [
+        "This is not the pipe price and it is not flowable backfill (Item 401).",
+        "Ordinary structural excavation is a different Item 400 code when it is bid."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 400.5.2. The spec text does not name rock backfill as its own pay article."
+    },
+    {
+      "id": "400-pipe",
+      "item": "400",
+      "when": "(PIPE)",
+      "diagram": "struct-ex-pipe",
+      "unit_how": "Cubic yard by average end areas, or as shown on the plans. For pipe up to 42 in., pay limits are vertical planes 1 ft. outside the pipe. Larger pipe uses 2 ft. Measure from end to end of the completed structure, including end appurtenances, and from centerline to centerline of inlets and manholes (Item 400.4.1.1).",
+      "included": [
+        "When structural excavation is a pay item: the excavation, and backfilling and compacting what was removed as structural excavation (Item 400.5.1).",
+        "Sheeting, bracing, and de-watering for excavations up to and including 5 ft. deep are subsidiary, not their own pay item."
+      ],
+      "separate": [
+        "The pipe itself is Item 460, 464, 468, or 481.",
+        "Flowable backfill is Item 401.",
+        "Protection for excavations deeper than 5 ft. is Item 402 or Item 403.",
+        "Cement-stabilized backfill and cutting and restoring pavement are their own Item 400 bids.",
+        "If structural excavation is not a pay item, Item 400.5.1 makes the excavation and backfill subsidiary to the structure instead of paid here."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 400.4.1.1 and 400.5.1."
+    },
+    {
+      "id": "400-box",
+      "item": "400",
+      "when": "(BOX)",
+      "diagram": "struct-ex-box",
+      "unit_how": "Cubic yard by average end areas, or as shown on the plans. No material outside vertical planes 1 ft. beyond the footings or outside walls is included. Where the plans allow cast-in-place or precast boxes, measurement uses the cast-in-place option (Item 400.4.1.2).",
+      "included": [
+        "When structural excavation is a pay item: the excavation, and backfilling and compacting what was removed as structural excavation (Item 400.5.1).",
+        "Support of excavations up to and including 5 ft. deep is subsidiary."
+      ],
+      "separate": [
+        "The box culvert is Item 462.",
+        "Flowable backfill is Item 401. Protection deeper than 5 ft. is Item 402 or Item 403.",
+        "If structural excavation is not a pay item, it is subsidiary to the structure (Item 400.5.1)."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 400.4.1.2 and 400.5.1."
+    },
+    {
+      "id": "400-bridge",
+      "item": "400",
+      "when": "BRIDGE",
+      "diagram": "struct-ex-bridge",
+      "unit_how": "Cubic yard of structural excavation for the bridge. At sites other than culverts and pipe, only material below or outside the completed road or channel excavation is measured (Item 400.4.1.3).",
+      "included": [
+        "Excavation and ordinary backfill for the bridge foundation when structural excavation is a pay item (Item 400.5.1).",
+        "The price includes concrete to compensate for excavation that extended below grade for bridge foundations, when that is part of 400.5.1."
+      ],
+      "separate": [
+        "Roadway and channel excavation is Item 110.",
+        "The bridge structure is not this bid. Protection deeper than 5 ft. is Item 402 or Item 403. Flowable backfill is Item 401."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 400.4.1.3 and 400.5.1."
+    },
+    {
+      "id": "400-generic",
+      "item": "400",
+      "unless": ["SHAFT", "LAUNCH", "ADIT", "TUNNEL", "(TEE)"],
+      "diagram": "struct-ex",
+      "unit_how": "Cubic yard by average end areas, or as shown on the plans. Excavation diagrams on the plans take precedence (Item 400.4.1).",
+      "included": [
+        "When structural excavation is a pay item: the excavation, and backfilling and compacting what was removed as structural excavation (Item 400.5.1).",
+        "Support of excavations up to and including 5 ft. deep is subsidiary."
+      ],
+      "separate": [
+        "The structure being built is its own item.",
+        "Flowable backfill is Item 401. Protection deeper than 5 ft. is Item 402 or Item 403.",
+        "Cement-stabilized backfill and cutting and restoring pavement are their own Item 400 bids."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 400.4.1 and 400.5.1."
+    },
+    {
+      "id": "402",
+      "item": "402",
+      "diagram": "trench-protect",
+      "unit_how": "Foot along the long axis of the trench where the trench is deeper than 5 ft., including the trench ends (Item 402, Measurement).",
+      "included": [
+        "Excavation and backfill required for the protection; furnishing, placing, and removing shoring, sheeting, or bracing; de-watering or diversion of water; jacking and jack removal."
+      ],
+      "separate": [
+        "The pipe or box is not this price.",
+        "Structural excavation, bedding, and backfill of the pipe trench are Item 400.",
+        "This item is only the protection for trenches 5 ft. or deeper."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 402, Measurement and Payment."
+    },
+    {
+      "id": "403",
+      "item": "403",
+      "diagram": "shoring",
+      "unit_how": "Square foot of a vertical plane at the face of the shoring, from the top of the ground being supported down to the minimum protection grade, or to the lowest required excavated elevation if no grade is shown. Shoring above that ground is not measured (Item 403, Measurement).",
+      "included": [
+        "Excavation and backfill for the shoring; furnishing, placing, and removing shoring, sheeting, or bracing; de-watering or diversion of water; jacking and jack removal."
+      ],
+      "separate": [
+        "The permanent structure is not this price.",
+        "Shoring needed only because the contractor chose an optional design or work sequence is not paid (Item 403, Payment)."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 403, Measurement and Payment."
+    },
+    {
+      "id": "432-bed",
+      "item": "432",
+      "when": "BEDDING",
+      "diagram": "riprap-bed",
+      "unit_how": "Cubic yard from the measured area in place and the bedding thickness shown on the plans (Item 432, Measurement).",
+      "included": [
+        "Furnishing, hauling, placing, and maintaining the stone bedding until the riprap cover is accepted, and the excavation required to place the bedding."
+      ],
+      "separate": [
+        "The riprap cover is the riprap bid, not this bedding bid.",
+        "Excess thickness, and material used to replace embankment lost to rain or wind, are not paid (Item 432, Payment)."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 432, Measurement and Payment, bedding paragraphs."
+    },
+    {
+      "id": "432-mow",
+      "item": "432",
+      "when": "MOW STRIP",
+      "diagram": "riprap-mow",
+      "unit_how": "Cubic yard complete in place, from the measured area and the thickness shown on the plans (Item 432, Measurement).",
+      "included": [
+        "The concrete mow strip, including concrete and reinforcing steel, which the riprap payment lists in the cubic-yard price."
+      ],
+      "separate": [
+        "Stone riprap beside the strip is its own riprap bid when the plans list it separately."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 432, Measurement and Payment."
+    },
+    {
+      "id": "432-flume",
+      "item": "432",
+      "when": "FLUME",
+      "diagram": "riprap-flume",
+      "unit_how": "Cubic yard complete in place, from the measured area and the thickness shown on the plans (Item 432, Measurement).",
+      "included": [
+        "The concrete flume, including concrete and reinforcing steel named in the riprap payment."
+      ],
+      "separate": [
+        "A temporary paved flume is Item 506, not this bid.",
+        "Pipe and inlets are their own items."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 432, Measurement and Payment."
+    },
+    {
+      "id": "432-cem",
+      "item": "432",
+      "when": "CEM STAB",
+      "diagram": "riprap-conc",
+      "unit_how": "Cubic yard complete in place (Item 432, Measurement). This bid description is cement-stabilized riprap.",
+      "included": [
+        "Furnishing, hauling, and placing the riprap. Excavation of toe trenches, excavation below natural ground or the channel bottom, and shaping the slope are included in the cubic-yard price."
+      ],
+      "separate": [
+        "Bedding for protection stone, when required, is the separate Bedding Material bid under Item 432.",
+        "The culvert or end treatment is not this price."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 432, Measurement and Payment."
+    },
+    {
+      "id": "432-conc",
+      "item": "432",
+      "when": "CONC",
+      "diagram": "riprap-conc",
+      "unit_how": "Cubic yard complete in place. Volume uses the measured area in place and the thickness and toe-wall width shown on the plans (Item 432, Measurement).",
+      "included": [
+        "Furnishing, hauling, and placing the concrete riprap, including filter fabric, concrete, and reinforcing steel.",
+        "Excavation of toe-wall trenches, excavation below natural ground or the channel bottom, and shaping the slope are included in the cubic-yard price."
+      ],
+      "separate": [
+        "The culvert, headwall, or safety end treatment is not this price.",
+        "Riprap the plans include inside a safety end treatment is paid in Item 467, not again here."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 432, Measurement and Payment."
+    },
+    {
+      "id": "432-stone",
+      "item": "432",
+      "when": "STONE",
+      "diagram": "riprap-stone",
+      "unit_how": "Cubic yard complete in place. Volume uses the measured area in place and the thickness and toe-wall width shown on the plans (Item 432, Measurement).",
+      "included": [
+        "Furnishing, hauling, and placing the stone, including filter fabric and grout or mortar when the bid says grout.",
+        "Excavation of toe-wall trenches, excavation below natural ground or the channel bottom, and shaping the slope are included in the cubic-yard price."
+      ],
+      "separate": [
+        "Bedding under protection stone, when the plans require it, is the separate Bedding Material bid under Item 432.",
+        "Riprap inside the plan limits of a safety end treatment is paid in Item 467."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 432, Measurement and Payment."
+    },
+    {
+      "id": "432-other",
+      "item": "432",
+      "diagram": "riprap-stone",
+      "unit_how": "Cubic yard complete in place (Item 432, Measurement). The bid description names the type.",
+      "included": [
+        "Furnishing, hauling, and placing the riprap, including filter fabric and the concrete or grout the type requires.",
+        "Excavation of toe trenches and shaping of the slope are included in the cubic-yard price."
+      ],
+      "separate": [
+        "Bedding for protection stone is a separate Bedding Material bid when the plans require it.",
+        "The drainage structure under the riprap is its own item."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 432, Measurement and Payment."
+    },
+    {
+      "id": "459-mat",
+      "item": "459",
+      "when": "MATTRESS",
+      "diagram": "gabion-mat",
+      "unit_how": "Square yard of surface area or cubic yard, matching the unit on this row. The spec allows either measurement for gabion mattresses (Item 459, Measurement).",
+      "included": [
+        "Wire baskets, stone fill, lacing, and fasteners, plus excavation, grading, and backfill.",
+        "Filter fabric and granular filter, if used, are subsidiary and are not paid separately."
+      ],
+      "separate": [
+        "Loose stone riprap bid under Item 432 is a different price."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 459, Measurement and Payment."
+    },
+    {
+      "id": "459",
+      "item": "459",
+      "diagram": "gabion",
+      "unit_how": "Cubic yard of stone-filled gabions in place (Item 459, Measurement).",
+      "included": [
+        "Wire baskets, stone fill, lacing, and fasteners, plus excavation, grading, and backfill.",
+        "Filter fabric and granular filter, if used, are subsidiary."
+      ],
+      "separate": [
+        "Gabion mattresses are measured by the square yard or the cubic yard on their own bid.",
+        "Loose riprap under Item 432 is a different price."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 459, Measurement and Payment."
+    },
+    {
+      "id": "460",
+      "item": "460",
+      "diagram": "cmp",
+      "unit_how": "Foot of barrel along the flow line, not including safety end treatments. Where the pipe ties into an inlet, headwall, or manhole, include the pipe into the wall and no other part of that structure (Item 460, Measurement).",
+      "included": [
+        "Furnishing, hauling, placing, and joining the pipe; jointing materials; connections to new or existing structures; cutting the ends on a skew or slope."
+      ],
+      "separate": [
+        "Excavation, shaping, bedding, and backfill are Item 400. This pipe price does not include the trench.",
+        "Protection for excavations deeper than 5 ft. is Item 402 or Item 403.",
+        "Safety end treatments are Item 467. Jacking, boring, or tunneling required by the plans is Item 476. Optional jacking stays under this item."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 460, Measurement and Payment."
+    },
+    {
+      "id": "462",
+      "item": "462",
+      "diagram": "box",
+      "unit_how": "Foot along the flow line between the ends of the culvert, not including safety end treatments. Multiple barrels are the sum of the barrel lengths (Item 462, Measurement).",
+      "included": [
+        "Constructing, furnishing, and transporting the sections; preparation and shaping of the bed; backfill between the box sections; jointing; cutting on skew or slope; concrete and reinforcing steel."
+      ],
+      "separate": [
+        "Excavation, shaping, bedding, and backfill of the trench are Item 400, not this foot price.",
+        "Protection for excavations deeper than 5 ft. is Item 402 or Item 403.",
+        "Headwalls and wingwalls are Item 466. Safety end treatments are Item 467. Required jacking or boring is Item 476."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 462, Measurement and Payment."
+    },
+    {
+      "id": "464",
+      "item": "464",
+      "diagram": "rcp",
+      "unit_how": "Foot along the flow line between the ends of the pipe barrel, not including safety end treatments. Multiple pipes are the sum of the barrels (Item 464, Measurement).",
+      "included": [
+        "Constructing, furnishing, transporting, placing, and joining the pipe; shaping the bed; cutting ends on skew or slope; connections to structures."
+      ],
+      "separate": [
+        "Excavation, bedding, and backfill are Item 400. This pipe price does not include the trench.",
+        "The spec also places shaping of the excavation with Item 400, while shaping the bed is listed in the pipe price. Bedding material is paid under Item 400.",
+        "Protection deeper than 5 ft. is Item 402 or Item 403. Safety end treatments are Item 467. Required jacking, boring, or tunneling is Item 476."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 464, Measurement and Payment."
+    },
+    {
+      "id": "465-manhole",
+      "item": "465",
+      "when": "MANH",
+      "diagram": "manhole",
+      "unit_how": "Each manhole, complete or built to the stage the plans require (Item 465, Measurement).",
+      "included": [
+        "Concrete, reinforcing steel, mortar, and the frame, ring, and cover of a complete manhole.",
+        "Excavation and backfill are listed in the Item 465 price."
+      ],
+      "separate": [
+        "If the plans also bid Item 400 structural excavation, that excavation is paid on Item 400 (Item 400.5.1). Item 465 still follows Item 400 for how to excavate and backfill.",
+        "A ring and cover bid under Item 471 is paid there only when it is not part of a complete manhole. On a complete manhole it is subsidiary to Item 465.",
+        "The pipe run is Item 460, 462, 464, or 468."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 465, Measurement and Payment."
+    },
+    {
+      "id": "465-junction",
+      "item": "465",
+      "when_any": ["JCT", "JUNCT"],
+      "diagram": "junction",
+      "unit_how": "Each junction box, complete or built to the stage the plans require (Item 465, Measurement).",
+      "included": [
+        "Concrete, reinforcing steel, mortar, and frames, grates, rings, and covers when they are part of the complete junction box.",
+        "Excavation and backfill are listed in the Item 465 price."
+      ],
+      "separate": [
+        "If Item 400 structural excavation is also a pay item, it is paid on Item 400 (Item 400.5.1).",
+        "The pipes entering the box are the pipe or box items, not this each price."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 465, Measurement and Payment."
+    },
+    {
+      "id": "465-inlet",
+      "item": "465",
+      "diagram": "inlet",
+      "unit_how": "Each inlet, complete or built to the stage the plans require (Item 465, Measurement).",
+      "included": [
+        "Concrete, reinforcing steel, mortar, and the frame and grate of a complete inlet.",
+        "Excavation and backfill are listed in the Item 465 price."
+      ],
+      "separate": [
+        "If the plans also bid Item 400 structural excavation, that excavation is paid on Item 400 (Item 400.5.1).",
+        "A grate bid under Item 471 is paid there only when it is not part of a complete inlet. On a complete inlet it is subsidiary to Item 465.",
+        "The pipe lead is Item 460, 464, or 468."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 465, Measurement and Payment."
+    },
+    {
+      "id": "466-wing",
+      "item": "466",
+      "when": "WING",
+      "diagram": "wingwall",
+      "unit_how": "Wingwalls may be measured by the square foot of the front face or by each end. Every Item 466 code in this extract is bid by each. For payment, wingwall height is rounded to the nearest foot (Item 466.4.2 and Payment).",
+      "included": [
+        "Constructing, furnishing, transporting, and installing the wingwalls; connecting to the existing structure; excavation and backfill; concrete and reinforcing steel.",
+        "Removing and re-laying existing pipe, or furnishing new pipe to replace existing pipe at the connection, is subsidiary."
+      ],
+      "separate": [
+        "Apron concrete or riprap between or around the wingwalls of a box culvert is Item 432.",
+        "The culvert barrel is Item 462 or the pipe item."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 466, Measurement and Payment."
+    },
+    {
+      "id": "466-head",
+      "item": "466",
+      "diagram": "headwall",
+      "unit_how": "Each end of the structure (Item 466.4.1).",
+      "included": [
+        "Constructing, furnishing, transporting, and installing the headwall; connecting to the existing structure; excavation and backfill; concrete and reinforcing steel.",
+        "Removing and re-laying existing pipe, or furnishing new pipe to replace existing pipe at the connection, is subsidiary."
+      ],
+      "separate": [
+        "Apron riprap between or around wingwalls is Item 432.",
+        "The pipe or box barrel is its own item. A safety end treatment is Item 467."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 466, Measurement and Payment."
+    },
+    {
+      "id": "467-runner",
+      "item": "467",
+      "when": "PIPE RUNNER",
+      "diagram": "runners",
+      "unit_how": "Each pipe runner or pipe runner assembly installed or replaced on one structure end (Item 467, Measurement).",
+      "included": [
+        "The runner or assembly, including removal of an existing runner when the bid is a replacement, plus the hardware the payment names (nuts, bolts, plates, and angles)."
+      ],
+      "separate": [
+        "A full safety end treatment, when it is its own SET bid, is not this runner bid.",
+        "The pipe run is the pipe item."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 467, Measurement and Payment."
+    },
+    {
+      "id": "467-set",
+      "item": "467",
+      "diagram": "set",
+      "unit_how": "Each barrel of each structure end (Item 467, Measurement).",
+      "included": [
+        "The end treatment, including excavation and backfill, concrete, reinforcing steel, pipe runners that are part of the treatment, and the concrete riprap inside the limits shown on the plans.",
+        "For a Type II treatment, the mitered length of CMP or RCP that is part of the treatment is subsidiary. It is not also paid as pipe."
+      ],
+      "separate": [
+        "Riprap placed beyond the limits shown on the plans is Item 432.",
+        "The pipe or box run, outside the mitered piece that belongs to a Type II treatment, is the pipe or box item.",
+        "A pipe-runner-only bid is a different code under this item."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 467, Measurement and Payment."
+    },
+    {
+      "id": "468",
+      "item": "468",
+      "diagram": "thermo",
+      "unit_how": "Foot along the flow line between the ends of the barrel, not including safety end treatments (Item 468, Measurement).",
+      "included": [
+        "Furnishing, hauling, placing, and joining the pipe; connections to structures; cutting ends on skew; inspection and testing."
+      ],
+      "separate": [
+        "Excavation, shaping, bedding, and backfill are Item 400.",
+        "Flowable backfill is Item 401.",
+        "Concrete end treatments are the end-treatment items on the plans, not this foot price."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 468, Measurement and Payment."
+    },
+    {
+      "id": "471",
+      "item": "471",
+      "diagram": "grate",
+      "unit_how": "Each frame, grate, ring, or cover. Item 471 measures these only when they are not part of a complete manhole or inlet.",
+      "included": [
+        "The grate, frame, ring, or cover named in the bid description, and the work to install it."
+      ],
+      "separate": [
+        "On a Manhole (Complete) or Inlet (Complete), the frame and grate are subsidiary to Item 465 and are not paid again here.",
+        "The inlet or manhole structure, when it is an Item 465 bid, is not this price."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 471, Measurement and Payment."
+    },
+    {
+      "id": "472",
+      "item": "472",
+      "diagram": "relay",
+      "unit_how": "Foot along the flow line of the re-laid pipe or box, as installed (Item 472, Measurement).",
+      "included": [
+        "Excavating and removing the pipe from its original location; loading, hauling, placing, and joining it; cutting ends; moving and reusing headwalls and safety end treatments; concrete collars."
+      ],
+      "separate": [
+        "Excavation, bedding, and backfill for re-laying the pipe are Item 400.",
+        "Protection for excavations deeper than 5 ft. is Item 402 or Item 403.",
+        "Jacking or boring required by the plans is Item 476. Optional jacking stays under this item."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 472, Measurement and Payment."
+    },
+    {
+      "id": "474-slot",
+      "item": "474",
+      "when": "SLOT",
+      "diagram": "slot-drain",
+      "unit_how": "Foot along the pavement surface between the ends of the drain, complete in place (Item 474, Measurement).",
+      "included": [
+        "The slotted drain of the size bid. The payment price includes structure excavation.",
+        "Construction of slotted drains follows Item 460 for the pipe and Item 400 for excavation and backfill methods."
+      ],
+      "separate": [
+        "An inlet the drain ties into is Item 465.",
+        "A concrete riprap flume is Item 432."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 474, Construction of slotted drains, Measurement, and Payment."
+    },
+    {
+      "id": "474",
+      "item": "474",
+      "diagram": "trench-drain",
+      "unit_how": "Foot along the pavement surface between the ends of the drain, complete in place. Where an inlet is in the run, include the drain to the wall and no other part of the inlet (Item 474, Measurement).",
+      "included": [
+        "Structure excavation, the trench drain, concrete, reinforcing steel, forms, rails, anchorages, support bars, and grates (Item 474, Payment)."
+      ],
+      "separate": [
+        "The inlet the drain ties into is Item 465.",
+        "Riprap is Item 432 when it is a separate bid."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 474, Measurement and Payment."
+    },
+    {
+      "id": "476-box",
+      "item": "476",
+      "when": "BOX",
+      "diagram": "jack-box",
+      "unit_how": "Foot between the ends of the box along the flow line (Item 476, Measurement).",
+      "included": [
+        "Excavation, grouting, backfilling, and disposal of surplus material; the box and any liner the tunneling needs; hauling and installing them.",
+        "Unlike open-cut box culvert, this price includes the excavation and backfill for the jacked or tunneled run."
+      ],
+      "separate": [
+        "Protection for open excavations deeper than 5 ft. is Item 402 or Item 403.",
+        "Open-cut box on either side of the jacked run is Item 462."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 476, Measurement and Payment."
+    },
+    {
+      "id": "476-pipe",
+      "item": "476",
+      "diagram": "jack-pipe",
+      "unit_how": "Foot between the ends of the pipe along the flow line (Item 476, Measurement).",
+      "included": [
+        "Excavation, grouting, backfilling, and disposal of surplus material; the pipe and any liner the tunneling needs.",
+        "Unlike open-cut pipe, this price includes the excavation and backfill for the jacked, bored, or tunneled run."
+      ],
+      "separate": [
+        "Protection for open excavations deeper than 5 ft. is Item 402 or Item 403.",
+        "Open-cut pipe on either side of the jacked run is Item 460, 464, or 468."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 476, Measurement and Payment."
+    },
+    {
+      "id": "479",
+      "item": "479",
+      "unless": ["WATER", "SANITARY", "ELECTRIC", "UTILITY", "METER", "VALVE"],
+      "diagram": "adjust",
+      "unit_how": "Each manhole or inlet adjusted or capped (Item 479, Measurement).",
+      "included": [
+        "Materials, excavation, and backfill required to adjust or cap the manhole or inlet."
+      ],
+      "separate": [
+        "A new manhole or inlet is Item 465.",
+        "Water, sanitary, electric, and other utility adjustments are outside this drainage example."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 479, Measurement and Payment."
+    },
+    {
+      "id": "480",
+      "item": "480",
+      "diagram": "clean",
+      "unit_how": "Each culvert cleaned, regardless of the number of barrels, or by the cubic yard of material in its original position when the bid unit is cubic yards (Item 480, Measurement). Use the unit on this row.",
+      "included": [
+        "Cleaning the barrel and disposing of the material. The payment price includes the excavation it names."
+      ],
+      "separate": [
+        "Repair or replacement of the culvert is not this item.",
+        "Removing the structure is Item 496."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 480, Measurement and Payment."
+    },
+    {
+      "id": "481",
+      "item": "481",
+      "diagram": "drain-pipe",
+      "unit_how": "Foot along the centerline of the installed pipe of the nominal size on the plans (Item 481, Measurement).",
+      "included": [
+        "Furnishing and installing the pipe, fittings, hangers, clamps, straps, anchors, guard plates, and painting.",
+        "Excavation and backfill are subsidiary to this item. They are not paid under Item 400."
+      ],
+      "separate": [
+        "Reinforced concrete pipe is Item 464 and corrugated metal pipe is Item 460. Their trenches are Item 400, which is the opposite of this item."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 481, Measurement and Payment."
+    },
+    {
+      "id": "496-riprap",
+      "item": "496",
+      "when": "RIPRAP",
+      "diagram": "remove",
+      "unit_how": "By the unit on this row. Item 496 measures removing structures by each structure or by the foot.",
+      "included": [
+        "Removing the riprap named in the bid description, including loading, hauling, disposal or stockpiling, and excavation and backfill of what the removal opens up (Item 496, Payment)."
+      ],
+      "separate": [
+        "New riprap is Item 432. This price does not place the replacement."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-flume",
+      "item": "496",
+      "when": "DRAINAGE FLUME",
+      "diagram": "remove",
+      "unit_how": "Each drainage flume removed (Item 496 measures by each structure or by the foot; this row's unit is on the bid).",
+      "included": [
+        "Removing the flume, hauling, disposal, and excavation and backfill (Item 496, Payment)."
+      ],
+      "separate": [
+        "A new flume or riprap is Item 432 or Item 506, not this removal bid."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-gabion",
+      "item": "496",
+      "when": "GABION",
+      "diagram": "remove",
+      "unit_how": "By the unit on this row. Item 496 measures by each structure or by the foot.",
+      "included": [
+        "Removing the gabion, hauling, disposal, and excavation and backfill (Item 496, Payment)."
+      ],
+      "separate": [
+        "New gabions are Item 459."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-jb",
+      "item": "496",
+      "when": "JUNCTION",
+      "diagram": "remove",
+      "unit_how": "Each junction box removed, unless the unit on this row is feet (Item 496, Measurement).",
+      "included": [
+        "Removing the junction box, appurtenances, hauling, disposal, and excavation and backfill."
+      ],
+      "separate": [
+        "The new junction box is Item 465."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-box",
+      "item": "496",
+      "when": "BOX CULVERT",
+      "diagram": "remove",
+      "unit_how": "By the unit on this row, foot or each. Item 496 measures by each structure or by the foot.",
+      "included": [
+        "Removing the box culvert, hauling, disposal, and excavation and backfill."
+      ],
+      "separate": [
+        "The new culvert is Item 462. This price does not build it."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-drive",
+      "item": "496",
+      "when_any": ["DRIVEWAY CULVERT", "DRWY CULVERT"],
+      "diagram": "remove",
+      "unit_how": "Each driveway culvert removed (Item 496, Measurement, by each or by the foot as bid).",
+      "included": [
+        "Removing the driveway culvert, hauling, disposal, and excavation and backfill."
+      ],
+      "separate": [
+        "The new driveway pipe and its end treatment are their own bids."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-wing",
+      "item": "496",
+      "when": "WINGWALL",
+      "diagram": "remove",
+      "unit_how": "Each wingwall removed (Item 496, Measurement).",
+      "included": [
+        "Removing the wingwall, hauling, disposal, and excavation and backfill."
+      ],
+      "separate": [
+        "A new wingwall is Item 466."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-head",
+      "item": "496",
+      "when": "HEADWALL",
+      "diagram": "remove",
+      "unit_how": "Each headwall removed (Item 496, Measurement).",
+      "included": [
+        "Removing the headwall, hauling, disposal, and excavation and backfill."
+      ],
+      "separate": [
+        "A new headwall is Item 466."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-mh",
+      "item": "496",
+      "when": "MANHOLE",
+      "diagram": "remove",
+      "unit_how": "Each manhole removed (Item 496, Measurement).",
+      "included": [
+        "Removing the manhole, hauling, disposal, and excavation and backfill."
+      ],
+      "separate": [
+        "A new manhole is Item 465."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-inlet",
+      "item": "496",
+      "when": "INLET",
+      "diagram": "remove",
+      "unit_how": "Each inlet removed (Item 496, Measurement).",
+      "included": [
+        "Removing the inlet, hauling, disposal, and excavation and backfill."
+      ],
+      "separate": [
+        "A new inlet is Item 465."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-set",
+      "item": "496",
+      "when": "SET",
+      "diagram": "remove",
+      "unit_how": "Each safety end treatment removed (Item 496, Measurement).",
+      "included": [
+        "Removing the safety end treatment, hauling, disposal, and excavation and backfill."
+      ],
+      "separate": [
+        "A new safety end treatment is Item 467."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "496-pipe",
+      "item": "496",
+      "when": "(PIPE)",
+      "diagram": "remove",
+      "unit_how": "Foot of pipe removed, which is the unit on these rows. Item 496 also allows measurement by each (Measurement).",
+      "included": [
+        "Removing the pipe, hauling, disposal, and excavation and backfill. Avoid damaging appurtenances the engineer says to salvage (Item 496.2.2.1)."
+      ],
+      "separate": [
+        "The new pipe is Item 460, 464, or 468. This price does not furnish it."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 496, Measurement and Payment."
+    },
+    {
+      "id": "506-dam",
+      "item": "506",
+      "when": "ROCK FILTER",
+      "diagram": "rock-dam",
+      "unit_how": "Foot along the centerline of the top of the dam, or cubic yard of rock by average end areas, matching the unit on this row (Item 506.5.1).",
+      "included": [
+        "Install and remove are separate bids. This row is whichever the description says.",
+        "Installation includes equipment, backfill and grading, lacing, and disposal. The measured volume includes sandbags when they are used."
+      ],
+      "separate": [
+        "Permanent stone riprap is Item 432, not a rock filter dam.",
+        "Sediment-control fence is a different Item 506 bid."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.1 and 506.6.1."
+    },
+    {
+      "id": "506-inlet-fence",
+      "item": "506",
+      "when": "INLET PROTECTION",
+      "diagram": "silt-fence",
+      "unit_how": "Foot of temporary sediment-control fence, including this inlet-protection description (Item 506.5.8).",
+      "included": [
+        "Install and remove are separate bids under temporary sediment-control fence (Item 506.6.8).",
+        "Installation includes the fence, equipment, backfill, and grading."
+      ],
+      "separate": [
+        "The inlet structure is Item 465. This bid is only the temporary fence used to protect it.",
+        "Rock filter dams are a different Item 506 bid."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.8 and 506.6.8."
+    },
+    {
+      "id": "506-perim",
+      "item": "506",
+      "when": "PERIMETER",
+      "diagram": "perim-fence",
+      "unit_how": "Foot of construction perimeter fence (Item 506.5.6).",
+      "included": [
+        "Furnishing and placing the fence, posts, wire, and flagging. Removal is subsidiary to installation, not a second bid (Item 506.6.6)."
+      ],
+      "separate": [
+        "Temporary sediment-control fence is a different Item 506 bid."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.6 and 506.6.6."
+    },
+    {
+      "id": "506-fence",
+      "item": "506",
+      "when": "FENCE",
+      "diagram": "silt-fence",
+      "unit_how": "Foot of temporary sediment-control fence (Item 506.5.8).",
+      "included": [
+        "Install and remove are separate bids. Installation includes equipment, backfill, grading, and disposal of the materials the payment names (Item 506.6.8)."
+      ],
+      "separate": [
+        "Construction perimeter fence is a different Item 506 bid.",
+        "The drainage structure the fence protects is not included."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.8 and 506.6.8."
+    },
+    {
+      "id": "506-log",
+      "item": "506",
+      "when": "CONT LOG",
+      "diagram": "ec-log",
+      "unit_how": "Foot along the centerline of the top of the log (Item 506.5.9).",
+      "included": [
+        "Install and remove are separate bids. Installation includes staking, backfill, grading, and disposal (Item 506.6.9)."
+      ],
+      "separate": [
+        "Rock filter dams and sediment-control fence are other Item 506 bids."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.9 and 506.6.9."
+    },
+    {
+      "id": "506-bag",
+      "item": "506",
+      "when": "SANDBAG",
+      "diagram": "sandbag",
+      "unit_how": "Each sandbag, or by the foot along the top of a sandbag berm when the unit is feet (Item 506.5.7). Use the unit on this row.",
+      "included": [
+        "Materials, placing the bags, and removal. Removal is subsidiary to the installation bid (Item 506.6.7)."
+      ],
+      "separate": [
+        "A rock filter dam that uses sandbags is still the rock filter dam bid when that is what the plans measure."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.7 and 506.6.7."
+    },
+    {
+      "id": "506-flume",
+      "item": "506",
+      "when": "PAVED FLUME",
+      "diagram": "paved-flume",
+      "unit_how": "Square yard of surface area, including the energy dissipater at the outlet (Item 506.5.3).",
+      "included": [
+        "Install and remove are separate bids for the temporary paved flume (Item 506.6.3)."
+      ],
+      "separate": [
+        "Earthwork for the flume, including a sediment trap, is the Item 506 earthwork bid.",
+        "Permanent concrete riprap is Item 432. Riprap used as an energy dissipater is also Item 432."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.3 and 506.6.3."
+    },
+    {
+      "id": "506-exit",
+      "item": "506",
+      "when": "CONSTRUCTION EXIT",
+      "diagram": "con-exit",
+      "unit_how": "Square yard of surface area (Item 506.5.4).",
+      "included": [
+        "Furnishing and placing the exit the Department requires for right-of-way access, including excavating, removal, and cleaning vehicles (Item 506.6.4)."
+      ],
+      "separate": [
+        "Exits for the contractor's own project-specific locations are not paid directly (Item 506.6.4).",
+        "A sediment trap used with the exit is the Item 506 earthwork bid."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.4 and 506.6.4."
+    },
+    {
+      "id": "506-earth",
+      "item": "506",
+      "when_any": ["EXCAV", "EMBANK", "EARTHWORK"],
+      "diagram": "ec-earth",
+      "unit_how": "Cubic yard in original position, in final position, or in vehicles, matching the bid description (Item 506.5.5).",
+      "included": [
+        "Excavation or embankment for the erosion and sediment control feature, including hauling and disposal of material not used on the project (Item 506.6.5).",
+        "Sprinkling and rolling are subsidiary."
+      ],
+      "separate": [
+        "The rock filter dam, fence, or flume built with that earthwork is its own Item 506 bid when the plans list it.",
+        "Pipe for outfalls of sediment traps is subsidiary to this excavation and embankment, not a storm-drain pipe item (Item 506, Payment introduction)."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.5 and 506.6.5."
+    },
+    {
+      "id": "506-hours",
+      "item": "506",
+      "when_any": ["BACKHOE", "LOADER", "BLADING", "BULLDOZER", "TRACKHOE"],
+      "diagram": "ec-hours",
+      "unit_how": "Hour the equipment is operated and the labor is engaged in erosion and sediment control work (Item 506.5.5.1).",
+      "included": [
+        "The equipment hours named in the bid description."
+      ],
+      "separate": [
+        "Rock filter dams, fence, logs, and other devices are their own Item 506 bids when they are listed. This hour price does not replace them."
+      ],
+      "spec": "TxDOT 2024 Standard Specifications, Item 506.5.5.1 and 506.6.5."
+    }
+  ]
+}
