@@ -402,6 +402,7 @@ console.log('ok');
   assert.strictEqual(samples.by_code['100-6001'], undefined);
 
   const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
+  const page = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8') +
     fs.readFileSync(path.join(__dirname, 'mobile.css'), 'utf8');
   assert.ok(/fetch\('\.\/code-examples\.json'\)/.test(app));
@@ -409,6 +410,28 @@ console.log('ok');
   assert.ok(/example-toggle/.test(app));
   assert.ok(/type="button"/.test(app));
   assert.ok(!/example\.json/.test(app));
+  // Example sits in the existing Detail cell. It does not add a row under the code.
+  assert.ok(/class="detail-actions"/.test(app));
+  assert.ok(/aria-haspopup="dialog"/.test(app));
+  assert.ok(/aria-controls="exampleSheetDialog"/.test(app));
+  assert.ok(!/example-toggle-row/.test(app));
+  assert.ok(!/example-panel-row/.test(app));
+  assert.ok(!/colspan="8"/.test(app));
+  assert.ok(/resolveExample\(exampleCatalog/.test(app));
+  // One shared sheet: diagram, coverage, and stored prices. Close by button, Esc, or backdrop.
+  assert.strictEqual((page.match(/id="exampleSheet"/g) || []).length, 1);
+  assert.ok(/id="exampleSheetDialog"/.test(page));
+  assert.ok(/role="dialog"/.test(page));
+  assert.ok(/aria-modal="true"/.test(page));
+  assert.ok(/class="example-close"/.test(page));
+  assert.ok(/class="example-backdrop"/.test(page));
+  assert.strictEqual((page.match(/id="examplePanel"/g) || []).length, 1);
+  assert.ok(/example-close/.test(app));
+  assert.ok(/example-backdrop/.test(app));
+  assert.ok(/examplePanelHtml/.test(app));
+  assert.ok(/keydown/.test(app) && /Escape/.test(app));
   assert.ok(/\.example-toggle\{[^}]*min-height:\s*44px/.test(css));
+  assert.ok(/\.example-close\{[^}]*min-height:\s*44px/.test(css));
+  assert.ok(/\.example-sheet\[hidden\]\{[^}]*display:\s*none/.test(css));
   console.log('ok code examples');
 }
