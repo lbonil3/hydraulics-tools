@@ -6,177 +6,217 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Hydraulics">
+<meta name="apple-mobile-web-app-title" content="Hydraulics Tools">
 <meta name="theme-color" content="#1f4e79">
 <meta name="format-detection" content="telephone=no">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="home.css">
-<title>Drainage Studio — Luis's Hydraulics Tools</title>
+<title>Hydraulics Tools</title>
 </head>
 <body>
 <header class="hero">
   <p class="eyebrow">Luis's Hydraulics Tools</p>
-  <h1>Drainage Studio</h1>
+  <h1>Hydraulics Tools</h1>
   <p>TxDOT-first roadside hydrology &amp; hydraulics. Open a tool, run the numbers, and verify with your own judgment.</p>
 </header>
 <main>
-  <a class="tool tool-tc" href="rational/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M12 7v5l3 2"/>
-      </svg>
-    </div>
-    <div class="body">
-      <h2>Tc Studio</h2>
-      <p>Peak flow and time of concentration</p>
-      <span class="chip">TxDOT HDM · Rational</span>
-    </div>
-  </a>
+  <section class="group" aria-labelledby="group-design">
+    <h2 id="group-design">Design</h2>
+    <div class="grid">
+      <a class="tool tool-tc" href="rational/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3 2"/>
+              </svg>
+            </div>
+            <h3>Tc Studio</h3>
+          </div>
+          <p>Rational peak flow</p>
+          <span class="chip">TxDOT HDM · Rational</span>
+        </div>
+      </a>
 
-  <a class="tool tool-drainage" href="drainage/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
-      </svg>
-    </div>
-    <div class="body">
-      <h2>Drainage Studio</h2>
-      <p>Gutter spread, inlets, spacing</p>
-      <span class="chip">HEC-22 · TxDOT</span>
-    </div>
-  </a>
+      <a class="tool tool-drainage" href="drainage/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+              </svg>
+            </div>
+            <h3>Drainage Studio</h3>
+          </div>
+          <p>Inlets and spacing</p>
+          <span class="chip">HEC-22 · TxDOT</span>
+        </div>
+      </a>
 
-  <a class="tool tool-storm" href="storm/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 10h16"/>
-        <path d="M6 10v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6"/>
-        <path d="M9 7v3M15 7v3"/>
-        <circle cx="12" cy="14" r="1.5"/>
-      </svg>
-    </div>
-    <div class="body">
-      <h2>Storm Sewer</h2>
-      <p>Network table, HGL profile, suggest size</p>
-      <span class="chip">TxDOT HDM · HEC-22</span>
-    </div>
-  </a>
+      <a class="tool tool-storm" href="storm/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 10h16"/>
+                <path d="M6 10v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6"/>
+                <path d="M9 7v3M15 7v3"/>
+                <circle cx="12" cy="14" r="1.5"/>
+              </svg>
+            </div>
+            <h3>Storm Sewer</h3>
+          </div>
+          <p>HGL and pipe size</p>
+          <span class="chip">TxDOT HDM · HEC-22</span>
+          <span class="local">Data stays on this device</span>
+        </div>
+      </a>
 
-  <a class="tool tool-bid-cost" href="bid-cost/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5"/>
-        <path d="M12 6.5v11"/>
-      </svg>
-    </div>
-    <div class="body">
-      <h2>Bid Cost</h2>
-      <p>Houston TxDOT bid-code unit prices. Search by code or description. Statewide fallback when Houston has no data.</p>
-      <span class="chip">TxDOT Bid Tabulations · Houston</span>
-    </div>
-  </a>
+      <a class="tool tool-ditch" href="ditch-table/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 8l5 10h8l5-10"/>
+                <path d="M8 18h8"/>
+              </svg>
+            </div>
+            <h3>Ditch</h3>
+          </div>
+          <p>Stations and lining</p>
+          <span class="chip">HEC-15 · stations</span>
+          <span class="local">Data stays on this device</span>
+        </div>
+      </a>
 
-  <a class="tool tool-ditch" href="ditch-table/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 8l5 10h8l5-10"/>
-        <path d="M8 18h8"/>
-      </svg>
+      <a class="tool tool-culvert" href="culvert/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 14a8 8 0 0 1 16 0"/>
+                <path d="M4 14v4h16v-4"/>
+                <path d="M8 18v2M16 18v2"/>
+              </svg>
+            </div>
+            <h3>Culvert Studio</h3>
+          </div>
+          <p>Barrel and headwater</p>
+          <span class="chip">HDS-5</span>
+          <span class="local">Data stays on this device</span>
+        </div>
+      </a>
     </div>
-    <div class="body">
-      <h2>Ditch</h2>
-      <p>Station table plus single-section capacity and lining</p>
-      <span class="chip">HEC-15 · stations</span>
-    </div>
-  </a>
+  </section>
 
-  <a class="tool tool-culvert" href="culvert/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 14a8 8 0 0 1 16 0"/>
-        <path d="M4 14v4h16v-4"/>
-        <path d="M8 18v2M16 18v2"/>
-      </svg>
-    </div>
-    <div class="body">
-      <h2>Culvert Studio</h2>
-      <p>Barrel size and headwater</p>
-      <span class="chip">HDS-5</span>
-    </div>
-  </a>
+  <section class="group" aria-labelledby="group-estimating">
+    <h2 id="group-estimating">Estimating</h2>
+    <div class="grid">
+      <a class="tool tool-bid-cost" href="bid-cost/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5"/>
+                <path d="M12 6.5v11"/>
+              </svg>
+            </div>
+            <h3>Bid Cost</h3>
+          </div>
+          <p>Houston unit prices</p>
+        </div>
+      </a>
 
-  <a class="tool tool-pse" href="pse-tracker/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 3h9l4 4v14H6z"/>
-        <path d="M15 3v4h4"/>
-        <path d="M9 12l1.5 1.5L13.5 10.5"/>
-        <path d="M9 17h7"/>
-      </svg>
+      <a class="tool tool-pse" href="pse-tracker/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 3h9l4 4v14H6z"/>
+                <path d="M15 3v4h4"/>
+                <path d="M9 12l1.5 1.5L13.5 10.5"/>
+                <path d="M9 17h7"/>
+              </svg>
+            </div>
+            <h3>PS&amp;E Tracker</h3>
+          </div>
+          <p>Checklist and estimate</p>
+          <span class="local">Data stays on this device</span>
+        </div>
+      </a>
     </div>
-    <div class="body">
-      <h2>PS&amp;E Tracker</h2>
-      <p>Drainage submittal checklist (30/60/90/100%), quantities and estimate rollup</p>
-      <span class="chip">TxDOT PS&amp;E Manual · PDP 7.7</span>
+  </section>
+
+  <section class="group" aria-labelledby="group-pursuits">
+    <h2 id="group-pursuits">Pursuits &amp; compliance</h2>
+    <div class="grid">
+      <a class="tool tool-capture" href="capture-terminal/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                <path d="M7 9l3 3-3 3"/>
+                <path d="M12 15h5"/>
+              </svg>
+            </div>
+            <h3>Capture Terminal</h3>
+          </div>
+          <p>Pipeline and deadlines</p>
+          <span class="chip">Capture planning</span>
+          <span class="local">Data stays on this device</span>
+        </div>
+      </a>
+
+      <a class="tool tool-radar" href="opportunity-radar/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <circle cx="12" cy="12" r="4.5"/>
+                <path d="M12 12l6-6"/>
+                <circle cx="16.5" cy="15.5" r="1" fill="currentColor"/>
+              </svg>
+            </div>
+            <h3>Opportunity Radar</h3>
+          </div>
+          <p>Public opportunities</p>
+        </div>
+      </a>
+
+      <a class="tool tool-swp3" href="swp3-builder/index.html">
+        <div class="accent" aria-hidden="true"></div>
+        <div class="body">
+          <div class="head">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>
+                <path d="M8.5 12l2.5 2.5 4.5-5"/>
+              </svg>
+            </div>
+            <h3>SWP3 Builder</h3>
+          </div>
+          <p>Outline and BMPs</p>
+          <span class="local">Data stays on this device</span>
+        </div>
+      </a>
     </div>
-  </a>
-  <a class="tool tool-capture" href="capture-terminal/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="4" width="18" height="16" rx="2"/>
-        <path d="M7 9l3 3-3 3"/>
-        <path d="M12 15h5"/>
-      </svg>
-    </div>
-    <div class="body">
-      <h2>Capture Terminal</h2>
-      <p>Track drainage PS&amp;E pursuits across TxDOT and other agencies: pipeline, deadlines, weighted fee</p>
-      <span class="chip">Capture planning · data stays on device</span>
-    </div>
-  </a>
-  <a class="tool tool-radar" href="opportunity-radar/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"/>
-        <circle cx="12" cy="12" r="4.5"/>
-        <path d="M12 12l6-6"/>
-        <circle cx="16.5" cy="15.5" r="1" fill="currentColor"/>
-      </svg>
-    </div>
-    <div class="body">
-      <h2>Opportunity Radar</h2>
-      <p>Find drainage PS&amp;E opportunities across TxDOT, City of Houston, HCFCD and TWDB: map, timeline, agency breakdown, watchlist</p>
-      <span class="chip">Real public data · inferred items labeled</span>
-    </div>
-  </a>
-  <a class="tool tool-swp3" href="swp3-builder/index.html">
-    <div class="accent" aria-hidden="true"></div>
-    <div class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>
-        <path d="M8.5 12l2.5 2.5 4.5-5"/>
-      </svg>
-    </div>
-    <div class="body">
-      <h2>SWP3 Builder</h2>
-      <p>Draft SWP3 outline with BMPs, TxDOT first with the TCEQ TXR150000 permit as the floor: permit check, inspection schedule, printable checklist</p>
-      <span class="chip">Draft for engineer review · sources cited</span>
-    </div>
-  </a>
+  </section>
 </main>
 <footer>Engineering aids — verify results with your own judgment.</footer>
 </body>

@@ -1,6 +1,6 @@
 {
- "name": "Luis's Hydraulics Tools",
- "short_name": "Hydraulics",
+ "name": "Hydraulics Tools",
+ "short_name": "Hydraulics Tools",
  "start_url": "./index.html",
  "scope": "./",
  "display": "standalone",
