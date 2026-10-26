@@ -128,7 +128,7 @@ body.example-open { overflow: hidden; }
   margin: 0;
   padding: 0;
   border: 0;
-  background: rgba(15, 23, 32, 0.45);
+  background: rgba(15, 23, 32, 0.62);
   cursor: pointer;
 }
 .example-dialog {
@@ -139,7 +139,7 @@ body.example-open { overflow: hidden; }
   width: min(640px, 100%);
   max-width: 100%;
   min-width: 0;
-  max-height: min(86vh, 100%);
+  max-height: min(72vh, calc(100% - 80px));
   background: #fff;
   border-radius: 14px 14px 0 0;
   box-shadow: 0 -8px 28px rgba(15, 23, 32, 0.22);

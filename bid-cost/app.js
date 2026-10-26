@@ -285,7 +285,7 @@
 
   if (exampleSheet) {
     exampleSheet.addEventListener('click', function (ev) {
-      if (ev.target.closest('.example-close') || ev.target.closest('.example-backdrop')) closeExample();
+      if (ev.target === exampleSheet || ev.target.closest('.example-close') || ev.target.closest('.example-backdrop')) closeExample();
     });
   }
 

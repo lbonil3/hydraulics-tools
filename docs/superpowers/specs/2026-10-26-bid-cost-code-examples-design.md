@@ -24,7 +24,7 @@ Example opens one shared sheet for the whole page (a bottom sheet on a phone, a 
 
 Codes with no rule show nothing new. If `code-examples.json` or `code-example-samples.json` fails to load, prices, Spec, and Detail still work. A diagram name with no drawing shows “No diagram” and the unit, rather than a blank or a thrown error.
 
-Close the sheet with the **Close** button, the Escape key, or a tap on the dimmed backdrop. Tapping Example on the code that is already open closes it too. Changing the search so that code is no longer listed closes it. The sheet scrolls on its own, including the stored-price table, and it stays within a 390px-wide screen. Close and Example are both at least 44px on the tap side. Spec and Detail links are unchanged: they still open the PDF in a new tab.
+Close the sheet with the **Close** button, the Escape key, or a tap on the dimmed backdrop. On a phone the sheet stops short of the top of the screen, leaving a dimmed band at least 80px tall so that tap is easy to hit. Tapping Example on the code that is already open closes it too. Changing the search so that code is no longer listed closes it. The sheet scrolls on its own, including the stored-price table, and it stays within a 390px-wide screen. Close and Example are both at least 44px on the tap side. Spec and Detail links are unchanged: they still open the PDF in a new tab.
 
 ## Drainage set
 
