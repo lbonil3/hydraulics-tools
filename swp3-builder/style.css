@@ -10,7 +10,7 @@ header .sub{font-size:12.5px;opacity:.9;line-height:1.35}
 .draftstrip{background:#fdecea;color:#8a1c12;border-bottom:1px solid #f1b5ae;font-size:12.5px;font-weight:700;text-align:center;padding:6px 10px}
 main{max-width:760px;margin:0 auto;padding:12px calc(12px + env(safe-area-inset-right)) 8px calc(12px + env(safe-area-inset-left))}
 [data-pane]{display:none}
-body[data-tab=project] [data-pane=project],body[data-tab=permit] [data-pane=permit],body[data-tab=bmps] [data-pane=bmps],body[data-tab=outline] [data-pane=outline],body[data-tab=inspect] [data-pane=inspect],body[data-tab=more] [data-pane=more]{display:block}
+body[data-tab=project] [data-pane=project],body[data-tab=permit] [data-pane=permit],body[data-tab=bmps] [data-pane=bmps],body[data-tab=design] [data-pane=design],body[data-tab=outline] [data-pane=outline],body[data-tab=inspect] [data-pane=inspect],body[data-tab=more] [data-pane=more]{display:block}
 .foot{font-size:12px;color:#667;text-align:center;margin:14px 4px 4px}
 .card{background:#fff;border:1px solid #d3ddd8;border-radius:12px;padding:12px;margin:0 0 12px;box-shadow:0 1px 2px rgba(16,60,40,.05)}
 .card h2{margin:0 0 6px;font-size:17px;color:#1b5e45}
@@ -140,3 +140,43 @@ details[open]>summary::after{transform:rotate(45deg)}
   #printArea .foot{margin-top:10pt;font-size:9pt}
   #printArea li{margin:2pt 0}
 }
+
+/* ---- Design tab and recommender ---- */
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 4px;margin:0 -2px;-webkit-overflow-scrolling:touch}
+.chips button{flex:none;min-height:44px;padding:0 14px;border:1px solid #1b5e45;border-radius:22px;background:#fff;color:#1b5e45;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
+.chips button.on{background:#1b5e45;color:#fff}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 8px}
+.fillbtn{margin-top:6px;width:100%}
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0}
+table.rt{border-collapse:collapse;font-size:13.5px;min-width:100%}
+table.rt th,table.rt td{border-bottom:1px solid #e1e8e4;padding:6px 8px;text-align:left;vertical-align:top}
+table.rt th{background:#eef4f1;color:#1b5e45;font-size:12.5px;white-space:nowrap}
+table.rt tr.gov td{background:#f1faf5;font-weight:600}
+.calc .eq{margin:4px 0;font-size:13.5px;overflow-wrap:anywhere}
+.calc code,.work code{font:12.5px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f1f5f3;border-radius:5px;padding:1px 5px;overflow-wrap:anywhere;word-break:break-word}
+.srcl{margin:4px 0;font-size:12.5px;overflow-wrap:anywhere}
+.srcl a{color:#1b5e45}
+details.wk{margin:6px 0}
+details.wk>summary{min-height:44px;display:flex;align-items:center;font-weight:600;color:#1b5e45;cursor:pointer}
+.work .ws{border-top:1px solid #e1e8e4;padding:6px 0;display:flex;flex-direction:column;gap:2px;font-size:13.5px}
+.work .wv{font-weight:700;color:#1d2733}
+ul.checks{list-style:none;padding:0;margin:6px 0}
+ul.checks li{padding:6px 0;border-top:1px solid #eef2f0;font-size:14px;overflow-wrap:anywhere}
+.qrow{border-top:1px solid #e1e8e4;padding:8px 0}
+.qrow .qh{margin-bottom:4px}
+label.f.sm{font-size:12px;font-weight:500}
+.rowline{display:grid;grid-template-columns:minmax(0,1fr) 84px 48px;gap:6px;margin-bottom:6px;align-items:center}
+.rowline input{min-height:44px;border:1px solid #c5d2cc;border-radius:8px;padding:0 8px;font-size:16px;min-width:0}
+.rowline .btn{padding:0;min-width:44px}
+.card.rec{border-left:5px solid #c5d2cc}
+.card.rec.primary{border-left-color:#1b5e45}
+.card.rec.alternate{border-left-color:#d9a23b}
+.rec .rhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.rec .rhead .chk{flex:1 1 200px}
+.rec .ref{margin:0 0 6px}
+.rec ul{margin:4px 0 8px;padding-left:18px;font-size:14px;overflow-wrap:anywhere}
+.rec .avoid b{color:#92400e}
+.rec .lims li .btn{margin-top:4px}
+.doc.sum table{font-size:13px}
+.calcpkg .sheet{page-break-inside:avoid}
+@media print{#printArea .calcpkg pre{white-space:pre-wrap;font-size:8pt}}

@@ -170,7 +170,8 @@
     var warns = M.checkSelection(f, p.sel), flags = M.flagsFor(f, p.sel), seal = M.sealFlags(f, p.sel);
     h += '<div class="card"><h2>BMP library</h2><p class="muted small">Pick the controls that apply. Pills show what your inputs trigger: <span class="pill bad">Required</span> <span class="pill mid">Suggested</span> <span class="pill">Optional</span>. Tick state is yours to change.</p>' +
       '<div class="row"><button type="button" class="btn sec" data-act="applysug">Apply suggestions</button><button type="button" class="btn sec" data-act="clearbmp">Clear all</button></div>' +
-      '<div class="seg" role="tablist"><button type="button" data-view="suggested"' + (ui.bmpView === 'suggested' ? ' class="on"' : '') + '>Suggested + selected</button><button type="button" data-view="all"' + (ui.bmpView === 'all' ? ' class="on"' : '') + '>All ' + D.BMPS.length + '</button></div></div>';
+      '<div class="seg" role="tablist"><button type="button" data-view="suggested"' + (ui.bmpView === 'suggested' ? ' class="on"' : '') + '>Suggested + selected</button><button type="button" data-view="all"' + (ui.bmpView === 'all' ? ' class="on"' : '') + '>All ' + D.BMPS.length + '</button><button type="button" data-view="situation"' + (ui.bmpView === 'situation' ? ' class="on"' : '') + '>By situation</button></div></div>';
+    if (ui.bmpView === 'situation' && window.SwpDesignUI) { h += window.SwpDesignUI.situationHtml(); $('#paneBmps').innerHTML = h; return; }
     if (warns.length) h += '<div class="warnbox"><b>Check your selection</b><ul>' + warns.map(function (w) { return '<li>' + bd(w.b) + esc(w.t) + '</li>'; }).join('') + '</ul></div>';
     if (seal.length) h += '<div class="warnbox">' + bd('TXDOT') + 'A P.E. seal on the Summary Sheets may be needed: ' + esc(seal.join(' ')) + '</div>';
     Object.keys(D.CATS).forEach(function (cat) {
@@ -245,7 +246,7 @@
     var t = ui.tab; document.body.setAttribute('data-tab', t);
     Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function (b) { b.classList.toggle('on', b.getAttribute('data-t') === t); });
     if (t === 'project') renderProject(); else if (t === 'permit') renderPermit(); else if (t === 'bmps') renderBmps();
-    else if (t === 'outline') renderOutline(); else if (t === 'inspect') renderInspect(); else renderMore();
+    else if (t === 'design') { if (window.SwpDesignUI) window.SwpDesignUI.renderDesign(); } else if (t === 'outline') renderOutline(); else if (t === 'inspect') renderInspect(); else renderMore();
   }
   function setTab(t) { if (ui.tab === 'project') rememberOpen(); ui.tab = t; render(); window.scrollTo(0, 0); }
 
@@ -303,5 +304,7 @@
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
   }
+  window.SwpApp = { cur: cur, save: save, toast: toast, printHtml: printHtml, download: download, render: render, renderBmps: renderBmps, ui: ui, esc: esc, bd: bd, M: M, D: D, fileName: fileName };
   render();
+  if (window.SwpDesignUI) window.SwpDesignUI.init(window.SwpApp);
 })();

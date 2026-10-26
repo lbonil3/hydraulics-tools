@@ -2,6 +2,7 @@
  * Citations are [badge, text] pairs. Section references (e.g. "Part III.F.8(c)i") were checked against the fetched 2023 CGP text. */
 (function (root) {
   var D = (typeof module !== 'undefined' && module.exports) ? require('./data.js') : root.SwpData;
+  var DS = (typeof module !== 'undefined' && module.exports) ? require('./design.js') : root.SwpDesign;
 
   var APP_ID = 'SWP3 Builder';
   var VERSION = 1;
@@ -49,7 +50,18 @@
     var f = defaultForm(fields.type);
     Object.keys(fields).forEach(function (k) { if (k !== 'name') f[k] = fields[k]; });
     return { id: uid('p'), name: String(fields.name || 'New SWP3 project').trim() || 'New SWP3 project', created: now, updated: now,
-      form: f, sel: {}, inspLog: [], rainLog: [] };
+      form: f, sel: {}, design: {}, situ: null, inspLog: [], rainLog: [] };
+  }
+  // Design inputs: plain objects of strings/numbers/booleans (depth <= 4); anything else is dropped.
+  function cleanDesign(v, depth) {
+    if (v == null) return undefined;
+    if (typeof v === 'string') return v.slice(0, 200);
+    if (typeof v === 'number') return isFinite(v) ? v : undefined;
+    if (typeof v === 'boolean') return v;
+    if (depth > 5 && typeof v === 'object') return undefined;
+    if (Array.isArray(v)) return v.slice(0, 60).map(function (x) { return cleanDesign(x, depth + 1); }).filter(function (x) { return x !== undefined; });
+    if (typeof v === 'object') { var o = {}; Object.keys(v).slice(0, 80).forEach(function (k) { if (/^[A-Za-z0-9_.-]{1,40}$/.test(k)) { var c = cleanDesign(v[k], depth + 1); if (c !== undefined) o[k] = c; } }); return o; }
+    return undefined;
   }
   function sanitizeProject(p) {
     if (!p || typeof p !== 'object') return null;
@@ -63,7 +75,7 @@
     var sel = {}; if (p.sel && typeof p.sel === 'object') Object.keys(p.sel).forEach(function (k) { if (bmpById(k)) sel[k] = !!p.sel[k]; });
     var now = new Date().toISOString();
     return { id: String(p.id || uid('p')), name: String(p.name || 'Imported project'), created: String(p.created || now), updated: String(p.updated || now),
-      form: f, sel: sel,
+      form: f, sel: sel, design: (p.design && typeof p.design === 'object') ? (cleanDesign(p.design, 0) || {}) : {}, situ: (p.situ && typeof p.situ === 'object') ? (cleanDesign(p.situ, 0) || null) : null,
       inspLog: Array.isArray(p.inspLog) ? p.inspLog.filter(function (x) { return x && isoOk(x.date); }).map(function (x) { return { id: String(x.id || uid('i')), date: x.date, kind: String(x.kind || 'routine'), by: String(x.by || ''), notes: String(x.notes || '') }; }) : [],
       rainLog: Array.isArray(p.rainLog) ? p.rainLog.filter(function (x) { return x && isoOk(x.date) && num(x.inches) != null; }).map(function (x) { return { id: String(x.id || uid('r')), date: x.date, inches: num(x.inches) }; }) : [] };
   }
@@ -263,6 +275,7 @@
     else set('concrete_washout', 'optional', []);
     if (a.dewatering) set('dewatering_controls', 'required', [['TCEQ', 'Dewatering discharges are prohibited unless controlled; daily observation and 24-hour report on discharge days (Part IV.C; Part III.F.7).']]);
     else set('dewatering_controls', 'optional', [['TXDOT', 'Dewatering may become necessary during construction; the designer should consider it where practicable (Summary Sheet 2.8).']]);
+    set('turbidity_barrier', 'optional', a.surfaceWater ? [['ISWM', 'Use if work disturbs a stream or lake bank or occurs in the water (iSWM section 3.14); not a TxDOT fact-sheet BMP.']] : []);
     reg('spill_response', [['TCEQ', 'Spill and leak prevention and response procedures (Part IV.D.5).']]);
     reg('chemical_material', [['TCEQ', 'Minimize exposure of materials and wastes to rain; waste container lids; housekeeping (Part IV.D.1-4).']]);
     set('sanitary_waste', a.sanitary ? 'required' : 'optional', a.sanitary ? [['TCEQ', 'Portable toilets secure, away from surface water and inlets (Part IV.D.6).']] : []);
@@ -388,6 +401,13 @@
   }
   function phaseRows(f) { return (f.phases || []).map(function (p) { return [p.name || '(unnamed)', fmtDate(p.start) || '', fmtDate(p.end) || '', p.acres || '']; }); }
 
+  function designBlocks(project) {
+    var d = project.design;
+    if (!d || !Object.keys(d).length || !DS) return [];
+    var env = { idf: root.IDF_PDS || (typeof window !== 'undefined' && window.IDF_PDS) || null, ls: root.SwpLS || null, price: null };
+    var o = DS.compute(d, env);
+    return DS.outlineBlocks(o, d.qt && d.qt.snap);
+  }
   function generateOutline(project) {
     var f = project.form, perm = permitDetermination(f), t = perm.totals, txdot = f.type === 'txdot';
     var sel = project.sel, ids = selectedIds(f, sel);
@@ -473,6 +493,9 @@
     sb.push(sed.length ? UL(sed) : P_('ASSUMED', 'No sediment-control BMPs selected.'));
     sb.push(P_('TXDOT', 'Attach sediment trap/basin capacity calculations or the justification for none (Binder Attachment 1.3).'));
     sec('Sediment control practices', [['TXDOT', 'Summary Sheet 2.2; EC standard sheets'], ['TCEQ', 'Part III.F.2(c); IV.F']], sb);
+
+    var dsn = designBlocks(project);
+    if (dsn.length) sec('Design basis and quantities', [['TXDOT', 'HDM Ch.4, 7, 10; Item 506'], ['TCEQ', 'Part III.F.2(c)i(A) (calculations go in the SWP3)'], ['ISWM', 'Construction Controls']], dsn.concat([P_('ASSUMED', 'Results come from the Design tab of this tool (screening aid). Inputs, equations and sources are on the printed calc sheets. Engineer of record to verify before use.')]));
 
     sec('Permanent (post-construction) stormwater controls', [['TXDOT', 'Summary Sheet 2.3'], ['TCEQ', 'Part III.F.3']],
       [P_('TCEQ', 'Describe stormwater controls installed during construction that will control pollutants in discharges after construction, and install them before final stabilization (Part III.F.3).'),

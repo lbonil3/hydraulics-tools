@@ -5,7 +5,7 @@ const M = require('./model.js');
 // ---- data integrity: every generated line carries a known source badge, every URL is https and registered
 const badges = Object.keys(D.BADGES);
 function checkPairs(arr, where) { arr.forEach(function (p) { assert.ok(Array.isArray(p) && badges.includes(p[0]) && typeof p[1] === 'string' && p[1].length > 5, 'bad pair in ' + where); }); }
-assert.strictEqual(D.BMPS.length, 24);
+assert.strictEqual(D.BMPS.length, 25);
 const seen = {};
 D.BMPS.forEach(function (b) {
   assert.ok(!seen[b.id], 'dup id ' + b.id); seen[b.id] = 1;

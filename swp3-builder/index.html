@@ -32,6 +32,7 @@
   <section data-pane="project" id="paneProject" aria-label="Project details"></section>
   <section data-pane="permit" id="panePermit" aria-label="Permit determination"></section>
   <section data-pane="bmps" id="paneBmps" aria-label="BMP library"></section>
+  <section data-pane="design" id="paneDesign" aria-label="Design calculations"></section>
   <section data-pane="outline" id="paneOutline" aria-label="SWP3 outline"></section>
   <section data-pane="inspect" id="paneInspect" aria-label="Inspections"></section>
   <section data-pane="more" id="paneMore" aria-label="Projects, sources and export"></section>
@@ -42,6 +43,7 @@
   <button type="button" data-t="project" class="on"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h12l4 4v12H4z"/><path d="M8 12h8M8 16h8M8 8h4"/></svg>Project</button>
   <button type="button" data-t="permit"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Permit</button>
   <button type="button" data-t="bmps"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-9 4 6 3-4 6 7z"/><path d="M3 21h18"/></svg>BMPs</button>
+  <button type="button" data-t="design"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M16 15h0"/></svg>Design</button>
   <button type="button" data-t="outline"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>Outline</button>
   <button type="button" data-t="inspect"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/><path d="M8.5 11l2 2 3.5-4"/></svg>Inspect</button>
   <button type="button" data-t="more"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</button></nav>
@@ -50,7 +52,14 @@
 <div id="printArea" aria-hidden="true"></div>
 
 <script src="data.js"></script>
+<script src="../rational/idf-data.js"></script>
+<script src="../ditch/calc.js"></script>
+<script src="../bid-cost/lookup.js"></script>
+<script src="lsdata.js"></script>
+<script src="design.js"></script>
 <script src="model.js"></script>
+<script src="recommend.js"></script>
 <script src="app.js"></script>
+<script src="design-ui.js"></script>
 </body>
 </html>
