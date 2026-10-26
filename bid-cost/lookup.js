@@ -110,10 +110,60 @@
     };
   }
 
+  /**
+   * Example links (photo, plan sheet, past project, figure, bid tab).
+   * by_code is the bid-code row; by_item is the item header. No inheritance:
+   * a code with no entry shows nothing even when its item has examples.
+   */
+  const EXAMPLE_TYPES = {
+    Photo: 1,
+    'Past project': 1,
+    'Plan sheet': 1,
+    Figure: 1,
+    'Bid tab': 1
+  };
+
+  function normalizeExample(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    const type = String(entry.type || '').trim();
+    const url = String(entry.url || '').trim();
+    const title = String(entry.title || '').trim();
+    if (!EXAMPLE_TYPES[type]) return null;
+    if (!/^https:\/\//.test(url)) return null;
+    if (!title) return null;
+    const label = String(entry.label || '').trim() || type;
+    if (label !== type && label.indexOf(type) !== 0) return null;
+    return { type: type, url: url, title: title, label: label };
+  }
+
+  function exampleList(map, bucket, key) {
+    if (!map || !map[bucket] || key == null || key === '') return [];
+    const raw = map[bucket][String(key)];
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    raw.forEach(function (entry) {
+      const n = normalizeExample(entry);
+      if (n) out.push(n);
+    });
+    return out;
+  }
+
+  /** Code-row examples. Missing map, missing code, or no valid links → []. */
+  function resolveExamples(map, bidCode) {
+    return exampleList(map, 'by_code', bidCode);
+  }
+
+  /** Item-header examples. Missing map or item → []. */
+  function resolveItemExamples(map, item) {
+    return exampleList(map, 'by_item', item);
+  }
+
   const api = {
     resolveDetail: resolveDetail,
     detailOrSpec: detailOrSpec,
     hasSpecPdf: hasSpecPdf,
+    resolveExamples: resolveExamples,
+    resolveItemExamples: resolveItemExamples,
 
     resolvePrice: resolvePrice,
     filterRows: filterRows,

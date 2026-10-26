@@ -1,0 +1,328 @@
+{
+  "meta": {
+    "accessed": "2026-10-26",
+    "types": ["Photo", "Past project", "Plan sheet", "Figure", "Bid tab"],
+    "note": "Curated examples of what a bid item looks like. Each URL was opened on 2026-10-26 (HTTP 200, and the page or image was checked against the item). Plan-sheet page numbers are PDF pages in that letting set. Unmapped items and codes show nothing.",
+    "extend": "Add a by_item entry to explain a whole spec item (shown on the item header) or a by_code entry when one bid code needs its own example (shown only on that row). Each link is {\"type\",\"url\",\"title\"} plus optional \"label\". type is Photo, Past project, Plan sheet, Figure, or Bid tab. label, when set, must be the type or start with it (for example \"Photo · inlet\") so the tap target stays named by type. Use https only. Re-check that the URL returns 200 and is actually about that item before shipping. Do not scrape TxDOT at runtime. Prefer one to three links, and pick the kind that best shows the thing: a field photo, a real letting plan or estimate sheet, or an official figure. Leave codes with no honest example unmapped."
+  },
+  "by_item": {
+    "100": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet (Houston District, CSJ 0050-06-108, August 2026) includes preparing right of way (100-7001)."
+      }
+    ],
+    "104": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet (Houston District, CSJ 0543-02-089) includes removing concrete riprap (104-7006)."
+      }
+    ],
+    "110": [
+      {
+        "type": "Plan sheet",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=89",
+        "title": "US 290 at Cypress Creek erosion-repair layout (CSJ 0050-06-108). This drainage project bids 2,900 CY of channel excavation (110-7002)."
+      }
+    ],
+    "132": [
+      {
+        "type": "Plan sheet",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=89",
+        "title": "US 290 at Cypress Creek erosion-repair layout (CSJ 0050-06-108), which bids 2,900 CY of Type C embankment (132-7006) with the channel excavation."
+      }
+    ],
+    "400": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200027-10-074.pdf#page=11",
+        "title": "US 90 at Buffalo Bayou estimate sheet (Houston District, CSJ 0027-10-074) includes cement-stabilized backfill (400-7010)."
+      }
+    ],
+    "402": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:Trench_safety_-_backhoe_lowering_trench_box_into_trench_(9247884221).jpg",
+        "title": "A trench box being lowered into an excavation. This is the protection paid under trench excavation protection."
+      },
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200027-10-074.pdf#page=11",
+        "title": "US 90 at Buffalo Bayou estimate sheet (CSJ 0027-10-074) includes trench excavation protection (402-7001)."
+      }
+    ],
+    "403": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200027-10-074.pdf#page=11",
+        "title": "US 90 at Buffalo Bayou estimate sheet (CSJ 0027-10-074) includes temporary special shoring (403-7001)."
+      }
+    ],
+    "432": [
+      {
+        "type": "Plan sheet",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=5",
+        "title": "FM 359 at Jones Creek (CSJ 0543-02-089) typical section draws 5-inch and 6-inch concrete riprap, a concrete flume, and 30-inch rock riprap."
+      },
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:26Tanay_Bridge_Tanay_River,_Riprap_Water_Pipelines_09.jpg",
+        "title": "Rock riprap on the slope beside a bridge abutment (field photo of stone protection)."
+      }
+    ],
+    "460": [
+      {
+        "type": "Figure",
+        "url": "https://www.txdot.gov/content/dam/txdotoms/des/hyd/hydraulic-design-manual/assets/Figure8-3Pipemiteredtoconfirmtofillslope.png",
+        "title": "TxDOT Hydraulic Design Manual Figure 8-3: corrugated metal pipe mitered to the embankment slope."
+      }
+    ],
+    "462": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:Box_Culvert_AZ_(8406131338).jpg",
+        "title": "Precast concrete box culvert sections staged on an FHWA highway project."
+      }
+    ],
+    "464": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:Culvert_pipe_(8242090899).jpg",
+        "title": "Large concrete culvert pipe, with a crew member inside for scale (Oregon DOT field photo)."
+      },
+      {
+        "type": "Plan sheet",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=5",
+        "title": "FM 359 at Jones Creek (CSJ 0543-02-089) plan sheet calls out an existing 36-inch RCP interceptor."
+      }
+    ],
+    "465": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:Curb_gutter_storm_drain.JPG",
+        "title": "Curb inlet set in concrete curb and gutter, with the throat and grate visible (O'Fallon, Illinois).",
+        "label": "Photo · inlet"
+      },
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:Precast_concrete_manholes.jpg",
+        "title": "Precast concrete manhole barrels and cones staged for a sewer project.",
+        "label": "Photo · manhole"
+      }
+    ],
+    "466": [
+      {
+        "type": "Plan sheet",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=89",
+        "title": "US 290 at Cypress Creek erosion-repair layout (CSJ 0050-06-108). The estimate for this sheet pays wingwall 466-7177 (PW-1, HW=7 ft)."
+      }
+    ],
+    "467": [
+      {
+        "type": "Figure",
+        "url": "https://www.txdot.gov/content/dam/txdotoms/des/hyd/hydraulic-design-manual/assets/Figure8-5Endsectionconformingtofillslope.png",
+        "title": "TxDOT Hydraulic Design Manual Figure 8-5: culvert end section sloped to match the fill, the usual safety end treatment shape."
+      },
+      {
+        "type": "Figure",
+        "url": "https://www.txdot.gov/content/dam/txdotoms/des/hyd/hydraulic-design-manual/assets/Figure8-6Endsectionconformingtofillslopewithpiperunners.png",
+        "title": "TxDOT Hydraulic Design Manual Figure 8-6: sloped culvert end with pipe runners across the opening.",
+        "label": "Figure · runners"
+      }
+    ],
+    "502": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet (CSJ 0050-06-108) includes barricades, signs, and traffic handling (502-7001)."
+      }
+    ],
+    "506": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:Silt_Fence_(8360429939).jpg",
+        "title": "Silt fence with mulch rolls holding sediment on a construction site (USFWS field photo)."
+      },
+      {
+        "type": "Plan sheet",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=51",
+        "title": "FM 359 at Jones Creek SWP3 layout (CSJ 0543-02-089). The legend shows sediment control fence and a rock filter dam beside the creek."
+      }
+    ],
+    "512": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet includes portable single-slope concrete traffic barrier (512-7013)."
+      }
+    ],
+    "529": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:Curb_gutter_storm_drain.JPG",
+        "title": "Concrete curb and gutter, with a curb inlet in the same run (field photo)."
+      }
+    ],
+    "531": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:Installation_of_concrete_at_48th_Street_as_part_of_street_and_sidewalk_restoration._(CM014B,_4-11-2018)_(39620889490).jpg",
+        "title": "Concrete sidewalk being placed as part of street and sidewalk restoration."
+      }
+    ],
+    "540": [
+      {
+        "type": "Plan sheet",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=5",
+        "title": "FM 359 at Jones Creek typical section shows proposed metal-beam guard fence beside the riprap."
+      }
+    ],
+    "542": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet includes remove metal beam guard fence (542-7001)."
+      }
+    ],
+    "544": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:ET-Plus_guardrail_terminal_in_New_Jersey.jpg",
+        "title": "ET-Plus extruder end terminal on W-beam guardrail (field photo). TxDOT pays this family as a guardrail end treatment."
+      },
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet includes guardrail end treatment (544-7001)."
+      }
+    ],
+    "666": [
+      {
+        "type": "Photo",
+        "url": "https://commons.wikimedia.org/wiki/File:2008_05_29_-_Bowie_-_MD564_over_CSX_-_Pavement_marking.JPG",
+        "title": "Fresh heat-applied thermoplastic white edge line (field photo of the marking material)."
+      },
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet includes Type I and Type II pavement markings (Item 666)."
+      }
+    ]
+  },
+  "by_code": {
+    "110-7001": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet bids roadway excavation (110-7001), 384 CY."
+      }
+    ],
+    "110-7002": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet bids channel excavation (110-7002), 2,900 CY."
+      }
+    ],
+    "132-7004": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200027-10-074.pdf#page=11",
+        "title": "US 90 at Buffalo Bayou estimate sheet bids Type B embankment (132-7004)."
+      }
+    ],
+    "132-7006": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet bids Type C embankment (132-7006), 2,900 CY."
+      }
+    ],
+    "432-7001": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet bids 4-inch concrete riprap (432-7001), 166 CY."
+      }
+    ],
+    "432-7003": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet bids 6-inch concrete riprap (432-7003)."
+      }
+    ],
+    "432-7012": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet bids concrete riprap flume (432-7012). The typical section on sheet 5 draws the proposed flume."
+      }
+    ],
+    "432-7043": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet bids 18-inch stone riprap (432-7043), 2,240 CY."
+      }
+    ],
+    "432-7047": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet bids 30-inch stone protection (432-7047). The typical section draws the proposed rock riprap."
+      }
+    ],
+    "466-7177": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet bids wingwall PW-1, HW=7 ft (466-7177), six each."
+      }
+    ],
+    "496-7040": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet bids removing rock riprap (496-7040)."
+      }
+    ],
+    "506-7001": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet bids Type 1 rock filter dams (506-7001). The SWP3 layout shows the dam."
+      }
+    ],
+    "506-7004": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet bids Type 4 rock filter dams (506-7004)."
+      }
+    ],
+    "506-7039": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet bids temporary sediment-control fence (506-7039), 700 LF."
+      }
+    ],
+    "506-7042": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/08%20August/08%20Plans/Harris%200050-06-108.pdf#page=14",
+        "title": "US 290 at Cypress Creek estimate sheet bids 6-inch biodegradable erosion-control logs (506-7042)."
+      }
+    ],
+    "540-7001": [
+      {
+        "type": "Past project",
+        "url": "https://ftp.txdot.gov/plans/State-Let-Construction/2026/04%20April/04%20Plans/Fort%20Bend%200543-02-089.pdf#page=13",
+        "title": "FM 359 at Jones Creek estimate sheet bids metal W-beam guard fence with timber posts (540-7001), 257 LF."
+      }
+    ]
+  }
+}
