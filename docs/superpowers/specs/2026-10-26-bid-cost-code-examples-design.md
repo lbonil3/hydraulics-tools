@@ -6,15 +6,15 @@
 
 ## Goal
 
-When a drainage bid-code row is expanded, show what the bid is and what the unit price covers. Use a small inline diagram and plain language from the TxDOT 2024 spec item. Show up to three prices that are actually stored for that code. Do not link out to photos, plan sheets, or other example pages. Spec and Detail links stay as they are.
+When a drainage bid code is on screen, show what the bid is and what the unit price covers. Use a small inline diagram and plain language from the TxDOT 2024 spec item. Show up to three prices that are actually stored for that code. Do not link out to photos, plan sheets, or other example pages. Spec and Detail links stay as they are.
 
 An earlier pass put external example links on the page. Those links did not show the bid, so this pass does not use them and does not read that file.
 
 ## What the user sees
 
-On a drainage code, under the price row, a full-width **Example** button (44px tall, same blue underline family as Spec). It sticks to the left edge when the table scrolls sideways. Opening it does not collapse the Item and does not follow a link.
+On a drainage code, the existing Detail cell gains a compact **Example** control beside the Spec or Detail link. The control is 44px tall, in the same blue underline family as Spec, and it does not add a row. The price row stays one line. Opening it does not collapse the Item and does not follow a link. Codes with no example keep the Detail cell exactly as it was: the Spec or Detail link alone, or an empty cell.
 
-The panel shows:
+Example opens one shared sheet for the whole page (a bottom sheet on a phone, a dialog on a wider screen). The same sheet is reused for every code, so the table does not grow a panel under each row. The title bar shows the bid code. The body is unchanged:
 
 1. An inline SVG. Shaded parts are this price. Dashed parts are paid on another item. The bid unit is printed on the drawing (`Unit: LF`, `Unit: EA`, and so on).
 2. How that unit is measured, in the words of the 2024 spec.
@@ -23,6 +23,8 @@ The panel shows:
 5. Up to three prices from the extract, labeled as summaries, plus a note that project, county, per-bid quantity, and per-bid letting date are not in the repo.
 
 Codes with no rule show nothing new. If `code-examples.json` or `code-example-samples.json` fails to load, prices, Spec, and Detail still work. A diagram name with no drawing shows “No diagram” and the unit, rather than a blank or a thrown error.
+
+Close the sheet with the **Close** button, the Escape key, or a tap on the dimmed backdrop. On a phone the sheet stops short of the top of the screen, leaving a dimmed band at least 80px tall so that tap is easy to hit. Tapping Example on the code that is already open closes it too. Changing the search so that code is no longer listed closes it. The sheet scrolls on its own, including the stored-price table, and it stays within a 390px-wide screen. Close and Example are both at least 44px on the tap side. Spec and Detail links are unchanged: they still open the PDF in a new tab.
 
 ## Drainage set
 
@@ -119,4 +121,4 @@ Pavement, traffic, and bridge items other than the Item 400 bridge excavation ro
 
 ## Tests
 
-`node bid-cost/test.js` covers lookup fallback, spec gating, item info, detail links, and the example rules: missing catalog, non-drainage codes, pipe versus pipe-runner, removal of pipe versus removal of a bridge, one/two/three summary prices, no invented project fields, SVG without external assets, and shipped samples matching the CSV.
+`node bid-cost/test.js` covers lookup fallback, spec gating, item info, detail links, and the example rules: missing catalog, non-drainage codes, pipe versus pipe-runner, removal of pipe versus removal of a bridge, one/two/three summary prices, no invented project fields, SVG without external assets, and shipped samples matching the CSV. It also checks that Example is a button in the Detail cell (`detail-actions`, `aria-haspopup="dialog"`), that the page has one shared dialog (`#exampleSheet`, Close, backdrop, Escape), and that the old per-code example rows are gone.

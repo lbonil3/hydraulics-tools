@@ -10,9 +10,14 @@
   let exampleCatalog = null;
   let exampleSamples = null;
   const openItems = Object.create(null); // item -> true when user toggled open
-  const openExamples = Object.create(null); // bid_code -> true when example is open
   const bodyCache = Object.create(null); // item -> { sig, html }
   let rowsByItem = Object.create(null); // item -> rows for current filter
+  let openExample = null; // { code, unit, desc } while the shared sheet is open
+  let exampleReturnFocus = null;
+  const exampleSheet = document.getElementById('exampleSheet');
+  const examplePanel = document.getElementById('examplePanel');
+  const exampleTitle = document.getElementById('exampleSheetTitle');
+  const exampleClose = exampleSheet ? exampleSheet.querySelector('.example-close') : null;
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -34,6 +39,13 @@
         '" target="_blank" rel="noopener noreferrer" title="' +
         escapeHtml(d.source + ' · ' + d.label + (/\(assumed\)$/.test(d.label) ? ' · assumed sheet, verify type' : '')) + '">' + escapeHtml(d.label) + '</a>';
     }
+    if (L.resolveExample(exampleCatalog, r.bid_code, r.description)) {
+      detailCell = '<span class="detail-actions">' + detailCell +
+        '<button type="button" class="example-toggle" aria-expanded="false" aria-haspopup="dialog" aria-controls="exampleSheetDialog" data-code="' +
+        escapeHtml(r.bid_code) + '" data-unit="' + escapeHtml(r.unit || '') +
+        '" data-desc="' + escapeHtml(r.description || '') + '" aria-label="Example of ' + escapeHtml(r.bid_code) +
+        '">Example</button></span>';
+    }
     return '<tr>' +
       '<td>' + escapeHtml(r.bid_code) + '</td>' +
       '<td>' + escapeHtml(r.description) + '</td>' +
@@ -52,34 +64,74 @@
   function rowsSignature(rows) {
     // Include map-loaded bit so late detail-map.json refresh invalidates cache
     return (detailMap ? '1' : '0') + (exampleCatalog ? 'e' : '_') + (exampleSamples ? 's' : '_') +
-      '\0' + rows.map(function (r) { return r.bid_code + (openExamples[r.bid_code] ? '*' : ''); }).join('\0');
+      '\0' + rows.map(function (r) { return r.bid_code; }).join('\0');
   }
 
-  function exampleInner(r) {
-    const ex = L.resolveExample(exampleCatalog, r.bid_code, r.description);
-    if (!ex) return '';
-    const stat = exampleSamples && exampleSamples.by_code ? exampleSamples.by_code[r.bid_code] : null;
-    return L.examplePanelHtml(ex, r.unit, L.sampleFacts(stat));
+  function fillExample(code, unit, desc) {
+    const ex = L.resolveExample(exampleCatalog, code, desc);
+    if (!ex || !examplePanel) return false;
+    const stat = exampleSamples && exampleSamples.by_code ? exampleSamples.by_code[code] : null;
+    examplePanel.innerHTML = L.examplePanelHtml(ex, unit, L.sampleFacts(stat));
+    if (exampleTitle) exampleTitle.textContent = 'Example · ' + code;
+    return true;
   }
 
-  function exampleRows(r) {
-    if (!L.resolveExample(exampleCatalog, r.bid_code, r.description)) return '';
-    const open = !!openExamples[r.bid_code];
-    return '<tr class="example-toggle-row"><td colspan="8">' +
-      '<button type="button" class="example-toggle" aria-expanded="' + (open ? 'true' : 'false') +
-      '" data-code="' + escapeHtml(r.bid_code) + '" data-unit="' + escapeHtml(r.unit || '') +
-      '" data-desc="' + escapeHtml(r.description || '') + '" aria-label="Example of ' + escapeHtml(r.bid_code) +
-      '">Example</button></td></tr>' +
-      '<tr class="example-panel-row"' + (open ? '' : ' hidden') + '><td colspan="8"><div class="example-panel" data-panel="' +
-      escapeHtml(r.bid_code) + '">' + (open ? exampleInner(r) : '') + '</div></td></tr>';
+  function setExampleExpanded(code) {
+    const buttons = sectionsEl.querySelectorAll('.example-toggle');
+    for (let i = 0; i < buttons.length; i++) {
+      const on = !!code && buttons[i].getAttribute('data-code') === code;
+      buttons[i].setAttribute('aria-expanded', on ? 'true' : 'false');
+    }
+  }
+
+  function closeExample() {
+    if (!exampleSheet || exampleSheet.hidden) {
+      openExample = null;
+      return;
+    }
+    exampleSheet.hidden = true;
+    document.body.classList.remove('example-open');
+    openExample = null;
+    setExampleExpanded(null);
+    const back = exampleReturnFocus;
+    exampleReturnFocus = null;
+    if (back && document.contains(back)) back.focus();
+  }
+
+  function openExampleFromButton(btn) {
+    const code = btn.getAttribute('data-code');
+    const unit = btn.getAttribute('data-unit') || '';
+    const desc = btn.getAttribute('data-desc') || '';
+    if (openExample && openExample.code === code && exampleSheet && !exampleSheet.hidden) {
+      exampleReturnFocus = btn;
+      closeExample();
+      return;
+    }
+    if (!fillExample(code, unit, desc)) return;
+    openExample = { code: code, unit: unit, desc: desc };
+    exampleReturnFocus = btn;
+    exampleSheet.hidden = false;
+    document.body.classList.add('example-open');
+    setExampleExpanded(code);
+    if (exampleClose) exampleClose.focus();
+  }
+
+  function syncOpenExample(rows) {
+    if (!openExample) return;
+    const still = rows.some(function (r) { return r.bid_code === openExample.code; });
+    if (!still) {
+      closeExample();
+      return;
+    }
+    fillExample(openExample.code, openExample.unit, openExample.desc);
+    setExampleExpanded(openExample.code);
   }
 
   function tableHtml(rows) {
     return '<table><thead><tr>' +
       '<th>Bid code</th><th>Description</th><th>Unit</th><th>Avg</th><th>n</th><th>Source</th><th>Detail</th><th>H / SW</th>' +
       '</tr></thead><tbody>' + rows.map(function (r) {
-        const main = rowHtml(r);
-        return main ? main + exampleRows(r) : '';
+        return rowHtml(r);
       }).join('') + '</tbody></table>';
   }
 
@@ -100,6 +152,7 @@
     if (!rows) return;
     body.innerHTML = getBodyHtml(item, rows);
     body.setAttribute('data-filled', '1');
+    if (openExample) setExampleExpanded(openExample.code);
   }
 
   function render(filtered) {
@@ -114,6 +167,7 @@
     rowsByItem = Object.create(null);
     if (!groups.length) {
       sectionsEl.innerHTML = '<p class="empty">No matches</p>';
+      syncOpenExample(withPrice);
       return;
     }
 
@@ -140,6 +194,7 @@
         '<div class="item-body"' + (forceOpen ? ' data-filled="1"' : '') + '>' + bodyInner + '</div>' +
       '</section>';
     }).join('');
+    syncOpenExample(withPrice);
   }
 
   function onSearch() {
@@ -153,25 +208,7 @@
   sectionsEl.addEventListener('click', function (ev) {
     const exBtn = ev.target.closest('.example-toggle');
     if (exBtn) {
-      const code = exBtn.getAttribute('data-code');
-      const panelRow = exBtn.closest('tr') && exBtn.closest('tr').nextElementSibling;
-      const panel = panelRow && panelRow.querySelector('.example-panel');
-      const open = exBtn.getAttribute('aria-expanded') !== 'true';
-      exBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (panelRow) panelRow.hidden = !open;
-      if (open) {
-        openExamples[code] = true;
-        if (panel && !panel.getAttribute('data-filled')) {
-          const ex = L.resolveExample(exampleCatalog, code, exBtn.getAttribute('data-desc'));
-          if (ex) {
-            const stat = exampleSamples && exampleSamples.by_code ? exampleSamples.by_code[code] : null;
-            panel.innerHTML = L.examplePanelHtml(ex, exBtn.getAttribute('data-unit'), L.sampleFacts(stat));
-            panel.setAttribute('data-filled', '1');
-          }
-        }
-      } else {
-        delete openExamples[code];
-      }
+      openExampleFromButton(exBtn);
       return;
     }
     const btn = ev.target.closest('.item-header');
@@ -245,6 +282,18 @@
     .catch(function () {
       exampleSamples = null;
     });
+
+  if (exampleSheet) {
+    exampleSheet.addEventListener('click', function (ev) {
+      if (ev.target === exampleSheet || ev.target.closest('.example-close') || ev.target.closest('.example-backdrop')) closeExample();
+    });
+  }
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape' || !exampleSheet || exampleSheet.hidden) return;
+    ev.preventDefault();
+    closeExample();
+  });
 
   search.addEventListener('input', onSearch);
 })();
