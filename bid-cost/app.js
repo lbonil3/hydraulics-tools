@@ -6,7 +6,6 @@
   const metaLine = document.getElementById('metaLine');
   let allRows = [];
   let detailMap = null;
-  let exampleMap = null;
   let itemInfo = null;
   const openItems = Object.create(null); // item -> true when user toggled open
   const bodyCache = Object.create(null); // item -> { sig, html }
@@ -16,16 +15,6 @@
     return String(s).replace(/[&<>"']/g, function (c) {
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
     });
-  }
-
-  function exampleLinksHtml(list) {
-    if (!list || !list.length) return '';
-    return list.map(function (ex) {
-      return '<a class="example-link" href="' + escapeHtml(ex.url) +
-        '" target="_blank" rel="noopener noreferrer" title="' + escapeHtml(ex.title) +
-        '" aria-label="' + escapeHtml(ex.label + ': ' + ex.title) + '">' +
-        escapeHtml(ex.label) + '</a>';
-    }).join('');
   }
 
   function rowHtml(r) {
@@ -42,7 +31,6 @@
         '" target="_blank" rel="noopener noreferrer" title="' +
         escapeHtml(d.source + ' · ' + d.label + (/\(assumed\)$/.test(d.label) ? ' · assumed sheet, verify type' : '')) + '">' + escapeHtml(d.label) + '</a>';
     }
-    const examples = exampleLinksHtml(L.resolveExamples(exampleMap, r.bid_code));
     return '<tr>' +
       '<td>' + escapeHtml(r.bid_code) + '</td>' +
       '<td>' + escapeHtml(r.description) + '</td>' +
@@ -55,14 +43,12 @@
         '<span class="bar houston" style="width:' + bars.houston + '%"></span>' +
         '<span class="bar statewide" style="width:' + bars.statewide + '%"></span>' +
       '</td>' +
-      '</tr>' +
-      (examples ? '<tr class="example-row"><td class="example-cell" colspan="8">' + examples + '</td></tr>' : '');
+      '</tr>';
   }
 
   function rowsSignature(rows) {
     // Include map-loaded bit so late detail-map.json refresh invalidates cache
-    return (detailMap ? '1' : '0') + (exampleMap ? '1' : '0') + '\0' +
-      rows.map(function (r) { return r.bid_code; }).join('\0');
+    return (detailMap ? '1' : '0') + '\0' + rows.map(function (r) { return r.bid_code; }).join('\0');
   }
 
   function tableHtml(rows) {
@@ -114,9 +100,8 @@
       const bodyInner = forceOpen ? getBodyHtml(g.item, g.rows) : '';
       const info = itemInfo && itemInfo.items ? itemInfo.items[g.item] : null;
       const spec = L.hasSpecPdf(g.item) ? L.specPdfUrl(g.item) : null;
-      const itemExamples = exampleLinksHtml(L.resolveItemExamples(exampleMap, g.item));
       return '<section class="item-section' + (forceOpen ? ' open' : '') + '" data-item="' + escapeHtml(g.item) + '">' +
-        '<div class="item-header-row">' +
+        '<div class="item-header-row" style="display:flex;align-items:stretch">' +
           '<button type="button" class="item-header" aria-expanded="' + (forceOpen ? 'true' : 'false') + '">' +
             '<span class="item-text">' +
               '<span class="item-id">' + escapeHtml(g.item) + (info ? ' · ' + escapeHtml(info.title) : '') + '</span>' +
@@ -125,7 +110,6 @@
             '<span class="item-count">' + g.rows.length + '</span>' +
           '</button>' +
           (spec ? '<a class="spec-link" href="' + escapeHtml(spec) + '" target="_blank" rel="noopener noreferrer">Spec</a>' : '') +
-          (itemExamples ? '<span class="example-links">' + itemExamples + '</span>' : '') +
         '</div>' +
         '<div class="item-body"' + (forceOpen ? ' data-filled="1"' : '') + '>' + bodyInner + '</div>' +
       '</section>';
@@ -181,16 +165,6 @@
     })
     .catch(function () {
       detailMap = null;
-    });
-
-  fetch('./examples.json')
-    .then(function (res) { return res.ok ? res.json() : null; })
-    .then(function (data) {
-      exampleMap = data;
-      maybeRender();
-    })
-    .catch(function () {
-      exampleMap = null;
     });
 
   fetch('./item-info.json')

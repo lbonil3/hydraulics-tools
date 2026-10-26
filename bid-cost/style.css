@@ -55,21 +55,6 @@ header span{opacity:.85;flex:1;min-width:200px;font-size:13px;line-height:1.35}
   display: inline-flex;
   align-items: center;
 }
-.item-header-row { display: flex; align-items: stretch; }
-.example-links { display: flex; flex-wrap: wrap; align-items: stretch; }
-.example-link {
-  flex-shrink: 0;
-  color: #1f4e79;
-  font-weight: 600;
-  text-decoration: underline;
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0.35rem 0.55rem;
-}
-.example-row td { background: #f7fafc; }
-.example-cell { white-space: normal; display: flex; flex-wrap: wrap; align-items: stretch; }
-
 .item-body { display: none; overflow-x: auto; }
 .item-section.open .item-body { display: block; }
 .item-body table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
