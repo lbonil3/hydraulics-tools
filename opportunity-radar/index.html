@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Radar">
+  <meta name="theme-color" content="#07100e">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>Opportunity Radar – drainage PS&amp;E opportunities across agencies</title>
+  <link rel="stylesheet" href="../home-btn.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-l">
+    <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">&#8592; Home</a>
+    <h1>Opportunity Radar</h1>
+  </div>
+  <div class="fresh" id="fresh" role="status" aria-live="polite"><span class="dot" id="freshDot"></span><span id="freshTxt">Loading data…</span></div>
+</header>
+
+<section class="kpis" id="kpis" aria-label="Summary"></section>
+
+<section class="filters" aria-label="Filters">
+  <div class="row">
+    <input id="q" type="search" inputmode="search" enterkeyhint="search" placeholder="Search title, county, agency…" aria-label="Search" autocomplete="off">
+    <button type="button" class="btn" id="btnMore" aria-expanded="false" aria-controls="adv">Filters <span id="advCount"></span></button>
+  </div>
+  <div class="chips" id="quick" aria-label="Quick filters"></div>
+  <div id="adv" hidden>
+    <h3>Drainage relevance <span class="hint">("likely" is inferred from type of work)</span></h3>
+    <div class="seg" role="group" aria-label="Drainage relevance">
+      <button type="button" data-rel="direct">Direct</button>
+      <button type="button" data-rel="relevant" class="on">Direct + likely</button>
+      <button type="button" data-rel="all">All</button>
+    </div>
+    <h3>Agency</h3><div class="chips" id="fAgency"></div>
+    <h3>Stage group <span class="hint">(grouped by this tool; each record also shows the source's own stage)</span></h3><div class="chips" id="fPhase"></div>
+    <h3>Kind</h3><div class="chips" id="fKind"></div>
+    <h3>Keywords <span class="hint">(keyword matches are inferred)</span></h3><div class="chips" id="fKw"></div>
+    <h3>Actions</h3>
+    <div class="chips"><button type="button" class="btn small" id="btnLive">Refresh TxDOT live</button><button type="button" class="btn small" id="btnCsv">Export CSV</button><button type="button" class="btn small" id="btnClear">Clear all filters</button></div>
+  </div>
+  <div class="active" id="activeNote" hidden></div>
+</section>
+
+<main id="main">
+  <section id="v-radar" class="view" aria-label="Radar map">
+    <div class="mapwrap" id="mapwrap">
+      <canvas id="map" aria-label="Map of Texas with opportunity pins. Use the List tab for an accessible list."></canvas>
+      <div class="mapbar">
+        <button type="button" class="btn small" data-view="tx">Texas</button>
+        <button type="button" class="btn small" data-view="hou">Houston</button>
+        <button type="button" class="btn small" id="btnColor">Color: agency</button>
+        <button type="button" class="btn small" id="btnSweep" aria-pressed="true">Sweep: on</button>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="maphint" id="maphint">Drag to pan, pinch to zoom, tap a pin.</div>
+    </div>
+    <p class="note" id="unmapped"></p>
+    <h2 class="sec">On the radar now <span class="hint" id="nearHint"></span></h2>
+    <div id="mapTop" class="cards"></div>
+  </section>
+
+  <section id="v-timeline" class="view" hidden aria-label="Timeline">
+    <h2 class="sec">When things happen <span class="hint">by month of the date each source gives (letting, closing, meeting, advertisement wave). Tap a bar.</span></h2>
+    <div class="scrollx" id="tlScroll"><div id="tl"></div></div>
+    <p class="note" id="tlNote"></p>
+    <h2 class="sec" id="tlSel">Next 120 days</h2>
+    <div id="tlList" class="cards"></div>
+  </section>
+
+  <section id="v-agencies" class="view" hidden aria-label="Breakdown">
+    <h2 class="sec">By agency <span class="hint">tap to filter</span></h2><div id="bAgency" class="bars"></div>
+    <h2 class="sec">By stage group</h2><div id="bPhase" class="bars"></div>
+    <h2 class="sec">By kind</h2><div id="bKind" class="bars"></div>
+    <h2 class="sec">By keyword <span class="hint">(inferred matches)</span></h2><div id="bKw" class="bars"></div>
+    <h2 class="sec">Top counties <span class="hint">where the source names one</span></h2><div id="bCounty" class="bars"></div>
+    <h2 class="sec">Local sponsors named in TxDOT data</h2><div id="bSponsor" class="bars"></div>
+  </section>
+
+  <section id="v-list" class="view" hidden aria-label="List">
+    <div class="listbar">
+      <label class="sortl">Sort <select id="sort"><option value="date">Upcoming first</option><option value="dateDesc">Date, latest first</option><option value="dateAsc">Date, oldest first</option><option value="cost">Cost, high to low</option><option value="agency">Agency</option><option value="title">Title</option></select></label>
+      <span id="listCount" class="hint"></span><button type="button" class="btn small" id="btnCsv2">Export CSV</button>
+    </div>
+    <div id="list" class="cards"></div>
+    <button type="button" class="btn wide" id="btnMoreRows" hidden>Show 100 more</button>
+  </section>
+
+  <section id="v-sources" class="view" hidden aria-label="Sources and freshness">
+    <h2 class="sec">Data freshness</h2><div id="srcFresh" class="panel"></div>
+    <h2 class="sec">Sources used</h2><div id="srcList" class="cards"></div>
+    <h2 class="sec">Tested, not used</h2><div id="srcNo" class="cards"></div>
+    <h2 class="sec">How to read this</h2><div id="srcHow" class="panel"></div>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Views">
+  <button type="button" data-tab="radar" class="on">Radar</button>
+  <button type="button" data-tab="timeline">Timeline</button>
+  <button type="button" data-tab="agencies">Agencies</button>
+  <button type="button" data-tab="list">List</button>
+  <button type="button" data-tab="sources">Sources</button>
+</nav>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <div class="sheet-bg" id="shBg"></div>
+  <div class="sheet-card">
+    <div class="sheet-head"><button type="button" class="btn small" id="shClose">Close</button><button type="button" class="star big" id="shStar" aria-label="Add to watchlist">&#9734;</button></div>
+    <div id="shBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="texas-geo.js"></script>
+<script src="model.js"></script>
+<script src="map.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

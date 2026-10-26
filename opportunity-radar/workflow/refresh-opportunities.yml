@@ -1,0 +1,37 @@
+# Daily refresh of opportunity-radar/data/opportunities.json from public feeds (no API keys).
+# INSTALL: copy this file to .github/workflows/refresh-opportunities.yml.
+# It could not be pushed with the PR because the GitHub token used to open the PR has no "workflow" scope.
+name: Refresh Opportunity Radar data
+on:
+  schedule:
+    - cron: '17 10 * * *'   # 10:17 UTC daily (5:17 AM Central during daylight time)
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: refresh-opportunities
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run tests
+        run: node opportunity-radar/test.js
+      - name: Build snapshot
+        run: node scripts/build-opportunities.js
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- opportunity-radar/data/opportunities.json; then
+            echo "No data changes."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add opportunity-radar/data/opportunities.json
+            git commit -m "data(opportunity-radar): daily snapshot refresh"
+            git push
+          fi

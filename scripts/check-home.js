@@ -13,8 +13,9 @@ const hrefs = [
   'culvert/index.html',
   'pse-tracker/index.html',
   'capture-terminal/index.html',
+  'opportunity-radar/index.html',
 ];
-const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-bid-cost', 'tool-ditch', 'tool-culvert', 'tool-pse', 'tool-capture'];
+const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-bid-cost', 'tool-ditch', 'tool-culvert', 'tool-pse', 'tool-capture', 'tool-radar'];
 for (const h of hrefs) {
   if (!html.includes('href="' + h + '"')) fail('missing href ' + h);
 }
@@ -25,7 +26,7 @@ const idx = hrefs.map((h) => html.indexOf('href="' + h + '"'));
 for (let k = 1; k < idx.length; k++) {
   if (idx[k] < idx[k - 1]) fail('wrong card order near ' + hrefs[k]);
 }
-for (const name of ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Bid Cost', 'Ditch', 'Culvert Studio', 'PS&amp;E Tracker', 'Capture Terminal']) {
+for (const name of ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Bid Cost', 'Ditch', 'Culvert Studio', 'PS&amp;E Tracker', 'Capture Terminal', 'Opportunity Radar']) {
   if (!html.includes(name)) fail('missing label ' + name);
 }
 if (html.includes('Ditch Studio') || html.includes('Ditch Table')) fail('old separate ditch cards still present');
