@@ -2,20 +2,26 @@
 html{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 body{margin:0;font:16px/1.45 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:#eef2f7;color:#1d2733}
 .hero{background:linear-gradient(145deg,#1a4268 0%,#1f4e79 55%,#2a6aa3 100%);color:#fff;
-  padding:calc(22px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 28px calc(18px + env(safe-area-inset-left))}
-.hero .eyebrow{margin:0 0 6px;font-size:13px;opacity:.85;letter-spacing:.02em}
-.hero h1{margin:0 0 8px;font-size:28px;font-weight:700}
+  padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 18px calc(16px + env(safe-area-inset-left))}
+.hero .eyebrow{margin:0 0 4px;font-size:13px;opacity:.85;letter-spacing:.02em}
+.hero h1{margin:0 0 6px;font-size:28px;font-weight:700;letter-spacing:-.02em}
 .hero p{margin:0;max-width:36em;font-size:15px;opacity:.92}
-main{max-width:720px;margin:0 auto;padding:16px calc(14px + env(safe-area-inset-right)) 8px calc(14px + env(safe-area-inset-left));display:grid;gap:12px}
-a.tool{display:grid;grid-template-columns:4px 48px 1fr;gap:0 12px;align-items:center;background:#fff;border:1px solid #d5dce5;
-  border-radius:12px;padding:14px 14px 14px 0;text-decoration:none;color:inherit;min-height:72px;box-shadow:0 1px 2px rgba(16,40,80,.04)}
+main{max-width:720px;margin:0 auto;padding:14px calc(10px + env(safe-area-inset-right)) 4px calc(10px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:16px}
+.group h2{margin:0 0 8px;padding:0 2px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#5c6b7c}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+a.tool{display:grid;grid-template-columns:4px minmax(0,1fr);column-gap:6px;align-items:stretch;background:#fff;border:1px solid #d5dce5;
+  border-radius:12px;padding:8px 6px 8px 0;text-decoration:none;color:inherit;min-height:44px;box-shadow:0 1px 2px rgba(16,40,80,.04)}
 a.tool:active{background:#eef5ff}
+a.tool:focus-visible{outline:2px solid #1f4e79;outline-offset:2px}
 a.tool .accent{align-self:stretch;border-radius:12px 0 0 12px;width:4px}
-a.tool .icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center}
-a.tool .icon svg{width:24px;height:24px;display:block}
-a.tool .body h2{margin:0 0 4px;font-size:18px;color:#1f4e79}
-a.tool .body p{margin:0;font-size:14px;color:#445}
-a.tool .chip{display:inline-block;margin-top:6px;font-size:11px;color:#667;background:#f0f3f8;border-radius:999px;padding:2px 8px}
+a.tool .body{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;justify-content:center}
+a.tool .head{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;max-width:100%}
+a.tool .icon{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
+a.tool .icon svg{width:16px;height:16px;display:block}
+a.tool .body h3{margin:0;max-width:100%;font-size:13px;line-height:1.15;font-weight:700;color:#1f4e79}
+a.tool .body p{margin:0;max-width:100%;font-size:12px;line-height:1.25;color:#445}
+a.tool .chip{display:inline-block;max-width:100%;font-size:10px;line-height:1.25;color:#667;background:#f0f3f8;border-radius:999px;padding:2px 6px}
+a.tool .local{display:block;max-width:100%;font-size:10px;line-height:1.2;font-weight:600;color:#1b5e45}
 .tool-tc .accent{background:#0d9488}.tool-tc .icon{background:#ccfbf1;color:#0f766e}
 .tool-drainage .accent{background:#2563eb}.tool-drainage .icon{background:#dbeafe;color:#1d4ed8}
 .tool-storm .accent{background:#0e7490}
@@ -28,4 +34,4 @@ a.tool .chip{display:inline-block;margin-top:6px;font-size:11px;color:#667;backg
 .tool-radar .accent{background:#0f766e}.tool-radar .icon{background:#0b1f1a;color:#5eead4}
 .tool-swp3 .accent{background:#1b5e45}.tool-swp3 .icon{background:#d9efe4;color:#1b5e45}
 footer{text-align:center;font-size:12px;color:#667;padding:16px calc(14px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
-@media (pointer:coarse){a.tool{min-height:76px}}
+@media (pointer:coarse){a.tool{min-height:44px}}
