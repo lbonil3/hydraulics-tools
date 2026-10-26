@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Capture">
+  <meta name="theme-color" content="#e8e8e6">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>Capture Terminal – drainage PS&amp;E pursuit planning</title>
+  <link rel="stylesheet" href="../home-btn.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="win" id="win">
+  <header class="hdr">
+    <div class="hdr-l">
+      <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">&#8592; HOME</a>
+      <h1>CAPTURE TERMINAL <span class="status"><i class="dot" id="dot"></i><span id="statusTxt">LOCAL</span></span></h1>
+      <p class="subtitle">DRAINAGE PS&amp;E PURSUIT PLANNING &middot; TXDOT + LOCAL AGENCIES</p>
+    </div>
+    <div class="clock" aria-label="Current time"><div class="clk" id="clk">--:--:--</div><div class="clkd" id="clkDate">&nbsp;</div></div>
+  </header>
+
+  <section class="panel outp" id="outPanel" hidden aria-live="polite" aria-label="Terminal output">
+    <div class="ph"><h2>TERMINAL OUTPUT</h2><button type="button" class="mini" data-cmd="clear">CLOSE &times;</button></div>
+    <div class="echo" id="echo"></div>
+    <div id="out"></div>
+  </section>
+
+  <main id="dash">
+    <div class="row top">
+      <section class="panel gauge" aria-labelledby="hGauge">
+        <div class="ph"><h2 id="hGauge">WIN RATE</h2></div>
+        <div class="gbody">
+          <svg viewBox="0 0 120 120" class="gsvg" role="img" id="gsvg" aria-label="Win rate gauge">
+            <circle cx="60" cy="60" r="50" class="gtrack"/>
+            <circle cx="60" cy="60" r="50" class="garc" id="garc" transform="rotate(-90 60 60)"/>
+          </svg>
+          <div class="gnum" id="gnum">--</div>
+        </div>
+        <p class="cap" id="gcap">WON / (WON + LOST)</p>
+      </section>
+      <section class="panel wp" aria-labelledby="hWp">
+        <div class="ph"><h2 id="hWp">WEIGHTED PIPELINE</h2><span class="tag" id="wpTag">EST. FEE x PWIN</span></div>
+        <div class="hero" id="wpNum">$0</div>
+        <p class="cap" id="wpCap">ACTIVE OPPORTUNITIES ONLY</p>
+        <div class="chart" id="chart"></div>
+      </section>
+    </div>
+
+    <section class="panel pipe" aria-labelledby="hPipe">
+      <div class="ph"><h2 id="hPipe">CAPTURE PIPELINE</h2><span class="tag" id="pipeTag">0 ACTIVE</span></div>
+      <div class="boxes" id="boxes"></div>
+    </section>
+
+    <div class="row bot">
+      <div class="stack">
+        <section class="panel feed" aria-labelledby="hFeed">
+          <div class="ph"><h2 id="hFeed">DUE SOON / NEXT ACTIONS</h2><span id="feedStamp"></span></div>
+          <div id="feed"></div>
+        </section>
+        <section class="panel opps" aria-labelledby="hOpps">
+          <div class="ph"><h2 id="hOpps">OPPORTUNITIES</h2><button type="button" class="mini solid" data-cmd="add">+ ADD</button></div>
+          <div class="view" id="viewLine"></div>
+          <div id="otable"></div>
+        </section>
+      </div>
+      <section class="panel big" aria-labelledby="hBig">
+        <div class="ph"><h2 id="hBig">OPEN OPPORTUNITIES</h2></div>
+        <div class="mega" id="mega">0</div>
+        <p class="cap">ACTIVE: IDENTIFIED THROUGH SHORTLISTED</p>
+        <div id="bigStats"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="foot"><span>Planning aid - verify solicitation details at the source.</span><span>DATA STAYS ON THIS DEVICE &middot; NOT OFFICIAL</span></footer>
+</div>
+<div class="stamp" id="stamp" aria-hidden="true"></div>
+
+<div class="dock" id="dock">
+  <div class="dock-in">
+    <div class="more" id="more" hidden></div>
+    <div class="chips" id="chips"></div>
+    <form class="cl" id="cl" autocomplete="off">
+      <label for="cmd" class="prompt">CAPTURE&gt;</label>
+      <input id="cmd" type="text" enterkeyhint="go" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text" placeholder="type a command">
+      <button type="submit" class="go" aria-label="Run command">RUN</button>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="mForm" hidden role="dialog" aria-modal="true" aria-labelledby="mFormT">
+  <form class="sheet" id="fForm" novalidate>
+    <div class="sh"><h2 id="mFormT">NEW OPPORTUNITY</h2><button type="button" class="mini" data-close>CANCEL</button></div>
+    <div class="sb" id="fBody"></div>
+    <div class="sf"><p class="ferr" id="fErr" role="alert"></p><button type="button" class="btn" data-close>CANCEL</button><button type="submit" class="btn solid">SAVE</button></div>
+  </form>
+</div>
+
+<div class="modal" id="mFilter" hidden role="dialog" aria-modal="true" aria-labelledby="mFilterT">
+  <form class="sheet small" id="fFilter">
+    <div class="sh"><h2 id="mFilterT">FILTER</h2><button type="button" class="mini" data-close>CANCEL</button></div>
+    <div class="sb" id="flBody"></div>
+    <div class="sf"><button type="button" class="btn" id="flReset">SHOW ALL</button><button type="submit" class="btn solid">APPLY</button></div>
+  </form>
+</div>
+
+<div class="modal" id="mImport" hidden role="dialog" aria-modal="true" aria-labelledby="mImportT">
+  <div class="sheet small">
+    <div class="sh"><h2 id="mImportT">IMPORT</h2><button type="button" class="mini" data-close>CANCEL</button></div>
+    <div class="sb">
+      <p class="muted">Restore a Capture Terminal JSON backup, or load a CSV exported from this tool. Pick a file or paste the text.</p>
+      <label class="fl"><span>FILE (.json or .csv)</span><input type="file" id="impFile" accept=".json,.csv,application/json,text/csv,text/plain"></label>
+      <label class="fl"><span>OR PASTE TEXT</span><textarea id="impText" rows="6" spellcheck="false"></textarea></label>
+      <p class="muted" id="impMsg">Nothing loaded yet.</p>
+    </div>
+    <div class="sf"><button type="button" class="btn" id="impMerge" disabled>ADD TO EXISTING</button><button type="button" class="btn solid" id="impReplace" disabled>REPLACE ALL</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="sources.js"></script>
+<script src="model.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
