@@ -9,6 +9,15 @@
  *   data/_meta.json
  *
  * Usage: node bid-cost/build-prices.js
+ *
+ * This file keeps one average per bid code. It does not keep project_name,
+ * project_id, county, bid_item_quantity, or project_actual_let_date from
+ * Bid Tabulations (data.texas.gov de7b-7dna). The Houston and statewide CSVs
+ * in data/ also lack those columns; they only have n, total quantity, and
+ * price statistics. code-example-samples.json therefore shows min, median,
+ * and max, not bid lines. To show real lines, aggregate from rank-1 rows
+ * that still carry those fields and point the example panel at that file.
+ * See docs/superpowers/specs/2026-10-26-bid-cost-code-examples-design.md.
  */
 const fs = require('fs');
 const path = require('path');

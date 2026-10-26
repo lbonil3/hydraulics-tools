@@ -7,7 +7,10 @@
   let allRows = [];
   let detailMap = null;
   let itemInfo = null;
+  let exampleCatalog = null;
+  let exampleSamples = null;
   const openItems = Object.create(null); // item -> true when user toggled open
+  const openExamples = Object.create(null); // bid_code -> true when example is open
   const bodyCache = Object.create(null); // item -> { sig, html }
   let rowsByItem = Object.create(null); // item -> rows for current filter
 
@@ -48,13 +51,36 @@
 
   function rowsSignature(rows) {
     // Include map-loaded bit so late detail-map.json refresh invalidates cache
-    return (detailMap ? '1' : '0') + '\0' + rows.map(function (r) { return r.bid_code; }).join('\0');
+    return (detailMap ? '1' : '0') + (exampleCatalog ? 'e' : '_') + (exampleSamples ? 's' : '_') +
+      '\0' + rows.map(function (r) { return r.bid_code + (openExamples[r.bid_code] ? '*' : ''); }).join('\0');
+  }
+
+  function exampleInner(r) {
+    const ex = L.resolveExample(exampleCatalog, r.bid_code, r.description);
+    if (!ex) return '';
+    const stat = exampleSamples && exampleSamples.by_code ? exampleSamples.by_code[r.bid_code] : null;
+    return L.examplePanelHtml(ex, r.unit, L.sampleFacts(stat));
+  }
+
+  function exampleRows(r) {
+    if (!L.resolveExample(exampleCatalog, r.bid_code, r.description)) return '';
+    const open = !!openExamples[r.bid_code];
+    return '<tr class="example-toggle-row"><td colspan="8">' +
+      '<button type="button" class="example-toggle" aria-expanded="' + (open ? 'true' : 'false') +
+      '" data-code="' + escapeHtml(r.bid_code) + '" data-unit="' + escapeHtml(r.unit || '') +
+      '" data-desc="' + escapeHtml(r.description || '') + '" aria-label="Example of ' + escapeHtml(r.bid_code) +
+      '">Example</button></td></tr>' +
+      '<tr class="example-panel-row"' + (open ? '' : ' hidden') + '><td colspan="8"><div class="example-panel" data-panel="' +
+      escapeHtml(r.bid_code) + '">' + (open ? exampleInner(r) : '') + '</div></td></tr>';
   }
 
   function tableHtml(rows) {
     return '<table><thead><tr>' +
       '<th>Bid code</th><th>Description</th><th>Unit</th><th>Avg</th><th>n</th><th>Source</th><th>Detail</th><th>H / SW</th>' +
-      '</tr></thead><tbody>' + rows.map(rowHtml).join('') + '</tbody></table>';
+      '</tr></thead><tbody>' + rows.map(function (r) {
+        const main = rowHtml(r);
+        return main ? main + exampleRows(r) : '';
+      }).join('') + '</tbody></table>';
   }
 
   function getBodyHtml(item, rows) {
@@ -125,6 +151,29 @@
   }
 
   sectionsEl.addEventListener('click', function (ev) {
+    const exBtn = ev.target.closest('.example-toggle');
+    if (exBtn) {
+      const code = exBtn.getAttribute('data-code');
+      const panelRow = exBtn.closest('tr') && exBtn.closest('tr').nextElementSibling;
+      const panel = panelRow && panelRow.querySelector('.example-panel');
+      const open = exBtn.getAttribute('aria-expanded') !== 'true';
+      exBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (panelRow) panelRow.hidden = !open;
+      if (open) {
+        openExamples[code] = true;
+        if (panel && !panel.getAttribute('data-filled')) {
+          const ex = L.resolveExample(exampleCatalog, code, exBtn.getAttribute('data-desc'));
+          if (ex) {
+            const stat = exampleSamples && exampleSamples.by_code ? exampleSamples.by_code[code] : null;
+            panel.innerHTML = L.examplePanelHtml(ex, exBtn.getAttribute('data-unit'), L.sampleFacts(stat));
+            panel.setAttribute('data-filled', '1');
+          }
+        }
+      } else {
+        delete openExamples[code];
+      }
+      return;
+    }
     const btn = ev.target.closest('.item-header');
     if (!btn) return;
     const section = btn.closest('.item-section');
@@ -175,6 +224,26 @@
     })
     .catch(function () {
       itemInfo = null;
+    });
+
+  fetch('./code-examples.json')
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      exampleCatalog = data && data.rules ? data : null;
+      maybeRender();
+    })
+    .catch(function () {
+      exampleCatalog = null;
+    });
+
+  fetch('./code-example-samples.json')
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      exampleSamples = data && data.by_code ? data : null;
+      maybeRender();
+    })
+    .catch(function () {
+      exampleSamples = null;
     });
 
   search.addEventListener('input', onSearch);
