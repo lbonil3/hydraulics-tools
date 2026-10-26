@@ -156,6 +156,9 @@ const bf3 = M.bonfireRecord({ ProjectID: '2', ReferenceID: 'y', ProjectName: 'RF
 assert.strictEqual(bf3.svc, false, 'RFP without engineering words is out');
 const bf4 = M.bonfireRecord({ ProjectID: '3', ReferenceID: 'z', ProjectName: 'RFP - Engineering and Design Services for Roadway', DateClose: '2026-11-09 20:00:00' }, bfP);
 assert.strictEqual(bf4.svc, true, 'RFP with engineering words is in');
+const bf5 = M.bonfireRecord({ ProjectID: '4', ReferenceID: 'Q26-063', ProjectName: 'Architectural, Engineering & Environmental Review Services for Federally Funded Residential Projects', DateClose: '2026-11-17 20:00:00' }, bfP);
+assert.strictEqual(bf5.svc, true, 'untyped title with engineering/architect words is in, with the basis stated'); assert.ok(/Type not stated/.test(bf5.why));
+assert.strictEqual(M.bonfireRecord({ ProjectID: '5', ReferenceID: 'r', ProjectName: 'Central Hydraulic System Kits', DateClose: '2026-10-27 20:00:00' }, bfP).svc, false);
 assert.strictEqual(M.bonfireRecord({ ProjectID: '', ProjectName: 'x' }, bfP), null);
 assert.strictEqual(M.isoFromSerial(46322.583333), '2026-10-27'); assert.strictEqual(M.isoFromSerial('abc'), null);
 const austinRows = [['Solicitation ID', 'Solicitation No', 'Description', 'Published Date', 'Closing Date', 'Primary Name', 'Primary Email'],

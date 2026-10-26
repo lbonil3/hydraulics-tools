@@ -459,7 +459,7 @@
   }
   // The rule behind the "Consultant services" focus. Stated, not a judgment of fit:
   //   (a) qualifications-type solicitation (RFQ / RFQS / RFSQ / SOQ), or
-  //   (b) proposal-type (RFP) solicitation whose title contains an engineering word, or
+  //   (b) proposal-type (RFP) solicitation whose title contains an engineering word, or a title with no stated type that has engineering/architect/civil/survey/geotech/design words, or
   //   (c) the source itself categorizes it as professional services / consultant procurement (Austin contracts "Professional Services",
   //       TxDOT Projected Contracts List, TxDOT PEPS, HCFCD "Request for Qualifications" table).
   function isConsultant(r) {
@@ -473,6 +473,8 @@
     if (srcCat) return { svc: true, basis: 'Source category: ' + srcCat };
     if (type.cls === 'qual') return { svc: true, basis: 'Qualifications-type solicitation (' + type.code + ' in the title/type as published)' };
     if (type.cls === 'prop' && eng.length) return { svc: true, basis: 'Proposal-type solicitation whose title has engineering words: ' + eng.map(engLabel).join(', ') };
+    var strong = eng.filter(function (e) { return ['engineering', 'architect', 'civil', 'survey', 'geotech', 'design'].indexOf(e) >= 0; });
+    if (type.cls === 'unk' && strong.length) return { svc: true, basis: 'Type not stated in the title; title has engineering words: ' + strong.map(engLabel).join(', ') };
     return { svc: false, basis: '' };
   }
   function isoFromSerial(n) { n = Number(n); if (!isFinite(n) || n < 20000) return null; var d = new Date(Math.round((Math.floor(n) - 25569) * 86400000)); return isNaN(d) ? null : d.toISOString().slice(0, 10); }
