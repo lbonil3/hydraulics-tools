@@ -317,7 +317,7 @@
         if (c.rel === 'none') c = { rel: 'direct', kw: [], why: 'HCFCD project-ID prefix in title (HCFCD unit numbers identify channel/basin projects)' };
         out.push({
           id: 'hcfcd-bid:' + job, src: 'hcfcd-bids', agency: 'HCFCD', kind: 'procurement',
-          title: title, phase: 'procure', stage: table, county: 'Harris', lat: null, lon: null, date: null, dateLabel: 'Due date not shown on HCFCD page',
+          title: title, phase: 'procure', stage: table, status: 'Listed on HCFCD page (open/closed not shown there)', county: 'Harris', lat: null, lon: null, date: null, dateLabel: 'Due date not shown on HCFCD page',
           cost: null, costLabel: null, work: prof ? 'Professional services (inferred from title)' : 'Construction / other (inferred from title)', desc: null,
           url: r.href || HCFCD_BIDS_PAGE, rel: c.rel, kw: c.kw, why: c.why,
           extra: [['HCFCD job #', job], ['Listed under', table], ['Status', 'Listed on HCFCD "Current & Past" page; open/closed status and due date are not shown there. Check the Bonfire link.']]
@@ -428,6 +428,179 @@
     };
   }
 
+  // ---- Consultant-services solicitations (engineering/design/professional services) ----
+  // Nothing here judges fit. A record is flagged `svc` by a stated rule (see isConsultant) and `eng` lists the engineering words found in the title,
+  // shown as "match". Status, type and due date are copied from the source as given.
+  var ENG_KEYWORDS = [
+    { id: 'engineering', label: 'engineering', re: /engineer/i },
+    { id: 'design', label: 'design', re: /\bdesign(?!\s*[-/]?\s*build)|\bPS&E\b|plans,? specifications/i },
+    { id: 'architect', label: 'architect', re: /architect/i },
+    { id: 'civil', label: 'civil', re: /\bcivil\b/i },
+    { id: 'survey', label: 'survey', re: /land survey|surveying|topograph|subsurface utility|\bSUE\b|\bsurveyor/i },
+    { id: 'geotech', label: 'geotechnical', re: /geotech|materials testing/i },
+    { id: 'professional', label: 'professional services', re: /professional (engineering|services|consult)|\bconsultants?\b|consulting services|on[- ]call|rotation list/i },
+    { id: 'cm-inspect', label: 'construction mgmt / inspection', re: /construction management|\bCMI\b|\bCMEI\b|inspection services|program management|project management services/i },
+    { id: 'study', label: 'study / planning', re: /\bstud(y|ies)\b|master plan|feasibility|needs assessment|planning services|corridor/i }
+  ];
+  function matchEng(text) {
+    var out = []; if (!text) return out;
+    for (var i = 0; i < ENG_KEYWORDS.length; i++) if (ENG_KEYWORDS[i].re.test(text)) out.push(ENG_KEYWORDS[i].id);
+    return out;
+  }
+  function engLabel(id) { for (var i = 0; i < ENG_KEYWORDS.length; i++) if (ENG_KEYWORDS[i].id === id) return ENG_KEYWORDS[i].label; return id; }
+  // Solicitation type as written in the title / reference / type column. RFQ "t" (Fort Worth "RFQt") means a price quote, not qualifications.
+  function solType(text) {
+    var t = String(text || '');
+    if (/\bRFQt\b/.test(t)) return { code: 'RFQt', label: 'Request for quote (price quote)', cls: 'bid' };
+    if (/request for (statements? of )?qualifications?|\bRFQS\b|\bRFQ[uU]?\b|\bRFSQ\b|\bSOQ\b|statements? of qualifications?|\bRFQ\b/i.test(t) && !/\bRFQt\b/.test(t)) return { code: 'RFQ', label: 'Request for qualifications', cls: 'qual' };
+    if (/request for (competitive sealed )?proposals?|\bRFC?SP\b|\bRFP\b/i.test(t)) return { code: 'RFP', label: 'Request for proposals', cls: 'prop' };
+    if (/\bIFB\b|\bITB\b|invitation (for|to) bids?|\bIFQ\b|\bCSP\b|\bCB-\d|\bCMAR\b/i.test(t)) return { code: 'Bid', label: 'Bid / construction-type', cls: 'bid' };
+    return { code: null, label: 'Type not stated', cls: 'unk' };
+  }
+  // The rule behind the "Consultant services" focus. Stated, not a judgment of fit:
+  //   (a) qualifications-type solicitation (RFQ / RFQS / RFSQ / SOQ), or
+  //   (b) proposal-type (RFP) solicitation whose title contains an engineering word, or a title with no stated type that has engineering/architect/civil/survey/geotech/design words, or
+  //   (c) the source itself categorizes it as professional services / consultant procurement (Austin contracts "Professional Services",
+  //       TxDOT Projected Contracts List, TxDOT PEPS, HCFCD "Request for Qualifications" table).
+  function isConsultant(r) {
+    if (!r) return false;
+    if (r.svc === true) return true;
+    if (r.src === 'txdot-pcl' || r.src === 'txdot-peps' || r.src === 'txdot-meetings') return true;
+    if (r.src === 'hcfcd-bids' && /Request for Qualifications/.test(r.stage || '')) return true;
+    return false;
+  }
+  function svcRule(type, eng, srcCat) {
+    if (srcCat) return { svc: true, basis: 'Source category: ' + srcCat };
+    if (type.cls === 'qual') return { svc: true, basis: 'Qualifications-type solicitation (' + type.code + ' in the title/type as published)' };
+    if (type.cls === 'prop' && eng.length) return { svc: true, basis: 'Proposal-type solicitation whose title has engineering words: ' + eng.map(engLabel).join(', ') };
+    var strong = eng.filter(function (e) { return ['engineering', 'architect', 'civil', 'survey', 'geotech', 'design'].indexOf(e) >= 0; });
+    if (type.cls === 'unk' && strong.length) return { svc: true, basis: 'Type not stated in the title; title has engineering words: ' + strong.map(engLabel).join(', ') };
+    return { svc: false, basis: '' };
+  }
+  function isoFromSerial(n) { n = Number(n); if (!isFinite(n) || n < 20000) return null; var d = new Date(Math.round((Math.floor(n) - 25569) * 86400000)); return isNaN(d) ? null : d.toISOString().slice(0, 10); }
+  function lastMDY(s) { var m = String(s || '').match(/\d{1,2}\/\d{1,2}\/\d{4}/g); return m ? m[m.length - 1] : null; }
+
+  var SOL_AGENCIES = {
+    'Harris County': { color: '#f97316', full: 'Harris County (Bonfire portal; includes HCFCD, County Engineer, Precincts)' },
+    'Fort Bend County': { color: '#a3e635', full: 'Fort Bend County' },
+    'Galveston County': { color: '#2dd4bf', full: 'Galveston County' },
+    'Brazoria County': { color: '#f472b6', full: 'Brazoria County' },
+    'METRO': { color: '#e879f9', full: 'Metropolitan Transit Authority of Harris County' },
+    'City of Austin': { color: '#fb923c', full: 'City of Austin' },
+    'City of San Antonio': { color: '#4ade80', full: 'City of San Antonio' },
+    'City of Dallas': { color: '#60a5fa', full: 'City of Dallas' },
+    'City of Fort Worth': { color: '#f87171', full: 'City of Fort Worth' },
+    'DART': { color: '#22d3ee', full: 'Dallas Area Rapid Transit' },
+    'DFW Airport': { color: '#facc15', full: 'Dallas Fort Worth International Airport' }
+  };
+  Object.keys(SOL_AGENCIES).forEach(function (k) { AGENCIES[k] = SOL_AGENCIES[k]; });
+
+  // Bonfire public portals (the portal's own public "open opportunities" list; no login). agency/county are the portal owner's.
+  var BONFIRE_PORTALS = [
+    { sub: 'harriscountytx', agency: 'Harris County', county: 'Harris' },
+    { sub: 'fortbendcountytx', agency: 'Fort Bend County', county: 'Fort Bend' },
+    { sub: 'galvestoncountytx', agency: 'Galveston County', county: 'Galveston' },
+    { sub: 'brazoriacounty', agency: 'Brazoria County', county: 'Brazoria' },
+    { sub: 'ridemetro', agency: 'METRO', county: 'Harris' },
+    { sub: 'txdot', agency: 'TxDOT', county: null },
+    { sub: 'dallascityhall', agency: 'City of Dallas', county: 'Dallas' },
+    { sub: 'fortworthtexas', agency: 'City of Fort Worth', county: 'Tarrant' },
+    { sub: 'dart', agency: 'DART', county: 'Dallas' },
+    { sub: 'dfwairport', agency: 'DFW Airport', county: null }
+  ];
+  function bonfireRecord(p, portal) {
+    if (!p || !p.ProjectID || !p.ProjectName) return null;
+    var title = str(p.ProjectName).replace(/\s*-\s*\*\d+\s*$/, ''), ref = str(p.ReferenceID);
+    var type = solType(title + ' ' + (ref || '')), eng = matchEng(title), kw = matchKeywords(title), rule = svcRule(type, eng, null);
+    var close = str(p.DateClose);
+    var url = 'https://' + portal.sub + '.bonfirehub.com/opportunities/' + p.ProjectID;
+    return {
+      id: 'bf:' + portal.sub + ':' + p.ProjectID, src: 'bonfire-' + portal.sub, agency: portal.agency, kind: 'solicitation', phase: 'procure',
+      title: title, stage: 'Open solicitation (as listed on the agency Bonfire portal)', status: 'Open', solType: type.label, svc: rule.svc, eng: eng, county: portal.county,
+      lat: null, lon: null, date: isoFromText(close), dateLabel: 'Close date (as given by portal; time zone not stated)', cost: null, costLabel: null,
+      work: type.label, desc: null, url: url, rel: kw.length ? 'direct' : 'none', kw: kw,
+      why: (rule.svc ? 'In the Consultant services focus: ' + rule.basis + '. ' : 'Not in the Consultant services focus (type: ' + type.label + '). ') + (kw.length ? 'Drainage keyword match in title: ' + kw.map(kwLabel).join(', ') + '.' : 'No drainage keyword in the title.'),
+      extra: [['Solicitation number', ref || 'not listed'], ['Status (as listed)', 'Open'], ['Close date/time (raw, as given)', close || 'not listed'], ['Type (read from title/number)', type.label], ['Engineering words in title', eng.length ? eng.map(engLabel).join(', ') : 'none'], ['Note', 'Bonfire pages answer scripts with HTTP 403; the link opens fine in a normal browser. The portal list gives no description.']]
+    };
+  }
+
+  // Austin Finance Online "Active Solicitations" xlsx export (Austin purchasing; no login).
+  var AUSTIN_SOL_PAGE = 'https://financeonline.austintexas.gov/afo/account_services/solicitation/solicitations.cfm';
+  var AUSTIN_SOL_XLSX = 'https://financeonline.austintexas.gov/afo/account_services/solicitation/excel_solicitations.cfm?ccat=View%20All';
+  function parseAustinActive(rows) {
+    var out = [], hdr = -1, i;
+    for (i = 0; i < rows.length; i++) if (/^solicitation id$/i.test(String(rows[i][0] || ''))) { hdr = i; break; }
+    if (hdr < 0) return out;
+    for (i = hdr + 1; i < rows.length; i++) {
+      var r = rows[i], sid = str(r[0]), no = str(r[1]), desc = str(r[2]);
+      if (!sid || !no || !desc) continue;
+      var type = solType(no), eng = matchEng(desc), kw = matchKeywords(desc), rule = svcRule(type, eng, null);
+      var pub = isoFromSerial(r[3]), due = isoFromSerial(r[4]);
+      out.push({
+        id: 'austin-sol:' + sid, src: 'austin-active', agency: 'City of Austin', kind: 'solicitation', phase: 'procure',
+        title: desc + ' (' + no + ')', stage: 'Active solicitation (Austin Finance Online)', status: 'Open', solType: type.label, svc: rule.svc, eng: eng, county: 'Travis',
+        lat: null, lon: null, date: due, dateLabel: 'Closing date (Austin Finance Online, Central time)', cost: null, costLabel: null, work: type.label, desc: null,
+        url: 'https://financeonline.austintexas.gov/afo/account_services/solicitation/solicitation_details.cfm?sid=' + encodeURIComponent(sid),
+        rel: kw.length ? 'direct' : 'none', kw: kw,
+        why: (rule.svc ? 'In the Consultant services focus: ' + rule.basis + '. ' : 'Not in the Consultant services focus (type: ' + type.label + '). ') + (kw.length ? 'Drainage keyword match in title: ' + kw.map(kwLabel).join(', ') + '.' : 'No drainage keyword in the title.'),
+        extra: [['Solicitation number', no], ['Status (as listed)', 'Active / open'], ['Published', pub || 'not listed'], ['Type (read from number)', type.label], ['Engineering words in title', eng.length ? eng.map(engLabel).join(', ') : 'none']]
+      });
+    }
+    return out;
+  }
+
+  // Austin "Contracts" open dataset (data.austintexas.gov 84ih-p28j): active master agreements. We keep the Professional Services category only,
+  // one record per agreement, listing the vendors on it. Awarded work: shows who holds the agreement and when it ends (recompete signal, inferred).
+  var AUSTIN_CONTRACTS_URL = 'https://data.austintexas.gov/resource/84ih-p28j.json';
+  var AUSTIN_CONTRACTS_PAGE = 'https://data.austintexas.gov/d/84ih-p28j';
+  function normAustinContracts(rows) {
+    var by = {}, order = [];
+    (rows || []).forEach(function (r) {
+      if (!r || !r.doc_id || !/^professional services$/i.test(str(r.cat_dscr) || '')) return;
+      var k = r.doc_id; if (!by[k]) { by[k] = { r: r, vendors: [] }; order.push(k); }
+      var v = str(r.lgl_nm); if (v && by[k].vendors.indexOf(v) < 0) by[k].vendors.push(v);
+    });
+    return order.map(function (k) {
+      var r = by[k].r, vendors = by[k].vendors, desc = str(r.doc_dscr) || k, eng = matchEng(desc), kw = matchKeywords(desc);
+      var end = isoFromText(r.efend_dt), begin = isoFromText(r.efbgn_dt), lim = pos(r.ma_prch_lmt_am), so = str(r.so_doc_cd) ? str(r.so_doc_cd) + (str(r.so_doc_id) ? ' ' + str(r.so_doc_id) : '') : null;
+      return {
+        id: 'austin-contract:' + k, src: 'austin-contracts', agency: 'City of Austin', kind: 'contract', phase: 'other',
+        title: desc + ' (' + k + ')', stage: 'Awarded: active professional-services agreement per Austin Contracts dataset', status: 'Awarded (active agreement per source)', solType: so || 'Master agreement', svc: true, eng: eng, county: 'Travis',
+        lat: null, lon: null, date: end, dateLabel: 'Agreement end date (as given; may already have passed)', cost: lim, costLabel: 'Authorized spending limit (Austin)', work: 'Professional Services (Austin category)', desc: null,
+        url: AUSTIN_CONTRACTS_URL + '?doc_id=' + encodeURIComponent(k), rel: kw.length ? 'direct' : 'none', kw: kw,
+        why: 'In the Consultant services focus: Source category: Professional Services. Awarded contract, not an open solicitation. Agreement end date can signal a future recompete (inferred).',
+        extra: [['Agreement', k], ['Original solicitation (per source)', so || 'not listed'], ['Effective', begin && end ? begin + ' to ' + end : 'not listed'], ['Vendors on agreement (' + vendors.length + ')', vendors.join('; ')], ['Engineering words in title', eng.length ? eng.map(engLabel).join(', ') : 'none']]
+      };
+    });
+  }
+
+  // City of San Antonio "Bidding & Contracting" list (webapp1.sanantonio.gov/BidContractOpps; HTML grid, paged by form postback).
+  var SA_PAGE = 'https://webapp1.sanantonio.gov/BidContractOpps/Default.aspx';
+  function parseSanAntonio(html) {
+    var out = [];
+    htmlTables(html).forEach(function (rows) {
+      if (!rows.length || !/^description$/i.test(rows[0].cells[0] || '') || rows[0].cells.length < 6) return;
+      rows.slice(1).forEach(function (r) {
+        if (r.cells.length < 6 || !r.href) return;
+        var title = str(r.cells[0]), typeTxt = str(r.cells[1]), dept = str(r.cells[2]), rel = isoFromMDY(r.cells[3]), dueRaw = str(r.cells[5]), due = isoFromMDY(lastMDY(dueRaw));
+        if (!title || !due) return;
+        var m = /(?:content\.aspx\?id=)(\d+)/i.exec(r.href), idn = m ? m[1] : null; if (!idn) return;
+        var type = solType((typeTxt || '') + ' ' + title); if (/request for offer/i.test(typeTxt || '')) type = { code: 'Offer', label: 'Request for offer', cls: 'bid' };
+        if (/competitive sealed proposals/i.test(typeTxt || '')) type = { code: 'RFCSP', label: 'Request for competitive sealed proposals', cls: 'prop' };
+        var eng = matchEng(title), kw = matchKeywords(title), rule = svcRule(type, eng, null);
+        out.push({
+          id: 'sa-sol:' + idn, src: 'sa-bids', agency: 'City of San Antonio', kind: 'solicitation', phase: 'procure',
+          title: title, stage: 'Listed on City of San Antonio Bidding & Contracting', status: 'Open (listed)', solType: typeTxt || type.label, svc: rule.svc, eng: eng, county: 'Bexar',
+          lat: null, lon: null, date: due, dateLabel: 'Solicitation deadline (as listed' + (/extended/i.test(dueRaw) ? ', extended' : '') + ')', cost: null, costLabel: null, work: typeTxt, desc: null,
+          url: 'https://webapp1.sanantonio.gov/BidContractOpps/' + r.href.replace(/&amp;/g, '&').replace(/^\.?\//, ''), rel: kw.length ? 'direct' : 'none', kw: kw,
+          why: (rule.svc ? 'In the Consultant services focus: ' + rule.basis + '. ' : 'Not in the Consultant services focus (type: ' + (typeTxt || type.label) + '). ') + (kw.length ? 'Drainage keyword match in title: ' + kw.map(kwLabel).join(', ') + '.' : 'No drainage keyword in the title.'),
+          extra: [['Type (as listed)', typeTxt || 'not listed'], ['Department', dept || 'not listed'], ['Released', rel || 'not listed'], ['Deadline text (raw)', dueRaw || 'not listed'], ['Engineering words in title', eng.length ? eng.map(engLabel).join(', ') : 'none'], ['Note', 'Documents are on the City SAePS / CivCast portals and need registration. This list shows title, type, department and dates only.']]
+        });
+      });
+    });
+    return out;
+  }
+
   // ---- county centroids for approximate placement (only when a source gives a county but no coordinates) ----
   function countyCentroids(geo) {
     var out = {};
@@ -459,7 +632,7 @@
   // ---- filtering / aggregation ----
   var HOUSTON_AREA = ['harris', 'fort bend', 'montgomery', 'brazoria', 'galveston', 'waller']; // TxDOT Houston District counties
   function inHoustonArea(r) {
-    if (r.agency === 'City of Houston' || r.agency === 'HCFCD') return true; // both agencies are Houston/Harris County bodies
+    if (r.agency === 'City of Houston' || r.agency === 'HCFCD' || r.agency === 'Harris County' || r.agency === 'METRO') return true; // Houston / Harris County bodies
     if (r.county && HOUSTON_AREA.indexOf(String(r.county).toLowerCase().replace(/ county$/, '')) >= 0) return true;
     return r.district === 'Houston District' || r.district === 'Houston';
   }
@@ -468,7 +641,11 @@
     f = f || {};
     var q = f.q ? String(f.q).toLowerCase().split(/\s+/).filter(Boolean) : [];
     return recs.filter(function (r) {
-      if (f.rel === 'direct') { if (r.rel !== 'direct') return false; }
+      if (f.consult) { // Consultant services focus: stated rule in isConsultant(); drainage relevance only applies if "Direct" is picked
+        if (!isConsultant(r)) return false;
+        if (f.rel === 'direct' && r.rel !== 'direct') return false;
+        if (f.eng && !((r.eng && r.eng.length) || (r.kw && r.kw.length))) return false;
+      } else if (f.rel === 'direct') { if (r.rel !== 'direct') return false; }
       else if (f.rel !== 'all' && r.rel === 'none') return false; // default: direct + likely
       if (f.agencies && f.agencies.length && f.agencies.indexOf(r.agency) < 0) return false;
       if (f.phases && f.phases.length && f.phases.indexOf(r.phase) < 0) return false;
@@ -500,13 +677,13 @@
 
   // ---- CSV ----
   function csvCell(v) { if (v === null || v === undefined) return ''; v = String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
-  var CSV_COLS = ['agency', 'kind', 'title', 'phase', 'stage', 'county', 'date', 'dateLabel', 'cost', 'costLabel', 'relevance', 'keywords', 'relevance_basis', 'lat', 'lon', 'location_approx', 'source', 'url', 'id'];
+  var CSV_COLS = ['agency', 'kind', 'title', 'phase', 'stage', 'county', 'date', 'dateLabel', 'cost', 'costLabel', 'relevance', 'keywords', 'relevance_basis', 'lat', 'lon', 'location_approx', 'source', 'url', 'id', 'status', 'solicitation_type', 'engineering_words', 'consultant_focus'];
   function toCSV(recs, sources) {
     var nameOf = {}; (sources || []).forEach(function (s) { nameOf[s.id] = s.name; });
     var lines = [CSV_COLS.join(',')];
     recs.forEach(function (r) {
-      var vals = [r.agency, r.kind, r.title, phaseLabel(r.phase), r.stage, r.county, r.date, r.dateLabel, r.cost, r.costLabel, r.rel === 'direct' ? 'direct' : 'likely (inferred)', (r.kw || []).map(kwLabel).join('; '), r.why,
-        typeof r.lat === 'number' ? r.lat : (typeof r.alat === 'number' ? r.alat : ''), typeof r.lon === 'number' ? r.lon : (typeof r.alon === 'number' ? r.alon : ''), typeof r.lat !== 'number' && typeof r.alat === 'number' ? 'county centroid (inferred)' : '', nameOf[r.src] || r.src, r.url, r.id];
+      var vals = [r.agency, r.kind, r.title, phaseLabel(r.phase), r.stage, r.county, r.date, r.dateLabel, r.cost, r.costLabel, r.rel === 'direct' ? 'direct' : r.rel === 'none' ? 'no drainage keyword' : 'likely (inferred)', (r.kw || []).map(kwLabel).join('; '), r.why,
+        typeof r.lat === 'number' ? r.lat : (typeof r.alat === 'number' ? r.alat : ''), typeof r.lon === 'number' ? r.lon : (typeof r.alon === 'number' ? r.alon : ''), typeof r.lat !== 'number' && typeof r.alat === 'number' ? 'county centroid (inferred)' : '', nameOf[r.src] || r.src, r.url, r.id, r.status || '', r.solType || '', (r.eng || []).map(engLabel).join('; '), isConsultant(r) ? 'yes' : ''];
       lines.push(vals.map(csvCell).join(','));
     });
     return lines.join('\r\n') + '\r\n';
@@ -515,9 +692,9 @@
   var api = {
     KEYWORDS: KEYWORDS, PHASES: PHASES, AGENCIES: AGENCIES, HOUSTON_AREA: HOUSTON_AREA, TXDOT_KEEP_STAGES: TXDOT_KEEP_STAGES, TXDOT_SELECT: TXDOT_SELECT, TXDOT_DATASET: TXDOT_DATASET, TRACKER_FIELDS: TRACKER_FIELDS,
     COH_LAYERS: COH_LAYERS, COH_BASE: COH_BASE, COH_SWMB_BASE: COH_SWMB_BASE, HCFCD_LJA: HCFCD_LJA, HCFCD_PAGE: HCFCD_PAGE, HCFCD_BIDS_PAGE: HCFCD_BIDS_PAGE, PEPS_SELECTED_PAGE: PEPS_SELECTED_PAGE, PEPS_MEETINGS_PAGE: PEPS_MEETINGS_PAGE, FIF_URL: FIF_URL, FIF_PAGE: FIF_PAGE,
-    matchKeywords: matchKeywords, kwLabel: kwLabel, classify: classify, phaseLabel: phaseLabel, phaseColor: phaseColor, agencyColor: agencyColor,
+    matchKeywords: matchKeywords, kwLabel: kwLabel, ENG_KEYWORDS: ENG_KEYWORDS, matchEng: matchEng, engLabel: engLabel, solType: solType, isConsultant: isConsultant, svcRule: svcRule, isoFromSerial: isoFromSerial, BONFIRE_PORTALS: BONFIRE_PORTALS, bonfireRecord: bonfireRecord, AUSTIN_SOL_PAGE: AUSTIN_SOL_PAGE, AUSTIN_SOL_XLSX: AUSTIN_SOL_XLSX, parseAustinActive: parseAustinActive, AUSTIN_CONTRACTS_URL: AUSTIN_CONTRACTS_URL, AUSTIN_CONTRACTS_PAGE: AUSTIN_CONTRACTS_PAGE, normAustinContracts: normAustinContracts, SA_PAGE: SA_PAGE, parseSanAntonio: parseSanAntonio, classify: classify, phaseLabel: phaseLabel, phaseColor: phaseColor, agencyColor: agencyColor,
     normTxdotPI: normTxdotPI, mergeTracker: mergeTracker, normCohCip: normCohCip, normSwmb: normSwmb, normHcfcdMaint: normHcfcdMaint, normFif: normFif, geomCenter: geomCenter,
-    htmlTables: htmlTables, parseHcfcdBids: parseHcfcdBids, parsePepsSelected: parsePepsSelected, parsePepsMeetings: parsePepsMeetings, parseProjectedContracts: parseProjectedContracts,
+    htmlTables: htmlTables, decodeHtml: decodeHtml, parseHcfcdBids: parseHcfcdBids, parsePepsSelected: parsePepsSelected, parsePepsMeetings: parsePepsMeetings, parseProjectedContracts: parseProjectedContracts,
     countyCentroids: countyCentroids, applyApprox: applyApprox, inHoustonArea: inHoustonArea,
     filterRecords: filterRecords, countBy: countBy, sortedCounts: sortedCounts, monthKey: monthKey, daysUntil: daysUntil,
     fmtMoney: fmtMoney, fmtDate: fmtDate, fmtMonth: fmtMonth, toCSV: toCSV, CSV_COLS: CSV_COLS, isoFromMs: isoFromMs, isoFromMDY: isoFromMDY, prettySponsor: prettySponsor

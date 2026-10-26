@@ -133,6 +133,66 @@ assert.ok(lines[3].indexOf('"Widen SH 99, ""quoted"""') > 0, 'CSV quoting');
 assert.ok(lines[3].indexOf('county centroid (inferred)') > 0, 'approx location flagged in CSV');
 assert.ok(lines[3].indexOf('likely (inferred)') > 0);
 
+// ---- consultant-services solicitations
+assert.strictEqual(M.solType('RFQ - Clear Creek Phase 2').cls, 'qual');
+assert.strictEqual(M.solType('RFSQ - Professional Engineering Services').cls, 'qual');
+assert.strictEqual(M.solType('RFQS 6100 CLMP401').cls, 'qual', 'Austin RFQS is qualifications-type');
+assert.strictEqual(M.solType('27-0007 RFQt Coin Only Parking Meters').cls, 'bid', 'Fort Worth RFQt is a price quote, not qualifications');
+assert.strictEqual(M.solType('RFP - Fire Inspection Software').cls, 'prop');
+assert.strictEqual(M.solType('ITB - Paving and Drainage Improvements').cls, 'bid');
+assert.strictEqual(M.solType('Request for Competitive Sealed Proposals').cls, 'prop');
+assert.strictEqual(M.solType('Mowing services').code, null);
+assert.deepStrictEqual(M.matchEng('Professional Engineering Design Services'), ['engineering', 'design', 'professional']);
+assert.ok(M.matchEng('Design-Build of a Fire Station').indexOf('design') < 0, 'design-build alone is not design services');
+assert.ok(M.matchEng('Employee Engagement Survey').indexOf('survey') < 0, 'an employee survey is not land surveying');
+assert.ok(M.matchEng('Land surveying and SUE services').indexOf('survey') >= 0);
+const bfP = M.BONFIRE_PORTALS.find((p) => p.sub === 'harriscountytx');
+const bf1 = M.bonfireRecord({ ProjectID: '255416', ReferenceID: '26/0336', ProjectName: 'RFQ - Clear Creek Federal Flood Risk Management Project - Phase 2 - Hughes Stormwater Detention Basin', DateClose: '2026-11-16 20:00:00' }, bfP);
+assert.strictEqual(bf1.url, 'https://harriscountytx.bonfirehub.com/opportunities/255416'); assert.strictEqual(bf1.date, '2026-11-16'); assert.strictEqual(bf1.status, 'Open');
+assert.strictEqual(bf1.svc, true); assert.strictEqual(bf1.rel, 'direct'); assert.ok(bf1.kw.indexOf('stormwater') >= 0 || bf1.kw.indexOf('detention') >= 0); assert.ok(M.isConsultant(bf1));
+const bf2 = M.bonfireRecord({ ProjectID: '1', ReferenceID: 'x', ProjectName: 'ITB - Paving and Drainage Improvements for Bourgeois Road', DateClose: '2026-10-26 19:00:00' }, bfP);
+assert.strictEqual(bf2.svc, false); assert.ok(!M.isConsultant(bf2), 'construction ITB is outside the consultant focus even with a drainage word');
+const bf3 = M.bonfireRecord({ ProjectID: '2', ReferenceID: 'y', ProjectName: 'RFP - Fire Inspection Management Software', DateClose: '2026-11-09 20:00:00' }, bfP);
+assert.strictEqual(bf3.svc, false, 'RFP without engineering words is out');
+const bf4 = M.bonfireRecord({ ProjectID: '3', ReferenceID: 'z', ProjectName: 'RFP - Engineering and Design Services for Roadway', DateClose: '2026-11-09 20:00:00' }, bfP);
+assert.strictEqual(bf4.svc, true, 'RFP with engineering words is in');
+const bf5 = M.bonfireRecord({ ProjectID: '4', ReferenceID: 'Q26-063', ProjectName: 'Architectural, Engineering & Environmental Review Services for Federally Funded Residential Projects', DateClose: '2026-11-17 20:00:00' }, bfP);
+assert.strictEqual(bf5.svc, true, 'untyped title with engineering/architect words is in, with the basis stated'); assert.ok(/Type not stated/.test(bf5.why));
+assert.strictEqual(M.bonfireRecord({ ProjectID: '5', ReferenceID: 'r', ProjectName: 'Central Hydraulic System Kits', DateClose: '2026-10-27 20:00:00' }, bfP).svc, false);
+assert.strictEqual(M.bonfireRecord({ ProjectID: '', ProjectName: 'x' }, bfP), null);
+assert.strictEqual(M.isoFromSerial(46322.583333), '2026-10-27'); assert.strictEqual(M.isoFromSerial('abc'), null);
+const austinRows = [['Solicitation ID', 'Solicitation No', 'Description', 'Published Date', 'Closing Date', 'Primary Name', 'Primary Email'],
+  [144005, 'RFQS 6100 CLMP401', 'Davis Water Treatment Plant Filter System Improvements', 46297.29, 46371.58, 'Mayo, Taylor', 'taylor@example.org'],
+  [144287, 'IFB 1100 AGM1008', 'Capacitor Banks', 46307.3, 46322.58, 'X', 'x@example.org']];
+const au = M.parseAustinActive(austinRows);
+assert.strictEqual(au.length, 2); assert.strictEqual(au[0].svc, true); assert.strictEqual(au[1].svc, false);
+assert.strictEqual(au[0].date, '2026-12-15'); assert.ok(au[0].url.endsWith('sid=144005'));
+assert.ok(!JSON.stringify(au).includes('example.org'), 'staff contact emails are not copied');
+const ac = M.normAustinContracts([
+  { doc_id: 'PA1', doc_dscr: '2023 TRANSPORTATION ENGINEERING SERVICES ROTATION LIST', cat_dscr: 'Professional Services', lgl_nm: 'BGE, INC', efbgn_dt: '2023-05-01T00:00:00.000Z', efend_dt: '2026-04-30T00:00:00.000Z', ma_prch_lmt_am: '30000000', so_doc_cd: 'RFQS', so_doc_id: 'ABC1' },
+  { doc_id: 'PA1', doc_dscr: '2023 TRANSPORTATION ENGINEERING SERVICES ROTATION LIST', cat_dscr: 'Professional Services', lgl_nm: 'COBB FENDLEY', efend_dt: '2026-04-30T00:00:00.000Z' },
+  { doc_id: 'GA2', doc_dscr: 'CHLORIDE', cat_dscr: 'Commodities (Goods)', lgl_nm: 'PENCCO' }]);
+assert.strictEqual(ac.length, 1, 'one record per agreement, Professional Services only');
+assert.ok(ac[0].extra.some((e) => /Vendors/.test(e[0]) && /BGE/.test(e[1]) && /COBB/.test(e[1]))); assert.strictEqual(ac[0].kind, 'contract'); assert.ok(/Awarded/.test(ac[0].status)); assert.strictEqual(ac[0].cost, 30000000);
+const saHtml = '<table><tr><th>Description</th><th>Type</th><th>Department</th><th>Release</th><th>Blackout</th><th>Solicitation Deadline</th></tr>' +
+  '<tr><td><a href="Content.aspx?id=6318&amp;page=Default">RFQ 2026-125 San Antonio Fire Department Facilities Assessment</a></td><td>Request for Qualifications</td><td>Capital Delivery Department</td><td>09/25/2026</td><td>N/A</td><td>10/27/2026</td></tr>' +
+  '<tr><td><a href="Content.aspx?id=6246&amp;page=Default">Spay/Neuter Contract Veterinarians</a></td><td>Request for Applications</td><td>Animal Care Svcs</td><td>07/14/2026</td><td>N/A</td><td>08/25/2026Extended to 10/26/2026</td></tr>' +
+  '<tr><td>1</td><td>2</td></tr></table>';
+const sa = M.parseSanAntonio(saHtml);
+assert.strictEqual(sa.length, 2); assert.strictEqual(sa[0].svc, true); assert.strictEqual(sa[1].svc, false); assert.strictEqual(sa[1].date, '2026-10-26', 'extended deadline is the last date');
+assert.strictEqual(sa[0].url, 'https://webapp1.sanantonio.gov/BidContractOpps/Content.aspx?id=6318&page=Default');
+// focus filter
+const fr = [bf1, bf2, bf3, bf4, au[0], ac[0], { id: 'x', agency: 'TxDOT', src: 'txdot-pcl', kind: 'procurement', phase: 'procure', rel: 'none', title: 't' }, { id: 'y', agency: 'TxDOT', src: 'txdot-pi', kind: 'project', phase: 'design', rel: 'direct', title: 'drain' }];
+const fids = (f) => M.filterRecords(fr, f, {}).map((r) => r.id).join(',');
+assert.strictEqual(M.filterRecords(fr, { consult: true }, {}).length, 5, 'focus keeps qualification/engineering-RFP/Austin contract/PCL rows, drops construction and plain projects');
+assert.ok(!/(^|,)y(,|$)/.test(fids({ consult: true })));
+assert.strictEqual(M.filterRecords(fr, { consult: true, rel: 'direct' }, {}).length, 1, 'Direct narrows to the drainage-keyword consultant row');
+assert.strictEqual(M.filterRecords(fr, { consult: true, eng: true }, {}).length, 3, 'engineering/drainage word match only (PCL row has none)');
+assert.ok(M.filterRecords(fr, { rel: 'relevant' }, {}).some((r) => r.id === 'y'), 'without the focus the old behavior is unchanged');
+assert.ok(M.inHoustonArea({ agency: 'Harris County' }) && !M.inHoustonArea({ agency: 'City of Austin' }));
+const csvS = M.toCSV([bf1], [{ id: bf1.src, name: 'x' }]).trim().split('\r\n');
+assert.ok(csvS[0].indexOf('consultant_focus') > 0 && csvS[1].indexOf('Open') > 0 && csvS[1].endsWith('yes'));
+
 // ---- shipped data file
 const data = JSON.parse(fs.readFileSync(path.join(dir, 'data', 'opportunities.json'), 'utf8'));
 assert.ok(!isNaN(Date.parse(data.generatedAt)), 'generatedAt');
@@ -151,9 +211,11 @@ data.records.forEach((r) => {
   if (r.alat !== undefined) assert.ok(r.src === 'txdot-pi' && r.lat === undefined, 'approx only for TxDOT rows without coordinates ' + r.id);
   assert.ok(['direct', 'likely', 'none'].includes(r.rel), 'rel ' + r.id);
   if (r.rel !== 'none') assert.ok(r.why, 'relevance basis stated ' + r.id);
-  if (r.rel === 'none') assert.strictEqual(r.src, 'txdot-pcl', 'only the projected-contracts list keeps non-relevant rows');
+  if (r.rel === 'none') assert.ok(r.src === 'txdot-pcl' || r.kind === 'solicitation' || r.kind === 'contract', 'only the projected-contracts list and consultant solicitations keep rows without a drainage word');
+  if (r.kind === 'solicitation' || r.kind === 'contract') { assert.ok(r.status && r.solType && r.dateLabel, 'status/type/date label given ' + r.id); assert.strictEqual(r.lat, undefined, 'solicitations are not mapped'); assert.ok(r.eng === undefined || Array.isArray(r.eng), 'eng match list ' + r.id); }
 });
-['txdot-pi', 'coh-cip', 'coh-swmb', 'hcfcd-maint'].forEach((s) => assert.ok(data.records.some((r) => r.src === s), 'has records from ' + s));
+['txdot-pi', 'coh-cip', 'coh-swmb', 'hcfcd-maint', 'austin-active', 'austin-contracts', 'sa-bids', 'bonfire-harriscountytx'].forEach((s) => assert.ok(data.records.some((r) => r.src === s), 'has records from ' + s));
+assert.ok(data.records.filter(M.isConsultant).length > 50, 'consultant-services focus is populated');
 
 // ---- page wiring
 const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
