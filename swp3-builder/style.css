@@ -10,7 +10,7 @@ header .sub{font-size:12.5px;opacity:.9;line-height:1.35}
 .draftstrip{background:#fdecea;color:#8a1c12;border-bottom:1px solid #f1b5ae;font-size:12.5px;font-weight:700;text-align:center;padding:6px 10px}
 main{max-width:760px;margin:0 auto;padding:12px calc(12px + env(safe-area-inset-right)) 8px calc(12px + env(safe-area-inset-left))}
 [data-pane]{display:none}
-body[data-tab=project] [data-pane=project],body[data-tab=permit] [data-pane=permit],body[data-tab=bmps] [data-pane=bmps],body[data-tab=design] [data-pane=design],body[data-tab=outline] [data-pane=outline],body[data-tab=inspect] [data-pane=inspect],body[data-tab=more] [data-pane=more]{display:block}
+body[data-tab=project] [data-pane=project],body[data-tab=permit] [data-pane=permit],body[data-tab=bmps] [data-pane=bmps],body[data-tab=design] [data-pane=design],body[data-tab=outline] [data-pane=outline],body[data-tab=summary] [data-pane=summary],body[data-tab=inspect] [data-pane=inspect],body[data-tab=more] [data-pane=more]{display:block}
 .foot{font-size:12px;color:#667;text-align:center;margin:14px 4px 4px}
 .card{background:#fff;border:1px solid #d3ddd8;border-radius:12px;padding:12px;margin:0 0 12px;box-shadow:0 1px 2px rgba(16,60,40,.05)}
 .card h2{margin:0 0 6px;font-size:17px;color:#1b5e45}
@@ -180,3 +180,26 @@ label.f.sm{font-size:12px;font-weight:500}
 .doc.sum table{font-size:13px}
 .calcpkg .sheet{page-break-inside:avoid}
 @media print{#printArea .calcpkg pre{white-space:pre-wrap;font-size:8pt}}
+
+/* Summary Sheet tab */
+.ssec>summary{gap:8px;flex-wrap:wrap}.ssec .stt{flex:1 1 150px;min-width:0;overflow-wrap:anywhere}.ssec>summary .pill{flex:none}.ssec>summary::after{margin-left:6px}
+.sbody{padding:10px 12px 12px}
+.sf{border-bottom:1px solid #e3ebe7;padding:6px 0 8px}.sf:last-of-type{border-bottom:0}
+.sfh{display:flex;align-items:flex-end;gap:8px}.sfh>.slab,.sfh>.chk,.sfh>.tlabel{flex:1;min-width:0}
+.slab{display:block;font-size:13px;font-weight:600;color:#1b5e45}.slab>span{display:block;margin-bottom:3px}
+.tlabel{align-self:center;color:#1b5e45;font-size:14px}
+.qbtn{flex:none;width:44px;height:44px;border-radius:50%;border:1px solid #1b5e45;background:#fff;color:#1b5e45;font-weight:700;font-size:17px;cursor:pointer;padding:0}
+.qbtn[aria-expanded=true]{background:#1b5e45;color:#fff}
+.sfm{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:2px}.sfm:empty{display:none}
+.rst{min-height:44px;min-width:44px;border:0;background:none;color:#b42318;font-weight:600;font-size:13px;text-decoration:underline;cursor:pointer;padding:0 8px}.rst[hidden]{display:none}
+.tpr{align-items:center}.tpl{flex:1;min-width:0;font-size:15px;overflow-wrap:anywhere}
+.tpb{display:flex;align-items:center;gap:4px;min-height:44px;padding:0 6px;font-weight:700;color:#1b5e45;cursor:pointer}.tpb input{width:26px;height:26px;accent-color:#1b5e45;margin:0}
+.trow{display:grid;grid-template-columns:22px repeat(var(--c),minmax(0,1fr));gap:0 8px;align-items:end;margin-bottom:6px}.rn{font-size:12px;color:#667;padding-bottom:14px}
+.shelp{background:#f2f8f5;border:1px solid #cfe1d8;border-radius:10px;padding:10px 12px;margin:6px 0;font-size:14px}
+.shelp p{margin:0 0 6px}.shelp dl{margin:0 0 6px}.shelp dt{font-weight:700;color:#1b5e45;font-size:12.5px;margin-top:6px}.shelp dd{margin:0;overflow-wrap:anywhere}
+.shelp .hl{margin:6px 0;overflow-wrap:anywhere}.shelp .hl ul{margin:4px 0 0 18px;padding:0}
+.shbtn{margin-bottom:8px}
+.pdfrow{padding:8px 0;border-top:1px solid #e3ebe7}.filebtn{margin:6px 8px 0 0;cursor:pointer}
+#sumWarn:empty{display:none}
+.pf{margin-right:2px}
+@media (max-width:420px){#tabs button{font-size:10px;letter-spacing:-.1px}}

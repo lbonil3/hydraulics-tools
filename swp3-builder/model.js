@@ -50,7 +50,7 @@
     var f = defaultForm(fields.type);
     Object.keys(fields).forEach(function (k) { if (k !== 'name') f[k] = fields[k]; });
     return { id: uid('p'), name: String(fields.name || 'New SWP3 project').trim() || 'New SWP3 project', created: now, updated: now,
-      form: f, sel: {}, design: {}, situ: null, inspLog: [], rainLog: [] };
+      form: f, sel: {}, design: {}, situ: null, summary: { variant: '', v: {} }, inspLog: [], rainLog: [] };
   }
   // Design inputs: plain objects of strings/numbers/booleans (depth <= 4); anything else is dropped.
   function cleanDesign(v, depth) {
@@ -62,6 +62,17 @@
     if (Array.isArray(v)) return v.slice(0, 60).map(function (x) { return cleanDesign(x, depth + 1); }).filter(function (x) { return x !== undefined; });
     if (typeof v === 'object') { var o = {}; Object.keys(v).slice(0, 80).forEach(function (k) { if (/^[A-Za-z0-9_.-]{1,40}$/.test(k)) { var c = cleanDesign(v[k], depth + 1); if (c !== undefined) o[k] = c; } }); return o; }
     return undefined;
+  }
+  // Summary Sheet edits: only what the user changed (booleans or strings); the rest is prefilled from the project each time.
+  function cleanSummary(x) {
+    var out = { variant: '', v: {} };
+    if (!x || typeof x !== 'object') return out;
+    if (x.variant === 'A' || x.variant === 'B') out.variant = x.variant;
+    if (x.v && typeof x.v === 'object') Object.keys(x.v).slice(0, 700).forEach(function (k) {
+      if (!/^[A-Za-z0-9_.-]{1,40}$/.test(k)) return;
+      var c = x.v[k]; if (typeof c === 'boolean') out.v[k] = c; else if (typeof c === 'string') out.v[k] = c.slice(0, 1200);
+    });
+    return out;
   }
   function sanitizeProject(p) {
     if (!p || typeof p !== 'object') return null;
@@ -75,7 +86,7 @@
     var sel = {}; if (p.sel && typeof p.sel === 'object') Object.keys(p.sel).forEach(function (k) { if (bmpById(k)) sel[k] = !!p.sel[k]; });
     var now = new Date().toISOString();
     return { id: String(p.id || uid('p')), name: String(p.name || 'Imported project'), created: String(p.created || now), updated: String(p.updated || now),
-      form: f, sel: sel, design: (p.design && typeof p.design === 'object') ? (cleanDesign(p.design, 0) || {}) : {}, situ: (p.situ && typeof p.situ === 'object') ? (cleanDesign(p.situ, 0) || null) : null,
+      form: f, sel: sel, design: (p.design && typeof p.design === 'object') ? (cleanDesign(p.design, 0) || {}) : {}, situ: (p.situ && typeof p.situ === 'object') ? (cleanDesign(p.situ, 0) || null) : null, summary: cleanSummary(p.summary),
       inspLog: Array.isArray(p.inspLog) ? p.inspLog.filter(function (x) { return x && isoOk(x.date); }).map(function (x) { return { id: String(x.id || uid('i')), date: x.date, kind: String(x.kind || 'routine'), by: String(x.by || ''), notes: String(x.notes || '') }; }) : [],
       rainLog: Array.isArray(p.rainLog) ? p.rainLog.filter(function (x) { return x && isoOk(x.date) && num(x.inches) != null; }).map(function (x) { return { id: String(x.id || uid('r')), date: x.date, inches: num(x.inches) }; }) : [] };
   }
@@ -677,7 +688,7 @@
   var api = {
     APP_ID: APP_ID, VERSION: VERSION, DISCLAIMER: DISCLAIMER, INSP_MODES: INSP_MODES, LEVEL_ORDER: LEVEL_ORDER,
     num: num, todayStr: todayStr, addDays: addDays, daysBetween: daysBetween, fmtDate: fmtDate, isoOk: isoOk, esc: esc, uid: uid, fix: fix, typeLabel: typeLabel, bmpById: bmpById,
-    defaultForm: defaultForm, newProject: newProject, sanitizeProject: sanitizeProject, backup: backup, restore: restore,
+    defaultForm: defaultForm, newProject: newProject, sanitizeProject: sanitizeProject, cleanSummary: cleanSummary, backup: backup, restore: restore,
     totals: totals, permitDetermination: permitDetermination, deadlines: deadlines, basinCheck: basinCheck, edwardsCounty: edwardsCounty,
     recommendBmps: recommendBmps, selectedIds: selectedIds, applySuggestions: applySuggestions, checkSelection: checkSelection, sealFlags: sealFlags, flagsFor: flagsFor,
     inspectionPlan: inspectionPlan, inspectionDue: inspectionDue,

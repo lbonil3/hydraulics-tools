@@ -246,7 +246,7 @@
     var t = ui.tab; document.body.setAttribute('data-tab', t);
     Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function (b) { b.classList.toggle('on', b.getAttribute('data-t') === t); });
     if (t === 'project') renderProject(); else if (t === 'permit') renderPermit(); else if (t === 'bmps') renderBmps();
-    else if (t === 'design') { if (window.SwpDesignUI) window.SwpDesignUI.renderDesign(); } else if (t === 'outline') renderOutline(); else if (t === 'inspect') renderInspect(); else renderMore();
+    else if (t === 'design') { if (window.SwpDesignUI) window.SwpDesignUI.renderDesign(); } else if (t === 'summary') { if (window.SwpSummaryUI) window.SwpSummaryUI.render(); } else if (t === 'outline') renderOutline(); else if (t === 'inspect') renderInspect(); else renderMore();
   }
   function setTab(t) { if (ui.tab === 'project') rememberOpen(); ui.tab = t; render(); window.scrollTo(0, 0); }
 
@@ -307,4 +307,5 @@
   window.SwpApp = { cur: cur, save: save, toast: toast, printHtml: printHtml, download: download, render: render, renderBmps: renderBmps, ui: ui, esc: esc, bd: bd, M: M, D: D, fileName: fileName };
   render();
   if (window.SwpDesignUI) window.SwpDesignUI.init(window.SwpApp);
+  if (window.SwpSummaryUI) window.SwpSummaryUI.init(window.SwpApp);
 })();

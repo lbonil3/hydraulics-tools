@@ -34,6 +34,7 @@
   <section data-pane="bmps" id="paneBmps" aria-label="BMP library"></section>
   <section data-pane="design" id="paneDesign" aria-label="Design calculations"></section>
   <section data-pane="outline" id="paneOutline" aria-label="SWP3 outline"></section>
+  <section data-pane="summary" id="paneSummary" aria-label="TxDOT SWP3 Summary Sheet"></section>
   <section data-pane="inspect" id="paneInspect" aria-label="Inspections"></section>
   <section data-pane="more" id="paneMore" aria-label="Projects, sources and export"></section>
   <p class="foot">Draft for engineer review &ndash; not a substitute for the TCEQ permit text. Data stays on this device.</p>
@@ -45,6 +46,7 @@
   <button type="button" data-t="bmps"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-9 4 6 3-4 6 7z"/><path d="M3 21h18"/></svg>BMPs</button>
   <button type="button" data-t="design"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M16 15h0"/></svg>Design</button>
   <button type="button" data-t="outline"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>Outline</button>
+  <button type="button" data-t="summary"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Summary</button>
   <button type="button" data-t="inspect"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/><path d="M8.5 11l2 2 3.5-4"/></svg>Inspect</button>
   <button type="button" data-t="more"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</button></nav>
 
@@ -61,5 +63,11 @@
 <script src="recommend.js"></script>
 <script src="app.js"></script>
 <script src="design-ui.js"></script>
+<script src="vendor/pdf-lib.min.js"></script>
+<script src="summary-layout.js"></script>
+<script src="summary.js"></script>
+<script src="summary-help.js"></script>
+<script src="summary-pdf.js"></script>
+<script src="summary-ui.js"></script>
 </body>
 </html>
