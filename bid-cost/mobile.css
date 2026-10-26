@@ -11,8 +11,7 @@ html{-webkit-text-size-adjust:100%}
   .count{width:100%;font-size:14px}
   #grid{font-size:13px}
   #grid tbody td{padding:8px 6px}
-  .item-header,.spec-link,.detail-link,.example-link{min-height:44px}
-  .item-header-row{flex-wrap:wrap}
+  .item-header,.spec-link,.detail-link{min-height:44px}
   .item-body table{font-size:13px}
   .cite{padding:8px 12px 24px;font-size:12.5px}
 }
