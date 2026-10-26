@@ -34,6 +34,13 @@ async function getJson(url) {
   if (j && j.error) throw new Error('API error ' + JSON.stringify(j.error).slice(0, 200) + ' for ' + url.slice(0, 120));
   return j;
 }
+
+async function getWithJar(url) {
+  const res = await fetch(url, { headers: { 'user-agent': UA }, redirect: 'follow' });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url.slice(0, 120));
+  const cookies = (res.headers.getSetCookie ? res.headers.getSetCookie() : []).map((c) => c.split(';')[0]).join('; ');
+  return { body: await res.text(), cookie: cookies };
+}
 const qs = (o) => Object.keys(o).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(o[k])).join('&');
 
 async function arcgisAll(base, params, pageSize) {
@@ -174,8 +181,49 @@ const SOURCES = [
       const feats = await arcgisAll(M.FIF_URL, { where: '1=1', outFields: '*', returnGeometry: false }, 1000);
       const recs = feats.map((f) => M.normFif(f.attributes)).filter(Boolean);
       return { fetched: feats.length, recs, note: 'Mirror hosted by a consulting firm. Rows have sponsor, name, estimated cost and FIF type; no stage, date or coordinates.' };
+    } },
+  // ---- consultant-services solicitations (added in radar-consultant-services) ----
+  { id: 'austin-active', name: 'City of Austin Finance Online: Active Solicitations (xlsx export of the public page)', agency: 'City of Austin', type: 'Snapshot (xlsx download; public, no login; austintexas.gov has no robots.txt for this host)', page: M.AUSTIN_SOL_PAGE,
+    run: async () => {
+      const rows = xlsxRows(await get(M.AUSTIN_SOL_XLSX, { binary: true })); const recs = M.parseAustinActive(rows);
+      if (!recs.length) throw new Error('no active solicitations parsed (export layout may have changed)');
+      const svc = recs.filter(M.isConsultant).length;
+      return { fetched: recs.length, recs, note: 'Every active solicitation Austin lists (all categories). ' + svc + ' are in the Consultant services focus (RFQS = qualifications-type, or RFP with engineering words). Contact names/emails in the export are not copied. Austin lists open solicitations only; no "upcoming" list was found.' };
+    } },
+  { id: 'austin-contracts', name: 'City of Austin Contracts dataset (data.austintexas.gov / Socrata 84ih-p28j): active professional-services agreements', agency: 'City of Austin', type: 'Snapshot (open-data API, CORS open); awarded work, not solicitations', page: M.AUSTIN_CONTRACTS_PAGE,
+    run: async () => {
+      const rows = JSON.parse(await get(M.AUSTIN_CONTRACTS_URL + '?' + qs({ $limit: 50000 }), { accept: 'application/json' }));
+      const recs = M.normAustinContracts(rows);
+      if (!recs.length) throw new Error('no Professional Services agreements found');
+      return { fetched: rows.length, recs, note: 'Dataset rows: ' + rows.length + ' (' + rows.filter((r) => /^professional services$/i.test(r.cat_dscr || '')).length + ' in category Professional Services, grouped into ' + recs.length + ' agreements with their vendor lists). These are AWARDED agreements; the end date can hint at a recompete (inferred). Dataset says contracts are visible only while active, but several end dates are in the past; shown as given.' };
+    } },
+  { id: 'sa-bids', name: 'City of San Antonio Bidding & Contracting list (HTML grid, 2 pages)', agency: 'City of San Antonio', type: 'Snapshot (HTML scrape; webapp1.sanantonio.gov has no robots.txt)', page: M.SA_PAGE,
+    run: async () => {
+      const first = await getWithJar(M.SA_PAGE); let recs = M.parseSanAntonio(first.body); let pages = 1;
+      const fields = {}; let m; const re = /<input[^>]*type="hidden"[^>]*name="([^"]+)"[^>]*value="([^"]*)"/g;
+      while ((m = re.exec(first.body))) fields[m[1]] = M.decodeHtml ? M.decodeHtml(m[2]) : m[2];
+      const pager = (first.body.match(/__doPostBack\(&#39;(ctl00\$ContentPlaceHolder1\$gvBidContractOpps)&#39;,&#39;Page\$(\d+)&#39;\)/g) || []).map((x) => +/Page\$(\d+)/.exec(x)[1]);
+      const maxPage = Math.min(Math.max.apply(null, [1].concat(pager)), 6);
+      for (let pg = 2; pg <= maxPage; pg++) {
+        try {
+          const body = new URLSearchParams(Object.assign({}, fields, { __EVENTTARGET: 'ctl00$ContentPlaceHolder1$gvBidContractOpps', __EVENTARGUMENT: 'Page$' + pg })).toString();
+          const res = await fetch(M.SA_PAGE, { method: 'POST', headers: { 'user-agent': UA, 'content-type': 'application/x-www-form-urlencoded', cookie: first.cookie }, body });
+          if (!res.ok) break; recs = recs.concat(M.parseSanAntonio(await res.text())); pages++;
+        } catch (e) { break; }
+      }
+      const seen = {}; recs = recs.filter((r) => (seen[r.id] ? false : (seen[r.id] = 1)));
+      if (!recs.length) throw new Error('no San Antonio rows parsed (page layout may have changed)');
+      return { fetched: recs.length, recs, note: 'Read ' + pages + ' page(s) of the list. The list shows title, type, department and dates; solicitation documents are on SAePS/CivCast and need registration. ' + recs.filter(M.isConsultant).length + ' are in the Consultant services focus.' };
     } }
-];
+].concat(M.BONFIRE_PORTALS.map((p) => ({ id: 'bonfire-' + p.sub, name: p.agency + ' open solicitations (Bonfire portal ' + p.sub + '.bonfirehub.com, the portal\'s own public JSON list)', agency: p.agency, type: 'Snapshot (undocumented public JSON the portal page itself loads; robots.txt allows; no login)', page: 'https://' + p.sub + '.bonfirehub.com/portal/?tab=openOpportunities',
+  run: async () => {
+    const j = JSON.parse(await get('https://' + p.sub + '.bonfirehub.com/PublicPortal/getOpenPublicOpportunitiesSectionData', { accept: 'application/json' }));
+    if (!j || !j.success || !j.payload) throw new Error('unexpected Bonfire response');
+    const list = Array.isArray(j.payload.projects) ? j.payload.projects : Object.keys(j.payload.projects || {}).map((k) => j.payload.projects[k]);
+    const recs = list.map((x) => M.bonfireRecord(x, p)).filter(Boolean);
+    return { fetched: list.length, recs, note: 'All open opportunities on the portal (' + list.length + '); ' + recs.filter(M.isConsultant).length + ' are in the Consultant services focus. Close times are not labeled with a time zone by the portal, so only the date is used. Bonfire opportunity pages return HTTP 403 to scripts but open in a browser.' };
+  } })));
+
 
 async function main() {
   let prev = null; try { prev = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch (e) { /* first run */ }

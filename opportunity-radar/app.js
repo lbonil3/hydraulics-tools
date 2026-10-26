@@ -8,14 +8,14 @@
 
   var state = {
     data: null, recs: [], byId: {}, sources: [], watch: {}, live: null,
-    f: { q: '', rel: 'relevant', agencies: [], phases: [], kinds: [], kw: [], houston: false, located: false, watchOnly: false, month: null },
+    f: { q: '', rel: 'relevant', consult: true, eng: false, agencies: [], phases: [], kinds: [], kw: [], houston: false, located: false, watchOnly: false, month: null },
     tab: 'radar', colorBy: 'agency', sort: 'date', rows: 100, filtered: [], today: new Date().toISOString().slice(0, 10)
   };
   try { state.watch = JSON.parse(localStorage.getItem(WATCH_KEY) || '{}') || {}; } catch (e) { state.watch = {}; }
   function saveWatch() { try { localStorage.setItem(WATCH_KEY, JSON.stringify(state.watch)); } catch (e) { toast('Could not save the watchlist (browser storage is blocked).'); } }
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, 3500); }
 
-  var KIND_LABEL = { project: 'Project', procurement: 'Consultant procurement signal', funding: 'Funding commitment' };
+  var KIND_LABEL = { solicitation: 'Open solicitation', contract: 'Awarded contract (incumbent info)', procurement: 'Consultant procurement signal', project: 'Project', funding: 'Funding commitment' };
   var NOT_USED = [
     ['Texas SmartBuy ESBD (state solicitations)', 'https://www.txsmartbuy.gov/esbd', 'No machine-readable feed found. The only data route is an undocumented internal API (it returned 405 to a plain request), and txsmartbuy.gov/robots.txt says "Disallow: /". Not scraped. Search it by hand.'],
     ['TxDOT TxDOT_Projects official ArcGIS layer', 'https://services.arcgis.com/KTcxiTD9dsQw4r7Z/ArcGIS/rest/services/TxDOT_Projects/FeatureServer', 'Now requires a token (error 499) and maps.txdot.gov MapServer reports "not started". The Project Tracker layer (TxDOT_Projects_Info) and data.texas.gov are used instead.'],
@@ -24,11 +24,16 @@
     ['Harris County Engineering / County Engineer CIP', 'https://oce.harriscountytx.gov/Divisions/Capital-Projects-Infrastructure', 'No public project feed found (a search hit turned out to be an unrelated BC, Canada service). Not used.'],
     ['HCFCD capital / 2018 bond program projects', 'https://www.hcfcd.org/bondprogram', 'Dashboard only; no public REST layer found. The only machine-readable HCFCD project data found is the maintenance layer hosted by LJA Engineering (used, flagged unofficial).'],
     ['Fort Bend County Drainage District', 'https://gisportal.fortbendcountytx.gov/arcgis/rest/services/Drainage/Drainage_Public/FeatureServer', 'ArcGIS service responds but holds gauges, dams, rivers, levees and floodplains: no project list.'],
-    ['Montgomery, Brazoria and Galveston counties; Port Houston; METRO', '', 'No public project or solicitation feed found in this pass. Not tested beyond web search.'],
+    ['Montgomery County (solicitations)', 'https://www.mctx.org/departments/departments_l_-_p/purchasing/bid_proposal_opening_date.php', 'mctx.org/robots.txt disallows all generic crawlers ("User-agent: *  Disallow: /"). Not scraped. Check the bid page by hand.'],
+    ['Port Houston (solicitations)', 'https://porthouston.com/business/strategic-sourcing/strategic-sourcing-overview/', 'Bids are on a Workday Strategic Sourcing public portal that is built in the browser (the page the server returns is a 1.5 KB shell, no data feed). Not used.'],
+    ['City of Houston solicitations (Beacon Bid)', 'https://www.beaconbid.com/solicitations/city-of-houston/open', 'Houston posts all solicitations on Beacon Bid, which answers scripts with an AWS WAF human-verification (captcha) page. Not bypassed. Houston\'s own Procurement Plan page is a stale FY25 Q2 table (2023 dates) and the open-data "Archived Solicitations" file ends December 2023. Check Beacon by hand and use the Houston engineering RFQs there.'],
+    ['HCTRA (Harris County Toll Road Authority) consultant RFQs', 'https://www.hctra.org/BusinessOpportunities', 'The page is a single-page app (5 KB shell); its data comes from an internal API that is not documented. Not used. HCTRA RFQs did not appear in the Harris County Bonfire list.'],
+    ['Texas SmartBuy / TxDOT ESBD', 'https://www.txsmartbuy.gov/esbd', 'robots.txt says "Disallow: /". Not scraped.'],
     ['TWDB Flood Infrastructure Fund (official)', 'https://www.twdb.texas.gov/financial/programs/fif/dashboard.asp', 'Official source is a dashboard. The only feed found is a table mirrored by Pape-Dawson (used, flagged as a mirror).'],
     ['GLO CDBG-MIT / Regional Mitigation awards', 'https://www.glo.texas.gov/disaster-recovery/mitigation/regional-mitigation', 'Published as PDF award tables, not a feed. Not used.'],
     ['SAM.gov opportunities', 'https://sam.gov/', 'API needs a key. Skipped as instructed.'],
-    ['Bonfire / Euna portals (Harris County, TxDOT PEPS)', 'https://harriscountytx.bonfirehub.com/', 'Open-solicitation lists are behind the portal UI with no public feed. Individual Bonfire links are shown where HCFCD publishes them.']
+    ['Bonfire portals not found', 'https://www.bonfirehub.com/', 'No Bonfire portal was found for City of Houston, Port Houston, Montgomery County or HCTRA (tested likely sub-domains). Brazoria County has a portal with zero open items at snapshot time.'],
+    ['Upcoming (pre-advertisement) lists', '', 'None of the agencies above publishes a machine-readable "upcoming consultant solicitations" list except TxDOT\'s Projected Contracts List (already used). Everything new in this view is OPEN or AWARDED, as the source states.']
   ];
 
   // ---------- load ----------
@@ -74,8 +79,16 @@
 
   // ---------- rendering ----------
   function tagsFor(r) {
-    var h = '<span class="tag ' + (r.rel === 'direct' ? 'dir' : 'inf') + '">' + (r.rel === 'direct' ? 'drainage: direct' : 'drainage: likely (inferred)') + '</span>';
-    return h;
+    var h = '';
+    if (r.kind === 'solicitation' || r.kind === 'contract') {
+      h += '<span class="tag dir">' + esc(r.status || 'status not given') + '</span>';
+      if (r.solType) h += '<span class="tag">' + esc(r.solType) + '</span>';
+      if (r.eng && r.eng.length) h += '<span class="tag inf">match: ' + esc(r.eng.map(M.engLabel).join(', ')) + '</span>';
+      if (r.kw && r.kw.length) h += '<span class="tag inf">drainage match: ' + esc(r.kw.map(M.kwLabel).join(', ')) + '</span>';
+      return h;
+    }
+    if (r.rel === 'none') return '<span class="tag">no drainage keyword</span>';
+    return '<span class="tag ' + (r.rel === 'direct' ? 'dir' : 'inf') + '">' + (r.rel === 'direct' ? 'drainage: direct' : 'drainage: likely (inferred)') + '</span>';
   }
   function card(r) {
     var star = state.watch[r.id] ? ' on' : '';
@@ -96,7 +109,11 @@
     var mapped = f.filter(hasLoc).length;
     var soon = f.filter(function (r) { var d = r.date ? M.daysUntil(r.date, state.today) : null; return d !== null && d >= 0 && d <= 90; }).length;
     var wc = Object.keys(state.watch).length;
-    var k = [[n, 'showing'], [direct, 'direct drainage'], [design, 'in design / PS&E'], [proc, 'consultant signals'], [soon, 'dated next 90 days'], [mapped, 'on the map'], [wc, 'on watchlist']];
+    var open_ = f.filter(function (r) { return r.kind === 'solicitation'; }).length;
+    var due30 = f.filter(function (r) { var d = r.kind === 'solicitation' && r.date ? M.daysUntil(r.date, state.today) : null; return d !== null && d >= 0 && d <= 30; }).length;
+    var engm = f.filter(function (r) { return (r.eng && r.eng.length) || (r.kw && r.kw.length); }).length;
+    var agn = Object.keys(M.countBy(f, function (r) { return r.agency; })).length;
+    var k = state.f.consult ? [[n, 'showing'], [open_, 'open solicitations'], [due30, 'closing in 30 days'], [engm, 'engineering / drainage word match'], [proc, 'TxDOT / HCFCD consultant signals'], [agn, 'agencies'], [wc, 'on watchlist']] : [[n, 'showing'], [direct, 'direct drainage'], [design, 'in design / PS&E'], [proc, 'consultant signals'], [soon, 'dated next 90 days'], [mapped, 'on the map'], [wc, 'on watchlist']];
     $('kpis').innerHTML = k.map(function (x) { return '<div class="kpi"><b>' + x[0].toLocaleString('en-US') + '</b><span>' + x[1] + '</span></div>'; }).join('');
   }
   function chip(label, on, attrs, sw, small) {
@@ -109,7 +126,7 @@
   }
   function renderFilters() {
     var wc = Object.keys(state.watch).length;
-    $('quick').innerHTML = chip('Houston area', state.f.houston, 'data-q="houston"') + chip('★ Watchlist (' + wc + ')', state.f.watchOnly, 'data-q="watch"') + chip('Mapped only', state.f.located, 'data-q="located"') + (state.f.month ? chip('Month: ' + M.fmtMonth(state.f.month) + ' ✕', true, 'data-q="month"') : '');
+    $('quick').innerHTML = chip('Consultant services', state.f.consult, 'data-q="consult"') + (state.f.consult ? chip('Engineering / drainage word match only', state.f.eng, 'data-q="eng"') : '') + chip('Houston area', state.f.houston, 'data-q="houston"') + chip('★ Watchlist (' + wc + ')', state.f.watchOnly, 'data-q="watch"') + chip('Mapped only', state.f.located, 'data-q="located"') + (state.f.month ? chip('Month: ' + M.fmtMonth(state.f.month) + ' ✕', true, 'data-q="month"') : '');
     var ca = countsOf(function (r) { return r.agency; }, 'agencies');
     $('fAgency').innerHTML = Object.keys(Object.assign({}, M.AGENCIES, ca)).map(function (a) { return chip(a, state.f.agencies.indexOf(a) >= 0, 'data-agency="' + esc(a) + '"', M.agencyColor(a), ca[a] || 0); }).join('');
     var cp = countsOf(function (r) { return r.phase; }, 'phases');
@@ -119,7 +136,7 @@
     var kwc = {}; M.filterRecords(state.recs, Object.assign({}, state.f, { kw: [] }), state.watch).forEach(function (r) { (r.kw || []).forEach(function (k) { kwc[k] = (kwc[k] || 0) + 1; }); });
     $('fKw').innerHTML = M.KEYWORDS.map(function (k) { return chip(k.label, state.f.kw.indexOf(k.id) >= 0, 'data-kw="' + k.id + '"', null, kwc[k.id] || 0); }).join('');
     var n = state.f.agencies.length + state.f.phases.length + state.f.kinds.length + state.f.kw.length;
-    n += (state.f.rel !== 'relevant' ? 1 : 0);
+    n += (state.f.rel !== 'relevant' ? 1 : 0) + (state.f.consult ? 0 : 1);
     $('advCount').textContent = n ? '(' + n + ')' : '';
     var notes = [];
     if (state.f.month) notes.push('month ' + M.fmtMonth(state.f.month));
@@ -237,6 +254,7 @@
       '<li><b>Inferred</b> (labeled in orange): (1) "drainage: likely" means the project is roadway or bridge work whose type usually carries drainage design; (2) keyword matches on drainage words in the source text; (3) county-centroid map placement when a source names a county but no coordinates; (4) work-type codes used to flag PS&amp;E, H&amp;H or bridge-design consultant procurements.</li>' +
       '<li><b>TxDOT dates are estimated letting dates</b> (construction bids), not PS&amp;E deadlines. A project in the PS&amp;E stage is already being designed; the data does not say who the design consultant is or whether a procurement is still open.</li>' +
       '<li><b>Consultant procurement signals</b> (TxDOT PEPS list, meetings, projected contracts; HCFCD bid page) are the closest thing to an open PS&amp;E pursuit. They carry little detail: check the linked page.</li>' +
+      '<li><b>Consultant services view</b> (default). A record is included by a stated rule, not a judgment of fit: (a) a qualifications-type solicitation (RFQ, RFQS, RFSQ, SOQ), or (b) a proposal-type solicitation (RFP) with an engineering word in the title, or (c) the source itself labels it professional services / consultant procurement (Austin Contracts category, TxDOT consultant lists, HCFCD RFQ table). The orange "match" tags list the engineering and drainage words found in the title. Status, type and due date are copied as the source gives them. <b>Open solicitations</b> are open now; <b>Awarded contract</b> rows (Austin) show who holds an agreement and when it ends, which may signal a recompete (inferred). No agency here publishes a machine-readable list of solicitations that have not yet been advertised, except TxDOT\'s Projected Contracts List.</li>' +
       '<li><b>Funding commitments</b> (TWDB FIF) show sponsors with flood money; no stage, date or location is given.</li>' +
       '<li>Costs are what the agency lists (usually construction cost, not design fee). The label on each record says which.</li></ul>';
   }
@@ -262,13 +280,15 @@
     h += '<h2>' + esc(r.title) + '</h2><div><span class="tag" style="border-color:' + M.agencyColor(r.agency) + '">' + esc(r.agency) + '</span><span class="tag">' + esc(KIND_LABEL[r.kind] || r.kind) + '</span><span class="tag">' + esc(M.phaseLabel(r.phase)) + '</span>' + (r.ghost ? '' : tagsFor(r)) + '</div>';
     var kv = [];
     kv.push(['Stage (as the source states it)', r.stage || 'unknown']);
+    if (r.status) kv.push(['Status (as the source gives it)', r.status]);
+    if (r.solType) kv.push(['Solicitation type', r.solType]);
     kv.push([r.dateLabel || 'Date', r.date ? M.fmtDate(r.date) : 'unknown']);
     kv.push([r.costLabel || 'Cost', r.cost ? M.fmtMoney(r.cost) + ' (' + '$' + Math.round(r.cost).toLocaleString('en-US') + ')' : 'unknown']);
     kv.push(['County / district', [r.county, r.district].filter(Boolean).join(' / ') || 'unknown']);
     kv.push(['Map location', exact ? 'From source: ' + r.lat + ', ' + r.lon : typeof r.alat === 'number' ? 'Approximate (INFERRED): center of ' + r.county + ' County. The source gave no coordinates.' : 'None given by the source']);
     if (r.work) kv.push(['Type of work', r.work]);
     if (r.desc) kv.push(['Description (source)', r.desc]);
-    if (r.rel) kv.push(['Why it is on the radar' + (r.rel === 'likely' ? ' (INFERRED)' : ''), r.why || '']);
+    if (r.rel) kv.push([(r.kind === 'solicitation' || r.kind === 'contract') ? 'Why it is in this view (rule + keyword matches, not a fit judgment)' : 'Why it is on the radar' + (r.rel === 'likely' ? ' (INFERRED)' : ''), r.why || '']);
     (r.extra || []).forEach(function (e) { kv.push(e); });
     h += '<dl class="kv">' + kv.map(function (e) { return '<dt>' + esc(e[0]) + '</dt><dd>' + esc(e[1]) + '</dd>'; }).join('') + '</dl>';
     h += '<p>' + (r.url ? '<a class="linkbtn" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">Open source record ↗</a>' : '') + (s && s.page ? '<a class="linkbtn alt" href="' + esc(s.page) + '" target="_blank" rel="noopener noreferrer">Source page ↗</a>' : '') + (exact ? '<a class="linkbtn alt" href="https://www.google.com/maps/search/?api=1&query=' + r.lat + ',' + r.lon + '" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>' : '') + '</p>';
@@ -330,7 +350,7 @@
     if ((el = t.closest('[data-open]'))) { openSheet(el.getAttribute('data-open')); return; }
     if ((el = t.closest('.card[data-id]'))) { openSheet(el.getAttribute('data-id')); return; }
     if ((el = t.closest('[data-month]'))) { var k = el.getAttribute('data-month'); state.f.month = state.f.month === k ? null : k; apply(); return; }
-    if ((el = t.closest('[data-q]'))) { var q = el.getAttribute('data-q'); if (q === 'houston') { state.f.houston = !state.f.houston; if (map) map.fit(state.f.houston ? 'hou' : 'tx'); } else if (q === 'watch') state.f.watchOnly = !state.f.watchOnly; else if (q === 'located') state.f.located = !state.f.located; else if (q === 'month') state.f.month = null; apply(); return; }
+    if ((el = t.closest('[data-q]'))) { var q = el.getAttribute('data-q'); if (q === 'houston') { state.f.houston = !state.f.houston; if (map) map.fit(state.f.houston ? 'hou' : 'tx'); } else if (q === 'watch') state.f.watchOnly = !state.f.watchOnly; else if (q === 'located') state.f.located = !state.f.located; else if (q === 'consult') { state.f.consult = !state.f.consult; if (!state.f.consult) state.f.eng = false; } else if (q === 'eng') state.f.eng = !state.f.eng; else if (q === 'month') state.f.month = null; apply(); return; }
     if ((el = t.closest('[data-agency]'))) { toggleIn(state.f.agencies, el.getAttribute('data-agency')); apply(); return; }
     if ((el = t.closest('[data-phase]'))) { toggleIn(state.f.phases, el.getAttribute('data-phase')); apply(); return; }
     if ((el = t.closest('[data-kind]'))) { toggleIn(state.f.kinds, el.getAttribute('data-kind')); apply(); return; }
@@ -346,7 +366,7 @@
     $('q').addEventListener('input', function () { clearTimeout(init._t); init._t = setTimeout(function () { state.f.q = $('q').value.trim(); apply(); }, 200); });
     $('btnMore').addEventListener('click', function () { var o = $('adv').hidden; $('adv').hidden = !o; this.setAttribute('aria-expanded', o ? 'true' : 'false'); });
     $('btnCsv2').addEventListener('click', exportCsv);
-    $('btnClear').addEventListener('click', function () { state.f = { q: '', rel: 'relevant', agencies: [], phases: [], kinds: [], kw: [], houston: false, located: false, watchOnly: false, month: null }; $('q').value = ''; apply(); });
+    $('btnClear').addEventListener('click', function () { state.f = { q: '', rel: 'relevant', consult: true, eng: false, agencies: [], phases: [], kinds: [], kw: [], houston: false, located: false, watchOnly: false, month: null }; $('q').value = ''; apply(); });
     $('btnColor').addEventListener('click', function () { state.colorBy = state.colorBy === 'agency' ? 'phase' : 'agency'; this.textContent = 'Color: ' + (state.colorBy === 'agency' ? 'agency' : 'stage'); renderLegend(); apply(); });
     $('btnSweep').addEventListener('click', function () { var on = this.getAttribute('aria-pressed') !== 'true'; this.setAttribute('aria-pressed', on ? 'true' : 'false'); this.textContent = 'Sweep: ' + (on ? 'on' : 'off'); if (map) map.setSweep(on); });
     $('btnCsv').addEventListener('click', exportCsv); $('btnLive').addEventListener('click', liveRefresh);
@@ -360,7 +380,7 @@
     map.fit('tx'); renderLegend();
     if (map.reduced) { $('btnSweep').setAttribute('aria-pressed', 'false'); $('btnSweep').textContent = 'Sweep: off'; }
     document.addEventListener('visibilitychange', function () { map.setVisible(!document.hidden && state.tab === 'radar'); });
-    loadData().then(function (d) { ingest(d); apply(); setTimeout(function () { map.resize(); map.fit('tx'); map.dirty = true; map._schedule(); }, 50); })
+    loadData().then(function (d) { ingest(d); apply(); if (state.f.consult) switchTab('list'); setTimeout(function () { map.resize(); map.fit('tx'); map.dirty = true; map._schedule(); }, 50); })
       .catch(function (e) { $('freshDot').className = 'dot bad'; $('freshTxt').textContent = 'Could not load data/opportunities.json (' + e.message + '). Nothing is shown; no sample data is substituted.'; });
   }
   M.MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
