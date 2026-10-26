@@ -7,8 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hydraulics Tools">
-<meta name="theme-color" content="#1f4e79">
-<meta name="theme-color" content="#10283f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#e7ebf0">
+<meta name="theme-color" content="#07080c" media="(prefers-color-scheme: dark)">
 <meta name="format-detection" content="telephone=no">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -17,14 +17,16 @@
 <title>Hydraulics Tools</title>
 </head>
 <body>
+<svg class="ambient-noise" aria-hidden="true" focusable="false">
+  <filter id="ambient-noise">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#ambient-noise)"/>
+</svg>
+<div class="topbar" aria-hidden="true">
+  <p class="topbar-title">Hydraulics Tools</p>
+</div>
 <header class="hero">
-  <svg class="hero-grain" aria-hidden="true" focusable="false">
-    <filter id="hero-grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
-      <feColorMatrix type="saturate" values="0"/>
-    </filter>
-    <rect width="100%" height="100%" filter="url(#hero-grain)"/>
-  </svg>
   <div class="hero-inner">
     <p class="eyebrow">Luis's Hydraulics Tools</p>
     <h1>Hydraulics Tools</h1>
@@ -50,6 +52,9 @@
           <p>Rational peak flow</p>
           <span class="chip">TxDOT HDM · Rational</span>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
 
       <a class="tool tool-drainage" href="drainage/index.html">
@@ -67,6 +72,9 @@
           <p>Inlets and spacing</p>
           <span class="chip">HEC-22 · TxDOT</span>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
 
       <a class="tool tool-storm" href="storm/index.html">
@@ -87,6 +95,9 @@
           <span class="chip">TxDOT HDM · HEC-22</span>
           <span class="local">Data stays on this device</span>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
 
       <a class="tool tool-ditch" href="ditch-table/index.html">
@@ -105,6 +116,9 @@
           <span class="chip">HEC-15 · stations</span>
           <span class="local">Data stays on this device</span>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
 
       <a class="tool tool-culvert" href="culvert/index.html">
@@ -124,6 +138,9 @@
           <span class="chip">HDS-5</span>
           <span class="local">Data stays on this device</span>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
     </div>
   </section>
@@ -146,6 +163,9 @@
           </div>
           <p>Houston unit prices</p>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
 
       <a class="tool tool-pse" href="pse-tracker/index.html">
@@ -165,6 +185,9 @@
           <p>Checklist and estimate</p>
           <span class="local">Data stays on this device</span>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
     </div>
   </section>
@@ -189,6 +212,9 @@
           <span class="chip">Capture planning</span>
           <span class="local">Data stays on this device</span>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
 
       <a class="tool tool-radar" href="opportunity-radar/index.html">
@@ -207,6 +233,9 @@
           </div>
           <p>Public opportunities</p>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
 
       <a class="tool tool-swp3" href="swp3-builder/index.html">
@@ -224,10 +253,44 @@
           <p>Outline, design calcs and summary sheet</p>
           <span class="local">Data stays on this device</span>
         </div>
+        <svg class="chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.2 1.4 6.6 7 1.2 12.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
     </div>
   </section>
 </main>
 <footer>Engineering aids — verify results with your own judgment.</footer>
+<script>
+(function () {
+  var root = document.documentElement;
+  var title = document.querySelector(".hero h1");
+  var headers = [].slice.call(document.querySelectorAll(".group h2"));
+  if (!title) return;
+  var frame = 0;
+  function place() {
+    frame = 0;
+    var distance = 72;
+    var t = window.scrollY / distance;
+    if (t < 0) t = 0;
+    if (t > 1) t = 1;
+    root.style.setProperty("--collapse", t.toFixed(4));
+    var stickLine = 44;
+    var bar = document.querySelector(".topbar");
+    if (bar) stickLine = bar.getBoundingClientRect().height;
+    for (var i = 0; i < headers.length; i++) {
+      var top = headers[i].getBoundingClientRect().top;
+      headers[i].classList.toggle("is-stuck", top <= stickLine + 0.5);
+    }
+  }
+  function onScroll() {
+    if (frame) return;
+    frame = window.requestAnimationFrame(place);
+  }
+  place();
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+})();
+</script>
 </body>
 </html>
