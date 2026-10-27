@@ -2,7 +2,12 @@
  * Citations are [badge, text] pairs. Section references (e.g. "Part III.F.8(c)i") were checked against the fetched 2023 CGP text. */
 (function (root) {
   var D = (typeof module !== 'undefined' && module.exports) ? require('./data.js') : root.SwpData;
-  var DS = (typeof module !== 'undefined' && module.exports) ? require('./design.js') : root.SwpDesign;
+  /* design.js was the old calculation engine. Outline blocks still call it when the file is present.
+     The Design tab no longer loads it. Missing file must not throw, including on old saved projects. */
+  var DS = null;
+  if (typeof module !== 'undefined' && module.exports) {
+    try { DS = require('./design.js'); } catch (e) { DS = null; }
+  } else if (root.SwpDesign) DS = root.SwpDesign;
 
   var APP_ID = 'SWP3 Builder';
   var VERSION = 1;

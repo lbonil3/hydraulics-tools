@@ -361,9 +361,149 @@
     return JSON.stringify({ app: 'SWP3 Builder', kind: 'swp3-summary-sheet', sheet: { variant: v, title: SHEETS[v].title, file: SHEETS[v].file, sha256: SHEETS[v].sha256, source: SHEETS[v].url, template: 'July 2023' }, project: project.name, exported: new Date().toISOString(), values: flat, note: 'Draft for engineer review; not signed or sealed.' }, null, 1);
   }
 
+  /* On-screen summary. Same saved keys as the official sheet, grouped into a few plain sections. */
+  var EDIT_GROUPS = [
+    { id: 'hold', title: 'Hold mud on the site', items: [
+      { id: 'fence', label: 'Silt fence', keys: ['sc.fence'] },
+      { id: 'ecl', label: 'Erosion control log', keys: ['sc.ecl', 'ec.ecl'] },
+      { id: 'inlet', label: 'Inlet protection', keys: ['sc.inlet'] },
+      { id: 'vbz', label: 'Vegetated buffer', keys: ['ec.vbz', 'sc.vbz', 'sc.vfs'] }
+    ] },
+    { id: 'ditch', title: 'Ditches and basins', items: [
+      { id: 'rfd', label: 'Rock filter dam', keys: ['sc.rfd', 'ec.rfd'] },
+      { id: 'trap', label: 'Sediment trap', keys: ['trap'] },
+      { id: 'basin', label: 'Sediment basin', keys: ['basin'] }
+    ] },
+    { id: 'cover', title: 'Cover the soil', items: [
+      { id: 'mulch', label: 'Mulch', keys: ['ec.mulch'] },
+      { id: 'tseed', label: 'Temporary seeding', keys: ['ec.tseed'] },
+      { id: 'pplant', label: 'Permanent seeding or sod', keys: ['ec.pplant'] },
+      { id: 'srb', label: 'Erosion control blanket', keys: ['ec.srb'] },
+      { id: 'vtrack', label: 'Vertical tracking', keys: ['ec.vtrack'] },
+      { id: 'pev', label: 'Keep existing vegetation', keys: ['ec.pev'] }
+    ] },
+    { id: 'move', title: 'Move water without a washout', items: [
+      { id: 'dike', label: 'Diversion dike', keys: ['ec.dike'] },
+      { id: 'swale', label: 'Interceptor swale', keys: ['ec.swale'] },
+      { id: 'tpsd', label: 'Pipe slope drain', keys: ['ec.tpsd'] },
+      { id: 'riprap', label: 'Riprap at outlets', keys: ['ec.riprap'] },
+      { id: 'dewater', label: 'Dewatering controls', keys: ['sc.dewater'] }
+    ] },
+    { id: 'road', title: 'Mud on the road', items: [
+      { id: 'exit', label: 'Construction exit', keys: ['sc.exit'], link: ['veh.exit'] },
+      { id: 'sweep', label: 'Street sweeping', mode: 'on', on: ['veh.sweep'] }
+    ] }
+  ];
+  var EXTRA_TP = [['ec.geo', 'Geotextile'], ['ec.sst', 'Soil surface treatment'], ['ec.embank', 'Embankment for erosion control'], ['ec.flume', 'Paved flume'], ['sc.sandbag', 'Sandbag berm'], ['sc.turb', 'Turbidity barrier']];
+  var EXTRA_ON = [['veh.mud', 'Mud removed from the road daily'], ['veh.haul', 'Haul roads dampened'], ['veh.tarp', 'Haul trucks covered'], ['veh.sweep', 'Street sweeping'], ['veh.exit', 'Construction exit']];
+  var HK = [['pp.chem', 'Chemicals'], ['pp.concrete', 'Concrete washout'], ['pp.debris', 'Debris and trash'], ['pp.dust', 'Dust control'], ['pp.sanitary', 'Sanitary facilities']];
+
+  function useWord(t, p, special) {
+    if (special) return special;
+    if (t && p) return 'Temporary and permanent';
+    if (p) return 'Permanent';
+    if (t) return 'Temporary';
+    return '';
+  }
+  function tableLines(vals, id, cols) {
+    var out = [], r, c, cells, t;
+    for (r = 0; r < 12; r++) {
+      cells = [];
+      for (c = 0; c < cols; c++) { t = textOf(vals, id + '.' + r + '.' + c); if (t) cells.push(t); }
+      if (cells.length) out.push(cells.join(' — '));
+    }
+    return out;
+  }
+  function controlMarks(vals) {
+    var by = {}, order = [];
+    function add(label, t, p, special) {
+      if (!t && !p) return;
+      var word = special || useWord(t, p, '');
+      if (!by[label]) { by[label] = { label: label, temporary: !!t, permanent: !!p, use: word }; order.push(label); return; }
+      if (t) by[label].temporary = true;
+      if (p) by[label].permanent = true;
+      var ranked = by[label].use === 'Temporary' || by[label].use === 'Permanent' || by[label].use === 'Temporary and permanent';
+      if (!special || !ranked) by[label].use = special && !ranked ? special : useWord(by[label].temporary, by[label].permanent, '');
+    }
+    EDIT_GROUPS.forEach(function (g) {
+      g.items.forEach(function (item) {
+        if (item.mode === 'on') { add(item.label, (item.on || []).some(function (k) { return vals[k] === true; }), false, 'On this job'); return; }
+        add(item.label, (item.keys || []).some(function (k) { return vals[k + '.T'] === true; }), (item.keys || []).some(function (k) { return vals[k + '.P'] === true; }), '');
+      });
+    });
+    EXTRA_TP.forEach(function (e) { add(e[1], vals[e[0] + '.T'] === true, vals[e[0] + '.P'] === true, ''); });
+    EXTRA_ON.forEach(function (e) { if (vals[e[0]] === true) add(e[1], true, false, 'On this job'); });
+    return order.map(function (l) { return by[l]; });
+  }
+  function basinStory(vals, variant) {
+    if (variant === 'A') return { state: 'short-sheet', text: 'The under-1-acre sheet has no sediment-basin block. A basin is a permit question when 10 or more acres are disturbed at one time in one drainage area.' };
+    var why = textOf(vals, 'nf.other');
+    if (vals['basin.nf'] === true) return { state: 'infeasible', text: 'A sediment basin is required, but it is marked not feasible.' + (why ? ' Reason: ' + why + '.' : ' Add the reason on the sheet.') };
+    if (vals['basin.req'] === true) return { state: 'required', text: 'A sediment basin is required and marked as used.' };
+    if (vals['basin.notreq'] === true) return { state: 'not-required', text: 'A sediment basin is marked not required. That fits when less than 10 acres are disturbed at one time in one drainage area.' };
+    return { state: 'blank', text: 'Sediment basin is not marked. It is required where it will fit when 10 or more acres are disturbed at one time in one drainage area.' };
+  }
+  function peopleStory(vals) {
+    var acres = M.num(textOf(vals, 'distArea'));
+    var noi = vals['rt.noi'] === true || vals['rc.noi'] === true;
+    var txPairs = [['rt.plans', 'plans and specifications'], ['rt.csn', 'the site notice'], ['rt.insp', 'inspections'], ['rt.records', 'SWP3 records']];
+    var conPairs = [['rc.ops', 'day-to-day control'], ['rc.bmps', 'installing and maintaining controls'], ['rc.sched', 'the construction schedule']];
+    function line(pairs, all, lead) {
+      var on = pairs.filter(function (p) { return vals[p[0]] === true; });
+      if (on.length === pairs.length) return all;
+      if (!on.length) return lead + 'no usual duties are checked.';
+      return lead + on.map(function (p) { return p[1]; }).join(', ') + '.';
+    }
+    var lines = [
+      line(txPairs, 'TxDOT keeps the plans, posts the site notice, inspects, and keeps the records.', 'TxDOT is checked for '),
+      line(conPairs, 'The contractor runs day-to-day work and installs and maintains the controls.', 'The contractor is checked for ')
+    ];
+    if (acres != null && acres >= 5) lines.push(noi ? 'Disturbance is 5 acres or more, so an NOI belongs on this summary.' : 'Disturbance is 5 acres or more. The NOI line is not checked. The permit expects an NOI at 5 acres or more.');
+    else if (acres != null) lines.push(noi ? 'Disturbance is under 5 acres, but an NOI line is still checked. TxDOT guidance says to clear that line under 5 acres.' : 'Disturbance is under 5 acres, so this summary does not include an NOI.');
+    else lines.push('Enter disturbed acres to see whether an NOI belongs here. An NOI is for 5 acres or more.');
+    return { lines: lines, preparer: textOf(vals, 'x.preparer'), prepared: textOf(vals, 'x.prepared'), contacts: textOf(vals, 'x.contact'), noi: noi };
+  }
+  function screenView(project) {
+    project = project || {};
+    var form = project.form || {};
+    var safe = { name: project.name || '', form: form, sel: project.sel || {}, summary: project.summary || { variant: '', v: {} }, design: project.design || {} };
+    var V = values(safe), vals = V.val, variant = variantFor(safe);
+    var chosen = safe.summary.variant === 'A' || safe.summary.variant === 'B';
+    var buffer = vals['buf.text'] === true ? textOf(vals, 'buf.why') : tableLines(vals, 'buf', 3).join('\n');
+    return {
+      name: safe.name || 'Untitled project',
+      variant: variant,
+      sheetLabel: (variant === 'A' ? 'Under 1 acre sheet' : '1 acre or more sheet') + (chosen ? ', chosen for this project' : ''),
+      disclaimer: M.DISCLAIMER,
+      starter: !textOf(vals, 'csj') && !textOf(vals, 'nature') && !textOf(vals, 'limFrom'),
+      project: {
+        csj: textOf(vals, 'csj'), highway: textOf(vals, 't.hwy'), county: textOf(vals, 't.county'), district: textOf(vals, 't.dist'),
+        from: textOf(vals, 'limFrom'), to: textOf(vals, 'limTo'),
+        begin: [textOf(vals, 'bLat'), textOf(vals, 'bLon')].filter(Boolean).join(', '),
+        end: [textOf(vals, 'eLat'), textOf(vals, 'eLon')].filter(Boolean).join(', '),
+        projectNo: textOf(vals, 't.proj')
+      },
+      site: {
+        disturbed: textOf(vals, 'distArea'), total: textOf(vals, 'totalArea'), nature: textOf(vals, 'nature'),
+        soils: tableLines(vals, 'soils', 2), receiving: textOf(vals, 'recv.0.0'), segment: textOf(vals, 'recv.0.1'),
+        ms4: tableLines(vals, 'ms4', 1), buffer: buffer
+      },
+      controls: controlMarks(vals),
+      basin: basinStory(vals, variant),
+      housekeeping: HK.filter(function (h) { return vals[h[0]] === true; }).map(function (h) { return h[1]; }),
+      people: peopleStory(vals),
+      warnings: checks(safe).filter(function (c) { return c.level === 'warn'; }).map(function (c) { return c.msg; }),
+      reminders: [
+        { title: 'Inspections', text: 'The TxDOT sheet says to inspect at least every 7 days. The permit also allows every 14 days when you inspect within 24 hours after a storm of one-half inch or more. This app does not change the words printed on the sheet.' },
+        { title: 'Maintenance', text: 'Fix a control when it is run over, undercut, or full of dirt. The permit says to take sediment out of a fence before it reaches about half the fence height, and out of a basin or trap when about half the storage is sediment.' },
+        { title: 'Pumping', text: 'If the job pumps water from a trench or hole, look at that discharge every day it runs. Do not pump muddy water into an inlet or a creek. Show where the water goes.' }
+      ]
+    };
+  }
+
   var api = { BUNDLED: BUNDLED, SHEETS: SHEETS, PAGE_URL: PAGE_URL, LAYOUT: LAYOUT, sections: sections, prefill: prefill, values: values, variantFor: variantFor, plan: plan, checks: checks,
     fitLines: fitLines, wrapWords: wrapWords, approxMeasure: approxMeasure, parseLimits: parseLimits, parseLatLon: parseLatLon, parseCsj: parseCsj, exportModel: exportModel, toMarkdown: toMarkdown, toJson: toJson,
-    textOf: textOf, checkValue: checkValue, BMP_MAP: BMP_MAP };
+    textOf: textOf, checkValue: checkValue, BMP_MAP: BMP_MAP, screenView: screenView, EDIT_GROUPS: EDIT_GROUPS };
   if (isNode) module.exports = api;
   root.SwpSummary = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
