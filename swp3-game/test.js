@@ -118,4 +118,49 @@ t('deterministic', () => {
   assert.strictEqual(a.score, b.score); assert.strictEqual(a.result.discharge, b.result.discharge);
 });
 
+// ---------- picking ----------
+const PK = require('./pick.js');
+function geom(W, H, z) { const maxZ = Math.max(...z); return { W, H, z, ox: H * 16 + 8, oy: maxZ + 12, TW: 32, TH: 16, BASE: 10, w: (W + H) * 16 + 16, h: (W + H) * 8 + maxZ + 10 + 24 }; }
+const centre = (g, i) => { const p = PK.tileTop(g, i % g.W, (i / g.W) | 0); return { x: p.x, y: p.y + g.TH / 2 }; };
+
+t('pick: flat grid, every tile centre picks itself', () => {
+  const g = geom(6, 5, new Array(30).fill(0));
+  for (let i = 0; i < 30; i++) { const c = centre(g, i); assert.strictEqual(PK.pickTile(g, c.x, c.y), i); }
+});
+t('pick: slopes + stepped heights match a painter-order rasterizer at every pixel', () => {
+  const W = 8, H = 7, z = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) z.push(Math.max(0, Math.round(60 - 4 * x - 6 * y + ((x * 7 + y * 3) % 5) * 3)));
+  const g = geom(W, H, z), owner = new Map();
+  for (let s = 0; s <= W + H - 2; s++) for (let y = 0; y < H; y++) { const x = s - y; if (x < 0 || x >= W) continue;
+    for (let py = 0; py < g.h; py++) for (let px = 0; px < g.w; px++) if (PK.hitBlock(g, x, y, px + 0.5, py + 0.5)) owner.set(px + ',' + py, y * W + x); }
+  let checked = 0;
+  for (let py = 0; py < g.h; py++) for (let px = 0; px < g.w; px++) { const o = owner.has(px + ',' + py) ? owner.get(px + ',' + py) : -1; assert.strictEqual(PK.pickTile(g, px + 0.5, py + 0.5), o); checked++; }
+  // every tile with a visible top-face centre picks itself there
+  for (let i = 0; i < W * H; i++) { const c = centre(g, i); if (owner.get(Math.floor(c.x) + ',' + Math.floor(c.y)) === i) assert.strictEqual(PK.pickTile(g, c.x, c.y), i); }
+  assert.ok(checked > 1000);
+});
+t('pick: visible side face of a raised front tile belongs to that tile, not the hidden one behind', () => {
+  const z = new Array(9).fill(0); z[4] = 30; // centre of 3x3 is a tall block
+  const g = geom(3, 3, z); const p = PK.tileTop(g, 1, 1);
+  // point on its left side face, below the top diamond (flat projection would say tile (0,2) / (1,2) etc.)
+  assert.strictEqual(PK.pickTile(g, p.x - 8, p.y + 20), 4);
+  assert.strictEqual(PK.pickTile(g, p.x + 8, p.y + 30), 4);
+  // a front tile on the same column, at its own top, still wins over the raised block's side
+  const f = centre(g, 8); assert.strictEqual(PK.pickTile(g, f.x, f.y), 8);
+  // outside the map
+  assert.strictEqual(PK.pickTile(g, -50, -50), -1);
+});
+t('pick: client<->buffer round trip with zoom, pan, dpr, page offset and CSS != backing size', () => {
+  const z = []; for (let i = 0; i < 20 * 16; i++) z.push(2 * (20 - i % 20) + 3 * (16 - ((i / 20) | 0)) + (i % 3));
+  const g = geom(20, 16, z);
+  for (const v of [
+    { rect: { left: 0, top: 0, width: 1280, height: 800 }, viewW: 1280, viewH: 800, zoom: 1.7, panX: 0, panY: 0, dpr: 1 },
+    { rect: { left: 13, top: 57, width: 1280, height: 743 }, viewW: 2560, viewH: 1486, zoom: 3.3, panX: -121, panY: 47, dpr: 2 },
+    { rect: { left: 0, top: 44.5, width: 390, height: 700 }, viewW: 1170, viewH: 2100, zoom: 0.93, panX: 33.3, panY: -10, dpr: 3 },
+    { rect: { left: 0, top: 0, width: 1000, height: 600 }, viewW: 1251, viewH: 751, zoom: 2.2, panX: 5, panY: 5, dpr: 1.25 } ]) {
+    Object.assign(v, { geoW: g.w, geoH: g.h });
+    for (let i = 0; i < 320; i += 7) { const c = centre(g, i), cl = PK.bufferToClient(c.x, c.y, v), b = PK.clientToBuffer(cl.x, cl.y, v);
+      assert.ok(Math.abs(b.x - c.x) < 1e-6 && Math.abs(b.y - c.y) < 1e-6); assert.strictEqual(PK.pickTile(g, b.x, b.y), i); }
+  }
+});
+
 console.log(n + ' tests passed');

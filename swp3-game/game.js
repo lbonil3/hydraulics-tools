@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   var S = window.SWP3;
+  var P = window.SWP3Pick;
   var TW = 32, TH = 16, BASE = 10; // iso tile size in low-res pixels, slab thickness
   var SAVE_KEY = 'swp3-game-v1';
   var $ = function (id) { return document.getElementById(id); };
@@ -40,7 +41,7 @@
   var G = {
     level: null, L: null, controls: [], history: [], tool: 'fence', phase: 'plan',
     zoom: 2, panX: 0, panY: 0, flowView: false, sim: null, scoreRes: null,
-    particles: [], deposits: [], speed: 1, stormT: 0, stormDur: 9, born: {}, selTile: -1, flash: 0
+    particles: [], deposits: [], speed: 1, stormT: 0, stormDur: 9, born: {}, selTile: -1, hoverTile: -1, flash: 0
   };
   var progress = loadProgress();
 
@@ -173,6 +174,7 @@
     var order = G.controls.map(function (c, k) { return k; }).sort(function (a, b) { return depth(G.controls[a].tile) - depth(G.controls[b].tile); });
     order.forEach(function (k) { drawControl(ctx, G.controls[k], k, t); });
     if (G.phase === 'report' && G.scoreRes) drawFailures(ctx, t);
+    if (G.hoverTile >= 0 && G.hoverTile !== G.selTile && G.phase === 'plan') outlineTile(ctx, G.hoverTile, 'rgba(255,255,160,.85)');
     if (G.selTile >= 0 && G.phase === 'plan') outlineTile(ctx, G.selTile, '#fff');
     if (G.phase === 'storm') stepStorm(dt * G.speed);
     if (G.phase === 'storm' || G.phase === 'report') drawParticles(ctx);
@@ -288,10 +290,13 @@
     e.preventDefault();
   });
   view.addEventListener('pointermove', function (e) {
+    if (e.pointerType === 'mouse' && !pointers[e.pointerId]) { var h = screenToTile(e.clientX, e.clientY); G.hoverTile = h; return; }
     if (!pointers[e.pointerId]) return;
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     if (!gesture) return;
     if (gesture.type === 'maybeTap' && Math.hypot(e.clientX - gesture.sx, e.clientY - gesture.sy) > 8) gesture.type = 'pan';
+    if (gesture.type !== 'maybeTap') G.hoverTile = -1;
+    else if (e.pointerType === 'mouse') G.hoverTile = screenToTile(e.clientX, e.clientY);
     if (gesture.type === 'pan') { G.panX = gesture.px + (e.clientX - gesture.sx); G.panY = gesture.py + (e.clientY - gesture.sy); clampPan(); }
     else if (gesture.type === 'pinch') {
       var ids = Object.keys(pointers); if (ids.length < 2) return;
@@ -308,6 +313,7 @@
     else if (gesture && gesture.type === 'pinch') gesture = { type: 'pan', sx: e.clientX, sy: e.clientY, px: G.panX, py: G.panY, dead: true };
   }
   view.addEventListener('pointerup', endPointer);
+  view.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') G.hoverTile = -1; });
   view.addEventListener('pointercancel', function (e) { delete pointers[e.pointerId]; gesture = null; });
   view.addEventListener('wheel', function (e) { e.preventDefault(); setZoom(G.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });
   document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
@@ -319,19 +325,18 @@
     G.zoom = Math.max(0.8, Math.min(5, Math.min(r.width / geo.w, r.height / geo.h) * 0.98)); G.panX = 0; G.panY = 0;
   }
 
+  // Single pick function used by BOTH hover highlight and click/tap (see pick.js).
   function screenToTile(cx, cy) {
-    var r = view.getBoundingClientRect();
-    var bx = (cx - r.left - r.width / 2 - G.panX) / G.zoom + geo.w / 2, by = (cy - r.top - r.height / 2 - G.panY) / G.zoom + geo.h / 2;
-    var L = G.L, best = -1;
-    for (var s = L.W + L.H - 2; s >= 0 && best < 0; s--) { // front to back
-      for (var y = 0; y < L.H; y++) {
-        var x = s - y; if (x < 0 || x >= L.W) continue;
-        var p = tileTop(x, y), dx = Math.abs(bx - p.x) / (TW / 2), dy = Math.abs(by - (p.y + TH / 2)) / (TH / 2);
-        if (dx + dy <= 1) { best = y * L.W + x; break; }
-      }
-    }
-    return best;
+    if (!geo || !G.L) return -1;
+    var b = P.clientToBuffer(cx, cy, { rect: view.getBoundingClientRect(), viewW: view.width, viewH: view.height, zoom: G.zoom, panX: G.panX, panY: G.panY, dpr: dpr, geoW: geo.w, geoH: geo.h });
+    return P.pickTile({ W: G.L.W, H: G.L.H, z: geo.z, ox: geo.ox, oy: geo.oy, TW: TW, TH: TH, BASE: BASE }, b.x, b.y);
   }
+  window.__swp3Load = function (n) { loadLevel(n); $('overlay').classList.add('hidden'); selectTool('inspect'); };
+  window.__swp3State = function () { return { sel: G.selTile, hover: G.hoverTile, n: G.L.W * G.L.H, controls: G.controls.length, zoom: G.zoom }; };
+  window.__swp3Pick = function (cx, cy) { return screenToTile(cx, cy); }; // debug/test hook
+  window.__swp3TileClient = function (i) { // client coords of tile i top-face centre (test hook)
+    var c = tileCenter(i); return P.bufferToClient(c.x, c.y, { rect: view.getBoundingClientRect(), viewW: view.width, viewH: view.height, zoom: G.zoom, panX: G.panX, panY: G.panY, dpr: dpr, geoW: geo.w, geoH: geo.h });
+  };
 
   // ---------- gameplay ----------
   var TYPE_NAME = { G: 'Grass (undisturbed)', S: 'Disturbed soil', A: 'Site access (trucks exit)', R: 'Road', D: 'Ditch (concentrated flow)', C: 'Creek (waters of the state)', I: 'Storm inlet' };
@@ -426,7 +431,7 @@
   // ---------- levels / flow ----------
   function loadLevel(n) {
     G.level = n; G.L = S.makeLevel(n); geo = buildGeometry(G.L);
-    G.controls = []; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1;
+    G.controls = []; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1; G.hoverTile = -1;
     G.sim = S.simulate(G.L, [], { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir;
     drawTerrain(); resize(); fitView();
     $('lvlName').textContent = 'Level ' + n + ': ' + G.L.name; $('lvlGoal').textContent = G.L.goal;
