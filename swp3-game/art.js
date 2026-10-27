@@ -67,7 +67,7 @@
           if (Math.abs(a - 0.5) < 0.035 && (Math.floor(l * 4) % 2 === 0) && t === 'R') cc = [217, 195, 90];
           if (a < 0.04 || a > 0.96) cc = [150, 150, 150]; }
         else if (t === 'D') { var m = Math.abs(a - 0.5) * 2; // 0 centre .. 1 bank
-          if (m > 0.78) cc = R.G[tone(nn, bb, -0.05)]; else if (m > 0.3) cc = rp[tone(nn, bb, (0.78 - m) * 0.45)]; else cc = [86, 70, 48]; if (m <= 0.3 && hash(X, Y, 8) > 0.8) cc = [70, 96, 120]; }
+          if (m > 0.86) cc = R.G[tone(nn, bb, -0.1)]; else if (m > 0.8) cc = [196, 170, 112]; else if (m > 0.34) cc = rp[tone(nn, bb, (0.8 - m) * 0.35 - 0.12)]; else if (m > 0.28) cc = [60, 46, 30]; else cc = (hash(X, Y, 8) > 0.55 ? [96, 140, 176] : [74, 112, 150]); if (m <= 0.28 && hash(X, Y, 9) > 0.93) cc = [190, 220, 240]; }
         else if (t === 'C') { cc = rp[tone(nn, bb, 0.1 + (Math.abs(a - 0.5) < 0.3 ? 0.15 : 0))]; }
         else cc = rp[1];
         if (t === 'I') { var gu = Math.abs(u - 0.5), gv = Math.abs(v - 0.5);

@@ -66,3 +66,15 @@ Not used (not verified here): TxDOT Hydraulic Design Manual and the Storm Water 
 | Terrain edits | ±1 ft per tap, heights clamped −20…80 ft; paint grass/pad/ditch/road/creek/inlet/access | game rule |
 | Budget | $50,000 | game rule |
 | Save | localStorage key `swp3-game-sandbox-v1` (site, storm, concrete flag, controls) | — |
+
+## Levels 4–7, solutions and stacking (v4)
+
+| Item | Value | Basis |
+|---|---|---|
+| L4 phased pad + haul road | ridge splits flow; fence both toes, exit, washout ≥ 50 ft | TxDOT EC(1)-16, Item 506; EPA concrete washout fact sheet |
+| L5 cut slope + ditch chain | ditch 1.4% / 2.8% / 7%; dams spaced 1.5 ft ÷ slope; no dams above 6% | TxDOT EC(2)-16; spacing and 6% blowout are **game rules** |
+| L6 urban inlets | inlet protection ≤ 5 ac; overloaded inlet needs upstream fence | TxDOT EC(9)-16 |
+| L7 big site | ≥ 10 disturbed ac in a common drainage needs a basin sized 3,600 cf/ac | TxDOT Item 506.4.4.5.1 (TCEQ CGP) |
+| Basin stacking | up to 3 basin blocks per tile add capacity (10,800 cf each) | **game rule** |
+| Solutions | stored in solutions.js; node test requires 3 stars on every level | — |
+| Weather surprise | L4/L7 actual 5-yr, L6 actual 10-yr vs 2-yr forecast | **game rule** (teaches margin) |

@@ -198,6 +198,8 @@
     G.exPark = park; G.crewRng = r;
   }
   function exitOk() { var a = G.accessTiles; return G.controls.some(function (c) { return c.type === 'exit' && a.indexOf(c.tile) >= 0; }); }
+  function Q(y, f) { G.q.push({ y: y, f: f }); }
+  function big(ctx, x, y, f) { ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(2, 2); f(); ctx.restore(); } // crew drawn at 2x so they read at fit zoom
   function drawCrew(ctx, t, dt) {
     if (!G.crew) initCrew();
     var k, w, r = G.crewRng;
@@ -205,22 +207,22 @@
     // excavator: parked near the access, digging idly; swings faster while building big items
     var busy = false;
     G.controls.forEach(function (c, j) { var b = G.born[j]; if (b != null && t - b < buildMs(c.type) && (c.type === 'basin' || c.type === 'dam' || c.type === 'exit')) busy = c; });
-    if (busy) { var bp = tileCenter(busy.tile); A.drawExcavator(ctx, bp.x - 30, bp.y + 4, t / 160); }
-    else if (G.exPark >= 0) { var ep = tileCenter(G.exPark); A.drawExcavator(ctx, ep.x, ep.y + 4, t / 900); }
+    if (busy) { var bp = tileCenter(busy.tile); Q(bp.y + 4, function () { big(ctx, bp.x - 44, bp.y + 4, function () { A.drawExcavator(ctx, 0, 0, t / 160); }); }); }
+    else if (G.exPark >= 0) { var ep = tileCenter(G.exPark); Q(ep.y + 4, function () { big(ctx, ep.x, ep.y + 4, function () { A.drawExcavator(ctx, 0, 0, t / 900); }); }); }
     // build crews: two workers hammering at each control under construction (max 3 builds shown)
     var shown = 0;
     for (var j = G.controls.length - 1; j >= 0 && shown < 3; j--) {
       var b = G.born[j], c = G.controls[j]; if (b == null || t - b > buildMs(c.type)) continue; shown++;
       var cp = tileCenter(c.tile), fr = Math.floor(t / 140);
-      A.drawWorker(ctx, cp.x - 20, cp.y + 2, fr, 'hammer', 1); A.drawWorker(ctx, cp.x + 20, cp.y - 2, fr + 1, 'hammer', -1, '#d9ff3a');
+      (function (cp, fr) { Q(cp.y + 4, function () { big(ctx, cp.x - 22, cp.y + 4, function () { A.drawWorker(ctx, 0, 0, fr, 'hammer', 1); }); }); Q(cp.y - 2, function () { big(ctx, cp.x + 22, cp.y - 2, function () { A.drawWorker(ctx, 0, 0, fr + 1, 'hammer', -1, '#d9ff3a'); }); }); })(cp, fr);
       if (G.lastHammer !== fr && fr % 2 === 0 && G.phase === 'plan') { G.lastHammer = fr; if (window.SWP3Sound) SWP3Sound.play('hammer'); }
     }
     // idle crew wander the pad (they shelter during the storm)
     for (k = 0; k < (G.phase === 'storm' ? 0 : G.crew.length); k++) {
       w = G.crew[k]; var dx = w.tx - w.x, dy = w.ty - w.y, d = Math.hypot(dx, dy);
-      if (d > 1) { var sp = Math.min(d, 18 * dt); w.x += dx / d * sp; w.y += dy / d * sp; w.act = 'walk'; w.face = dx >= 0 ? 1 : -1; }
+      if (d > 1 && !G.reduced) { var sp = Math.min(d, 22 * dt); w.x += dx / d * sp; w.y += dy / d * sp; w.act = 'walk'; w.face = dx >= 0 ? 1 : -1; }
       else { w.act = w.wait > 1.2 && k === 1 ? 'hammer' : 'idle'; w.wait -= dt; if (w.wait <= 0 && G.pad.length) { var c2 = tileCenter(G.pad[(r() * G.pad.length) | 0]); var m = Math.min(1, 70 / Math.max(1, Math.hypot(c2.x - w.x, c2.y - w.y))); w.tx = w.x + (c2.x - w.x) * m; w.ty = w.y + (c2.y - w.y) * m; w.wait = 1 + r() * 3; } }
-      A.drawWorker(ctx, w.x, w.y, Math.floor(t / 180) + k, w.act, w.face, w.vest);
+      (function (w, fr) { Q(w.y, function () { big(ctx, w.x, w.y, function () { A.drawWorker(ctx, 0, 0, fr, w.act, w.face, w.vest); }); }); })(w, Math.floor(t / 180) + k);
     }
     // dump truck tracks mud out when there is no stabilized exit (matches the sim's tracked-mud penalty)
     var noExit = G.accessTiles.length && !exitOk();
@@ -235,7 +237,7 @@
       else { var tx = T.x0 + (T.x1 - T.x0) * f2, ty = T.y0 + (T.y1 - T.y0) * f2;
         var pastRoad = Math.hypot(tx - T.x0, ty - T.y0) > Math.hypot(T.rx - T.x0, T.ry - T.y0) * 0.6;
         if (pastRoad && G.mud.length < 60 && Math.floor(t / 90) !== T.lastDrop) { T.lastDrop = Math.floor(t / 90); G.mud.push({ x: tx + (r() - 0.5) * 8, y: ty + (r() - 0.5) * 3, t: t }); }
-        ctx.globalAlpha = f2 > 0.85 ? (1 - f2) / 0.15 : 1; A.drawTruck(ctx, tx, ty, T.x1 >= T.x0 ? 1 : -1, true); ctx.globalAlpha = 1; }
+        (function (tx, ty, al, dr) { Q(ty, function () { ctx.globalAlpha = al; big(ctx, tx, ty, function () { A.drawTruck(ctx, 0, 0, dr, true); }); ctx.globalAlpha = 1; }); })(tx, ty, f2 > 0.85 ? (1 - f2) / 0.15 : 1, T.x1 >= T.x0 ? 1 : -1); }
     }
     for (k = G.mud.length - 1; k >= 0; k--) { var m2 = G.mud[k], age = (t - m2.t) / 9000; if (age > 1 || !noExit) { G.mud.splice(k, 1); continue; }
       ctx.fillStyle = 'rgba(106,68,34,' + (0.8 * (1 - age)).toFixed(2) + ')'; ctx.fillRect(Math.round(m2.x) - 2, Math.round(m2.y), 4, 2); ctx.fillRect(Math.round(m2.x) - 1, Math.round(m2.y) - 1, 2, 1); }
@@ -259,13 +261,18 @@
     if (G.flowView) drawFlowView(ctx);
     // controls in depth order
     var order = G.controls.map(function (c, k) { return k; }).sort(function (a, b) { return depth(G.controls[a].tile) - depth(G.controls[b].tile); });
-    order.forEach(function (k) { drawControl(ctx, G.controls[k], k, t); });
+    G.q = [];
+    order.forEach(function (k) { var c = G.controls[k]; Q(tileCenter(c.tile).y + (c.type === 'fence' ? 6 : 0), function () { drawControl(ctx, c, k, t); }); });
     if (G.phase === 'storm' || G.phase === 'report') drawControlWater(ctx, t);
     drawCrew(ctx, t, dt);
+    G.q.sort(function (a, b) { return a.y - b.y; }).forEach(function (e) { e.f(); }); // painter's order: controls, crew, machines
+    if (G.ghost && G.phase === 'plan') drawGhost(ctx, t);
+    if (G.solGhost && G.phase === 'plan') drawSolGhost(ctx, t);
+    if (G.hintTiles && G.phase === 'plan') G.hintTiles.forEach(function (i) { outlineTile(ctx, i, Math.floor(t / 350) % 2 ? '#ffd23a' : '#fff59a'); });
     if (G.phase === 'report' && G.scoreRes) drawFailures(ctx, t);
     if (G.hoverTile >= 0 && G.hoverTile !== G.selTile && G.phase === 'plan') outlineTile(ctx, G.hoverTile, 'rgba(255,255,160,.85)');
     if (G.selTile >= 0 && G.phase === 'plan') outlineTile(ctx, G.selTile, '#fff');
-    if (G.phase === 'storm') stepStorm(dt * G.speed);
+    if (G.phase === 'storm') stepStorm(G.paused ? 0 : dt * G.speed);
     if (G.phase === 'storm' || G.phase === 'report') drawParticles(ctx);
     // blit
     vctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -365,6 +372,7 @@
     var d = t - G.boltAt; if (d < 0) return;
     if (!G.thunderDone && d > 250) { G.thunderDone = true; if (window.SWP3Sound) SWP3Sound.play('thunder'); }
     var a = d < 90 ? 0.55 : d < 150 ? 0.1 : d < 230 ? 0.4 : Math.max(0, 0.4 - (d - 230) / 500);
+    if (G.reduced) a = Math.min(a, 0.06);
     if (a <= 0) return;
     vctx.fillStyle = 'rgba(235,240,255,' + a.toFixed(2) + ')'; vctx.fillRect(0, 0, view.width, view.height);
     if (d < 230) { // bolt
@@ -390,11 +398,14 @@
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     var ids = Object.keys(pointers);
     if (ids.length === 1) gesture = { type: 'maybeTap', sx: e.clientX, sy: e.clientY, px: G.panX, py: G.panY };
+    // desktop: drag with the fence tool lays a line of silt fence (Shift-drag or right-drag still pans)
+    if (ids.length === 1 && e.pointerType === 'mouse' && e.button === 0 && !e.shiftKey && G.tool === 'fence' && G.phase === 'plan') { var t0 = screenToTile(e.clientX, e.clientY); if (t0 >= 0) gesture = { type: 'fenceDrag', start: t0, last: -1, n: 0, sx: e.clientX, sy: e.clientY }; }
     else if (ids.length === 2) { var a = pointers[ids[0]], b = pointers[ids[1]]; gesture = { type: 'pinch', d0: dist(a, b), z0: G.zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, px: G.panX, py: G.panY }; }
     e.preventDefault();
   });
   view.addEventListener('pointermove', function (e) {
-    if (e.pointerType === 'mouse' && !pointers[e.pointerId]) { var h = screenToTile(e.clientX, e.clientY); G.hoverTile = h; return; }
+    if (e.pointerType === 'mouse' && !pointers[e.pointerId]) { var h = screenToTile(e.clientX, e.clientY); G.hoverTile = h; updateGhost(h); $('tileTip').textContent = G.ghost ? G.ghost.msg : ''; $('tileTip').classList.toggle('hidden', !G.ghost); return; }
+    if (gesture && gesture.type === 'fenceDrag' && pointers[e.pointerId]) { var ft = screenToTile(e.clientX, e.clientY); if (ft >= 0 && ft !== gesture.last) { gesture.last = ft; if (placeControl('fence', ft, true)) gesture.n++; } e.preventDefault(); return; }
     if (!pointers[e.pointerId]) return;
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     if (!gesture) return;
@@ -413,11 +424,13 @@
     if (!pointers[e.pointerId]) return;
     delete pointers[e.pointerId];
     if (gesture && gesture.type === 'maybeTap' && Object.keys(pointers).length === 0) onTap(e.clientX, e.clientY);
+    if (gesture && gesture.type === 'fenceDrag') { if (gesture.n === 0 && Math.hypot(e.clientX - gesture.sx, e.clientY - gesture.sy) < 8) onTap(e.clientX, e.clientY); else if (gesture.n > 1) toast(gesture.n + ' fences placed (drag)'); }
     if (Object.keys(pointers).length === 0) gesture = null;
     else if (gesture && gesture.type === 'pinch') gesture = { type: 'pan', sx: e.clientX, sy: e.clientY, px: G.panX, py: G.panY, dead: true };
   }
   view.addEventListener('pointerup', endPointer);
-  view.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') G.hoverTile = -1; });
+  view.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { G.hoverTile = -1; G.ghost = null; $('tileTip').classList.add('hidden'); } });
+  view.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   view.addEventListener('pointercancel', function (e) { delete pointers[e.pointerId]; gesture = null; });
   view.addEventListener('wheel', function (e) { e.preventDefault(); setZoom(G.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });
   document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
@@ -461,17 +474,50 @@
       for (var k = G.controls.length - 1; k >= 0; k--) if (G.controls[k].tile === i) { var c = G.controls.splice(k, 1)[0]; G.history.push({ op: 'remove', c: c, k: k }); toast('Removed ' + S.CONTROLS[c.type].name + ' (+$' + S.CONTROLS[c.type].cost + ')'); rebornIndex(); updateHud(); return; }
       toast('Nothing to remove here'); return;
     }
-    var ty = G.L.types[i];
-    if (G.controls.some(function (c) { return c.tile === i && c.type === tool; })) { toast('Already a ' + S.CONTROLS[tool].name.toLowerCase() + ' here'); return; }
-    if (tool === 'fence' && G.sim.dir[i] < 0) { toast(ty === 'C' ? 'Keep fences out of the creek' : 'Water does not leave this tile to a neighbor; nowhere to put a fence'); return; }
-    if ((tool === 'seed' || tool === 'exit' || tool === 'inlet' || tool === 'fence') && ty === 'C') { toast('Not in the creek'); return; }
-    var cost = S.CONTROLS[tool].cost;
-    if (spent() + cost > G.L.budget) { toast('Over budget! $' + (G.L.budget - spent()) + ' left'); snd('buzz'); flashMoney(); return; }
+    placeControl(tool, i, false);
+  }
+  // Why a control cannot be placed here (null = OK). Shared by tap, drag-placing and the ghost preview.
+  function placeBlock(tool, i) {
+    var ty = G.L.types[i], same = G.controls.filter(function (c) { return c.tile === i && c.type === tool; }).length;
+    if (tool === 'basin' ? same >= S.RULES.basinMaxStack : same) return tool === 'basin' ? 'Max ' + S.RULES.basinMaxStack + ' basin blocks per tile' : 'Already a ' + S.CONTROLS[tool].name.toLowerCase() + ' here';
+    if (tool === 'fence' && G.sim.dir[i] < 0) return ty === 'C' ? 'Keep fences out of the creek' : 'Water does not leave this tile to a neighbor; nowhere to put a fence';
+    if ((tool === 'seed' || tool === 'exit' || tool === 'inlet' || tool === 'fence') && ty === 'C') return 'Not in the creek';
+    if (spent() + S.CONTROLS[tool].cost > G.L.budget) return 'Over budget! $' + (G.L.budget - spent()) + ' left';
+    return null;
+  }
+  function placeControl(tool, i, quiet) {
+    var why = placeBlock(tool, i);
+    if (why) { if (!quiet) { toast(why); if (/budget/.test(why)) { snd('buzz'); flashMoney(); } } return false; }
     G.controls.push({ type: tool, tile: i, round: G.round || 0 }); snd('thunk');
     G.born[G.controls.length - 1] = performance.now();
-    G.history.push({ op: 'add' });
+    G.history.push({ op: 'add' }); G.ghostKey = null;
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ }
-    updateHud(); showTileInfo(i, true);
+    updateHud(); if (!quiet) showTileInfo(i, true);
+    if (tool === 'basin') { var n = G.controls.filter(function (c) { return c.tile === i && c.type === 'basin'; }).length; if (n > 1) toast(n + ' basin blocks here = ' + (n * S.RULES.basinCapCf).toLocaleString() + ' cf'); }
+    return true;
+  }
+  // ---------- ghost preview: would this control work here? (forecast storm) ----------
+  function updateGhost(i) {
+    var tool = G.tool;
+    if (i < 0 || G.phase !== 'plan' || !S.CONTROLS[tool]) { G.ghost = null; return; }
+    var key = tool + ':' + i + ':' + G.controls.length; if (G.ghostKey === key) return; G.ghostKey = key;
+    var why = placeBlock(tool, i), ok = !why, msg = why || '';
+    if (!why) { var cs = agedControls().concat([{ type: tool, tile: i, age: 0 }]), r = S.simulate(G.L, cs, { intensity: G.L.forecast.intensity }), e = r.evals[cs.length - 1];
+      ok = e.status === 'ok'; msg = (ok ? '✓ ' : '✗ ' + e.status + ': ') + e.reason; }
+    G.ghost = { tile: i, type: tool, ok: ok, msg: msg };
+  }
+  function drawGhost(ctx, t) {
+    var g = G.ghost, W = G.L.W, p = tileTop(g.tile % W, (g.tile / W) | 0), o = { prog: 1, t: t, age: 0 };
+    if (g.type === 'fence') { var d = G.sim.dir[g.tile]; o.edge = edgeCorners(g.tile, d >= 0 ? d : g.tile + W); }
+    ctx.globalAlpha = 0.6; A.drawControl(ctx, g.type, p, o); ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y - A.TH / 2); ctx.lineTo(p.x + A.TW / 2, p.y); ctx.lineTo(p.x, p.y + A.TH / 2); ctx.lineTo(p.x - A.TW / 2, p.y); ctx.closePath();
+    ctx.fillStyle = g.ok ? 'rgba(60,220,90,.35)' : 'rgba(240,50,40,.42)'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = g.ok ? '#5dff7a' : '#ff4a3a'; ctx.stroke();
+  }
+  function drawSolGhost(ctx, t) {
+    var W = G.L.W, pulse = 0.35 + 0.25 * Math.sin(t / 300);
+    G.solGhost.forEach(function (c) { var p = tileTop(c.tile % W, (c.tile / W) | 0), o = { prog: 1, t: t, age: 0 };
+      if (c.type === 'fence') { var d = G.sim.dir[c.tile]; o.edge = edgeCorners(c.tile, d >= 0 ? d : c.tile + W); }
+      A.diamond(ctx, p, 0.04, 'rgba(80,200,255,' + pulse.toFixed(2) + ')'); ctx.globalAlpha = 0.65; A.drawControl(ctx, c.type, p, o); ctx.globalAlpha = 1; });
   }
   function rebornIndex() { G.born = {}; }
   function spent() { return G.controls.reduce(function (a, c) { return a + S.CONTROLS[c.type].cost; }, 0); }
@@ -479,7 +525,7 @@
     if (G.phase !== 'plan') return;
     var h = G.history.pop(); if (!h) { toast('Nothing to undo'); return; }
     if (h.op === 'terrain') { G.L.heights[h.i] = h.h; G.L.types[h.i] = h.t; terrainChanged(); return; }
-    if (h.op === 'add') G.controls.pop(); else G.controls.splice(h.k, 0, h.c);
+    if (h.op === 'replace') G.controls = h.prev; else if (h.op === 'add') G.controls.pop(); else G.controls.splice(h.k, 0, h.c);
     rebornIndex(); updateHud();
   }
   function showTileInfo(i, brief) {
@@ -587,6 +633,7 @@
     if (G.L.tutorial && !progress.tutDone) showTutorial(0); else showForecast();
   }
   function setupLevel(L, n, controls) {
+    G.hintLevel = 0; G.hintTiles = null; G.solGhost = null; G.ghost = null; G.paused = false;
     if (window.SWP3Sound) SWP3Sound.rain(0);
     G.crew = null;
     G.level = n; G.L = L; geo = buildGeometry(G.L);
@@ -603,7 +650,7 @@
     var f = G.L.forecast;
     openPanel('<h2>Storm forecast</h2><div class="forecast"><div class="big">⛈</div><div><b>' + f.label + '</b> expected in 3 days.<br>' +
       '<small>TxDOT EC(1)/EC(2) sheets: a 2-year storm may be used to calculate the flow rate to be filtered.</small></div></div>' +
-      '<p><b>Your job:</b> ' + G.L.goal + '</p><p>Budget: <b>$' + G.L.budget.toLocaleString() + '</b></p>' +
+      '<p><b>Your job:</b> ' + G.L.goal + '</p>' + (G.L.lesson ? '<p class="lesson"><b>Lesson:</b> ' + G.L.lesson + '</p>' : '') + '<p>Budget: <b>$' + G.L.budget.toLocaleString() + '</b>' + (G.L.actual.intensity !== G.L.forecast.intensity ? ' · <small>Weather is uncertain: leave margin.</small>' : '') + '</p>' +
       '<div class="btns"><button type="button" class="primary" data-act="close">Start planning</button></div>');
   }
   var TUT = [
@@ -627,12 +674,16 @@
   }
   function snd(n) { if (window.SWP3Sound) SWP3Sound.play(n); }
   function agedControls() { return G.controls.map(function (c) { return { type: c.type, tile: c.tile, age: (G.round || 0) - (c.round || 0) }; }); }
+  function replayStorm() { // re-watch the last storm; the score is not recomputed
+    if (!G.scoreRes) return; G.phase = 'storm'; G.sim = G.scoreRes.result; G.speed = 1; startStormParticles(); G.replay = true;
+    $('stormHud').classList.remove('hidden'); $('stormLabel').textContent = '↻ ' + G.L.actual.label; if (window.SWP3Sound) SWP3Sound.rain(G.L.actual.intensity);
+  }
   function banner(html) { var b = $('banner'); b.innerHTML = html; b.classList.remove('hidden'); setTimeout(function () { b.classList.add('hidden'); }, 2600); }
   function endStorm() {
     if (G.phase !== 'storm') return;
     G.phase = 'report'; $('stormHud').classList.add('hidden'); if (window.SWP3Sound) SWP3Sound.rain(0);
-    setTimeout(function () { snd(G.scoreRes && G.scoreRes.stars >= 2 && !G.scoreRes.violations ? 'jingle' : 'buzz'); }, 250); G.round = (G.round || 0) + 1; // each storm grows seeded tiles in
-    var r = G.scoreRes, L = G.L, prev = progress.stars[L.id] || 0;
+    setTimeout(function () { snd(G.scoreRes && G.scoreRes.stars >= 2 && !G.scoreRes.violations ? 'jingle' : 'buzz'); }, 250); if (!G.replay) G.round = (G.round || 0) + 1; // each storm grows seeded tiles in
+    var r = G.scoreRes, L = G.L, prev = progress.stars[L.id] || 0; G.replay = false;
     if (r.stars > prev && !L.sandbox) { progress.stars[L.id] = r.stars; saveProgress(); }
     var st = ''; for (var k = 1; k <= 3; k++) st += k <= r.stars ? '★' : '<span class="off">★</span>';
     var res = r.result, base = r.baseline;
@@ -650,8 +701,9 @@
       '<span>Storm</span><b>' + L.actual.label + '</b></div><small>Sediment in game units.</small>' +
       '<h3>What went wrong?</h3>' + (items || '<div class="fail okitem">Nothing! All ' + okCount + ' controls performed.</div>') +
       '<div class="tip">💡 ' + L.tip + '</div>' +
-      '<div class="btns"><button type="button" data-act="view">See site</button><button type="button" data-act="retry">Revise plan</button>' +
-      (L.sandbox ? '<button type="button" class="primary" data-act="sbstorm">Change storm</button>' : L.id < S.LEVEL_COUNT ? '<button type="button" class="primary" data-act="next"' + (r.stars < 1 ? ' disabled' : '') + '>Next level</button>' : '<button type="button" class="primary" data-act="levels">Levels</button>') + '</div>';
+      '<div class="btns"><button type="button" data-act="view">See site</button><button type="button" data-act="replay">Replay storm</button><button type="button" data-act="retry">Revise plan</button>' +
+      (L.sandbox ? '' : '<button type="button" data-act="restart">Restart level</button>' + (r.stars < 3 ? '<button type="button" data-act="solask">Show solution</button>' : '')) +
+      (L.sandbox ? '<button type="button" class="primary" data-act="sbstorm">Change storm</button>' : L.id < S.LEVEL_COUNT ? '<button type="button" class="primary" data-act="next">Next level</button>' : '<button type="button" class="primary" data-act="levels">Levels</button>') + '</div>';
     openPanel(html);
   }
   function backToPlan() {
@@ -659,15 +711,67 @@
     G.sim = S.simulate(G.L, agedControls(), { intensity: G.L.forecast.intensity }); updateHud(); selectTool(G.tool);
   }
   function showLevels() {
-    var html = '<h2>SWP3 Designer</h2><p>You are the engineer designing the erosion &amp; sediment control plan. Place controls, then run the storm.</p>';
-    for (var n = 1; n <= S.LEVEL_COUNT; n++) {
-      var L = S.makeLevel(n), s = progress.stars[n] || 0, locked = n > 1 && !(progress.stars[n - 1] >= 1);
-      var st = ''; for (var k = 1; k <= 3; k++) st += k <= s ? '★' : '☆';
-      html += '<button type="button" class="lvl" data-act="lvl' + n + '"' + (locked ? ' disabled' : '') + '><b>' + n + '. ' + L.name + '</b><span>' + (locked ? '🔒' : st) + '</span></button>';
+    var html = '<h2>SWP3 Designer</h2><p>You are the engineer designing the erosion &amp; sediment control plan. All levels are open; the ⭐ marks the recommended next one.</p>', rec = 0;
+    for (var n = 1; n <= S.LEVEL_COUNT; n++) if (!rec && !(progress.stars[n] >= 1)) rec = n;
+    for (n = 1; n <= S.LEVEL_COUNT; n++) {
+      var L = S.makeLevel(n), s = progress.stars[n] || 0, st = '';
+      for (var k = 1; k <= 3; k++) st += k <= s ? '★' : '☆';
+      html += '<button type="button" class="lvl" data-act="lvl' + n + '"><b>' + n + '. ' + L.name + (n === rec ? ' <span class="tag rec">recommended</span>' : '') + ((progress.sol || {})[n] ? ' <span class="tag">solution used</span>' : '') + '</b><span>' + st + '</span></button>';
     }
     html += '<button type="button" class="lvl" data-act="sandbox"><b>🧪 Sandbox</b><span>build your own site</span></button>';
-    html += '<div class="btns">' + (G.L ? '<button type="button" data-act="close">Back</button>' : '') + '<button type="button" data-act="reset">Reset progress</button></div>';
+    html += '<div class="btns">' + (G.L ? '<button type="button" data-act="close">Back</button>' : '') + '<button type="button" data-act="settings">⚙ Settings</button><button type="button" data-act="reset">Reset progress</button></div>';
     openPanel(html);
+  }
+  // ---------- hints & solutions ----------
+  function showHint() {
+    if (G.L.sandbox) { toast('No hints in the sandbox'); return; }
+    var hs = G.L.hints || [], k = G.hintLevel || 0;
+    G.hintTiles = G.L.hintTiles || null;
+    if (k < hs.length) { G.hintLevel = k + 1;
+      openPanel('<h2>Hint ' + (k + 1) + ' of ' + hs.length + '</h2><p>' + hs[k] + '</p>' + (G.hintTiles ? '<p><small>The problem area is blinking yellow on the map.</small></p>' : '') +
+        '<div class="btns"><button type="button" class="primary" data-act="close">Got it</button></div>'); }
+    else askSolution();
+  }
+  function askSolution() {
+    openPanel('<h2>Show solution?</h2><p>This will reveal a 3-star plan for this level. You still earn stars for running it; the level gets a small “solution used” tag.</p>' +
+      '<div class="btns"><button type="button" data-act="close">Not yet</button><button type="button" class="primary" data-act="solshow">Reveal</button></div>');
+  }
+  function showSolution() {
+    var n = G.L.id, sol = SWP3Solutions.SOL[n]; if (!sol) return;
+    progress.sol = progress.sol || {}; progress.sol[n] = true; saveProgress();
+    if (G.phase !== 'plan') backToPlan();
+    G.solGhost = SWP3Solutions.controlsFor(n, G.L.W);
+    var cost = G.solGhost.reduce(function (a, c) { return a + S.CONTROLS[c.type].cost; }, 0);
+    var html = '<h2>Solution — ' + G.L.name + '</h2><ol class="sollist">' + sol.map(function (st) {
+      var cnt = {}; st.place.forEach(function (p) { cnt[p[0]] = (cnt[p[0]] || 0) + 1; });
+      var what = Object.keys(cnt).map(function (t) { return cnt[t] + '× ' + S.CONTROLS[t].name; }).join(', ');
+      return '<li><b>' + what + '</b><br>' + st.why + '<br><small>Basis: ' + st.basis + '</small></li>'; }).join('') + '</ol>' +
+      '<p>Plan cost $' + cost.toLocaleString() + ' of $' + G.L.budget.toLocaleString() + '. The plan is shown as blue ghosts on the map.</p>' +
+      '<div class="btns"><button type="button" data-act="solmap">Show on map</button><button type="button" class="primary" data-act="soltry">Try it</button></div>';
+    openPanel(html);
+  }
+  function trySolution() {
+    var cs = SWP3Solutions.controlsFor(G.L.id, G.L.W), now = performance.now();
+    G.history.push({ op: 'replace', prev: G.controls.slice() });
+    G.controls = cs.map(function (c) { return { type: c.type, tile: c.tile, round: G.round || 0 }; });
+    G.born = {}; G.controls.forEach(function (c, k) { G.born[k] = now + k * 60; });
+    G.solGhost = null; snd('thunk'); updateHud(); toast('Solution placed. Press 🌧 Rain Check (Undo restores your plan).');
+  }
+  // ---------- settings ----------
+  var SET_KEY = 'swp3-game-settings', settings = (function () { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })();
+  if (settings.volume == null) settings.volume = 0.6;
+  function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } applySettings(); }
+  function applySettings() { if (window.SWP3Sound && SWP3Sound.setVolume) SWP3Sound.setVolume(settings.volume); G.reduced = !!settings.reduced; }
+  function showSettings() {
+    var m = window.SWP3Sound && SWP3Sound.isMuted();
+    openPanel('<h2>Settings</h2><label class="setrow"><input type="checkbox" id="setSound"' + (m ? '' : ' checked') + '> Sound</label>' +
+      '<label class="setrow">Volume <input type="range" id="setVol" min="0" max="1" step="0.05" value="' + settings.volume + '"></label>' +
+      '<label class="setrow"><input type="checkbox" id="setReduced"' + (settings.reduced ? ' checked' : '') + '> Reduced motion (no lightning flashes, calmer water, crew stands still)</label>' +
+      '<p><small>Desktop keys: 1–9 tools · Z undo · R rain check · Space pause storm · +/− zoom · F flow view · H hint · arrows pan · Esc close. Drag with the fence tool to lay a fence line (Shift-drag pans).</small></p>' +
+      '<div class="btns"><button type="button" class="primary" data-act="levels">Done</button></div>');
+    $('setSound').addEventListener('change', function () { SWP3Sound.setMuted(!this.checked); syncMute(); });
+    $('setVol').addEventListener('input', function () { settings.volume = +this.value; saveSettings(); });
+    $('setReduced').addEventListener('change', function () { settings.reduced = this.checked; saveSettings(); });
   }
 
   // ---------- overlay ----------
@@ -684,8 +788,15 @@
     else if (a && a.indexOf('lvl') === 0) { closePanel(); loadLevel(+a.slice(3)); }
     else if (a === 'retry') { closePanel(); backToPlan(); }
     else if (a === 'view') { closePanel(); toast('Failed controls blink red. Tap ☰ for the report menu, or Revise.'); showReviseBar(); }
-    else if (a === 'next') { closePanel(); loadLevel(G.L.id + 1); }
+    else if (a === 'next') { closePanel(); if (G.L.id < S.LEVEL_COUNT) loadLevel(G.L.id + 1); else showLevels(); }
     else if (a === 'levels') showLevels();
+    else if (a === 'settings') showSettings();
+    else if (a === 'solask') askSolution();
+    else if (a === 'solshow') showSolution();
+    else if (a === 'solmap') { closePanel(); toast('Blue ghosts = the 3-star plan. Tap 💡 again for the explanation.'); }
+    else if (a === 'soltry') { closePanel(); trySolution(); }
+    else if (a === 'restart') { closePanel(); loadLevel(G.L.id); }
+    else if (a === 'replay') { closePanel(); replayStorm(); }
     else if (a === 'sbstorm') { backToPlan(); showStormPicker(); }
     else if (a === 'sandbox') { closePanel(); loadSandbox(false); }
     else if (a === 'sbreset') { if (confirm('Reset the sandbox site and controls?')) { closePanel(); loadSandbox(true); saveSandbox(); } }
@@ -701,6 +812,24 @@
     runStorm();
   });
   $('undoBtn').addEventListener('click', undo);
+  // ---------- desktop keyboard shortcuts ----------
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    var k = e.key, open = !$('overlay').classList.contains('hidden');
+    if (k === 'Escape') { if (open) closePanel(); G.solGhost = null; G.hintTiles = null; return; }
+    if (open || e.metaKey || e.altKey) return;
+    if (/^[1-9]$/.test(k)) { var tb = document.querySelectorAll('.tool'), b = tb[+k - 1]; if (b) { b.click(); b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }
+    else if ((k === 'z' || k === 'Z') ) { undo(); e.preventDefault(); }
+    else if (k === 'r' || k === 'R') $('runBtn').click();
+    else if (k === ' ') { if (G.phase === 'storm') { G.paused = !G.paused; $('speedBtn').textContent = G.paused ? '❚❚' : G.speed + '×'; toast(G.paused ? 'Paused (Space)' : 'Resumed'); } e.preventDefault(); }
+    else if (k === '+' || k === '=') setZoom(G.zoom * 1.25);
+    else if (k === '-' || k === '_') setZoom(G.zoom / 1.25);
+    else if (k === 'f' || k === 'F') $('flowView').click();
+    else if (k === 'h' || k === 'H') $('hintBtn').click();
+    else if (k.indexOf('Arrow') === 0) { var st = 60; if (k === 'ArrowLeft') G.panX += st; if (k === 'ArrowRight') G.panX -= st; if (k === 'ArrowUp') G.panY += st; if (k === 'ArrowDown') G.panY -= st; clampPan(); e.preventDefault(); }
+  });
+  applySettings();
+  $('hintBtn').addEventListener('click', function () { if (G.solGhost) showSolution(); else showHint(); });
   document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('button') && !e.target.closest('#runBtn')) snd('click'); });
   function syncMute() { var m = window.SWP3Sound && SWP3Sound.isMuted(), b = $('muteBtn'); b.textContent = m ? '🔇' : '🔊'; b.setAttribute('aria-pressed', m ? 'true' : 'false'); b.setAttribute('aria-label', m ? 'Sound off' : 'Sound on'); }
   $('muteBtn').addEventListener('click', function () { if (!window.SWP3Sound) return; SWP3Sound.setMuted(!SWP3Sound.isMuted()); syncMute(); });

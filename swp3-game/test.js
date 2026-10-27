@@ -254,4 +254,34 @@ t('art.js draws exactly the block pick.js hit-tests (64x32 tiles, every pixel, s
   }
 });
 
+const SOLN = require('./solutions.js');
+t('every level has a stored solution that earns 3 stars (levels 1-' + S.LEVEL_COUNT + ')', () => {
+  for (let n = 1; n <= S.LEVEL_COUNT; n++) {
+    const L = S.makeLevel(n), r = S.score(L, SOLN.controlsFor(n, L.W));
+    assert.strictEqual(r.stars, 3, `level ${n}: ${r.score} ${JSON.stringify(r.failed)}`);
+    assert.ok(r.result.cost <= L.budget, `level ${n} over budget`);
+    SOLN.SOL[n].forEach(st => assert.ok(st.why && st.basis && st.place.length));
+  }
+});
+t('levels 4-7: two distinct 3-star plans each; naive plan falls short', () => {
+  const { row, col } = SOLN;
+  const P = (n, list) => { const L = S.makeLevel(n); return S.score(L, list.map(([t, x, y]) => ({ type: t, tile: y * L.W + x }))); };
+  const cases = {
+    4: { alt: [...col('fence', 1, 3, 14), ...col('fence', 18, 3, 14), ['exit', 9, 17], ['washout', 6, 6]], naive: [...row('fence', 14, 2, 17), ['exit', 9, 16], ['washout', 12, 10]] },
+    5: { alt: [...col('dam', 13, 0, 7, 2), ...col('dam', 13, 8, 13), ...col('fence', 12, 13, 19), ['exit', 12, 4]], naive: [...col('dam', 13, 1, 19, 3), ['exit', 12, 4]] },
+    6: { alt: [...row('fence', 8, 1, 18), ...row('fence', 6, 5, 14), ['exit', 13, 9]], naive: [['inlet', 2, 11], ['inlet', 10, 11], ['inlet', 17, 11], ['exit', 13, 9]] },
+    7: { alt: [['basin', 9, 10], ['basin', 9, 10], ...row('fence', 14, 1, 5), ...row('fence', 14, 13, 18), ...col('fence', 8, 11, 14), ...col('fence', 10, 11, 14), ['exit', 18, 1]], naive: [...row('fence', 14, 1, 18), ['exit', 18, 1]] }
+  };
+  for (const n of [4, 5, 6, 7]) {
+    const sol = SOLN.SOL[n].flatMap(s => s.place), alt = cases[n].alt;
+    assert.notDeepStrictEqual(JSON.stringify(sol.slice().sort()), JSON.stringify(alt.slice().sort()));
+    assert.strictEqual(P(n, sol).stars, 3, 'solution ' + n);
+    const a = P(n, alt); assert.strictEqual(a.stars, 3, 'alt ' + n + ' ' + a.score + JSON.stringify(a.failed));
+    const nv = P(n, cases[n].naive); assert.ok(nv.stars < 3, 'naive ' + n + ' got ' + nv.stars);
+  }
+  // level 7 rule: 10+ ac disturbed requires a working basin; one block is undersized
+  const L7 = S.makeLevel(7), one = S.score(L7, [{ type: 'basin', tile: 15 * 20 + 9 }]);
+  assert.ok(one.failed.some(f => f.status === 'undersized') && one.failed.some(f => f.index === -3));
+});
+
 console.log(n + ' tests passed');

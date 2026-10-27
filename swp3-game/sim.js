@@ -27,6 +27,7 @@
     basinCapCf: 10800,      // game rule: one basin block = 10,800 cf (sized for 3 ac)
     basinTrap: 0.85,        // game rule
     basinOverTrap: 0.20,    // game rule (undersized basin overtops)
+    basinMaxStack: 3,       // game rule: up to 3 basin blocks stacked on one tile (32,400 cf)
     basinMinAc: 0.75,       // game rule: a basin must sit at a low point that collects at least 0.75 ac
     washoutBufferFt: 50,    // EPA Concrete Washout BMP fact sheet: not within 50 ft of storm drains, open ditches, waterbodies
     washoutLoad: 12,        // game rule: concrete washwater dumped on site with no (or misplaced) washout
@@ -74,6 +75,9 @@
       L.goal = 'Stop sheet flow from leaving the south edge.';
       L.tip = 'Silt fence works for sheet flow on small drainage areas. TxDOT EC(1)-16: not recommended for more than 2 acres.';
       L.tutorial = true;
+      L.lesson = 'Silt fence catches SHEET flow: put it along the contour at the downstream edge of the disturbed area.';
+      L.hints = ['Water runs south (down the screen). Where does it leave the brown pad?', 'A row of silt fence along the bottom row of the pad, plus a construction exit on the orange access tile.'];
+      L.hintTiles = [14 * W + 9];
     } else if (n === 2) {
       // Site slopes east (4%) toward a roadside ditch running south at 1.5%. Road east of ditch.
       for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
@@ -86,7 +90,12 @@
       L.name = 'Roadside ditch'; L.budget = 14000;
       L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '2-yr storm', intensity: 1.0 };
       L.goal = 'The pad drains to a roadside ditch. Space rock filter dams so the ditch holds the sediment.';
+      L.lesson = 'Concentrated flow in a ditch needs rock filter dams, spaced so each pool reaches the next dam: spacing = 18 in. ÷ ditch slope.';
+      L.hints = ['Inspect a ditch tile: its slope sets the dam spacing.', 'A rock filter dam every 2 tiles down the ditch (100 ft at 1.5%), plus a construction exit.'];
+      L.hintTiles = [9 * W + 15];
       L.tip = 'Rock filter dam spacing depends on ditch slope: spacing = dam height / slope (game rule: top of the downstream dam level with the toe of the upstream dam).';
+    } else if (n >= 4) {
+      buildLevel(n, L, set, h, t, W, H, r);
     } else {
       // Steep 8% slope south to a road with a curb inlet, then a grass bank down to a creek.
       for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
@@ -107,9 +116,94 @@
       L.name = 'Steep slope above a creek'; L.budget = 26000;
       L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '10-yr storm', intensity: 1.5 };
       L.goal = 'Protect the inlet and the creek. Flow collects in the east swale. There is a concrete pour: plan a washout.';
+      L.lesson = 'Size controls for the storm you might get: the forecast says 2-yr, but a bigger storm pushes drainage areas past the silt fence (2 ac) and inlet (5 ac) limits.';
+      L.hints = ['Inspect the bottom of the east swale: how many acres in a 10-yr storm?', 'Fence row along the toe of the pad except the swale, one fence high in the swale (or a basin at its toe), inlet protection, exit and washout.'];
+      L.hintTiles = [12 * W + 16];
       L.tip = 'TxDOT sheets size these controls with a 2-yr storm. Bigger storms load every device harder: a fence where the swale collects flow is over 2 ac in a 10-yr storm. Split the flow upslope with more fences, or catch it in a sediment basin (3,600 cf/ac).';
     }
     return L;
+  }
+
+  // ---- Levels 4-7 ----
+  function buildLevel(n, L, set, h, t, W, H, r) {
+    var x, y;
+    if (n === 4) {
+      // Phased pad on a ridge: sheet flow runs BOTH west and east (2%), haul road south to the street.
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) h[y * W + x] = 30 - Math.abs(x - 9.5) * 1.0 - y * 0.25 + r() * 0.02;
+      for (y = 3; y < 15; y++) for (x = 2; x < 18; x++) set(x, y, 'S');
+      for (x = 0; x < W; x++) { set(x, 18, 'R'); set(x, 19, 'R'); }
+      set(9, 15, 'A'); set(9, 16, 'A'); set(9, 17, 'A');
+      L.concrete = true;
+      L.name = 'Phased pad + haul road'; L.budget = 13000;
+      L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '5-yr storm', intensity: 1.25 };
+      L.goal = 'The pad sits on a ridge: runoff leaves on two sides. Trucks use the haul road; a slab pour needs a washout.';
+      L.lesson = 'Find where sheet flow actually leaves the site (flow view ≋) and put perimeter silt fence across it, on every downslope side. Stabilize the truck exit and site the washout 50 ft from water.';
+      L.tip = 'Sheet flow goes downhill, not "to the bottom of the screen". On a ridge the downslope perimeter is both sides (TxDOT EC(1)-16: along the contour at the downstream perimeter).';
+      L.hints = ['Turn on flow view ≋: arrows on the pad point west AND east.', 'Silt fence along both the west and east edges of the pad, plus a construction exit on the haul road and a washout.'];
+      L.hintTiles = [3 * W + 2, 3 * W + 17];
+    } else if (n === 5) {
+      // Highway cut slope (8%) draining east into a roadside ditch: 1.5% upper reach, 3% middle reach, 7% steep reach.
+      var base = [], b = 40;
+      for (y = 0; y < H; y++) { base.push(b); b -= y < 8 ? 0.7 : y < 14 ? 1.4 : 3.5; }
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        var z = base[y];
+        if (x <= 11) z += (12 - x) * 4.0 + 4;  // cut slope (8%)
+        else if (x === 12) z += 4;            // shoulder
+        else if (x === 13) z += 0;            // ditch
+        else z += 1.2;                        // pavement / fill
+        h[y * W + x] = z + r() * 0.01;
+      }
+      for (y = 0; y < H; y++) { for (x = 6; x <= 12; x++) set(x, y, 'S'); set(13, y, 'D'); for (x = 14; x <= 17; x++) set(x, y, 'R'); }
+      set(12, 4, 'A');
+      L.name = 'Cut slope + ditch chain'; L.budget = 17000;
+      L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '2-yr storm', intensity: 1.0 };
+      L.goal = 'A fresh highway cut drains into a new roadside ditch that gets steeper downhill. Hold the sediment in the ditch.';
+      L.lesson = 'Rock filter dam spacing = dam height ÷ ditch slope: about 100 ft on the 1.4% reach, 50 ft on the 2.8% reach. On the 7% reach the flow is too fast for rock dams (they wash out), so trap the sediment upslope with silt fence on the cut instead.';
+      L.tip = 'TxDOT EC(2)-16: Type 1 dams are not for high-velocity flow (~8 ft/s). Game rule: dams wash out above 6% ditch slope.';
+      L.hints = ['The ditch changes slope twice. Tap ditch tiles with Inspect to read the slope.', 'Rock dams every 2 tiles on the 1.5% reach, every tile on the 3% reach, none on the 7% reach; silt fence on the cut slope above the steep reach.'];
+      L.hintTiles = [7 * W + 13, 15 * W + 13];
+    } else if (n === 6) {
+      // Urban corridor: pad slopes south to a street; the curb gutter runs to three inlets (big middle catchment).
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        var zz, gi = x <= 4 ? 2 : x >= 15 ? 17 : 10;
+        if (y <= 4) zz = 12 + y * 1.0;               // north lots drain away (north)
+        else if (y <= 9) zz = 15 - (y - 5) * 1.0;     // pad slopes south to the street
+        else if (y === 10) zz = 10.5;
+        else if (y === 11) zz = 10.0 + 0.06 * Math.abs(x - gi) + (gi === 10 ? 0 : 0.3);
+        else zz = 10.6 - (y - 12) * 0.6;              // curb, then buildings drain south
+        h[y * W + x] = zz + r() * 0.005;
+      }
+      for (y = 5; y <= 8; y++) for (x = 1; x <= 18; x++) set(x, y, 'S');
+      for (x = 0; x < W; x++) { set(x, 10, 'R'); set(x, 11, 'R'); }
+      set(2, 11, 'I'); set(10, 11, 'I'); set(17, 11, 'I');
+      h[11 * W + 2] = 9.6; h[11 * W + 10] = 9.6; h[11 * W + 17] = 9.6;
+      set(13, 9, 'A');
+      L.name = 'Urban inlet cluster'; L.budget = 14000;
+      L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '10-yr storm', intensity: 1.5 };
+      L.goal = 'Three curb inlets drain the street. One of them collects far more than the others.';
+      L.lesson = 'Inlet protection is the last line of defense and only works up to about 5 acres (TxDOT EC(9)-16). Check each inlet\u2019s drainage area; where it is too big, control the sediment at the source (silt fence on the pad) instead of relying on the inlet.';
+      L.tip = 'Inlet logs bypass when the drainage area is too big. Trap sediment upstream so less reaches the gutter.';
+      L.hints = ['Inspect each inlet: one drains well over 5 ac in the surprise 10-yr storm.', 'Silt fence across the bottom of the pad above the big inlet (or the whole pad), inlet protection only where the area is small, and a construction exit.'];
+      L.hintTiles = [11 * W + 10];
+    } else if (n === 7) {
+      // Large 14.5 ac pad: sheet flow south to a creek, except a central swale that concentrates flow.
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        var zq = 50 - y * 1.0, dsw = Math.abs(x - 9);
+        if (y >= 8 && y <= 16 && dsw < 3) zq -= (3 - dsw) * 1.6; // central swale in the lower half
+        if (y >= 17) zq = 26 - (y - 17) * 1.5;
+        h[y * W + x] = zq + r() * 0.01;
+      }
+      for (y = 1; y <= 14; y++) for (x = 1; x <= 18; x++) set(x, y, 'S');
+      for (x = 0; x < W; x++) { set(x, 0, 'R'); set(x, 18, 'C'); set(x, 19, 'C'); }
+      set(18, 1, 'A');
+      L.name = 'Big site above a creek'; L.budget = 62000; L.requireBasin = true;
+      L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '5-yr storm', intensity: 1.25 };
+      L.goal = 'Over 10 acres disturbed at once above a creek. A central swale concentrates flow. TxDOT requires a sediment basin.';
+      L.lesson = 'With 10+ acres disturbed, Item 506 requires a sediment basin with 3,600 cf per acre drained. Size it: acres × 3,600 cf, then stack basin blocks (10,800 cf each) on the swale outlet until it holds that. Sheet flow elsewhere still gets perimeter silt fence.';
+      L.tip = 'Basin size = 3,600 cf × drainage acres (TxDOT Item 506). Each basin block holds 10,800 cf; place more blocks on the same tile to add storage. Size for the storm you might get, not just the forecast.';
+      L.hints = ['Inspect the bottom of the central swale: how many acres, and how many cubic feet at 3,600 cf/ac?', 'Two basin blocks stacked on the swale outlet, silt fence along the bottom of the pad everywhere else, and a construction exit.'];
+      L.hintTiles = [16 * W + 9];
+    }
   }
 
   // ---- Sandbox ----
@@ -254,13 +348,16 @@
         if (ty !== 'S' && ty !== 'A') { r.status = 'wasted'; r.reason = 'Only bare disturbed soil needs temporary seeding.'; }
         else { r.factor = seedFactorFor(c.age); r.reason = 'Seed + mulch: erosion at ' + Math.round(r.factor * 100) + '% of bare soil' + (r.factor > RULES.seedFactor ? ' (still growing in; full cover after 2 storms).' : ' (grown in).'); }
       } else if (c.type === 'basin') {
-        var need = RULES.basinCfPerAc * effAc;
-        r.requiredCf = need; r.capacityCf = RULES.basinCapCf;
+        var need = RULES.basinCfPerAc * effAc, blocks = 0, first = -1;
+        controls.forEach(function (c2, k2) { if (c2.type === 'basin' && c2.tile === i) { blocks++; if (first < 0) first = k2; } });
+        var cap = RULES.basinCapCf * Math.min(blocks, RULES.basinMaxStack);
+        r.requiredCf = need; r.capacityCf = cap; r.blocks = blocks;
         if (ty === 'C') { r.status = 'violation'; r.reason = 'A basin cannot be dug in the creek (game rule; in-stream work needs a permit).'; }
         else if (ty === 'R' || ty === 'I') { r.status = 'wasted'; r.reason = 'A basin cannot go on the road or inlet.'; }
         else if (effAc < RULES.basinMinAc) { r.status = 'wasted'; r.trap = RULES.basinTrap; r.reason = 'Not a low point: only ' + effAc.toFixed(2) + ' ac drains here. Put basins where flow collects (game rule: at least ' + RULES.basinMinAc + ' ac).'; }
-        else if (need > RULES.basinCapCf) { r.status = 'undersized'; r.trap = RULES.basinOverTrap; r.reason = effAc.toFixed(1) + ' ac' + (intensity > 1 ? ' (storm-adjusted)' : '') + ' x 3,600 cf/ac = ' + Math.round(need).toLocaleString() + ' cf needed; this basin holds ' + RULES.basinCapCf.toLocaleString() + ' cf and overtopped (TxDOT Item 506 sizing).'; }
-        else { r.trap = RULES.basinTrap; r.reason = 'Basin sized OK: ' + Math.round(need).toLocaleString() + ' cf needed of ' + RULES.basinCapCf.toLocaleString() + ' cf (3,600 cf/ac, TxDOT Item 506).'; }
+        else if (blocks > RULES.basinMaxStack) { r.status = 'wasted'; r.reason = 'Game rule: at most ' + RULES.basinMaxStack + ' basin blocks on one tile.'; }
+        else if (need > cap) { r.status = 'undersized'; r.trap = k === first ? RULES.basinOverTrap : 0; r.reason = effAc.toFixed(1) + ' ac' + (intensity > 1 ? ' (storm-adjusted)' : '') + ' x 3,600 cf/ac = ' + Math.round(need).toLocaleString() + ' cf needed; ' + blocks + ' block' + (blocks > 1 ? 's hold ' : ' holds ') + cap.toLocaleString() + ' cf and overtopped (TxDOT Item 506 sizing). Stack more blocks here.'; }
+        else { r.trap = k === first ? RULES.basinTrap : 0; r.reason = 'Basin sized OK: ' + Math.round(need).toLocaleString() + ' cf needed of ' + cap.toLocaleString() + ' cf in ' + blocks + ' block' + (blocks > 1 ? 's' : '') + ' (3,600 cf/ac, TxDOT Item 506).'; }
       } else if (c.type === 'washout') {
         var near = nearSensitive(L, i);
         if (!L.concrete) { r.status = 'wasted'; r.reason = 'No concrete work on this site.'; }
@@ -334,6 +431,8 @@
       if (e.status === 'wasted') wasted++;
       if (e.status !== 'ok') failed.push({ index: +k, control: controls[k], status: e.status, reason: e.reason });
     }
+    if (L.requireBasin && !controls.some(function (c, k) { return c.type === 'basin' && res.evals[k].status === 'ok'; }))
+      failed.push({ index: -3, control: null, status: 'missing', reason: 'Over 10 acres disturbed with no working sediment basin. TxDOT Item 506: provide a basin with 3,600 cf of storage per acre drained.' });
     if (res.out.washout > 0) failed.push({ index: -2, control: null, status: 'missing', reason: 'No working concrete washout: washwater ran off the site (EPA concrete washout BMP; game load).' });
     if (res.out.tracked > 0) failed.push({ index: -1, control: null, status: 'missing', reason: 'No construction exit: trucks tracked mud onto the road (TxDOT Item 506 4.4.4 construction exits).' });
     var sc = Math.round(90 * Math.min(1, R / RULES.goodReduction) + 10 * budgetLeft) - 25 * violations - 3 * wasted - 4 * (failed.length - violations - wasted - (res.out.tracked > 0 ? 1 : 0) - (res.out.washout > 0 ? 1 : 0)) - (res.out.tracked > 0 ? 8 : 0) - (res.out.washout > 0 ? 8 : 0);
@@ -346,6 +445,6 @@
   var api = { TILE_FT: TILE_FT, TILE_AC: TILE_AC, RULES: RULES, CONTROLS: CONTROLS, rng: rng, makeLevel: makeLevel,
     flowDirections: flowDirections, flowAccumulation: flowAccumulation, slopeOf: slopeOf, erosion: erosion,
     STORMS: STORMS, stormByKey: stormByKey, defaultSandbox: defaultSandbox, makeSandbox: makeSandbox, editTile: editTile, sandboxData: sandboxData,
-    evalControls: evalControls, seedFactorFor: seedFactorFor, nearSensitive: nearSensitive, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 3 };
+    evalControls: evalControls, seedFactorFor: seedFactorFor, nearSensitive: nearSensitive, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 7 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SWP3 = api;
 })(this);

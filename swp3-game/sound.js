@@ -3,11 +3,11 @@
   'use strict';
   var KEY = 'swp3-game-muted', ctx = null, master = null, rainSrc = null, rainGain = null, noiseBuf = null, unlocked = false;
   var muted = false; try { muted = localStorage.getItem(KEY) === '1'; } catch (e) { /* private mode */ }
-  var VOL = 0.35;
+  var VOL = 0.35, vol = 0.6;
   function init() {
     if (ctx) return ctx;
     var AC = root.AudioContext || root.webkitAudioContext; if (!AC) return null;
-    ctx = new AC(); master = ctx.createGain(); master.gain.value = muted ? 0 : VOL; master.connect(ctx.destination);
+    ctx = new AC(); master = ctx.createGain(); master.gain.value = muted ? 0 : VOL * vol / 0.6; master.connect(ctx.destination);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     return ctx;
   }
@@ -48,6 +48,7 @@
     var t = ctx.currentTime; rainGain.gain.cancelScheduledValues(t); rainGain.gain.setTargetAtTime(Math.max(0.0001, Math.min(0.5, level * 0.22)), t, 0.6);
     if (level <= 0) { var s = rainSrc; rainSrc = null; var g = rainGain; rainGain = null; setTimeout(function () { try { s.stop(); g.disconnect(); } catch (e) { /* ignore */ } }, 2500); }
   }
-  function setMuted(m) { muted = !!m; try { localStorage.setItem(KEY, muted ? '1' : '0'); } catch (e) { /* ignore */ } if (master) master.gain.setTargetAtTime(muted ? 0 : VOL, ctx.currentTime, 0.05); }
-  root.SWP3Sound = { play: play, rain: rain, setMuted: setMuted, isMuted: function () { return muted; }, isUnlocked: function () { return unlocked; }, state: function () { return ctx ? ctx.state : 'none'; } };
+  function setMuted(m) { muted = !!m; try { localStorage.setItem(KEY, muted ? '1' : '0'); } catch (e) { /* ignore */ } if (master) master.gain.setTargetAtTime(muted ? 0 : VOL * vol / 0.6, ctx.currentTime, 0.05); }
+  function setVolume(v) { vol = Math.max(0, Math.min(1, +v || 0)); if (master) master.gain.setTargetAtTime(muted ? 0 : VOL * vol / 0.6, ctx.currentTime, 0.05); }
+  root.SWP3Sound = { setVolume: setVolume, play: play, rain: rain, setMuted: setMuted, isMuted: function () { return muted; }, isUnlocked: function () { return unlocked; }, state: function () { return ctx ? ctx.state : 'none'; } };
 })(this);
