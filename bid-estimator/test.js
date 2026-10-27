@@ -108,7 +108,11 @@ t('escalation uses real NHCCI values and labels user %/yr', () => {
   const e2 = E.escalation('2025-08-01', '2028-01-15', 3, nh);
   assert.strictEqual(e2.to, last);
   assert(e2.userYears > 1 && Math.abs(e2.factor - (v[last] / v['2025 Q3']) * Math.pow(1.03, e2.userYears)) < 1e-12);
+  const e3 = E.escalation('2026-06-01', '2027-06-01', 3, nh);
+  assert(e3.noIndex && Math.abs(e3.factor - Math.pow(1.03, e3.userYears)) < 1e-12 && e3.userYears > 0.9);
   const c2 = Object.assign({}, ctx, { nhcci: nh });
+  const f = E.estimate(entry('5002-7001'), 12000, c2, { letDate: '2027-03-15' });
+  assert(f.escalation && !f.warnings.some((w) => /Escalation not applied/.test(w)));
   const r = E.estimate(entry('432-7001'), 300, c2, { letDate: '2028-01-15', annualPct: 3 });
   const r0 = E.estimate(entry('432-7001'), 300, c2, {});
   assert(r.escalation && Math.abs(r.mid - E.roundPrice(r0.adjusted * r.escalation.factor)) < 0.01);

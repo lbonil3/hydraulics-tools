@@ -282,7 +282,15 @@
     nhcci.rows.forEach(function (r) { idx[r[0]] = r[2]; });
     const last = nhcci.rows[nhcci.rows.length - 1][0];
     const q0 = quarterOf(medianLet), qt = quarterOf(letDate);
-    if (!q0 || !qt || idx[q0] == null) return null;
+    if (!q0 || !qt) return null;
+    if (q0 > last) {
+      // Bids are newer than the latest published NHCCI quarter: no index change; user %/yr only.
+      const yrs0 = Math.max(0, yearFrac(letDate) - yearFrac(medianLet));
+      const r0 = Number(annualPct) || 0, uf = Math.pow(1 + r0 / 100, yrs0);
+      return { from: q0, fromVal: null, to: last, toVal: null, indexFactor: 1, last: last, noIndex: true,
+        userYears: yrs0, annualPct: r0, userFactor: uf, factor: uf, letDate: letDate };
+    }
+    if (idx[q0] == null) return null;
     const qIdxEnd = qt <= last ? qt : last;
     if (idx[qIdxEnd] == null) return null;
     const indexFactor = idx[qIdxEnd] / idx[q0];
@@ -499,8 +507,10 @@
         ' Shown for context; the suggested price is not changed.');
     }
     if (esc) {
-      comments.push('Escalation: median let date of these bids ' + medLet + ' → expected letting ' + esc.letDate + '. FHWA NHCCI (seasonally adjusted) ' + esc.from + ' ' + esc.fromVal.toFixed(3) + ' → ' + esc.to + ' ' + esc.toVal.toFixed(3) + ' (' + (esc.indexFactor >= 1 ? '+' : '') + ((esc.indexFactor - 1) * 100).toFixed(1) + '%)' +
-        (esc.userYears > 0 ? ', then ' + esc.annualPct + '%/yr (user input, assumed) for ' + esc.userYears.toFixed(1) + ' yr past the latest published quarter' : '') +
+      comments.push('Escalation: median let date of these bids ' + medLet + ' → expected letting ' + esc.letDate + '. ' +
+        (esc.noIndex ? 'The bids are newer than the latest published FHWA NHCCI quarter (' + esc.last + '), so no index change' :
+          'FHWA NHCCI (seasonally adjusted) ' + esc.from + ' ' + esc.fromVal.toFixed(3) + ' → ' + esc.to + ' ' + esc.toVal.toFixed(3) + ' (' + (esc.indexFactor >= 1 ? '+' : '') + ((esc.indexFactor - 1) * 100).toFixed(1) + '%)') +
+        (esc.userYears > 0 ? '; then ' + esc.annualPct + '%/yr (user input, assumed) for ' + esc.userYears.toFixed(1) + ' yr' + (esc.noIndex ? '' : ' past the latest published quarter') : '') +
         ' → factor ' + esc.factor.toFixed(3) + ' (' + fmtMoney(preEsc) + ' → ' + fmtMoney(adj) + ').');
     } else if (opts.letDate) {
       warnings.push('Escalation not applied: no NHCCI value for the bids\' median let quarter.');
@@ -560,7 +570,7 @@
       (allBig ? ' and an average of ' + fmtMoney(big[O.AVG]) + '/' + unit + ' across ' + big[O.NB] + ' bids' : '') +
       '; ' + fmtMoney(mid) + '/' + unit + ' used for ' + fmtQty(qty) + ' ' + unit +
       (slope != null && Math.abs(adj - base) > 1e-9 ? ' after a ' + (adj < base ? 'quantity discount' : 'small-quantity premium') + (slopeSource === 'pooled' || slopeSource === 'global' || (slopeSource === 'grouped' && g && (g.code_n || 0) < METHOD.SHRINK_K) ? ' (assumed)' : '') + (capped === 'discount' ? ' capped at ' + pct(METHOD.MAX_DISCOUNT) : '') : '') +
-      (esc ? ', escalated ' + (esc.factor >= 1 ? '+' : '') + ((esc.factor - 1) * 100).toFixed(1) + '% to ' + esc.letDate + ' by FHWA NHCCI' + (esc.userYears > 0 ? ' and ' + esc.annualPct + '%/yr (assumed)' : '') : '') +
+      (esc ? ', escalated ' + (esc.factor >= 1 ? '+' : '') + ((esc.factor - 1) * 100).toFixed(1) + '% to ' + esc.letDate + (esc.noIndex ? ' by ' + esc.annualPct + '%/yr (assumed)' : ' by FHWA NHCCI' + (esc.userYears > 0 ? ' and ' + esc.annualPct + '%/yr (assumed)' : '')) : '') +
       (extrapolated ? ', extrapolated beyond the data' : '') + ' (' + confidence.toLowerCase() + ' confidence; range ' + fmtMoney(low) + '–' + fmtMoney(high) + ').';
 
     return {
