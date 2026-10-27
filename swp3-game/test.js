@@ -249,11 +249,11 @@ t('pick: real terrain of levels 1-' + S.LEVEL_COUNT + ' + sandbox: painter owner
     assert.ok(vis > W * H * 0.5, L.name + ' visible ' + vis);
   }
 });
-t('art.js draws exactly the block pick.js hit-tests (64x32 tiles, every pixel, several heights)', () => {
+t('art.js draws exactly the block pick.js hit-tests (64x32, 96x48, 128x64 tiles, every pixel, several heights)', () => {
   const ART = require('./art.js');
-  for (const zv of [0, 7, 30]) {
-    const g = { W: 1, H: 1, types: ['S'], z: [zv], ox: 40, oy: zv + 6, TW: ART.TW, TH: ART.TH, BASE: ART.BASE };
-    g.w = 80; g.h = zv + 6 + ART.TH + ART.BASE + 10;
+  for (const q of [1, 1.5, 2]) for (const zv of [0, 7, 30]) {
+    const g = { W: 1, H: 1, types: ['S'], z: [Math.round(zv * q)], ox: 40 * q, oy: Math.round((zv + 6) * q), TW: ART.TW * q, TH: ART.TH * q, BASE: ART.BASE * q };
+    g.w = 80 * q; g.h = g.oy + g.TH + g.BASE + 10;
     let out = null;
     const ctx = { createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }), putImageData: img => { out = img; } };
     ART.drawTerrain(ctx, g);
@@ -262,7 +262,35 @@ t('art.js draws exactly the block pick.js hit-tests (64x32 tiles, every pixel, s
       const drawn = out.data[(y * g.w + x) * 4 + 3] === 255, hit = !!PK.hitBlock(g, 0, 0, x + 0.5, y + 0.5);
       assert.strictEqual(drawn, hit, `z=${zv} pixel ${x},${y} drawn=${drawn} hit=${hit}`); if (hit) both++;
     }
-    assert.ok(both > ART.TW * ART.TH / 2);
+    assert.ok(both > g.TW * g.TH / 2);
+  }
+});
+// Same construction as game.js buildGeometry(L, q) + drawTerrain(): base-unit geometry snapped so that x q is whole pixels.
+function qualityGeoms(L, q) {
+  const mn = Math.min(...L.heights), range = Math.max(1, Math.max(...L.heights) - mn), zs = Math.min(8, 220 / range);
+  const zB = L.heights.map(h => Math.round((h - mn) * zs * q) / q), maxZ = Math.max(...zB);
+  const base = { W: L.W, H: L.H, z: zB, ox: L.H * 32 + 8, oy: Math.round((maxZ + 12) * q) / q, TW: 64, TH: 32, BASE: 20 };
+  base.w = (L.W + L.H) * 32 + 16; base.h = Math.ceil(((L.W + L.H) * 16 + maxZ + 20 + 24) * q) / q;
+  const pix = { W: L.W, H: L.H, types: L.types, z: zB.map(v => Math.round(v * q)), ox: Math.round(base.ox * q), oy: Math.round(base.oy * q), TW: 64 * q, TH: 32 * q, BASE: 20 * q, w: Math.round(base.w * q), h: Math.round(base.h * q) };
+  return { base, pix };
+}
+t('quality tiers: levels 1-' + S.LEVEL_COUNT + ' + sandbox at 64x32 / 96x48 / 128x64 - art pixels == pick, base-unit pick == scaled pick', () => {
+  const ART = require('./art.js');
+  const levels = []; for (let n = 1; n <= S.LEVEL_COUNT; n++) levels.push(S.makeLevel(n)); levels.push(S.makeSandbox(null));
+  for (const q of [1, 1.5, 2]) for (const L of levels) {
+    const { base, pix } = qualityGeoms(L, q);
+    for (const k of ['ox', 'oy', 'w', 'h']) assert.ok(Math.abs(base[k] * q - Math.round(base[k] * q)) < 1e-9, k + ' not whole pixels at q=' + q);
+    pix.z.forEach((v, i) => assert.ok(Math.abs(base.z[i] * q - v) < 1e-9));
+    let out = null; const ctx = { createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }), putImageData: img => { out = img; } };
+    ART.drawTerrain(ctx, pix);
+    const rr = S.rng(11 + q * 10);
+    for (let k = 0; k < 1500; k++) {
+      const px = Math.floor(rr() * pix.w), py = Math.floor(rr() * pix.h);
+      const pp = PK.pickTile(pix, px + 0.5, py + 0.5), pb = PK.pickTile(base, (px + 0.5) / q, (py + 0.5) / q);
+      assert.strictEqual(pb, pp, L.name + ' q=' + q + ' base vs pixel pick at ' + px + ',' + py);
+      assert.strictEqual(out.data[(py * pix.w + px) * 4 + 3] === 255, pp >= 0, L.name + ' q=' + q + ' drawn vs pick at ' + px + ',' + py);
+    }
+    for (let i = 0; i < L.W * L.H; i++) { const c = PK.tileTop(base, i % L.W, (i / L.W) | 0); const pb = PK.pickTile(base, c.x, c.y + 16); assert.strictEqual(PK.pickTile(pix, (c.x) * q, (c.y + 16) * q), pb); }
   }
 });
 
