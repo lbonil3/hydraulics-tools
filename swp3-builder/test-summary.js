@@ -46,6 +46,39 @@ function layoutKeysFor(fd) {
   });
 });
 
+t('screen view is a short reading of the same sheet', function () {
+  var p = proj({ county: 'Harris County', highway: 'FM 1960', csj: '0912-72-345', limits: 'From: Atascocita Rd to Humble Westfield Rd', nature: 'Widen road', acres: '12', soils: 'Beaumont clay', receiving: 'Greens Bayou', openAcres: '4' });
+  p.sel = { sediment_fence: true, rock_filter_dam: true, rock_exit: true, seeding_sod: false, spill_response: false, chemical_material: false };
+  var s = S.screenView(p);
+  assert.strictEqual(s.project.csj, '0912-72-345');
+  assert.strictEqual(s.project.highway, 'FM 1960');
+  assert.strictEqual(s.project.county, 'Harris');
+  assert.strictEqual(s.project.from, 'Atascocita Rd');
+  assert.strictEqual(s.project.to, 'Humble Westfield Rd');
+  assert.strictEqual(s.site.disturbed, '12');
+  assert.strictEqual(s.site.nature, 'Widen road');
+  assert.ok(s.site.soils.some(function (x) { return /Beaumont/.test(x); }));
+  assert.strictEqual(s.site.receiving, 'Greens Bayou');
+  assert.ok(s.controls.some(function (c) { return c.label === 'Silt fence' && c.temporary; }));
+  assert.ok(s.controls.some(function (c) { return c.label === 'Rock filter dam' && c.temporary; }));
+  assert.ok(s.controls.some(function (c) { return c.label === 'Construction exit'; }));
+  assert.ok(!s.controls.some(function (c) { return c.label === 'Temporary seeding'; }));
+  assert.strictEqual(s.basin.state, 'not-required');
+  assert.ok(s.people.lines[0].length > 20);
+  assert.ok(s.reminders.length >= 3);
+  assert.strictEqual(s.variant, 'B');
+});
+
+t('screen view survives a broken saved project', function () {
+  var ugly = M.sanitizeProject({ name: null, form: null, summary: { variant: 'nope', v: { 'sc.fence.T': 'yes', '%%%': true, csj: 5, 'ec.rfd.P': true } }, design: { ro: { C: { nested: true } }, nope: function () {} }, sel: { sediment_fence: 'x', missing: true }, inspLog: { date: 'no' }, rainLog: null });
+  assert.ok(ugly);
+  var s = S.screenView(ugly);
+  assert.ok(Array.isArray(s.controls));
+  assert.strictEqual(typeof s.basin.text, 'string');
+  assert.ok(s.controls.some(function (c) { return c.label === 'Rock filter dam' && c.permanent; }));
+  assert.doesNotThrow(function () { S.screenView(null); S.screenView({}); });
+});
+
 t('parsers', function () {
   assert.deepStrictEqual(S.parseCsj('0912-72-345'), ['0912', '72', '345']);
   assert.deepStrictEqual(S.parseCsj('CSJ 0912 72 345, 0912-72-346'), ['0912', '72', '345']);
