@@ -555,7 +555,7 @@
         '<circle cx="262" cy="142" r="8" fill="none" stroke="currentColor"/><circle cx="278" cy="148" r="6" fill="none" stroke="currentColor"/>' +
         '<text x="24" y="28" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Berm and inlet</text>' +
         '<text x="180" y="40" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Pipe</text>' +
-        '<text x="200" y="162" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Rock at the bottom</text>')
+        '<text x="16" y="162" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Rock at the bottom</text>')
     },
     {
       id: 'outlet-protection', cat: 'move', name: 'Outlet protection', sheet: 'EC(8)-16',
@@ -589,7 +589,7 @@
         '<path d="M106 70 L220 40 L220 128 L106 98 Z" fill="currentColor" opacity=".12" stroke="currentColor"/>' +
         '<circle cx="140" cy="84" r="7" fill="none" stroke="currentColor"/><circle cx="160" cy="74" r="6" fill="none" stroke="currentColor"/><circle cx="168" cy="96" r="8" fill="none" stroke="currentColor"/><circle cx="190" cy="84" r="7" fill="none" stroke="currentColor"/>' +
         '<text x="16" y="56" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Pipe</text>' +
-        '<text x="140" y="152" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Rock apron in line with the flow</text>')
+        '<text x="16" y="152" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Rock apron, in line with the flow</text>')
     },
     {
       id: 'dewatering', cat: 'move', name: 'Dewatering', sheet: 'Special specification for bags, where used',
