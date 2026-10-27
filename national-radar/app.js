@@ -5,7 +5,7 @@
   var CP = window.RadarCapture, M = window.NationalModel, RW = window.NationalRoadway, PS = window.NationalPse, CO = window.NationalCost, G = window.US_GEO, TX = window.NATIONAL_TEXT || { notUsed: [], rules: [] }, TXR = window.NATIONAL_ROAD_TEXT || { rules: [] }, TXP = window.NATIONAL_PSE_TEXT || { rules: [], pipe: '', db: '' };
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-  var SRC_SHORT = { 'sam': 'SAM.gov', 'usaspending': 'USAspending', 'txdot-pcl': 'TxDOT projected contracts', 'nyc': 'NYC City Record', 'chicago': 'Chicago contracts', 'dhs-apfs': 'DHS forecast (APFS)', 'ag-forecast': 'Acquisition Gateway forecasts', 'caltrans-lar': 'Caltrans A&E look-ahead', 'caltrans-awards': 'Caltrans A&E awards', 'usaspending-rw': 'USAspending prime awards (roadway lane)', 'usaspending-sub': 'USAspending subawards', 'wsdot-proj': 'WSDOT projected design list', 'pse-usaspending': 'USAspending prime awards / IDVs (PS&E lens)', 'austin': 'City of Austin master agreements', 'txdot-pi': 'TxDOT Project Information' };
+  var SRC_SHORT = { 'sam': 'SAM.gov', 'usaspending': 'USAspending', 'txdot-pcl': 'TxDOT projected contracts', 'nyc': 'NYC City Record', 'chicago': 'Chicago contracts', 'dhs-apfs': 'DHS forecast (APFS)', 'ag-forecast': 'Acquisition Gateway forecasts', 'caltrans-lar': 'Caltrans A&E look-ahead', 'caltrans-awards': 'Caltrans A&E awards', 'usaspending-rw': 'USAspending prime awards (roadway lane)', 'usaspending-sub': 'USAspending subawards', 'wsdot-proj': 'WSDOT projected design list', 'pse-usaspending': 'USAspending prime awards / IDVs (PS&E lens)', 'austin': 'City of Austin master agreements', 'txdot-pi': 'TxDOT Project Information', 'wssc': 'WSSC Water projected solicitations', 'cdot-sched': 'CDOT tentative advertisement schedule', 'la-dotd': 'Louisiana DOTD projected advertisements', 'dc-pass': 'DC OCP PASS forecast', 'sd-forecast': 'San Diego County procurement forecast' };
   var SCOPES_W = [
     { id: 'opp', label: 'Upcoming & open', sub: 'confirmed, fee > $20M' },
     { id: 'review', label: 'Needs review', sub: 'uncertain, not confirmed' },
@@ -26,6 +26,7 @@
     { id: 'open', label: 'Upcoming / open', sub: 'fee stated, not yet awarded' },
     { id: 'forecast', label: 'Forecast', sub: 'agency forecasts with a stated fee' },
     { id: 'awarded', label: 'Awarded', sub: 'recompete and competitor intel' },
+    { id: 'advance', label: 'Advance notices, fee not stated', sub: 'agency forecasts before the solicitation; no fee filter applies' },
     { id: 'pipeline', label: 'Large projects, fee not published', sub: 'stated project cost, NOT a fee' },
     { id: 'db', label: 'Design-build', sub: 'DB value includes construction, NOT a fee' },
     { id: 'watch', label: 'Watchlist', sub: 'starred on this device' }
@@ -71,12 +72,13 @@
     var d = r.dates || {}, out = [];
     if (r.status !== 'awarded' && d.due) out.push('Response due ' + M.fmtDate(d.due));
     if (d.est) out.push((d.estLabel || 'Forecast date') + ' ' + M.fmtDate(d.est));
+    else if (d.estText) out.push((d.estLabel || 'Forecast') + ': ' + d.estText);
     if (d.award) out.push('Award ' + M.fmtDate(d.award));
     if (d.end) out.push('End ' + M.fmtDate(d.end) + (d.endInferred ? ' (inferred)' : ''));
     if (!out.length && d.posted) out.push('Posted ' + M.fmtDate(d.posted));
-    return out.join(' · ');
+    return out.length ? out.join(' · ') : 'No date stated by the source';
   }
-  var BADGE_CLS = { 'Confirmed': 'conf', 'Unconfirmed': 'unconf', 'Awarded': 'inf', 'Text-parsed': 'rev', 'Inferred sector': 'inf', 'Design-build': 'db', 'Exactly $5M': 'rev', 'Fee not published': 'plain', 'Project cost (not fee)': 'plain', 'Range lower bound': 'rev', 'Status unclear': 'rev', 'Closed': 'plain', 'Value not stated': 'plain', 'Forecast': 'inf', 'Drainage / H&H named': 'dir' };
+  var BADGE_CLS = { 'Confirmed': 'conf', 'Unconfirmed': 'unconf', 'Awarded': 'inf', 'Text-parsed': 'rev', 'Inferred sector': 'inf', 'Design-build': 'db', 'Exactly $5M': 'rev', 'Fee not published': 'plain', 'Project cost (not fee)': 'plain', 'Range lower bound': 'rev', 'Status unclear': 'rev', 'Closed': 'plain', 'Value not stated': 'plain', 'Forecast': 'inf', 'Drainage / H&H named': 'dir', 'Advance notice': 'dir', 'Fee not stated': 'plain', 'Stated value below $5M': 'plain', 'Engineering unclear': 'rev', 'Upcoming / open': 'inf' };
   function tagsPse(r) {
     var t = (r.badges || []).map(function (b) { return '<span class="tag ' + (BADGE_CLS[b] || '') + '">' + esc(b) + '</span>'; });
     if (r.lens === 'db' && r.dbRoleLabel) t.push('<span class="tag est" title="' + esc(r.dbRoleWhy || '') + '">' + esc(r.dbRoleLabel) + '</span>');
@@ -97,11 +99,12 @@
     if (r.also && r.also.length) t.push('<span class="tag">+' + r.also.length + ' same record</span>');
     return t.join('');
   }
-  function colorOf(r) { if (S.mode === 'pse') return r.lens === 'db' ? '#c4b5fd' : r.lens === 'pipeline' ? '#94a3b8' : r.stage === 'awarded' || r.stage === 'closed' ? COLOR.award : r.stage === 'forecast' ? COLOR.review : COLOR.opp; return r.recompete && S.scope === 'recompete' ? COLOR.recompete : COLOR[r.bucket] || '#64748b'; }
+  function colorOf(r) { if (S.mode === 'pse') return r.lens === 'db' ? '#c4b5fd' : r.lens === 'pipeline' ? '#94a3b8' : r.lens === 'advance' ? '#5eead4' : r.stage === 'awarded' || r.stage === 'closed' ? COLOR.award : r.stage === 'forecast' ? COLOR.review : COLOR.opp; return r.recompete && S.scope === 'recompete' ? COLOR.recompete : COLOR[r.bucket] || '#64748b'; }
   function moneyPse(r, full) {
     var il = r.illustrative, h = '';
     if (r.lens === 'fee') h = '<span class="lbl">Consultant fee · ' + esc(r.amt.kind === 'design_fee' ? 'design fee stated in the notice text' : (M.AMOUNT_KINDS[r.amt.kind] || {}).label || r.amt.kind) + ' · source field: ' + esc(r.amt.field) + '</span><span class="big">' + esc(M.fmtMoneyFull(r.amt.v)) + '</span>';
     else if (r.lens === 'db') { h = r.dbValue ? '<span class="lbl">Design-build contract value / estimated project cost. Includes construction. NOT a design fee · source field: ' + esc(r.dbValue.field) + '</span><span class="big sm">' + esc(M.fmtMoneyFull(r.dbValue.v)) + '</span>' : '<span class="lbl">Design-build value not stated by the source</span>'; if (r.designFee) h += '<span class="lbl">Design fee stated separately in the text (text-parsed): ' + esc(M.fmtMoneyFull(r.designFee.v)) + '</span>'; if (r.stipend) h += '<span class="lbl">Stipend (not a fee): ' + esc(M.fmtMoneyFull(r.stipend.v)) + '</span>'; }
+    else if (r.lens === 'advance') { h = '<span class="lbl">' + (r.statedValue ? 'Advance notice. The source states ' + esc(M.fmtMoneyFull(r.statedValue.v)) + ' (' + esc(r.statedValue.field) + '), below the $5M floor, so it is shown for information only.' : 'Advance notice. No fee stated by the source.') + '</span>'; }
     else { h = '<span class="lbl">Project cost (not fee) · ' + esc(r.projectCost.field) + '</span><span class="big sm">' + esc(M.fmtMoneyFull(r.projectCost.v)) + '</span><span class="lbl">No fee is published for this project.</span>'; if (il) h += '<span class="estline">' + esc(il.label) + ': ' + esc(M.fmtMoney(il.low)) + ' to ' + esc(M.fmtMoney(il.high)) + ' (' + il.pct[0] + '% to ' + il.pct[1] + '% of stated cost; source below). Not a stated fee and not used by any filter.</span>'; }
     return h;
   }
@@ -138,6 +141,7 @@
       var thr = S.f.feeMin === null ? 0 : S.f.feeMin;
       if (S.scope === 'watch') return '<div class="empty"><b>Your watchlist is empty.</b> Tap the star on any record to keep it here. It is saved on this device only.</div>';
       if (filtered || S.f.hideUnconfirmed || S.f.noText || (S.scope === 'db' && (S.f.dbMin !== null))) return '<div class="empty"><b>Nothing matches the current filters in this tab.</b> Loosen them: lower the threshold, switch off Hide unconfirmed or Hide text-parsed, or clear filters.</div>';
+      if (S.scope === 'advance') return '<div class="empty"><b>No advance notice in this snapshot matches.</b> Clear filters to see the full tab.</div>';
       if (S.scope === 'pipeline') return '<div class="empty"><b>No design-phase project with a stated cost above ' + esc(M.fmtMoney(S.f.costMin || 0)) + ' names drainage or H&amp;H words.</b> Lower the project-cost threshold above.</div>';
       if (S.scope === 'db') return '<div class="empty"><b>No design-build records in this snapshot match.</b></div>';
       return '<div class="empty"><b>No record in this tab has a stated consultant fee ' + (S.f.inclusive ? '&ge; ' : '&gt; ') + esc(M.fmtMoney(thr)) + '.</b> Most agencies publish no fee before award. Try lowering the threshold, or open <b>Large projects (' + counts.pipeline + ')</b> and <b>Design-build (' + counts.db + ')</b>; those show stated project costs, never fees.</div>';
@@ -169,7 +173,7 @@
     var scope = SCOPES.filter(function (s) { return s.id === S.scope; })[0];
     var total = sum(list), withFee = list.filter(function (r) { return r.amt; }).length;
     var withV = S.mode === 'pse' ? list.filter(function (r) { return fee(r); }).length : withFee, sumLbl = S.mode === 'pse' ? (S.scope === 'db' ? 'sum of DB values, NOT fees (' : S.scope === 'pipeline' ? 'sum of project costs, NOT fees (' : 'sum of stated fees (') : 'sum of stated values (';
-    var k = [[list.length, 'records · ' + scope.sub], [withV ? M.fmtMoney(total) : 'n/a', sumLbl + withV + ')'], [Object.keys(states).length, 'states'], [Object.keys(ag).length, 'agencies']];
+    var k = [[list.length, 'records · ' + scope.sub], S.mode === 'pse' && S.scope === 'advance' ? ['n/a', 'no fee is stated or used in this tab'] : [withV ? M.fmtMoney(total) : 'n/a', sumLbl + withV + ')'], [Object.keys(states).length, 'states'], [Object.keys(ag).length, 'agencies']];
     $('kpis').innerHTML = k.map(function (x) { return '<div class="kpi"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></div>'; }).join('');
   }
 
@@ -204,8 +208,8 @@
   function chipsHtml(key, items, sel) { return items.length ? items.map(function (it) { return '<button type="button" class="chip' + (sel.indexOf(it.k) >= 0 ? ' on' : '') + '" data-f="' + key + '" data-k="' + esc(it.k) + '" aria-pressed="' + (sel.indexOf(it.k) >= 0) + '">' + esc(it.label) + ' <small>' + it.n + '</small></button>'; }).join('') : '<span class="hint">none</span>'; }
   function renderPseCtl() {
     var on = S.mode === 'pse'; $('pseCtl').hidden = !on; if (!on) return;
-    var f = S.f, sc = S.scope, feeTab = sc !== 'pipeline' && sc !== 'db' && sc !== 'watch';
-    $('pcFee').hidden = !(feeTab || sc === 'watch' && false); $('pcPipe').hidden = sc !== 'pipeline'; $('pcDb').hidden = sc !== 'db';
+    var f = S.f, sc = S.scope, feeTab = sc !== 'pipeline' && sc !== 'db' && sc !== 'watch' && sc !== 'advance';
+    $('pcFee').hidden = !(feeTab || sc === 'watch' && false); $('pcPipe').hidden = sc !== 'pipeline'; $('pcDb').hidden = sc !== 'db'; $('pcAdv').hidden = sc !== 'advance'; $('advNote').innerHTML = TXP.adv || '';
     var fin = $('feeIn'); if (document.activeElement !== fin) fin.value = f.feeMin === null ? '' : +(f.feeMin / 1e6).toFixed(3);
     $('feeOp').innerHTML = f.inclusive ? '&ge;' : '&gt;';
     $('btnIncl').setAttribute('aria-pressed', String(!!f.inclusive)); $('btnIncl').classList.toggle('on', !!f.inclusive); $('btnIncl').textContent = f.inclusive ? '\u2265 on: exactly ' + M.fmtMoney(f.feeMin || 0) + ' included' : '\u2265 include exactly ' + M.fmtMoney(f.feeMin || 0);
@@ -233,9 +237,10 @@
       '<p><b>Fee records</b> (a consultant fee / contract value the source states, data floor $5,000,000): <b>' + F.total + '</b>. Strictly over $5M: <b>' + F.strictGt5 + '</b>; exactly $5,000,000: <b>' + F.exact5 + '</b>; over $20M: <b>' + F.gt20 + '</b>. Confirmed (structured field, engineering notice, scope in title): <b>' + F.confirmedGt5 + '</b> of those over $5M; text-parsed: <b>' + F.textParsed + '</b>. Stages: ' + Object.keys(F.byStage).map(function (k) { return esc(k) + ' ' + F.byStage[k]; }).join(', ') + '.</p>' +
       '<p><b>Design-build</b> (value is a contract value / project cost, not a fee): <b>' + D.total + '</b>; prime ' + (D.byRole.prime || 0) + ', design-sub ' + (D.byRole.sub || 0) + ' (both inferred); with a stated value ' + D.withValue + '; with a separately stated design fee ' + D.withDesignFee + '.</p>' +
       '<p><b>Large projects, fee not published</b> (project cost, not fee): <b>' + P.total + '</b>; cost over $50M: ' + P.gt50 + '; over $100M: ' + P.gt100 + '.</p>' +
+      (C.advance ? '<p><b>Advance notices, fee not stated</b> (agency forecasts; no fee filter applies): <b>' + C.advance.total + '</b>; with a source-stated value below $5M shown for information: ' + C.advance.withStatedValue + '. By source: ' + Object.keys(C.advance.bySrc).map(function (k) { return esc(SRC_SHORT[k] || k) + ' ' + C.advance.bySrc[k]; }).join(', ') + '.</p>' : '') +
       '<p><b>Excluded: construction</b> (clear construction contracts and supplies): <b>' + (C.excludedConstruction || 0).toLocaleString('en-US') + '</b> rows.</p>';
-    var rows = DATA.sources.filter(function (s) { return s.stats; }).map(function (s) { var t = s.stats, b = t.byLens || {}; return '<tr><td>' + esc(SRC_SHORT[s.id] || s.id) + '</td>' + td(s.fetched) + td(t.evaluated) + td(b.fee) + td(b.db) + td(b.pipeline) + td(b.excluded) + td((t.excl || {}).construction) + td(t.exact5) + td(t.textParsed) + '</tr>'; }).join('');
-    $('dqFunnel').innerHTML = '<table class="t"><thead><tr><th>Source</th><th>Rows read</th><th>Evaluated</th><th>Fee</th><th>Design-build</th><th>Large projects</th><th>Excluded</th><th>Excluded: construction</th><th>Exactly $5M</th><th>Text-parsed</th></tr></thead><tbody>' + rows + '</tbody></table><p class="note">"Rows read" is what the source returned; "Evaluated" is after cheap pre-filters inside each source. A design-build notice with a separately stated design fee counts once as Design-build and once as Fee. Counts are before cross-source de-duplication.</p>';
+    var rows = DATA.sources.filter(function (s) { return s.stats; }).map(function (s) { var t = s.stats, b = t.byLens || {}; return '<tr><td>' + esc(SRC_SHORT[s.id] || s.id) + '</td>' + td(s.fetched) + td(t.evaluated) + td(b.fee) + td(b.db) + td(b.pipeline) + td(b.advance) + td(b.excluded) + td((t.excl || {}).construction) + td(t.exact5) + td(t.textParsed) + '</tr>'; }).join('');
+    $('dqFunnel').innerHTML = '<table class="t"><thead><tr><th>Source</th><th>Rows read</th><th>Evaluated</th><th>Fee</th><th>Design-build</th><th>Large projects</th><th>Advance</th><th>Excluded</th><th>Excluded: construction</th><th>Exactly $5M</th><th>Text-parsed</th></tr></thead><tbody>' + rows + '</tbody></table><p class="note">"Rows read" is what the source returned; "Evaluated" is after cheap pre-filters inside each source. A design-build notice with a separately stated design fee counts once as Design-build and once as Fee. Counts are before cross-source de-duplication.</p>';
     var ex = DATA.counts.excludedByReason || {};
     var lbl = { 'construction': 'Construction contract / supply (excluded: construction)', 'not-design-services': 'Construction management, inspection, program support, IT or other non-design services',  'not-engineering': 'Not an engineering-services notice', 'no-scope-match': 'No PS&E / drainage / H&H / flood / stormwater / coastal wording', 'no-stated-fee': 'No fee stated and no qualifying project cost', 'project-cost-only': 'Only a project cost is stated (never a fee), and it does not qualify for Large projects', 'fee-below-5m': 'Stated fee below the $5,000,000 data floor', 'non-civil-context': 'Title looks non-civil (vessel, cyber, ESPC and similar)', 'outside-us': 'Outside the US', 'stale-no-deadline': 'No deadline and posted over 12 months ago', 'db-not-civil-scope': 'Design-build notice with no civil / drainage / roadway scope' };
     $('dqExcl').innerHTML = '<p>Rows failing each rule (a row can fail several):</p><ul>' + Object.keys(ex).sort(function (a, b) { return ex[b] - ex[a]; }).map(function (k) { return '<li><b>' + ex[k].toLocaleString('en-US') + '</b> ' + esc(lbl[k] || k) + '</li>'; }).join('') + '</ul>';
@@ -484,6 +489,8 @@
       h += r.dbValue ? '<div class="money db"><span class="lbl">Design-build contract value / estimated project cost. Includes construction. NOT a design fee. Never tested against the fee threshold.</span><b style="font-size:19px">' + esc(M.fmtMoneyFull(r.dbValue.v)) + '</b><div>Source field: ' + esc(r.dbValue.field) + '</div>' + (r.dbValue.ctx ? '<div class="hint">"…' + esc(r.dbValue.ctx) + '…"</div>' : '') + '</div>' : '<div class="money db"><b style="font-size:16px">No design-build value stated by the source</b></div>';
       if (r.designFee) h += '<div class="money"><span class="lbl">Design fee / design portion stated separately in the text (text-parsed; counts toward the fee test in its own fee record)</span><b style="font-size:17px">' + esc(M.fmtMoneyFull(r.designFee.v)) + '</b><div class="hint">"…' + esc(r.designFee.ctx) + '…"</div></div>';
       if (r.stipend) h += '<div class="money db"><span class="lbl">Stipend paid to unsuccessful proposers (NOT a fee, not counted)</span><b style="font-size:17px">' + esc(M.fmtMoneyFull(r.stipend.v)) + '</b><div class="hint">"…' + esc(r.stipend.ctx) + '…"</div></div>';
+    } else if (r.lens === 'advance') {
+      h += '<div class="money db"><span class="lbl">Advance notice (agency forecast). Not tested by any fee filter.</span><b style="font-size:16px">' + (r.statedValue ? 'Source states ' + esc(M.fmtMoneyFull(r.statedValue.v)) + ' (below the $5M floor, shown for information only)' : 'No fee stated by the source') + '</b>' + (r.statedValue ? '<div>Source field: ' + esc(r.statedValue.field) + '</div>' : '') + '</div>';
     } else {
       h += '<div class="money pipe"><span class="lbl">Project cost (NOT a fee, never used by any fee filter)</span><b style="font-size:19px">' + esc(M.fmtMoneyFull(r.projectCost.v)) + '</b><div>Source field: ' + esc(r.projectCost.field) + '</div></div><div class="money"><b style="font-size:16px">No fee is published for this project</b></div>';
       if (r.illustrative) h += '<div class="money est"><span class="lbl">' + esc(r.illustrative.label) + ' (not from the source, not a stated fee)</span><b>' + esc(M.fmtMoney(r.illustrative.low)) + ' to ' + esc(M.fmtMoney(r.illustrative.high)) + '</b><div>= ' + r.illustrative.pct[0] + '% to ' + r.illustrative.pct[1] + '% of the stated cost. Basis: ' + esc(r.illustrative.cite) + ' <a href="' + esc(r.illustrative.url) + '" target="_blank" rel="noopener">source</a>. Design fees vary widely by project type and size; this range does not count toward any fee filter.</div></div>';
@@ -604,7 +611,7 @@
     if (t.hasAttribute('data-mode')) { setMode(t.getAttribute('data-mode')); return; }
     if (t.hasAttribute('data-star')) { var id = t.getAttribute('data-star'); if (!toggleStar(id)) return; if (!$('sheet').hidden) { refreshCapPanel(id); var sid = $('sheet').getAttribute('data-id'); $('shStar').className = 'star big' + (WATCH[sid] ? ' on' : ''); $('shStar').innerHTML = WATCH[sid] ? '&#9733;' : '&#9734;'; } render(); return; }
     if (t.hasAttribute('data-open')) { openSheet(t.getAttribute('data-open')); return; }
-    if (t.hasAttribute('data-scope')) { var ns = t.getAttribute('data-scope'); if (ns === 'watch' && S.scope !== 'watch') { if (S.sort !== 'due' && S.sort !== 'decision') S.sort = 'due'; $('sort').value = S.sort; S.scope = ns; S.rows = 50; S.tlMonth = null; setTab('list'); return; } if (ns !== 'watch' && (S.sort === 'due' || S.sort === 'decision')) { S.sort = S.mode === 'pse' ? 'conf' : 'fee'; $('sort').value = S.sort; } S.scope = ns; S.rows = 50; S.tlMonth = null; render(); return; }
+    if (t.hasAttribute('data-scope')) { var ns = t.getAttribute('data-scope'); if (ns === 'watch' && S.scope !== 'watch') { if (S.sort !== 'due' && S.sort !== 'decision') S.sort = 'due'; $('sort').value = S.sort; S.scope = ns; S.rows = 50; S.tlMonth = null; setTab('list'); return; } if (ns !== 'watch' && (S.sort === 'due' || S.sort === 'decision')) { S.sort = S.mode === 'pse' ? 'conf' : 'fee'; $('sort').value = S.sort; } if (S.mode === 'pse' && ns === 'advance' && S.sort === 'conf') { S.sort = 'date'; $('sort').value = 'date'; } S.scope = ns; S.rows = 50; S.tlMonth = null; render(); return; }
     if (t.hasAttribute('data-tab')) { setTab(t.getAttribute('data-tab')); return; }
     if (t.hasAttribute('data-month')) { var m = t.getAttribute('data-month'); S.tlMonth = S.tlMonth === m ? null : m; render(); return; }
     if (t.hasAttribute('data-fee')) { var v = t.getAttribute('data-fee'); S.f.feeMin = v === 'null' ? null : +v; render(); return; }

@@ -207,4 +207,5 @@ if (fs.existsSync(dataFile)) {
 require('./test-roadway.js');
 require('./test-pse.js');
 require('./test-capture.js');
+require('./test-advance.js');
 console.log('national-radar tests passed');
