@@ -116,3 +116,21 @@ table.t th{color:var(--dim);font-weight:600}
 .kpi{min-width:96px;padding:6px 10px}.kpi b{font-size:18px}
 .money .lbl{display:block;font-size:12px;color:var(--dim);margin-bottom:2px}.money b{display:block}
 .bubt{font-size:17px;stroke-width:3.5px}
+
+/* roadway lane */
+.modes{display:flex;gap:8px;padding:6px calc(14px + env(safe-area-inset-right)) 2px calc(14px + env(safe-area-inset-left))}
+.modes button{flex:1;min-height:44px;padding:6px 10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:600;font-size:14px;cursor:pointer;line-height:1.2}
+.modes button.on{background:rgba(124,183,255,.22);border-color:var(--acc)}
+.basis{display:inline-block;padding:1px 7px;border-radius:8px;font-size:12px;margin-right:4px;color:#06101f}
+.basis.dr{background:#34d399}.basis.tot{background:#fbbf24}
+.costline{display:block;font-size:12px;color:var(--dim);margin-top:4px;border-top:1px dashed var(--line);padding-top:4px}
+#shBody .money.est{border-style:dotted;border-color:#fbbf24}
+.wigrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.wi{display:flex;flex-direction:column;font-size:12px;color:var(--dim);gap:3px}
+.wi input,.wi select{min-height:44px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:16px;width:100%;box-sizing:border-box}
+.wiasm{margin:8px 0}.wiasm summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:var(--acc)}
+table.wit td{vertical-align:top;font-size:13px}table.wit td.r{text-align:right;white-space:nowrap}
+table.wit input{width:92px;min-height:44px;padding:4px 6px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:16px;text-align:right}
+#shBody h4{margin:12px 0 4px}
+#wiTot table.wit{width:100%}#wiTot td{white-space:normal}
+.wiln{border-bottom:1px solid var(--line);padding:8px 0;font-size:13px}.wiq{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}.wiq input{width:100px;min-height:44px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:16px;text-align:right}.wis{color:var(--dim)}

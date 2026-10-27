@@ -26,3 +26,16 @@ window.NATIONAL_TEXT = {
     '<b>Duplicates</b>: records with the same award number, solicitation number, or the same title, agency and amount are merged and the other links are listed in the detail sheet.'
   ]
 };
+
+window.NATIONAL_ROAD_TEXT = {
+  rules: [
+    '<b>Drainage-specific fee (confirmed tab)</b>: consultant engineering services on a roadway / highway / bridge / corridor project, where the SOURCE states a fee for drainage, hydraulics, stormwater or culvert work (a discipline row, a drainage-titled contract, a subaward line item), and that fee is <b>strictly greater than $5,000,000</b> ($5,000,000.00 fails; $5,000,000.01 passes), while still upcoming or open.',
+    '<b>Roadway fee stated, drainage share not stated</b>: the source gives only a TOTAL roadway engineering fee. It is listed only if that total is strictly greater than $20,000,000 AND the scope text explicitly names drainage, hydraulics, stormwater, storm drain, culvert or flood. It is labeled "total fee, drainage share unknown". A drainage share is never estimated, assumed or scaled from a percentage.',
+    '<b>Needs review</b>: a drainage-specific figure found only by parsing free text, a weak roadway or engineering signal, or a stormwater program / permit-support contract rather than a roadway project. Never counted as confirmed.',
+    '<b>Roadway context</b>: a roadway, highway, road, street, bridge, corridor, interstate or route-number word in the title, a highway-agency source list (TxDOT, Caltrans, WSDOT), or at least two such words in the first 3,000 characters of the description. Titles about dams, canals, trails, airports, rail, vessels, locks or watersheds are excluded unless a road word is also in the title.',
+    '<b>Construction cost base</b> (display only, never a fee): if the source states a construction / project cost it is shown as STATED with its field and date. Otherwise, only when the source text gives a length and a project type (new location, widening, reconstruction, rehabilitation / overlay) and a lane count, a line-by-line estimate is computed from TxDOT low-bid unit prices (bid-cost/prices.json, lettings 2024-09-06 to 2026-10-22) and a typical section. Every such number is labeled <b>Estimate (not from source)</b>. Without a usable length or type it says <b>insufficient scope</b>. Bridges, interchanges and intersections are never estimated.',
+    '<b>Assumed, editable</b>: lane and shoulder width, fill height, cross culverts per mile, traffic control 5%, mobilization 8%, contingency 10 / 20 / 30% (low / base / high), unit price band −15% / +25%. TxDOT guidance states no fixed percentage for these, so they are labeled Assumed. Escalation is your input and defaults to 0; no index is applied.',
+    '<b>Estimates never decide anything</b>: estimated construction cost never feeds the $5M drainage-fee test, the $20M total-fee test, or any filter. An "Illustrative fee check" (design fee as a percent of construction cost) is deliberately NOT included: the published sources found (MassDOT, NCDOT, FHWA) give single ranges, not curves that can be verified for this use.',
+    '<b>Same as the water lane</b>: engineering services only, US only, upcoming/open separate from awards, duplicates merged, every figure carries its source field and link.'
+  ]
+};

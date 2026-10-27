@@ -12,10 +12,15 @@ const M = require('../national-radar/model.js');
 const P = require('../national-radar/proj.js');
 const RM = require('../opportunity-radar/model.js');
 const { xlsxRows, unzip } = require('./build-opportunities.js');
+const R = require('../national-radar/roadway.js');
+const CM = require('../national-radar/cost.js');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'national-radar', 'data', 'national.json');
+const OUT_RW = path.join(ROOT, 'national-radar', 'data', 'roadway.json');
+const OUT_PRICES = path.join(ROOT, 'national-radar', 'data', 'cost-prices.json');
 const CACHE = path.join(__dirname, '.cache-national');
+const SKIP = new Set((process.env.NR_SKIP || '').split(',').filter(Boolean)); // developer switch: skip slow sources; the main national.json is then NOT written
 const UA = 'hydraulics-tools-national-radar (+https://github.com/lbonil3/hydraulics-tools)'; // not sent by default: USAspending's and Census's firewalls answer HTTP 500 / "Request Rejected" to unfamiliar user agents, so the runtime's default agent is used
 const ARGS = new Set(process.argv.slice(2));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -73,6 +78,7 @@ function st(id) { return (stats[id] = stats[id] || { fetched: 0, evaluated: 0, b
 const kept = []; // evaluated records with bucket in opp/review/award/closed
 
 function record(cand, ev) {
+  rwRecord(cand);
   const s = st(cand.src);
   s.evaluated++; s.byBucket[ev.bucket] = (s.byBucket[ev.bucket] || 0) + 1; if (ev.primary && ev.bucket === 'excluded') s.primary = Object.assign(s.primary || {}, { [ev.primary]: ((s.primary || {})[ev.primary] || 0) + 1 });
   s.eng[ev.flags.eng] = (s.eng[ev.flags.eng] || 0) + 1; s.sector[ev.flags.sector] = (s.sector[ev.flags.sector] || 0) + 1; s.fee[ev.flags.fee] = (s.fee[ev.flags.fee] || 0) + 1;
@@ -88,6 +94,23 @@ function record(cand, ev) {
   }
   const rec = M.toRecord(cand, ev, AS_OF);
   kept.push(rec); return rec;
+}
+
+
+// ---------- roadway lane (national-radar/roadway.js): evaluated on every candidate any source produces, separate output ----------
+const rwStats = {}; const rwKept = [];
+function rst(id) { return (rwStats[id] = rwStats[id] || { fetched: 0, evaluated: 0, byBucket: {}, excl: {}, rw: {}, eng: {}, road: {}, exact5: 0, drainSpecific: 0, near: [] }); }
+let PRICES = {};
+function rwRecord(cand) {
+  R.decorateRw(cand);
+  const ev = R.evaluateRoadway(cand, { asOf: AS_OF }); const s = rst(cand.src);
+  s.evaluated++; s.byBucket[ev.bucket] = (s.byBucket[ev.bucket] || 0) + 1; s.eng[ev.flags.eng] = (s.eng[ev.flags.eng] || 0) + 1; s.road[ev.flags.road || 'n/a'] = (s.road[ev.flags.road || 'n/a'] || 0) + 1;
+  ev.excl.forEach((c) => { s.excl[c] = (s.excl[c] || 0) + 1; });
+  if (ev.flags.exact5) { s.exact5++; (s.exact5Rows = s.exact5Rows || []).push({ title: cand.title.slice(0, 120), url: cand.url, v: ev.amt && ev.amt.v }); }
+  if (ev.flags.drainSpecific) { s.drainSpecific++; if (ev.excl.length && (ev.flags.eng === 'strong' || ev.flags.eng === 'weak') && ev.flags.road !== 'none') { s.near.push({ title: cand.title.slice(0, 120), v: ev.amt ? ev.amt.v : null, why: ev.excl.join(', '), url: cand.url }); s.near.sort((a, b) => (b.v || 0) - (a.v || 0)); if (s.near.length > 8) s.near.length = 8; } }
+  if (ev.rw) s.rw[ev.rw + ':' + ev.bucket] = (s.rw[ev.rw + ':' + ev.bucket] || 0) + 1;
+  if (ev.bucket === 'excluded') return null;
+  const rec = R.toRecordRw(cand, ev, AS_OF, PRICES); rwKept.push(rec); return rec;
 }
 
 // ---------- sources ----------
@@ -270,6 +293,99 @@ source({
   async run() { throw new Error('SAM_API_KEY not set'); }
 });
 
+
+// ---------- roadway-lane-only sources (not used by the main water/drainage > $20M output) ----------
+const RW_SOURCES = [];
+RW_SOURCES.push({
+  id: 'usaspending-rw', name: 'USAspending.gov API: prime awards with a drainage/hydraulics description (engineering PSC/NAICS, ≥ $5M), roadway lane', agency: 'Federal (all agencies)', page: 'https://api.usaspending.gov/docs/endpoints',
+  type: 'REST API, no key (snapshot only)',
+  async run(ctx) {
+    const kw = ['drainage', 'hydraulic', 'hydraulics', 'hydrology', 'hydrologic', 'stormwater', 'storm water', 'storm drain', 'culvert'];
+    const fields = ['Award ID', 'Recipient Name', 'Award Amount', 'Total Outlays', 'Description', 'Start Date', 'Awarding Agency', 'Awarding Sub Agency', 'NAICS', 'PSC', 'Place of Performance State Code', 'Place of Performance Country Code', 'generated_internal_id', 'Contract Award Type', 'Base Obligation Date'];
+    const groups = { contracts: ['A', 'B', 'C', 'D'], idv: ['IDV_A', 'IDV_B', 'IDV_B_A', 'IDV_B_B', 'IDV_B_C', 'IDV_C', 'IDV_D', 'IDV_E'] };
+    const sets = [['PSC family C', { psc_codes: { require: [['Service', 'C']] } }], ['NAICS 5413xx/5416xx', { naics_codes: { require: ['541330', '541620', '541690', '541370'] } }]];
+    const all = new Map(); const s = rst('usaspending-rw'); const start = M.addMonths(AS_OF, -60);
+    for (const [g, codes] of Object.entries(groups)) for (const [label, extra] of sets) {
+      const filters = Object.assign({ award_type_codes: codes, time_period: [{ start_date: start, end_date: AS_OF }], award_amounts: [{ lower_bound: R.DRAIN_MIN }], keywords: kw }, extra);
+      for (let page = 1; page <= 10; page++) {
+        const j = await getJson('https://api.usaspending.gov/api/v2/search/spending_by_award/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filters, fields: fields.concat(g === 'idv' ? ['Last Date to Order'] : ['End Date']), limit: 100, page, sort: 'Award Amount', order: 'desc' }) });
+        (j.results || []).forEach((r) => all.set(r.generated_internal_id, r));
+        if (!j.page_metadata || !j.page_metadata.hasNext) break;
+      }
+    }
+    s.fetched = all.size;
+    for (const r of all.values()) {
+      let c = M.normUsa(r, null); R.decorateRw(c); let ev = R.evaluateRoadway(c, { asOf: AS_OF });
+      if (ev.bucket !== 'excluded' || (ev.flags.drainSpecific && (ev.flags.eng === 'strong' || ev.flags.eng === 'weak') && ev.flags.road !== 'none')) {
+        try { const d = await getJson('https://api.usaspending.gov/api/v2/awards/' + encodeURIComponent(c.srcId) + '/'); const lt = d.latest_transaction_contract_data || {}; const c2 = M.normUsa(r, { base_and_all_options: d.base_and_all_options, office: d.awarding_agency && d.awarding_agency.office_agency_name, solicitation: lt.solicitation_identifier }); c2.fields['Total obligation (detail)'] = d.total_obligation; c = c2; } catch (e) { c.fields['Detail fetch'] = 'failed: ' + String(e.message).slice(0, 80); }
+      }
+      c.src = 'usaspending-rw'; rwRecord(c);
+    }
+    ctx.asOf['usaspending-rw'] = new Date().toISOString();
+    return { fetched: all.size, note: 'Search = (PSC family C OR NAICS 541330/541620/541690/541370) AND keyword (drainage, hydraulic(s), hydrology, stormwater, storm drain, culvert) AND Award Amount ≥ $5M, action dates ' + start + '..' + AS_OF + '. Prime awards only; the amount is the whole award, which is drainage-specific only when the award title/description is.' };
+  }
+});
+RW_SOURCES.push({
+  id: 'usaspending-sub', name: 'USAspending.gov subawards: line items with a drainage/hydraulics description (≥ $5M), roadway lane', agency: 'Federal (all agencies)', page: 'https://api.usaspending.gov/docs/endpoints',
+  type: 'REST API, no key (FFATA subaward reports; snapshot only)',
+  async run(ctx) {
+    const kw = ['drainage', 'hydraulic', 'hydraulics', 'hydrology', 'hydrologic', 'stormwater', 'storm water', 'storm drain', 'culvert'];
+    const fields = ['Sub-Award ID', 'Sub-Award Amount', 'Sub-Awardee Name', 'Sub-Award Description', 'Sub-Award Date', 'Prime Award ID', 'Prime Recipient Name', 'Awarding Agency', 'Awarding Sub Agency', 'Prime Award Description', 'Place of Performance State Code', 'NAICS', 'PSC', 'prime_award_generated_internal_id'];
+    const all = new Map(); const s = rst('usaspending-sub'); const start = M.addMonths(AS_OF, -60);
+    for (let page = 1; page <= 10; page++) {
+      const filters = { keywords: kw, award_type_codes: ['A', 'B', 'C', 'D'], award_amounts: [{ lower_bound: R.DRAIN_MIN }], time_period: [{ start_date: start, end_date: AS_OF }] };
+      const j = await getJson('https://api.usaspending.gov/api/v2/search/spending_by_award/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filters, fields, subawards: true, limit: 100, page, sort: 'Sub-Award Amount', order: 'desc' }) });
+      (j.results || []).forEach((r) => all.set(String(r.prime_award_generated_internal_id) + '|' + r['Sub-Award ID'], r));
+      if (!j.page_metadata || !j.page_metadata.hasNext) break;
+    }
+    s.fetched = all.size; let over = 0;
+    for (const r of all.values()) {
+      const amount = r['Sub-Award Amount']; if (typeof amount !== 'number') continue; if (amount > R.DRAIN_MIN) over++;
+      const prime = { piid: r['Prime Award ID'], recipient: r['Prime Recipient Name'], title: r['Prime Award Description'], agency: r['Awarding Agency'], subagency: r['Awarding Sub Agency'], naics: r.NAICS && r.NAICS.code, psc: r.PSC && r.PSC.code };
+      const c = R.normUsaSub({ id: r['Sub-Award ID'], amount, description: M.clean(r['Sub-Award Description']), subawardee: r['Sub-Awardee Name'], date: r['Sub-Award Date'], state: r['Place of Performance State Code'], url: 'https://www.usaspending.gov/award/' + encodeURIComponent(r.prime_award_generated_internal_id) }, prime);
+      rwRecord(c);
+    }
+    ctx.asOf['usaspending-sub'] = new Date().toISOString();
+    return { fetched: all.size, note: 'Subaward search: keyword (drainage, hydraulic(s), hydrology, stormwater, storm drain, culvert) in the prime or subaward text, prime award ≥ $5M, ' + start + '..' + AS_OF + '. ' + all.size + ' subawards returned, ' + over + ' with a subaward amount > $5M. The subaward amount is the one line item, so it IS a per-task figure, but it is reported by the prime and often has a generic description.' };
+  }
+});
+RW_SOURCES.push({
+  id: 'wsdot-proj', name: 'WSDOT Projected Design Opportunities for Consultants (xlsx)', agency: 'Washington State DOT', page: 'https://wsdot.wa.gov/business-wsdot/contracts/contract-services',
+  type: 'Semi-annual xlsx forecast of A&E consultant design opportunities with "Potential Value"; snapshot only',
+  async run(ctx) {
+    const s = rst('wsdot-proj'); const page = await get('https://wsdot.wa.gov/business-wsdot/contracts/contract-services');
+    const m = /href="([^"]*WSDOT-Projected-Design-Opportunities-for-Consultants[^"]*\.xlsx)"/i.exec(page); if (!m) throw new Error('forecast xlsx link not found on the WSDOT contract services page');
+    const url = new URL(m[1], 'https://wsdot.wa.gov').href; const rows = xlsxRows(await get(url, { binary: true }));
+    const hi = rows.findIndex((r) => r && r[0] === 'Project' && r[8] === 'Potential Value'); if (hi < 0) throw new Error('header row not found in the WSDOT xlsx');
+    let n = 0;
+    rows.slice(hi + 1).forEach((r, i) => {
+      if (!r || !r[0]) return; n++;
+      const pv = String(r[8] || '').replace(/,/g, ''); const mm = /\$\s*([\d.]+)\s*(M|K|B)?/i.exec(pv); const v = mm ? parseFloat(mm[1]) * ({ M: 1e6, K: 1e3, B: 1e9 }[(mm[2] || '').toUpperCase()] || 1) : null;
+      const c = { src: 'wsdot-proj', srcId: 'row-' + (i + 1) + '-' + String(r[0]).slice(0, 30).replace(/\W+/g, '-'), url, title: M.clean(r[0]), desc: M.clean(r[1]), agency: 'Washington State DOT', subagency: M.clean(r[7]), state: 'WA', city: null, naics: '', psc: '',
+        roadAgency: 'WSDOT consultant design list (highway agency)', engOverride: { level: 'strong', why: 'WSDOT "Projected Design Opportunities for Consultants" = planned A&E consultant contracts (source category)' },
+        status: 'upcoming', noticeType: 'Projected design opportunity', noticeLabel: 'Projected WSDOT consultant design opportunity', amounts: v ? [{ v, kind: 'estvalue', field: 'Potential Value (WSDOT Projected Design Opportunities xlsx)' }] : [], dates: { est: null, estLabel: 'Advertisement: ' + M.clean(r[2]) },
+        fields: { 'Advertisement': M.clean(r[2]), 'Delivery method': M.clean(r[3]), 'Region': M.clean(r[7]), 'Potential value': M.clean(r[8]), 'Confidence rating': M.clean(r[9]) } };
+      rwRecord(c);
+    });
+    s.fetched = n; ctx.asOf['wsdot-proj'] = new Date().toISOString();
+    return { fetched: n, note: n + ' rows (report dated by the file name ' + url.split('/').slice(-2, -1)[0] + '); fields: Project, Description, Advertisement, Delivery Method, Region, Potential Value, Confidence Rating. Total values only: no per-discipline amounts.' };
+  }
+});
+
+// Sources probed for the roadway lane that are NOT in the build, with what each was measured to expose (probed 2026-10-26, US Central).
+const RW_TESTED = [
+  { name: 'WisDOT SFY25 consultant contracts / work orders by project (PDF)', url: 'https://wisconsindot.gov/Documents/doing-bus/eng-consultants/selections/projectlist25.pdf', works: true, integrated: false,
+    fields: 'Region, Project ID, WO, Highway, Project limit, County, Contract function (e.g. Design Services, Hydraulic Analysis and Design S…), Auth date, Vendor, Project costs (the authorized amount).',
+    finding: '1,055 awarded work orders, $308,373,601 total. 26 lines mention drainage / hydraulic / storm / culvert; the largest drainage-named amount is $285,591 (Storm Water Management Statewide / Drainage Studies work orders). Far below $5M. Awards only, so it could only feed the awards tab. Not built in: needs pdftotext (poppler) in the workflow.' },
+  { name: 'FDOT Internet Reports (Consultant Acquisition Plan, Active and Expired Contracts, Final Selections)', url: 'https://www.fdot.gov/procurement/internetreports.shtm', works: false, integrated: false,
+    fields: 'Report pages are SQL Server Reporting Services reports (ssrs.fdot.gov).',
+    finding: 'Direct export URLs (rs:Format=CSV) returned HTTP 500 without the interactive report parameters, and the report viewer is a script-driven page. Not usable without a browser session; not built in.' },
+  { name: 'WSDOT Professional Services Forecast (xlsx)', url: 'https://wsdot.wa.gov/sites/default/files/2024-08/Professional-Services-Forecast.xlsx', works: true, integrated: false,
+    fields: 'Contract number, current vendor, description, procurement method, start / end dates, estimated value, estimated advertisement date.',
+    finding: '31 agency-wide professional-services rows (not roadway design specific); 1 mentions stormwater ($100,000). File is dated 2024-08. Not built in.' },
+  { name: 'More state DOT consultant pages (NYSDOT, NCDOT, GDOT, PennDOT, Louisiana DOTD, FDOT advertisements)', url: '', works: false, integrated: false, fields: '', finding: 'Tested earlier for the water lane; none exposes a consultant fee in a machine-readable list. See "Sources tested, not used" in the main Data tab.' }
+];
+
 // ---------- enrichment: city centroids for pins (Census Gazetteer; only for records whose source names a city AND state) ----------
 async function cityCentroids(recs) {
   const want = recs.filter((r) => r.city && r.state && !r.lat);
@@ -292,8 +408,16 @@ function mergeStats(list) {
 }
 async function main() {
   const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : null;
+  const prevRw = fs.existsSync(OUT_RW) ? JSON.parse(fs.readFileSync(OUT_RW, 'utf8')) : null;
+  // unit prices for the roadway cost base: a subset of bid-cost/prices.json (TxDOT low-bid averages), the items cost.js uses
+  const bid = JSON.parse(fs.readFileSync(path.join(ROOT, 'bid-cost', 'prices.json'), 'utf8')); PRICES = {};
+  bid.rows.forEach((r) => { if (CM.PRICE_CODES.indexOf(r.bid_code) >= 0) PRICES[r.bid_code] = r; });
+  const missingCodes = CM.PRICE_CODES.filter((c) => !PRICES[c]); if (missingCodes.length) throw new Error('bid-cost/prices.json lacks bid codes used by cost.js: ' + missingCodes.join(', '));
+  fs.mkdirSync(path.dirname(OUT_PRICES), { recursive: true });
+  fs.writeFileSync(OUT_PRICES, JSON.stringify({ meta: Object.assign({}, bid.meta, { file: 'bid-cost/prices.json', note: bid.meta.note + '. Subset used by national-radar/cost.js; these are TEXAS prices.' }), rows: PRICES }));
   const ctx = { asOf: {} }; const statuses = [];
   for (const s of SOURCES) {
+    if (SKIP.has(s.id)) { statuses.push({ id: s.id, name: s.name, agency: s.agency, page: s.page, type: s.type, status: 'skipped', note: 'NR_SKIP developer switch', fetched: 0, kept: 0 }); continue; }
     const t0 = Date.now(); const rec0 = kept.length; const status = { id: s.id, name: s.name, agency: s.agency, page: s.page, type: s.type, status: 'ok', error: null, fetchedAt: new Date().toISOString() };
     if (s.id === 'sam-api' && process.env.SAM_API_KEY) { status.status = 'skipped'; status.note = 'SAM_API_KEY is set but the API adapter is not implemented in this version; the public extract is used instead.'; statuses.push(status); continue; }
     if (s.id === 'sam-api') { status.status = 'disabled'; status.note = 'No SAM_API_KEY. Add one as a GitHub Actions secret named SAM_API_KEY to enable this path (see national-radar/workflow/refresh-national.yml). The public SAM.gov extract above covers active notices without a key.'; statuses.push(status); continue; }
@@ -311,6 +435,36 @@ async function main() {
     console.log((status.status + '      ').slice(0, 8), s.id.padEnd(12), 'fetched', String(status.fetched || 0).padStart(6), 'kept', String(status.kept).padStart(4), ((Date.now() - t0) / 1000).toFixed(1) + 's', status.error ? ' ERR ' + status.error : '');
     statuses.push(status);
   }
+  // ---- roadway lane: roadway-only sources, then assemble national-radar/data/roadway.json
+  const rwStatuses = [];
+  for (const s of RW_SOURCES) {
+    const t0 = Date.now(); const status = { id: s.id, name: s.name, agency: s.agency, page: s.page, type: s.type, status: 'ok', error: null, fetchedAt: new Date().toISOString(), roadwayOnly: true };
+    try { const r = await s.run(ctx); status.fetched = r.fetched; status.note = r.note; }
+    catch (e) {
+      status.status = prevRw && prevRw.records.some((x) => x.src === s.id) ? 'stale' : 'failed'; status.error = String(e.message).slice(0, 300);
+      if (prevRw) { prevRw.records.filter((x) => x.src === s.id).forEach((x) => rwKept.push(x)); const o = (prevRw.sources || []).find((x) => x.id === s.id); status.stats = o && o.stats; status.fetchedAt = o ? o.fetchedAt : null; status.fetched = o ? o.fetched : 0; }
+      status.note = 'Last fetch failed: ' + status.error + (status.status === 'stale' ? ' Showing records from the previous successful run.' : '');
+    }
+    if (status.status === 'ok') status.stats = rwStats[s.id];
+    status.kept = rwKept.filter((x) => x.src === s.id).length; status.asOf = ctx.asOf[s.id] || status.fetchedAt;
+    console.log('rw ' + status.status.padEnd(6), s.id.padEnd(16), 'fetched', String(status.fetched || 0).padStart(6), 'kept', String(status.kept).padStart(4), ((Date.now() - t0) / 1000).toFixed(1) + 's', status.error ? ' ERR ' + status.error : '');
+    rwStatuses.push(status);
+  }
+  // main sources that failed this run: bring their previous roadway records back so a failed fetch does not erase them
+  statuses.forEach((st0) => { const sd = SOURCES.find((x) => x.id === st0.id); if (!sd || !prevRw || (st0.status !== 'stale' && st0.status !== 'failed' && st0.status !== 'skipped')) return; const ids = sd.statIds || [sd.id]; prevRw.records.filter((x) => ids.indexOf(x.src) >= 0).forEach((x) => rwKept.push(x)); });
+  const rwSources = statuses.filter((x) => x.id !== 'sam-api').map((x) => { const sd = SOURCES.find((y) => y.id === x.id); const ids = sd.statIds || [sd.id]; const parts = ids.map((i) => rwStats[i]).filter(Boolean);
+    const m = { evaluated: 0, exact5: 0, drainSpecific: 0, byBucket: {}, excl: {}, rw: {}, eng: {}, road: {}, near: [], exact5Rows: [] };
+    parts.forEach((p) => { m.evaluated += p.evaluated; m.exact5 += p.exact5; m.drainSpecific += p.drainSpecific; ['byBucket', 'excl', 'rw', 'eng', 'road'].forEach((k) => Object.keys(p[k]).forEach((z) => { m[k][z] = (m[k][z] || 0) + p[k][z]; })); m.near = m.near.concat(p.near || []); m.exact5Rows = m.exact5Rows.concat(p.exact5Rows || []); });
+    m.near.sort((a, b) => (b.v || 0) - (a.v || 0)); m.near.length = Math.min(m.near.length, 8);
+    return { id: x.id, name: x.name, agency: x.agency, page: x.page, type: x.type, status: x.status, error: x.error, fetched: x.fetched, fetchedAt: x.fetchedAt, asOf: x.asOf, stats: m, kept: rwKept.filter((r) => ids.indexOf(r.src) >= 0).length }; });
+  const rwDd = M.dedupe(rwKept); const rwMerged = rwDd._merged; const rwOrdered = rwDd.slice().sort((a, b) => (b.amt ? b.amt.v : 0) - (a.amt ? a.amt.v : 0));
+  const rwCounts = { total: rwOrdered.length, beforeDedupe: rwKept.length, mergedDuplicates: rwMerged, byBucket: M.countBy(rwOrdered, (r) => r.bucket), byType: M.countBy(rwOrdered, (r) => r.rw + ':' + r.bucket), byStatus: M.countBy(rwOrdered, (r) => r.bucket + ':' + r.rw + ':' + r.status), byState: M.countBy(rwOrdered, (r) => r.state || '??'), byCost: M.countBy(rwOrdered, (r) => r.cost.status),
+    drainOpen: rwOrdered.filter((r) => r.bucket === 'opp' && r.rw === 'drain').length, totalOpen: rwOrdered.filter((r) => r.bucket === 'opp' && r.rw === 'total').length, review: rwOrdered.filter((r) => r.bucket === 'review').length, awards: rwOrdered.filter((r) => r.bucket === 'award' || r.bucket === 'closed').length, recompete: rwOrdered.filter((r) => r.recompete).length };
+  const rwOut = { generatedAt: new Date().toISOString(), asOfDate: AS_OF, generator: 'scripts/build-national.js', thresholds: { drain: R.DRAIN_MIN, total: R.TOTAL_MIN }, priceMeta: bid.meta, counts: rwCounts, sources: rwSources.concat(rwStatuses), tested: RW_TESTED, records: rwOrdered };
+  const rwSlim = JSON.stringify(rwOut, (k, v) => (v === null || v === undefined || (Array.isArray(v) && !v.length) ? undefined : v));
+  if (!rwOut.sources.some((x) => x.status === 'ok')) { console.error('Roadway: nothing usable fetched; keeping the existing file.'); }
+  else { fs.writeFileSync(OUT_RW, rwSlim); console.log('wrote', OUT_RW, rwOrdered.length, 'roadway records', (rwSlim.length / 1024).toFixed(0) + ' KB', JSON.stringify(rwCounts.byType), 'cost', JSON.stringify(rwCounts.byCost)); }
+  if (SKIP.size) { console.log('NR_SKIP set: national.json NOT written.'); return; }
   // sector for forced TxDOT hydraulics discipline is already in the keyword rules via the title; nothing to add here.
   // dedupe across sources (award number, solicitation number, or identical title+agency+amount)
   const before = kept.length; const dd = M.dedupe(kept); const merged = dd._merged;

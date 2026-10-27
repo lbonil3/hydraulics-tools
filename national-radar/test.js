@@ -204,4 +204,5 @@ if (fs.existsSync(dataFile)) {
   });
   assert.strictEqual(D.counts.total, D.records.length);
 }
+require('./test-roadway.js');
 console.log('national-radar tests passed');

@@ -26,11 +26,15 @@
 </header>
 
 <section class="banner" id="banner" aria-label="Read this first">
-  <p><b>Fee &gt; $20M as stated by the source, engineering consultants only.</b> Most agencies publish no fee before award, so counts are small and true; nothing is padded or estimated.</p>
+  <p id="bannerTxt"><b>Fee &gt; $20M as stated by the source, engineering consultants only.</b> Most agencies publish no fee before award, so counts are small and true; nothing is padded or estimated.</p>
   <button type="button" class="linkbtn" id="btnHow" aria-expanded="false" aria-controls="how">What counts, and what does not</button>
   <div id="how" hidden></div>
 </section>
 
+<nav class="modes" id="modes" aria-label="Which lane">
+  <button type="button" class="on" data-mode="water" aria-pressed="true">Water &amp; drainage, fee &gt; $20M</button>
+  <button type="button" data-mode="road" aria-pressed="false">Roadway + drainage</button>
+</nav>
 <nav class="scopes" id="scopes" aria-label="What to show"></nav>
 <section class="kpis" id="kpis" aria-label="Summary"></section>
 
@@ -123,6 +127,8 @@
 <script src="proj.js"></script>
 <script src="us-geo.js"></script>
 <script src="model.js"></script>
+<script src="cost.js"></script>
+<script src="roadway.js"></script>
 <script src="sources.js"></script>
 <script src="app.js"></script>
 </body>
