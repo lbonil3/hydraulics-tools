@@ -132,6 +132,60 @@
     if (c.type === 'fence') { var dir = G.simDir[i]; o.edge = edgeCorners(i, dir >= 0 ? dir : i + W); }
     A.drawControl(ctx, c.type, p, o);
   }
+  // ---------- live storm water (visual; driven by the sim result) ----------
+  function wetness() {
+    if (G.phase === 'report') return 0.35;
+    var f = G.stormT / G.stormDur; return f < 0.3 ? f / 0.3 : f < 0.75 ? 1 : Math.max(0.35, 1 - (f - 0.75) * 2);
+  }
+  function prepWater() {
+    var sim = G.sim, n = sim.acc.length, conc = new Array(n), mx = 1e-9, i;
+    for (i = 0; i < n; i++) { conc[i] = sim.passed[i] / Math.max(0.2, sim.acc[i] * sim.intensity); if (G.L.types[i] !== 'C') mx = Math.max(mx, conc[i]); }
+    for (i = 0; i < n; i++) conc[i] = Math.min(1, conc[i] / mx * 1.4);
+    G.wConc = conc; G.wSim = sim;
+  }
+  function drawWater(ctx, t) {
+    if (G.wSim !== G.sim) prepWater();
+    var sim = G.sim, L = G.L, W = L.W, wet = wetness(), conc = G.wConc;
+    for (var i = 0; i < L.types.length; i++) {
+      var ty = L.types[i]; if (ty === 'C') continue;
+      var flow = sim.acc[i] * S.TILE_AC * sim.intensity, a = wet * Math.min(0.72, 0.3 + 0.24 * Math.log(1 + flow * 8));
+      if (ty === 'G') a *= 0.45; if (a < 0.03) continue;
+      var c = conc[i], rr = Math.round(70 + 100 * c), gg = Math.round(130 - 40 * c), bb = Math.round(200 - 140 * c), p = tileTop(i % W, (i / W) | 0);
+      A.diamond(ctx, p, 0.1, 'rgba(' + rr + ',' + gg + ',' + bb + ',' + a.toFixed(2) + ')');
+      // sheet-flow shimmer moving downslope
+      var j = sim.dir[i]; if (j < 0 || a < 0.12) continue;
+      var dx = (j % W) - (i % W), dy = ((j / W) | 0) - ((i / W) | 0);
+      for (var q = 0; q < 2; q++) { var ph = (t / 900 + A.hash(i, q, 61)) % 1, u = 0.5 + dx * (ph - 0.5) * 0.8 + (dy ? (A.hash(i, q, 62) - 0.5) * 0.6 : 0), v = 0.5 + dy * (ph - 0.5) * 0.8 + (dx ? (A.hash(i, q, 63) - 0.5) * 0.6 : 0), w = A.at(p, u, v);
+        ctx.fillStyle = 'rgba(230,245,255,' + (0.7 * Math.sin(ph * Math.PI) * wet).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 2, Math.round(w.y), 4, 1); }
+    }
+    // rain splashes on the ground
+    if (G.phase === 'storm' && G.stormT < G.stormDur * 0.75) {
+      var n = Math.round(40 * sim.intensity);
+      for (var k = 0; k < n; k++) { var seed = Math.floor(t / 120) * 131 + k, ti = (A.hash(seed, 1, 71) * L.types.length) | 0, pp = tileTop(ti % W, (ti / W) | 0), sp = A.at(pp, A.hash(seed, 2, 71), A.hash(seed, 3, 71)), fr = (t % 120) / 120;
+        ctx.fillStyle = 'rgba(220,240,255,' + (0.8 * (1 - fr)).toFixed(2) + ')'; var rad = 1 + Math.round(fr * 3); ctx.fillRect(Math.round(sp.x) - rad, Math.round(sp.y), 1, 1); ctx.fillRect(Math.round(sp.x) + rad, Math.round(sp.y), 1, 1); ctx.fillRect(Math.round(sp.x), Math.round(sp.y) - 1 - Math.round(fr * 2), 1, 1); }
+    }
+  }
+  // ponding behind controls + overtopping / blowout / undercut effects matching each control's sim status
+  function drawControlWater(ctx, t) {
+    var sim = G.sim, ev = sim.evals || {}, wet = wetness(), W = G.L.W;
+    G.controls.forEach(function (c, k) {
+      var e = ev[k]; if (!e || ['fence', 'dam', 'basin', 'inlet'].indexOf(c.type) < 0) return;
+      var p = tileTop(c.tile % W, (c.tile / W) | 0), cen = tileCenter(c.tile), lvl = Math.min(1, wet * (0.4 + Math.min(0.6, sim.acc[c.tile] * S.TILE_AC * sim.intensity / 3)));
+      if (e.status === 'wasted' || e.status === 'violation') return;
+      var mud = e.status === 'ok' ? 0.9 : 0.6;
+      if (c.type !== 'inlet') { A.diamond(ctx, p, 0.42 - 0.3 * lvl, 'rgba(' + Math.round(120 + 40 * mud) + ',' + Math.round(96 + 10 * mud) + ',' + Math.round(70) + ',' + (0.55 + 0.25 * lvl).toFixed(2) + ')');
+        for (var q = 0; q < 3; q++) { var ph = (t / 1100 + q / 3) % 1, w = A.at(p, 0.3 + 0.4 * A.hash(k, q, 81), 0.3 + 0.4 * ph); ctx.fillStyle = 'rgba(240,220,190,.6)'; ctx.fillRect(Math.round(w.x) - 2, Math.round(w.y), 4, 1); } }
+      var dir = sim.dir[c.tile], dn = dir >= 0 ? tileCenter(dir) : { x: cen.x - 10, y: cen.y + 10 }, ex = (cen.x + dn.x) / 2, ey = (cen.y + dn.y) / 2;
+      var bad = e.status === 'overtopped' || e.status === 'undersized' || e.status === 'blown out' || e.status === 'undercut' || e.status === 'spacing';
+      if (!bad || G.phase !== 'storm') return;
+      for (var f = 0; f < 14; f++) { // spill / jets over the downstream edge
+        var ph2 = ((t / 500) + A.hash(k, f, 91)) % 1, ox = (A.hash(k, f, 92) - 0.5) * 30, x = ex + ox + (dn.x - cen.x) * 0.4 * ph2, y = ey + (dn.y - cen.y) * 0.4 * ph2 - (e.status === 'undercut' ? -2 : 8 * (1 - ph2) * (1 - ph2));
+        ctx.fillStyle = f % 3 ? 'rgba(250,250,255,.85)' : 'rgba(170,120,70,.9)'; ctx.fillRect(Math.round(x), Math.round(y), 2, 1);
+      }
+      if (e.status === 'blown out') for (f = 0; f < 6; f++) { var ph3 = ((t / 900) + f / 6) % 1; ctx.fillStyle = '#a9a9a4'; ctx.fillRect(Math.round(cen.x + (dn.x - cen.x) * ph3 + (f - 3) * 4), Math.round(cen.y + (dn.y - cen.y) * ph3 - 3 * Math.sin(ph3 * Math.PI)), 3, 2); }
+    });
+  }
+
   // ---------- site crew (visual only; capped sprite count) ----------
   function initCrew() {
     var L = G.L, pad = [], i; G.crew = []; G.mud = []; G.truck = null; G.truckNext = performance.now() + 2500;
@@ -161,8 +215,8 @@
       A.drawWorker(ctx, cp.x - 20, cp.y + 2, fr, 'hammer', 1); A.drawWorker(ctx, cp.x + 20, cp.y - 2, fr + 1, 'hammer', -1, '#d9ff3a');
       if (G.lastHammer !== fr && fr % 2 === 0 && G.phase === 'plan') { G.lastHammer = fr; if (window.SWP3Sound) SWP3Sound.play('hammer'); }
     }
-    // idle crew wander the pad
-    for (k = 0; k < G.crew.length; k++) {
+    // idle crew wander the pad (they shelter during the storm)
+    for (k = 0; k < (G.phase === 'storm' ? 0 : G.crew.length); k++) {
       w = G.crew[k]; var dx = w.tx - w.x, dy = w.ty - w.y, d = Math.hypot(dx, dy);
       if (d > 1) { var sp = Math.min(d, 18 * dt); w.x += dx / d * sp; w.y += dy / d * sp; w.act = 'walk'; w.face = dx >= 0 ? 1 : -1; }
       else { w.act = w.wait > 1.2 && k === 1 ? 'hammer' : 'idle'; w.wait -= dt; if (w.wait <= 0 && G.pad.length) { var c2 = tileCenter(G.pad[(r() * G.pad.length) | 0]); var m = Math.min(1, 70 / Math.max(1, Math.hypot(c2.x - w.x, c2.y - w.y))); w.tx = w.x + (c2.x - w.x) * m; w.ty = w.y + (c2.y - w.y) * m; w.wait = 1 + r() * 3; } }
@@ -201,10 +255,12 @@
     // creek shimmer
     if (Math.floor(t / 400) % 2 === 0) { ctx.fillStyle = 'rgba(200,230,255,.25)'; for (var i = 0; i < G.L.types.length; i++) if (G.L.types[i] === 'C' && (i * 7 + Math.floor(t / 800)) % 5 === 0) { var cc = tileCenter(i); ctx.fillRect(Math.round(cc.x) - 6, Math.round(cc.y) - 2, 10, 2); } }
     drawCreek(ctx, t);
+    if (G.phase === 'storm' || G.phase === 'report') drawWater(ctx, t);
     if (G.flowView) drawFlowView(ctx);
     // controls in depth order
     var order = G.controls.map(function (c, k) { return k; }).sort(function (a, b) { return depth(G.controls[a].tile) - depth(G.controls[b].tile); });
     order.forEach(function (k) { drawControl(ctx, G.controls[k], k, t); });
+    if (G.phase === 'storm' || G.phase === 'report') drawControlWater(ctx, t);
     drawCrew(ctx, t, dt);
     if (G.phase === 'report' && G.scoreRes) drawFailures(ctx, t);
     if (G.hoverTile >= 0 && G.hoverTile !== G.selTile && G.phase === 'plan') outlineTile(ctx, G.hoverTile, 'rgba(255,255,160,.85)');
@@ -220,7 +276,7 @@
     vctx.setTransform(sc, 0, 0, sc, Math.round(view.width / 2 + G.panX * dpr), Math.round(view.height / 2 + G.panY * dpr));
     vctx.drawImage(buf, -geo.w / 2, -geo.h / 2);
     vctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (G.phase === 'storm') drawRain(t);
+    if (G.phase === 'storm') { drawRain(t); drawLightning(t); }
     requestAnimationFrame(frame);
   }
   function depth(i) { var W = G.L.W; return (i % W) + ((i / W) | 0); }
@@ -267,7 +323,7 @@
     G.stormT += dt;
     var rate = G.stormT < G.stormDur * 0.7 ? 90 * G.sim.intensity : 0;
     G.spawnAcc += rate * dt;
-    while (G.spawnAcc > 1 && G.particles.length < 900) {
+    while (G.spawnAcc > 1 && G.particles.length < 500) {
       G.spawnAcc -= 1; var i = pickTile(), c = tileCenter(i);
       G.particles.push({ i: i, t: G.prng(), x: c.x, y: c.y, ox: (G.prng() - 0.5) * 10 * U, oy: (G.prng() - 0.5) * 5 * U, sed: G.L.types[i] !== 'R' });
       if (G.prng() < 0.5) { var w = (G.prng() * G.L.types.length) | 0; if (G.L.types[w] !== 'C') { var cw = tileCenter(w); G.particles.push({ i: w, t: 0, x: cw.x, y: cw.y, ox: (G.prng() - 0.5) * 10 * U, oy: (G.prng() - 0.5) * 5 * U, sed: false }); } }
@@ -295,11 +351,25 @@
     if (G.stormT >= G.stormDur && G.particles.length === 0 || G.stormT >= G.stormDur * 1.6) endStorm();
   }
   function drawParticles(ctx) {
-    for (var d = 0; d < G.deposits.length; d++) { var q = G.deposits[d]; ctx.fillStyle = q.plume ? 'rgba(150,100,50,.85)' : (d % 2 ? '#4a2c10' : '#c08040'); ctx.fillRect(Math.round(q.x + (d % 7) - 3), Math.round(q.y + (d % 5) - 2 - 2), q.plume ? 2 : 1, 1); }
+    for (var d = 0; d < G.deposits.length; d++) { var q = G.deposits[d]; ctx.fillStyle = q.plume ? 'rgba(150,100,50,.85)' : (d % 2 ? '#4a2c10' : '#c08040'); ctx.fillRect(Math.round(q.x + (d % 13) - 6), Math.round(q.y + (d % 7) - 5), q.plume ? 3 : 2, 2); }
     for (var k = 0; k < G.particles.length; k++) {
       var p = G.particles[k], px = Math.round(p.x + p.ox * 0.6), py = Math.round(p.y + p.oy * 0.6) - 1;
-      if (p.sed) { ctx.fillStyle = '#3a2008'; ctx.fillRect(px, py, 2, 2); ctx.fillStyle = '#d08a3a'; ctx.fillRect(px, py, 1, 1); }
-      else { ctx.fillStyle = '#e8f6ff'; ctx.fillRect(px, py, 2, 1); ctx.fillStyle = '#3f7fbf'; ctx.fillRect(px, py + 1, 2, 1); }
+      if (p.sed) { ctx.fillStyle = '#3a2008'; ctx.fillRect(px, py, 3, 3); ctx.fillStyle = '#d08a3a'; ctx.fillRect(px, py, 2, 2); }
+      else { ctx.fillStyle = '#e8f6ff'; ctx.fillRect(px, py, 3, 1); ctx.fillStyle = '#3f7fbf'; ctx.fillRect(px, py + 1, 3, 1); }
+    }
+  }
+  function drawLightning(t) {
+    var surprise = G.L.actual.intensity > G.L.forecast.intensity || G.L.actual.intensity >= 1.5;
+    if (!surprise) return;
+    if (!G.boltAt || t > G.boltAt + 1400) { G.boltAt = t + 1500 + Math.random() * 2500; G.thunderDone = false; }
+    var d = t - G.boltAt; if (d < 0) return;
+    if (!G.thunderDone && d > 250) { G.thunderDone = true; if (window.SWP3Sound) SWP3Sound.play('thunder'); }
+    var a = d < 90 ? 0.55 : d < 150 ? 0.1 : d < 230 ? 0.4 : Math.max(0, 0.4 - (d - 230) / 500);
+    if (a <= 0) return;
+    vctx.fillStyle = 'rgba(235,240,255,' + a.toFixed(2) + ')'; vctx.fillRect(0, 0, view.width, view.height);
+    if (d < 230) { // bolt
+      var x = view.width * (0.2 + 0.6 * A.hash(Math.floor(G.boltAt), 1, 5)), y = 0; vctx.strokeStyle = '#fffbe0'; vctx.lineWidth = 3 * dpr; vctx.beginPath(); vctx.moveTo(x, y);
+      for (var k = 1; k < 9; k++) { x += (A.hash(Math.floor(G.boltAt), k, 6) - 0.5) * 60 * dpr; y += view.height * 0.06; vctx.lineTo(x, y); } vctx.stroke();
     }
   }
   function drawRain(t) {
