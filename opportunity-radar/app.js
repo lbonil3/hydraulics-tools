@@ -1,7 +1,7 @@
 /* Opportunity Radar app. Static page; data comes from data/opportunities.json (snapshot) plus an optional live TxDOT refresh. */
 (function () {
   'use strict';
-  var M = window.RadarModel;
+  var M = window.RadarModel, CP = window.RadarCapture, CAP_APP = CP.OPP_BACKUP_APP;
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var WATCH_KEY = 'opportunityRadar.watch.v1';
@@ -64,6 +64,7 @@
   function sortList(a) {
     var s = state.sort;
     function dkey(r, desc) { return r.date || (desc ? '0000' : '9999-99'); }
+    if (s === 'due' || s === 'decision') { var o = CP.sortRows(a.map(function (r) { return { id: r.id, r: r, cap: capOf(r.id) }; }), s).map(function (x) { return x.r; }); o.forEach(function (r, i) { a[i] = r; }); return; }
     a.sort(function (x, y) {
       if (s === 'date') { // upcoming first (soonest), then undated, then past (most recent first)
         var gx = !x.date ? 1 : x.date >= state.today ? 0 : 2, gy = !y.date ? 1 : y.date >= state.today ? 0 : 2;
@@ -99,7 +100,7 @@
       '<button type="button" class="star' + star + '" data-star="' + esc(r.id) + '" aria-label="' + (star ? 'Remove from' : 'Add to') + ' watchlist">' + (star ? '&#9733;' : '&#9734;') + '</button>' +
       '<div class="b"><div class="t">' + esc(r.title) + '</div>' +
       '<div class="m"><span>' + esc(r.agency) + '</span><span>' + esc(M.phaseLabel(r.phase)) + '</span><span>' + esc(d) + (when ? ' (' + when + ')' : '') + '</span><span>' + esc(r.cost ? M.fmtMoney(r.cost) : 'cost unknown') + '</span>' + (r.county ? '<span>' + esc(r.county) + '</span>' : '') + '</div>' +
-      '<div class="m" style="margin-top:4px">' + (r.ghost ? '<span class="tag inf">no longer in snapshot</span>' : tagsFor(r)) + (hasLoc(r) ? '' : '<span class="tag">no map location</span>') + (typeof r.lat !== 'number' && typeof r.alat === 'number' ? '<span class="tag inf">approx. location (county, inferred)</span>' : '') + '</div></div></div>';
+      '<div class="m" style="margin-top:4px">' + (r.ghost ? '<span class="tag inf">no longer in snapshot</span>' : tagsFor(r)) + (hasLoc(r) ? '' : '<span class="tag">no map location</span>') + (typeof r.lat !== 'number' && typeof r.alat === 'number' ? '<span class="tag inf">approx. location (county, inferred)</span>' : '') + '</div></div>' + (state.f.watchOnly && state.watch[r.id] ? capBlock(r.id) : '') + '</div>';
   }
   function renderKpis() {
     var f = state.filtered, n = f.length;
@@ -259,7 +260,7 @@
       '<li>Costs are what the agency lists (usually construction cost, not design fee). The label on each record says which.</li></ul>';
   }
   function renderAll() {
-    renderKpis(); renderFilters(); renderLegend(); renderMap(); renderAgencies(); renderTimeline(); renderList(); renderSources();
+    renderKpis(); renderFilters(); renderLegend(); renderMap(); renderAgencies(); renderTimeline(); renderList(); renderCapBar(); renderSources();
     var fresh = state.data ? state.data.generatedAt : null;
     if (fresh) {
       var ageH = (Date.now() - Date.parse(fresh)) / 3600000;
@@ -267,6 +268,74 @@
       var bad = state.sources.filter(function (s) { return s.status !== 'ok'; }).length;
       $('freshTxt').innerHTML = 'Snapshot ' + esc(fmtDT(fresh)) + ' (' + (ageH < 48 ? Math.round(ageH) + ' h old' : Math.round(ageH / 24) + ' days old') + ')' + (state.live ? ' · TxDOT live ' + esc(fmtDT(state.live.at)) : '') + ' · ' + state.recs.length.toLocaleString('en-US') + ' records from ' + (state.sources.length - bad) + '/' + state.sources.length + ' feeds' + (bad ? ' · <b>' + bad + ' feed(s) stale or failed (see Sources)</b>' : '') + (ageH > 24 * 7 ? ' · <b>snapshot is old: the daily refresh may not be running</b>' : '');
     }
+  }
+
+  // ---------- capture files (starred records) ----------
+  // Stored inside each watchlist entry as .cap, so existing { t, a, u, at } entries keep working unchanged.
+  var capOpen = {}, restoreMode = 'merge';
+  function todayCentral() { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); }
+  function capOf(id) { var w = state.watch[id]; return w && w.cap ? CP.clean(w.cap) : CP.blank(); }
+  function snapOfRec(r) { // cost here is the source's project cost, NEVER a consultant fee: it goes in the "not a fee" column
+    return CP.clean({ snap: { title: r.title, agency: r.agency, status: r.status || r.stage || '', src: r.src || '', url: r.url || '', asOf: state.data ? String(state.data.generatedAt || '').slice(0, 10) : '', notFee: typeof r.cost === 'number' ? r.cost : null, notFeeKind: r.cost ? (r.costLabel || 'project cost') + ' (project cost, NOT a fee)' : '' } }).snap;
+  }
+  function snapFor(id) { var r = state.byId[id]; if (r) return snapOfRec(r); var w = state.watch[id]; return w && w.cap && w.cap.snap ? CP.clean(w.cap).snap : w ? CP.clean({ snap: { title: w.t, agency: w.a, url: w.u } }).snap : null; }
+  function capSumHtml(id) {
+    var c = capOf(id), t = todayCentral(), d = CP.dueInfo(c.due, t), h = '<span class="cdec ' + c.decision.replace(/[^a-z]/gi, '').toLowerCase() + '">' + esc(c.decision) + '</span>';
+    h += c.due ? '<span class="cdue ' + d.flag + '">' + (d.flag === 'soon' ? '&#9873; ' : d.flag === 'overdue' ? '&#9888; ' : '') + esc(CP.dueText(c.due, t)) + ' &middot; ' + esc(M.fmtDate(c.due)) + '</span>' : '<span class="cdue none">No due date</span>';
+    if (c.next) h += '<span class="cnext">Next: ' + esc(c.next) + '</span>';
+    return h;
+  }
+  function capFormHtml(id) {
+    var c = capOf(id), f = function (k, label, type, ph) { return '<label class="cf"><span>' + esc(label) + '</span><input type="' + (type || 'text') + '" data-cap="' + k + '" data-cid="' + esc(id) + '" value="' + esc(c[k]) + '" placeholder="' + esc(ph || '') + '" autocomplete="off"></label>'; };
+    return '<div class="capform"><label class="cf"><span>Go / No-go</span><select data-cap="decision" data-cid="' + esc(id) + '">' + CP.DECISIONS.map(function (d) { return '<option' + (c.decision === d ? ' selected' : '') + '>' + d + '</option>'; }).join('') + '</select></label>' +
+      f('reason', 'Reason for the decision', 'text', 'for example: strong fit with our H&H staff') + f('due', 'Proposal / SOQ due date', 'date') + f('incumbent', 'Incumbent consultant', 'text', 'if known') +
+      '<label class="cf"><span>Teaming partners / subs</span><textarea data-cap="team" data-cid="' + esc(id) + '" rows="2" placeholder="prime, subs, DBE firms">' + esc(c.team) + '</textarea></label>' +
+      f('contact', 'Key contact', 'text', 'name, phone or email') + f('next', 'Next action', 'text', 'for example: call the project manager by Friday') +
+      '<label class="cf"><span>Notes</span><textarea data-cap="notes" data-cid="' + esc(id) + '" rows="4">' + esc(c.notes) + '</textarea></label><p class="note" style="margin:0">Saved on this device as you type.</p></div>';
+  }
+  function capBlock(id) { return '<div class="capwrap"><div class="capsum" data-capsum="' + esc(id) + '">' + capSumHtml(id) + '</div><details class="cap" data-capopen="' + esc(id) + '"' + (capOpen[id] ? ' open' : '') + '><summary>Capture file: incumbent, team, Go / No-go, due date, contact, notes</summary>' + capFormHtml(id) + '</details></div>'; }
+  function refreshCapPanel(id) {
+    var el = $('capPanel'); if (!el || curId !== id) return;
+    el.innerHTML = state.watch[id] ? '<h3>Capture file <span class="hint">(your notes; not from the source)</span></h3><div class="capsum" data-capsum="' + esc(id) + '">' + capSumHtml(id) + '</div>' + capFormHtml(id) : '<h3>Capture file</h3><p class="note" style="margin:0 0 8px">Star this record to start a capture file: incumbent, teaming partners, Go / No-go, due date, contact and notes.</p><button type="button" class="btn small" data-star="' + esc(id) + '">&#9734; Star and start a capture file</button>';
+  }
+  function capCounts() {
+    var n = { total: 0, soon: 0, overdue: 0, go: 0 }, t = todayCentral();
+    Object.keys(state.watch).forEach(function (id) { n.total++; var c = capOf(id), f = CP.dueInfo(c.due, t).flag; if (f === 'soon') n.soon++; else if (f === 'overdue') n.overdue++; if (c.decision === 'Go') n.go++; });
+    return n;
+  }
+  function renderCapBar() {
+    var bar = $('capBar'), on = state.f.watchOnly; bar.hidden = !on; if (!on) return;
+    var n = capCounts();
+    $('capStat').innerHTML = '<b>' + n.total + '</b> starred &middot; <b>' + n.go + '</b> Go &middot; <b class="' + (n.soon ? 'cdue soon' : '') + '">' + n.soon + '</b> due within ' + CP.SOON_DAYS + ' days &middot; <b class="' + (n.overdue ? 'cdue overdue' : '') + '">' + n.overdue + '</b> overdue. Sort by "My due date" or "My Go / No-go" above.';
+  }
+  function updateCapField(el) {
+    var id = el.getAttribute('data-cid'), k = el.getAttribute('data-cap'), w = state.watch[id]; if (!w) return;
+    var c = CP.clean(Object.assign({}, w.cap || {}, { snap: (w.cap && w.cap.snap) || snapFor(id) })); c[k] = el.value; c = CP.clean(Object.assign({}, c, { snap: c.snap, updated: new Date().toISOString() }));
+    w.cap = c; saveWatch();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-capsum]'), function (n) { if (n.getAttribute('data-capsum') === id) n.innerHTML = capSumHtml(id); });
+    renderCapBar();
+  }
+  function capDownload(name, type, text, bom) { var blob = new Blob([(bom ? '\ufeff' : '') + text], { type: type }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
+  function capRows() { return Object.keys(state.watch).map(function (id) { var sn = snapFor(id) || { title: id }; return { id: id, cap: capOf(id), snap: sn }; }); }
+  function exportCapCsv() { var rows = CP.sortRows(capRows(), state.sort === 'decision' ? 'decision' : 'due'); if (!rows.length) { toast('The watchlist is empty.'); return; } capDownload('opportunity-radar-capture-' + todayCentral() + '.csv', 'text/csv;charset=utf-8', CP.toCSV(rows, todayCentral()), true); toast('Exported ' + rows.length + ' capture file(s).'); }
+  function exportBackup() {
+    var ids = Object.keys(state.watch); if (!ids.length) { toast('The watchlist is empty, nothing to back up.'); return; }
+    var caps = {}; ids.forEach(function (id) { var c = capOf(id); if (!c.snap) c.snap = snapFor(id) || undefined; caps[id] = c; });
+    var bk = CP.makeBackup(state.watch, caps, new Date().toISOString(), CAP_APP); bk.meta = {}; ids.forEach(function (id) { var w = state.watch[id]; bk.meta[id] = { t: w.t || '', a: w.a || '', u: w.u || null, at: w.at || '' }; });
+    capDownload('opportunity-radar-capture-backup-' + todayCentral() + '.json', 'application/json', JSON.stringify(bk, null, 1), false); toast('Backup saved to your downloads.');
+  }
+  function restoreBackup(text, mode) {
+    var p = CP.parseBackup(text, CAP_APP); if (!p.ok) { toast(p.error); return; }
+    if (mode === 'replace' && !window.confirm('Replace the whole watchlist and every capture file on this device with the backup?')) return;
+    var meta = {}; try { meta = JSON.parse(text.replace(/^\ufeff/, '')).meta || {}; } catch (e) { meta = {}; }
+    var cur = { watch: {}, capture: {} }; Object.keys(state.watch).forEach(function (id) { cur.watch[id] = true; if (state.watch[id].cap) cur.capture[id] = CP.clean(state.watch[id].cap); });
+    var out = CP.applyBackup(cur, p, mode), next = {};
+    Object.keys(out.watch).forEach(function (id) {
+      var old = state.watch[id], m = meta[id] && typeof meta[id] === 'object' ? meta[id] : {}, cs = out.capture[id], sn = cs && cs.snap;
+      next[id] = { t: String((old && old.t) || m.t || (sn && sn.title) || id).slice(0, 400), a: String((old && old.a) || m.a || (sn && sn.agency) || '').slice(0, 200), u: (old && old.u) || (/^https?:\/\//.test(m.u || '') ? m.u : null) || (sn && sn.url) || null, at: (old && old.at) || String(m.at || new Date().toISOString()).slice(0, 40) };
+      if (cs && !CP.isEmpty(cs) || cs && cs.snap) next[id].cap = cs;
+    });
+    state.watch = next; saveWatch(); toast('Restored ' + Object.keys(p.watch).length + ' watchlist record(s) (' + (mode === 'replace' ? 'replaced' : 'merged') + ').' + (p.skipped ? ' ' + p.skipped + ' invalid entr' + (p.skipped === 1 ? 'y' : 'ies') + ' skipped.' : '')); apply();
   }
 
   // ---------- detail sheet ----------
@@ -293,16 +362,19 @@
     h += '<dl class="kv">' + kv.map(function (e) { return '<dt>' + esc(e[0]) + '</dt><dd>' + esc(e[1]) + '</dd>'; }).join('') + '</dl>';
     h += '<p>' + (r.url ? '<a class="linkbtn" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">Open source record ↗</a>' : '') + (s && s.page ? '<a class="linkbtn alt" href="' + esc(s.page) + '" target="_blank" rel="noopener noreferrer">Source page ↗</a>' : '') + (exact ? '<a class="linkbtn alt" href="https://www.google.com/maps/search/?api=1&query=' + r.lat + ',' + r.lon + '" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>' : '') + '</p>';
     h += '<p class="note" style="margin:6px 0 0">Source: ' + esc(s ? s.name : r.src) + (s && s.fetchedAt ? ', fetched ' + esc(fmtDT(s.fetchedAt)) : '') + '. Record ID: ' + esc(r.id) + '</p>';
-    $('shBody').innerHTML = h; setStar($('shStar'), !!state.watch[id]);
+    h = h.replace(/(<h2>[\s\S]*?<\/h2>)/, '$1<div id="capPanel"></div>');
+    $('shBody').innerHTML = h; setStar($('shStar'), !!state.watch[id]); refreshCapPanel(id);
     $('sheet').hidden = false; document.body.style.overflow = 'hidden';
   }
   function closeSheet() { $('sheet').hidden = true; document.body.style.overflow = ''; curId = null; if (map) { map.focus = null; map.dirty = true; map._schedule(); } }
   function setStar(btn, on) { btn.classList.toggle('on', on); btn.innerHTML = on ? '&#9733;' : '&#9734;'; btn.setAttribute('aria-label', on ? 'Remove from watchlist' : 'Add to watchlist'); }
   function toggleWatch(id) {
     var r = state.byId[id] || ghosts().filter(function (g) { return g.id === id; })[0];
-    if (state.watch[id]) { delete state.watch[id]; toast('Removed from watchlist'); }
-    else if (r) { state.watch[id] = { t: r.title, a: r.agency, u: r.url || null, at: new Date().toISOString() }; toast('Added to watchlist (saved on this device)'); }
-    saveWatch(); apply(); if (curId === id) setStar($('shStar'), !!state.watch[id]);
+    if (state.watch[id]) {
+      var cc = state.watch[id].cap; if (cc && !CP.isEmpty(CP.clean(cc)) && !window.confirm('Remove this record from the watchlist? Its capture notes will be deleted from this device. (Back up first if you want to keep them.)')) return;
+      delete state.watch[id]; delete capOpen[id]; toast('Removed from watchlist');
+    } else if (r) { state.watch[id] = { t: r.title, a: r.agency, u: r.url || null, at: new Date().toISOString(), cap: CP.clean({ snap: snapOfRec(r) }) }; toast('Added to watchlist (saved on this device)'); }
+    saveWatch(); apply(); if (curId === id) { setStar($('shStar'), !!state.watch[id]); refreshCapPanel(id); }
   }
 
   // ---------- CSV ----------
@@ -346,6 +418,7 @@
   function toggleIn(arr, v) { var i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
   function onClick(e) {
     var t = e.target, el;
+    if (t.closest('.capwrap') && !t.closest('[data-star]')) return;
     if ((el = t.closest('[data-star]'))) { e.stopPropagation(); toggleWatch(el.getAttribute('data-star')); return; }
     if ((el = t.closest('[data-open]'))) { openSheet(el.getAttribute('data-open')); return; }
     if ((el = t.closest('.card[data-id]'))) { openSheet(el.getAttribute('data-id')); return; }
@@ -366,6 +439,13 @@
     $('q').addEventListener('input', function () { clearTimeout(init._t); init._t = setTimeout(function () { state.f.q = $('q').value.trim(); apply(); }, 200); });
     $('btnMore').addEventListener('click', function () { var o = $('adv').hidden; $('adv').hidden = !o; this.setAttribute('aria-expanded', o ? 'true' : 'false'); });
     $('btnCsv2').addEventListener('click', exportCsv);
+    function onCap(e) { if (e.target.hasAttribute && e.target.hasAttribute('data-cap')) updateCapField(e.target); }
+    document.addEventListener('input', onCap); document.addEventListener('change', onCap);
+    document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.hasAttribute && d.hasAttribute('data-capopen')) { var id = d.getAttribute('data-capopen'); if (d.open) capOpen[id] = true; else delete capOpen[id]; } }, true);
+    $('btnCapCsv').addEventListener('click', exportCapCsv); $('btnBackup').addEventListener('click', exportBackup);
+    $('btnRestore').addEventListener('click', function () { restoreMode = 'merge'; $('restoreFile').value = ''; $('restoreFile').click(); });
+    $('btnRestoreAll').addEventListener('click', function () { restoreMode = 'replace'; $('restoreFile').value = ''; $('restoreFile').click(); });
+    $('restoreFile').addEventListener('change', function () { var f = this.files && this.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { restoreBackup(String(rd.result), restoreMode); }; rd.onerror = function () { toast('Could not read that file.'); }; rd.readAsText(f); });
     $('btnClear').addEventListener('click', function () { state.f = { q: '', rel: 'relevant', consult: true, eng: false, agencies: [], phases: [], kinds: [], kw: [], houston: false, located: false, watchOnly: false, month: null }; $('q').value = ''; apply(); });
     $('btnColor').addEventListener('click', function () { state.colorBy = state.colorBy === 'agency' ? 'phase' : 'agency'; this.textContent = 'Color: ' + (state.colorBy === 'agency' ? 'agency' : 'stage'); renderLegend(); apply(); });
     $('btnSweep').addEventListener('click', function () { var on = this.getAttribute('aria-pressed') !== 'true'; this.setAttribute('aria-pressed', on ? 'true' : 'false'); this.textContent = 'Sweep: ' + (on ? 'on' : 'off'); if (map) map.setSweep(on); });

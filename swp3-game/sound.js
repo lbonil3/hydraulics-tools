@@ -37,6 +37,8 @@
     unroll: function () { noise(0.45, 0.22, 'bandpass', 1800, 0.6, 0, 0.12); },
     clank: function () { tone('triangle', 520, 470, 0.25, 0.25); tone('triangle', 1310, 1200, 0.18, 0.12); noise(0.05, 0.2, 'highpass', 3000); },
     rocks: function () { for (var i = 0; i < 5; i++) noise(0.04, 0.3, 'bandpass', 900 + i * 300, 2, i * 0.05); },
+    splash: function () { noise(0.5, 0.45, 'bandpass', 700, 0.8, 0, 0.01); noise(0.25, 0.2, 'highpass', 2500, 0.7, 0.05); tone('sine', 320, 120, 0.2, 0.12); },
+    anchor: function () { tone('sine', 90, 40, 0.4, 0.5); noise(0.3, 0.25, 'lowpass', 300, 0.8, 0.02); for (var i = 0; i < 4; i++) tone('square', 1800 - i * 150, 0, 0.02, 0.05, 0.1 + i * 0.06); },
     buzz: function () { tone('sawtooth', 140, 110, 0.35, 0.18); tone('sawtooth', 147, 112, 0.35, 0.12); }
   };
   function play(name) { if (!unlocked || muted || !ctx || !SFX[name]) return; try { SFX[name](); } catch (e) { /* ignore */ } }

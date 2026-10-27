@@ -226,4 +226,18 @@ const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
 assert.ok(html.includes('width=device-width') && html.includes('href="../"'));
 JSON.parse(fs.readFileSync(path.join(dir, 'manifest.webmanifest'), 'utf8')).icons.forEach((i) => assert.ok(fs.existsSync(path.join(dir, i.src)), 'manifest icon ' + i.src));
 assert.ok(!/sample data|fake|dummy|lorem/i.test(fs.readFileSync(path.join(dir, 'app.js'), 'utf8').replace(/no sample data is substituted/g, '')), 'no sample data in the app');
+// capture files on the watchlist (shared model: national-radar/capture.js)
+{
+  const CP = require('../national-radar/capture.js');
+  const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8'), app = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
+  assert.ok(html.indexOf('../national-radar/capture.js') > 0 && html.indexOf('capture.js') < html.indexOf('app.js'), 'capture.js loads before app.js');
+  assert.ok(fs.existsSync(path.join(dir, '..', 'national-radar', 'capture.js')));
+  ['capBar', 'btnCapCsv', 'btnBackup', 'btnRestore', 'btnRestoreAll', 'restoreFile'].forEach((id) => assert.ok(html.indexOf('id="' + id + '"') > 0, id));
+  assert.ok(html.indexOf('value="due"') > 0 && html.indexOf('value="decision"') > 0, 'sort options');
+  assert.ok(app.indexOf("'opportunityRadar.watch.v1'") > 0, 'existing watch key unchanged');
+  // a backup from this page cannot be restored into the National Radar, and the reverse
+  const bk = CP.makeBackup({ a: true }, { a: CP.clean({ notes: 'x' }) }, 'now', CP.OPP_BACKUP_APP);
+  assert.ok(CP.parseBackup(JSON.stringify(bk), CP.OPP_BACKUP_APP).ok);
+  assert.strictEqual(CP.parseBackup(JSON.stringify(bk)).ok, false, 'National Radar rejects an Opportunity Radar backup');
+}
 console.log('ok ' + data.records.length + ' records, ' + data.sources.length + ' sources');

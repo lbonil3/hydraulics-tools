@@ -87,8 +87,14 @@
 
   <section id="v-list" class="view" hidden aria-label="List">
     <div class="listbar">
-      <label class="sortl">Sort <select id="sort"><option value="date">Upcoming first</option><option value="dateDesc">Date, latest first</option><option value="dateAsc">Date, oldest first</option><option value="cost">Cost, high to low</option><option value="agency">Agency</option><option value="title">Title</option></select></label>
+      <label class="sortl">Sort <select id="sort"><option value="date">Upcoming first</option><option value="dateDesc">Date, latest first</option><option value="dateAsc">Date, oldest first</option><option value="cost">Cost, high to low</option><option value="agency">Agency</option><option value="title">Title</option><option value="due">My due date (watchlist)</option><option value="decision">My Go / No-go (watchlist)</option></select></label>
       <span id="listCount" class="hint"></span><button type="button" class="btn small" id="btnCsv2">Export CSV</button>
+    </div>
+    <div class="capbar" id="capBar" hidden>
+      <p class="capstat" id="capStat"></p>
+      <div class="chips"><button type="button" class="btn small" id="btnCapCsv">Export capture CSV</button><button type="button" class="btn small" id="btnBackup">Back up (JSON)</button><button type="button" class="btn small" id="btnRestore">Restore (merge)</button><button type="button" class="btn small" id="btnRestoreAll">Restore (replace all)</button></div>
+      <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+      <p class="note">A capture file is your own notes on a starred record. Saved only on this device; back up the JSON before clearing browser data. Cost shown here is the source's project cost, never a consultant fee.</p>
     </div>
     <div id="list" class="cards"></div>
     <button type="button" class="btn wide" id="btnMoreRows" hidden>Show 100 more</button>
@@ -119,6 +125,7 @@
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="../national-radar/capture.js"></script>
 <script src="texas-geo.js"></script>
 <script src="model.js"></script>
 <script src="map.js"></script>

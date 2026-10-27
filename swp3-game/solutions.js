@@ -47,6 +47,12 @@
       { why: 'Soil retention blankets over seed on every tile of the fill face. The face is steeper than 3:1, so seed alone would wash off and silt fence would be undercut.', basis: 'TxDOT Item 169 Class 1 Type C/D (steeper than 3:1); Item 164 seeding', place: [].concat(row('blanket', 9, 6, 14), row('blanket', 10, 6, 14), [6, 7, 8, 12, 13, 14].map(function (x) { return ['blanket', x, 11]; }), row('seed', 9, 6, 14), row('seed', 10, 6, 14), [6, 7, 8, 12, 13, 14].map(function (x) { return ['seed', x, 11]; })) },
       { why: 'Silt fence on each side of the pad centre line. The pad sheet-flows sideways to the low point, and each fence drains well under 2 ac.', basis: 'TxDOT EC(1)-16', place: [].concat(col('fence', 9, 5, 8), col('fence', 11, 5, 8)) },
       { why: 'Construction exit on the access tile.', basis: 'TxDOT Item 506 / EC(3)-16', place: [['exit', 14, 5]] }
+    ],
+    9: [
+      { why: 'Floating turbidity curtain on the slow, shallow cove water touching the three in-water work tiles. The shore closes the ring, so the plume stays inside. Water there is 3–4 ft deep at under 1 ft/s, well within the 5 ft/s limit and shallow enough for a 5 ft skirt.', basis: 'TxDOT SS5129 Floating Turbidity Barrier (ends secured at the bank to fully enclose; 5 ft/s); depth limit = game rule', place: [['curtain', 6, 8], ['curtain', 10, 8], ['curtain', 7, 9], ['curtain', 8, 9], ['curtain', 9, 9]] },
+      { why: 'Deploy it first: the curtain must be in place before any in-water work starts, so put it in the very first plan.', basis: 'TxDOT SS5129 Section 3', place: [] },
+      { why: 'Silt fence along the grass bank. The pad still sheet-flows into the cove outside the small ring.', basis: 'TxDOT EC(1)-16', place: row('fence', 7, 5, 11) },
+      { why: 'Construction exit on the access tile.', basis: 'TxDOT Item 506 / EC(3)-16', place: [['exit', 8, 1]] }
     ]
   };
   function controlsFor(n, W) { var out = []; (SOL[n] || []).forEach(function (s) { s.place.forEach(function (p) { out.push({ type: p[0], tile: p[2] * W + p[1] }); }); }); return out; }

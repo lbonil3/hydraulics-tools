@@ -43,6 +43,7 @@ Uncertain records go to **Needs review**; open or upcoming water-sector engineer
 | advance.js, test-advance.js, test-fixtures/ | normalizers for the advance-notice sources (WSSC, CDOT, LA DOTD, DC PASS, San Diego County) and their tests with fixtures |
 | data/pse.json | the PS&E / H&H snapshot (fee, design-build and large-project records, per-source counts) |
 | workflow/refresh-national.yml | daily refresh; copy to .github/workflows/ to install |
+| capture.js, test-capture.js | capture file model (incumbent, team, Go / No-go, due date, contact, next action, notes), due-date flag, sorting, capture CSV, JSON backup / restore; also loaded by the Opportunity Radar |
 | roadway.js | the Roadway + drainage lane: rules, extra normalizers, tab filters, CSV (the water rules in model.js are untouched) |
 | cost.js | construction cost base: scope parser and line-by-line estimator (display only) |
 | data/roadway.json, data/cost-prices.json | roadway snapshot; subset of bid-cost/prices.json used by cost.js |
@@ -69,3 +70,7 @@ A separate switch at the top. The water / drainage > $20M rules above are unchan
 - An "illustrative fee check" (design fee as a percent of construction cost) is NOT included: the published sources found (MassDOT, NCDOT, FHWA) give single ranges, not citable curves.
 - Extra roadway-only sources: USAspending prime awards with drainage wording (>= $5M), USAspending subawards (>= $5M, drainage wording), WSDOT Projected Design Opportunities. Every source the water lane reads (SAM, TxDOT, Caltrans, NYC, Chicago, DHS, Acquisition Gateway) is also evaluated against the roadway rules. Sources tested but not built in are listed in the Data tab.
 - NYC and Chicago are still read with their $20M floor, so a city drainage line item between $5M and $20M would not be seen from them.
+
+## Capture files (Watchlist)
+
+Star a record to start a capture file. Fields: Go / No-go (Go, No-go, Undecided) with a reason, proposal / SOQ due date, incumbent consultant, teaming partners / subs, key contact, next action, notes. Edit them under each card in the Watchlist tab or in the record's detail sheet. All of it is your own notes, saved in `localStorage` on the device (`nr.capture`; the old `nr.watch` star list is unchanged, so earlier watchlists keep working). Due dates within 14 days (US Central today) or already past are flagged. The Watchlist tab can be sorted by due date or Go / No-go. **Export capture CSV** covers every starred record in all lanes with its stated fee (only a source-stated consultant fee goes in that column; design-build values and project costs go in a separate "NOT a fee" column), status and source link. **Back up (JSON)** and **Restore** (merge: newer edit wins; or replace all) move the watchlist between phones. Unstarring a record that has notes asks first.
