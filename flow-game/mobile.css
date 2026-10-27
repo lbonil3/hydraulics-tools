@@ -1,0 +1,26 @@
+html{-webkit-text-size-adjust:100%}
+@media (max-width:700px){
+  .hud-title span{display:none}
+  .hud-title b{font-size:14px}
+  .chip{padding:0 7px;font-size:13px}
+  #forecastLabel .lw{display:none}
+  #hud{gap:6px}
+  #toolbar{flex-direction:column;gap:6px}
+  .actions{justify-content:space-between}
+  .run{flex:1}
+  .tool{min-width:58px}
+  .foot{font-size:10px}
+  .infocard{font-size:12.5px;max-height:20vh}
+}
+@media (hover:none),(pointer:coarse){
+  button,.tool,.act{min-height:48px}
+}
+@media (max-height:500px) and (orientation:landscape){
+  #toolbar{flex-direction:row}
+  .infocard{max-height:22vh}
+  .foot{display:none}
+}
+@media (max-width:700px){
+  #chart{right:56px;bottom:84px;width:calc(100vw - 120px);height:78px}
+  .legend{right:56px;bottom:140px}
+}

@@ -1,0 +1,169 @@
+// node flow-game/test.js  - Storm Designer: hydraulics, scoring, solutions and picking tests
+const assert = require('assert');
+const path = require('path'), fs = require('fs'), vm = require('vm');
+const S = require('./sim.js');
+const SOL = require('./solutions.js');
+const DR = require('../drainage/calc.js');
+let n = 0;
+function t(name, fn) { fn(); n++; console.log('ok -', name); }
+const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, (msg || '') + ' ' + a + ' vs ' + b);
+const run = (L, plan, opts) => S.score(L, S.presetControls(L).concat(SOL.build(L, plan)), opts || {});
+
+// ---------- hydrology ----------
+t('IDF: Harris County TxDOT EBDLKUP-2019 intensity at Tc = 10 min', () => {
+  near(S.intensity(10, 10), 8.387, 0.01, 'i10');
+  near(S.intensity(100, 10), 12.75, 0.02, 'i100');
+  assert.ok(S.intensity(2, 10) < S.intensity(5, 10) && S.intensity(25, 10) < S.intensity(100, 10));
+  assert.ok(S.intensity(10, 60) < S.intensity(10, 10));
+});
+t('rational method: gutter Q = i x sum(C A) + carryover from the upstream gutter (level 1)', () => {
+  const L = S.makeLevel(1), r = S.simulate(L, []);
+  Object.keys(r.gut).forEach(k => { const up = Object.keys(r.gut).filter(j => r.dir[j] === +k).reduce((s, j) => s + r.gut[j].Qb, 0); near(r.gut[k].Q, r.i * r.CA[k] + up, 1e-9); });
+  const anyLot = L.types.indexOf('H'); assert.ok(anyLot >= 0); near(S.LAND.H.C, 0.45, 0); near(S.LAND.R.C, 0.9, 0);
+  near(r.i, S.intensity(10, 10), 1e-12);
+});
+t('pre-development Tc: Kerby + Kirpich (rational/calc.js), never below 10 min', () => {
+  const L = S.makeLevel(7), p = S.preDev(L, 25);
+  assert.ok(p.tc >= 10 && p.tc < 120); near(p.Q, L.pre.C * p.i * L.pre.A, 1e-9); near(p.i, S.intensity(25, p.tc), 1e-9);
+});
+// ---------- streets ----------
+t('spread: per-gutter flow uses drainage/calc.js DR.gutter (HEC-22 Eq 5.4, n 0.016, Sx 0.02)', () => {
+  const L = S.makeLevel(1), r = S.simulate(L, []);
+  const k = Object.keys(r.gut).find(k => r.gut[k].kind === 'gutter' && r.gut[k].Q > 0.5), g = r.gut[k];
+  const ref = DR.gutter({ n: 0.016, Sx: 0.02, SL: g.SL }, { Q: g.Q / 2 });
+  near(g.T, ref.T, 0.05, 'spread');
+});
+t('inlet on grade: captured + bypass = gutter flow; longer inlet bypasses less', () => {
+  const L = S.makeLevel(2), W = L.W, tile = 3 * W + 9;
+  const by = len => { const r = S.simulate(L, [{ type: 'inlet', tile, len }]); const e = r.evals.find(e => e.el === 'inlet'); near(e.Qi + e.Qb, e.Q, 1e-6); return e.Qb; };
+  const b5 = by(5), b10 = by(10), b15 = by(15); assert.ok(b5 > b10 && b10 >= b15, [b5, b10, b15].join(','));
+});
+t('sag inlet takes all the flow; a sag with no inlet ponds (fail)', () => {
+  const L = S.makeLevel(3), W = L.W, sag = 2 * W + 5;
+  const none = S.simulate(L, []); assert.strictEqual(none.gut[sag].kind, 'sag');
+  assert.ok(none.evals.some(e => e.tile === sag && e.status !== 'ok'));
+  const r = S.simulate(L, [{ type: 'inlet', tile: sag, len: 15 }]), e = r.evals.find(e => e.el === 'inlet');
+  near(e.Qi, e.Q, 1e-9); near(e.Qb, 0, 1e-9); assert.ok(e.sag);
+});
+// ---------- storm sewer ----------
+t('pipe capacity (Manning full flow) and HGL from storm/calc.js', () => {
+  const L = S.makeLevel(3), r = run(L, SOL.solutionPlan(3)).result, p = Object.values(r.net.pipes)[0];
+  const D = p.dia / 12, A = Math.PI * D * D / 4, R = D / 4, Qf = 1.486 / 0.013 * A * Math.pow(R, 2 / 3) * Math.sqrt(p.S);
+  near(p.Qfull, Qf, Qf * 0.03, 'Qfull');
+  assert.ok(p.HGLup >= p.HGLdn - 1e-9, 'HGL falls downstream'); assert.ok(p.Q <= p.Qfull);
+  const small = S.simulate(L, SOL.build(L, SOL.SOL[3].naive)); assert.ok(small.evals.some(e => e.status === 'overloaded'));
+});
+t('branched network: junction structure + bigger trunk; utility conflict fails', () => {
+  const L = S.makeLevel(4), r = run(L, SOL.solutionPlan(4));
+  assert.strictEqual(r.stars, 3); assert.ok(Object.values(r.result.net.nodes).some(nd => nd.kind === 'junction'));
+  const W = L.W, through = SOL.solutionPlan(4).filter(p => p.type !== 'pipe' || p.dia !== 30).concat([{ type: 'pipe', pts: [[7, 2], [8, 2], [9, 2], [10, 2], [11, 2]], dia: 30 }]);
+  assert.ok(run(L, through).fails.some(f => f.status === 'utility conflict'));
+  void W;
+});
+// ---------- ditches ----------
+t('ditch: shear = 62.4 d S; grass scours on the steep reach, a mat holds', () => {
+  const L = S.makeLevel(5), grass = S.simulate(L, SOL.build(L, SOL.SOL[5].naive)), sol = S.simulate(L, SOL.build(L, SOL.solutionPlan(5)));
+  Object.values(sol.ditches).forEach(d => { if (d.S) near(d.tau, 62.4 * d.d * d.S, 1e-9); });
+  assert.ok(grass.evals.some(e => e.status === 'scoured')); assert.ok(!sol.evals.some(e => e.el === 'ditch' && e.status !== 'ok' && !e.warn));
+  assert.strictEqual(S.LININGS.grass.tp, 0.6); assert.strictEqual(S.LININGS.mat.tp, 2.0); assert.strictEqual(S.LININGS.rock.tp, 2.5);
+});
+t('ditch capacity: depth grows with Q (DR.chanDepth, Manning trapezoid)', () => {
+  const a = DR.chanDepth(2, { B: 2, z1: 3, z2: 3, n: 0.035, S: 0.01 }), b = DR.chanDepth(8, { B: 2, z1: 3, z2: 3, n: 0.035, S: 0.01 });
+  assert.ok(b.d > a.d && a.d > 0);
+});
+// ---------- culverts ----------
+t('culvert headwater (culvert/calc.js HDS-5): more barrels -> lower HW; none -> road overtops', () => {
+  const L = S.makeLevel(6), hw = (d, b) => S.simulate(L, [{ type: 'culvert', tile: L.culvert.tile, dia: d, barrels: b }], { storm: 25 }).culvert.HW;
+  assert.ok(hw(48, 1) > hw(48, 2) && hw(48, 2) > hw(48, 3)); assert.ok(hw(54, 2) < hw(48, 2));
+  assert.ok(S.simulate(L, [], { storm: 25 }).evals.some(e => e.el === 'culvert' && e.status === 'overtopped'));
+  const r = run(L, SOL.solutionPlan(6)); assert.ok(r.result.culvert.HW < L.culvert.roadEl);
+});
+// ---------- detention ----------
+t('detention routing: post peak <= pre peak with the solution; a small pond does not; more storage lowers the release', () => {
+  const L = S.makeLevel(7), sol = run(L, SOL.solutionPlan(7)).result.pond, small = run(L, SOL.SOL[7].naive).result.pond;
+  assert.ok(sol.post <= sol.pre.Q + 1e-9, sol.post + ' > ' + sol.pre.Q); assert.ok(small.post > small.pre.Q);
+  // level-pool: outflow peak below inflow peak, volume conserved (rate not volume)
+  const ser = sol.ser, qin = Math.max(...ser.map(s => s[1])), qout = Math.max(...ser.map(s => s[2])); assert.ok(qout < qin);
+  let vin = 0, vout = 0; for (let k = 1; k < ser.length; k++) { const dt = (ser[k][0] - ser[k - 1][0]) * 60; vin += ser[k][1] * dt; vout += ser[k][2] * dt; }
+  assert.ok(vout > 0.6 * vin && vout <= vin * 1.05, 'volume ' + vin + ' ' + vout);
+});
+// ---------- scoring ----------
+t('scoring: empty plan 0 stars; over budget fails; budget cut applies after round 1', () => {
+  for (let k = 1; k <= S.LEVEL_COUNT; k++) assert.strictEqual(S.score(S.makeLevel(k), S.presetControls(S.makeLevel(k))).stars, 0, 'level ' + k);
+  const L = S.makeLevel(6), big = [{ type: 'culvert', tile: L.culvert.tile, dia: 72, barrels: 2 }];
+  assert.strictEqual(S.score(L, big).stars, 3); const cut = S.score(L, big, { round: 1 }); assert.ok(cut.fails.some(f => f.status === 'over budget'));
+  const r = run(L, SOL.solutionPlan(6)); assert.ok(r.score >= 80 && r.score <= 100);
+});
+t('client no-build lots fail when built on (level 7)', () => {
+  const L = S.makeLevel(7), nb = +Object.keys(L.nobuild)[0];
+  assert.ok(S.score(L, [{ type: 'pond', tile: nb }]).fails.some(f => f.status === 'no-build lot'));
+});
+t('100-yr check (level 8): solution keeps houses dry; no culvert floods them', () => {
+  const L = S.makeLevel(8), r = run(L, SOL.solutionPlan(8)); assert.ok(r.check && r.check.wet.length === 0);
+  const noC = run(L, SOL.solutionPlan(8).filter(p => p.type !== 'culvert')); assert.ok(noC.fails.some(f => f.el === 'check'));
+});
+// ---------- solutions ----------
+t('every level 1-' + S.LEVEL_COUNT + ': stored solution earns 3 stars within budget (and after a budget cut)', () => {
+  for (let k = 1; k <= S.LEVEL_COUNT; k++) {
+    const L = S.makeLevel(k), r = run(L, SOL.solutionPlan(k));
+    assert.strictEqual(r.stars, 3, 'level ' + k + ' ' + r.score + ' ' + JSON.stringify(r.fails.map(f => f.status)));
+    assert.ok(r.cost <= L.budget); if (L.budgetCut) assert.strictEqual(run(L, SOL.solutionPlan(k), { round: 1 }).stars, 3, 'cut ' + k);
+    SOL.SOL[k].steps.forEach(st => assert.ok(st.why && st.basis && st.place.length));
+  }
+});
+t('every level: a second, different plan also earns 3 stars; the naive plan does not', () => {
+  for (let k = 1; k <= S.LEVEL_COUNT; k++) {
+    const L = S.makeLevel(k), a = SOL.SOL[k].alt, sol = SOL.solutionPlan(k);
+    assert.notStrictEqual(JSON.stringify(SOL.build(L, a)), JSON.stringify(SOL.build(L, sol)), 'alt equals solution ' + k);
+    const ra = run(L, a); assert.strictEqual(ra.stars, 3, 'alt ' + k + ' ' + ra.score + JSON.stringify(ra.fails.map(f => f.status)));
+    const rn = run(L, SOL.SOL[k].naive); assert.ok(rn.stars < 3, 'naive ' + k + ' got ' + rn.stars);
+  }
+});
+t('sandbox: default site scores, culvert + pond optional, editTile edits terrain', () => {
+  const L = S.makeSandbox(null); assert.ok(L.culvert && L.pondSite >= 0);
+  const r = S.score(L, []); assert.ok(!r.fails.some(f => f.el === 'detention'));
+  assert.ok(S.editTile(L, 5, 'raise')); assert.ok(S.editTile(L, 5, 'paint', 'P')); assert.strictEqual(L.types[5], 'P');
+  const d = S.sandboxData(L, []); assert.strictEqual(S.makeSandbox(JSON.parse(JSON.stringify(d))).types[5], 'P');
+});
+t('suggest helper: returns the smallest pipe that is not overloaded', () => {
+  const L = S.makeLevel(3), cs = SOL.build(L, SOL.solutionPlan(3)).map(c => c.type === 'pipe' ? Object.assign({}, c, { dia: 18 }) : c);
+  const k = cs.findIndex(c => c.type === 'pipe'), d = S.suggest(L, cs, k); assert.ok(d >= 24, 'suggested ' + d);
+});
+// ---------- picking (shared swp3-game/pick.js) + flow art ----------
+const PK = require('../swp3-game/pick.js');
+global.SWP3Art = require('../swp3-game/art.js');
+vm.runInThisContext(fs.readFileSync(path.join(__dirname, 'art.js'), 'utf8'));
+const FA = global.FlowArt;
+function qualityGeoms(L, q) { // same construction as game.js buildGeometry(L, q)
+  const mn = Math.min(...L.heights), range = Math.max(1, Math.max(...L.heights) - mn), zs = Math.min(3, 180 / range);
+  const zB = L.heights.map(h => Math.round((h - mn) * zs * q) / q), maxZ = Math.max(...zB);
+  const base = { W: L.W, H: L.H, z: zB, ox: L.H * 32 + 8, oy: Math.round((maxZ + 30) * q) / q, TW: 64, TH: 32, BASE: 20 };
+  base.w = (L.W + L.H) * 32 + 16; base.h = Math.ceil(((L.W + L.H) * 16 + maxZ + 20 + 40) * q) / q;
+  const pix = { W: L.W, H: L.H, types: L.types, z: zB.map(v => Math.round(v * q)), ox: Math.round(base.ox * q), oy: Math.round(base.oy * q), TW: 64 * q, TH: 32 * q, BASE: 20 * q, w: Math.round(base.w * q), h: Math.round(base.h * q) };
+  return { base, pix };
+}
+t('picking: levels 1-' + S.LEVEL_COUNT + ' + sandbox at Low/Medium/High (64x32, 96x48, 128x64): drawn pixels == pick, base pick == pixel pick, tile centres pick themselves', () => {
+  const levels = []; for (let k = 1; k <= S.LEVEL_COUNT; k++) levels.push(S.makeLevel(k)); levels.push(S.makeSandbox(null));
+  for (const q of [1, 1.5, 2]) for (const L of levels) {
+    const { base, pix } = qualityGeoms(L, q);
+    for (const k of ['ox', 'oy', 'w', 'h']) assert.ok(Math.abs(base[k] * q - Math.round(base[k] * q)) < 1e-9, k + ' not whole pixels at q=' + q);
+    let out = null; const ctx = { createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }), putImageData: img => { out = img; } };
+    FA.drawTerrain(ctx, pix);
+    const rr = S.rng(11 + q * 10);
+    for (let k = 0; k < 1500; k++) {
+      const px = Math.floor(rr() * pix.w), py = Math.floor(rr() * pix.h), pp = PK.pickTile(pix, px + 0.5, py + 0.5), pb = PK.pickTile(base, (px + 0.5) / q, (py + 0.5) / q);
+      assert.strictEqual(pb, pp, L.name + ' q=' + q + ' base vs pixel pick at ' + px + ',' + py);
+      assert.strictEqual(out.data[(py * pix.w + px) * 4 + 3] === 255, pp >= 0, L.name + ' q=' + q + ' drawn vs pick at ' + px + ',' + py);
+    }
+    for (let i = 0; i < L.W * L.H; i++) { if (L.types[i] === 'C') continue; const c = PK.tileTop(base, i % L.W, (i / L.W) | 0); assert.strictEqual(PK.pickTile(base, c.x, c.y + 16), i, L.name + ' q=' + q + ': land tile ' + i + ' centre must pick itself'); }
+  }
+});
+t('picking: client<->buffer round trip at desktop 1280x800 and iPhone 390x844 DPR 3', () => {
+  const L = S.makeLevel(8), { base } = qualityGeoms(L, 2);
+  for (const v of [{ rect: { left: 0, top: 60, width: 1280, height: 560 }, viewW: 1280, viewH: 560, zoom: 0.6, panX: 0, panY: 0, dpr: 1 }, { rect: { left: 0, top: 70, width: 390, height: 600 }, viewW: 1170, viewH: 1800, zoom: 0.4, panX: 12, panY: -30, dpr: 3 }]) {
+    Object.assign(v, { geoW: base.w, geoH: base.h });
+    for (let i = 0; i < L.W * L.H; i += 5) { const c = PK.tileTop(base, i % L.W, (i / L.W) | 0), cl = PK.bufferToClient(c.x, c.y + 16, v), b = PK.clientToBuffer(cl.x, cl.y, v);
+      near(b.x, c.x, 1e-6); near(b.y, c.y + 16, 1e-6); }
+  }
+});
+console.log('\n' + n + ' tests passed');
