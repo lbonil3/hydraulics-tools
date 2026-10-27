@@ -455,7 +455,7 @@
     if (st && (st.paint || tool === 'raise' || tool === 'lower')) {
       var oh = G.L.heights[i], ot = G.L.types[i];
       if (!S.editTile(G.L, i, st.paint ? 'paint' : tool, st.paint)) { toast(st.paint ? 'Already ' + TYPE_NAME[ot] : 'Height limit'); return; }
-      G.history.push({ op: 'terrain', i: i, h: oh, t: ot }); terrainChanged(); showTileInfo(i, true); return;
+      G.history.push({ op: 'terrain', i: i, h: oh, t: ot }); snd('click'); terrainChanged(); showTileInfo(i, true); return;
     }
     if (tool === 'demolish') {
       for (var k = G.controls.length - 1; k >= 0; k--) if (G.controls[k].tile === i) { var c = G.controls.splice(k, 1)[0]; G.history.push({ op: 'remove', c: c, k: k }); toast('Removed ' + S.CONTROLS[c.type].name + ' (+$' + S.CONTROLS[c.type].cost + ')'); rebornIndex(); updateHud(); return; }
@@ -466,8 +466,8 @@
     if (tool === 'fence' && G.sim.dir[i] < 0) { toast(ty === 'C' ? 'Keep fences out of the creek' : 'Water does not leave this tile to a neighbor; nowhere to put a fence'); return; }
     if ((tool === 'seed' || tool === 'exit' || tool === 'inlet' || tool === 'fence') && ty === 'C') { toast('Not in the creek'); return; }
     var cost = S.CONTROLS[tool].cost;
-    if (spent() + cost > G.L.budget) { toast('Over budget! $' + (G.L.budget - spent()) + ' left'); flashMoney(); return; }
-    G.controls.push({ type: tool, tile: i, round: G.round || 0 });
+    if (spent() + cost > G.L.budget) { toast('Over budget! $' + (G.L.budget - spent()) + ' left'); snd('buzz'); flashMoney(); return; }
+    G.controls.push({ type: tool, tile: i, round: G.round || 0 }); snd('thunk');
     G.born[G.controls.length - 1] = performance.now();
     G.history.push({ op: 'add' });
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ }
@@ -587,13 +587,14 @@
     if (G.L.tutorial && !progress.tutDone) showTutorial(0); else showForecast();
   }
   function setupLevel(L, n, controls) {
+    if (window.SWP3Sound) SWP3Sound.rain(0);
     G.crew = null;
     G.level = n; G.L = L; geo = buildGeometry(G.L);
     G.controls = controls; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1; G.hoverTile = -1; G.round = 0;
     G.sim = S.simulate(G.L, controls, { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir;
     drawTerrain(); resize(); fitView();
     $('lvlGoal').textContent = G.L.goal;
-    $('forecastLabel').textContent = G.L.forecast.label;
+    $('forecastLabel').innerHTML = G.L.forecast.label.replace(' storm', '<span class="lw"> storm</span>');
     $('stormHud').classList.add('hidden'); $('banner').classList.add('hidden');
     G.tool = 'inspect'; buildToolbar(); updateHud();
     G.reviseMode = false; $('runBtn').textContent = '🌧 Rain Check';
@@ -619,16 +620,18 @@
     if (!G.controls.length) toast('No controls placed — let\u2019s see what happens…');
     G.scoreRes = S.score(G.L, agedControls());
     G.sim = G.scoreRes.result; G.phase = 'storm'; G.speed = 1; $('speedBtn').textContent = '1×';
-    startStormParticles(); updateHud();
+    startStormParticles(); updateHud(); if (window.SWP3Sound) SWP3Sound.rain(G.L.actual.intensity);
     $('infoCard').classList.add('hidden'); $('tileInfo').classList.add('hidden');
     $('stormHud').classList.remove('hidden'); $('stormLabel').textContent = '🌧 ' + G.L.actual.label;
     if (G.L.actual.intensity !== G.L.forecast.intensity) banner('⚡ Surprise! ' + G.L.actual.label + '<br><small>Bigger than the ' + G.L.forecast.label + ' forecast</small>');
   }
+  function snd(n) { if (window.SWP3Sound) SWP3Sound.play(n); }
   function agedControls() { return G.controls.map(function (c) { return { type: c.type, tile: c.tile, age: (G.round || 0) - (c.round || 0) }; }); }
   function banner(html) { var b = $('banner'); b.innerHTML = html; b.classList.remove('hidden'); setTimeout(function () { b.classList.add('hidden'); }, 2600); }
   function endStorm() {
     if (G.phase !== 'storm') return;
-    G.phase = 'report'; $('stormHud').classList.add('hidden'); G.round = (G.round || 0) + 1; // each storm grows seeded tiles in
+    G.phase = 'report'; $('stormHud').classList.add('hidden'); if (window.SWP3Sound) SWP3Sound.rain(0);
+    setTimeout(function () { snd(G.scoreRes && G.scoreRes.stars >= 2 && !G.scoreRes.violations ? 'jingle' : 'buzz'); }, 250); G.round = (G.round || 0) + 1; // each storm grows seeded tiles in
     var r = G.scoreRes, L = G.L, prev = progress.stars[L.id] || 0;
     if (r.stars > prev && !L.sandbox) { progress.stars[L.id] = r.stars; saveProgress(); }
     var st = ''; for (var k = 1; k <= 3; k++) st += k <= r.stars ? '★' : '<span class="off">★</span>';
@@ -686,7 +689,7 @@
     else if (a === 'sbstorm') { backToPlan(); showStormPicker(); }
     else if (a === 'sandbox') { closePanel(); loadSandbox(false); }
     else if (a === 'sbreset') { if (confirm('Reset the sandbox site and controls?')) { closePanel(); loadSandbox(true); saveSandbox(); } }
-    else if (a && a.indexOf('storm:') === 0) { var st = S.stormByKey(a.slice(6)); G.L.stormKey = st.key; G.L.forecast = { label: st.label, intensity: st.intensity }; G.L.actual = { label: st.label, intensity: st.intensity }; $('forecastLabel').textContent = st.label; terrainChanged(); showStormPicker(); }
+    else if (a && a.indexOf('storm:') === 0) { var st = S.stormByKey(a.slice(6)); G.L.stormKey = st.key; G.L.forecast = { label: st.label, intensity: st.intensity }; G.L.actual = { label: st.label, intensity: st.intensity }; $('forecastLabel').innerHTML = st.label.replace(' storm', '<span class="lw"> storm</span>'); terrainChanged(); showStormPicker(); }
     else if (a === 'reset') { progress = { stars: {} }; saveProgress(); showLevels(); }
   });
   function showReviseBar() { $('runBtn').disabled = false; $('runBtn').textContent = '✎ Revise plan'; G.reviseMode = true; }
@@ -698,6 +701,10 @@
     runStorm();
   });
   $('undoBtn').addEventListener('click', undo);
+  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('button') && !e.target.closest('#runBtn')) snd('click'); });
+  function syncMute() { var m = window.SWP3Sound && SWP3Sound.isMuted(), b = $('muteBtn'); b.textContent = m ? '🔇' : '🔊'; b.setAttribute('aria-pressed', m ? 'true' : 'false'); b.setAttribute('aria-label', m ? 'Sound off' : 'Sound on'); }
+  $('muteBtn').addEventListener('click', function () { if (!window.SWP3Sound) return; SWP3Sound.setMuted(!SWP3Sound.isMuted()); syncMute(); });
+  syncMute();
   $('zoomIn').addEventListener('click', function () { setZoom(G.zoom * 1.25); });
   $('zoomOut').addEventListener('click', function () { setZoom(G.zoom / 1.25); });
   $('flowView').addEventListener('click', function () { G.flowView = !G.flowView; this.classList.toggle('on', G.flowView); if (G.flowView) toast('Flow view: arrows show runoff; orange > 2 ac, red > 5 ac'); });
