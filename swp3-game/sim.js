@@ -91,10 +91,10 @@
       // Steep 8% slope south to a road with a curb inlet, then a grass bank down to a creek.
       for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
         var z;
-        if (y < 13) z = 60 - y * 4.0;
+        if (y < 13) z = 60 - y * 4.0 - (x === 16 || x === 17 ? (y < 12 ? 5 : 2) : 0); // east swale: x=15 sheds into x=16
         else if (y === 13) z = 8.0;
-        else if (y === 14) z = (x >= 8 && x <= 12) ? 6.6 + 0.05 * Math.abs(x - 10) : (x === 7 || x === 13 ? 7.0 : 6.2);
-        else if (y === 15) z = (x >= 8 && x <= 12) ? 7.3 : 5.0;
+        else if (y === 14) z = (x >= 9 && x <= 11) ? 6.6 + 0.05 * Math.abs(x - 10) : (x === 8 || x === 12 ? 7.0 : 6.2);
+        else if (y === 15) z = (x >= 9 && x <= 11) ? 7.3 : 5.0;
         else z = 4.5 - (y - 16) * 1.5;
         h[y * W + x] = z + r() * 0.02;
       }
@@ -102,11 +102,12 @@
       for (x = 0; x < W; x++) { set(x, 13, 'R'); set(x, 14, 'R'); }
       set(10, 14, 'I'); h[14 * W + 10] = 6.3;
       for (x = 0; x < W; x++) { set(x, 18, 'C'); set(x, 19, 'C'); }
-      set(10, 12, 'A');
-      L.name = 'Steep slope above a creek'; L.budget = 16000;
+      set(6, 12, 'A');
+      L.concrete = true; // retaining wall pour: needs a concrete washout
+      L.name = 'Steep slope above a creek'; L.budget = 26000;
       L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '10-yr storm', intensity: 1.5 };
-      L.goal = 'Protect the inlet and the creek. Watch the drainage areas on this steep slope.';
-      L.tip = 'TxDOT sheets size these controls with a 2-yr storm. Bigger storms load every device harder, so leave margin on drainage area.';
+      L.goal = 'Protect the inlet and the creek. Flow collects in the east swale. There is a concrete pour: plan a washout.';
+      L.tip = 'TxDOT sheets size these controls with a 2-yr storm. Bigger storms load every device harder: a fence where the swale collects flow is over 2 ac in a 10-yr storm. Split the flow upslope with more fences, or catch it in a sediment basin (3,600 cf/ac).';
     }
     return L;
   }

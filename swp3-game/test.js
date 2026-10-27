@@ -82,10 +82,11 @@ t('rock filter dam: sheet flow = wasted, creek = violation, steep ditch = blown 
   assert.strictEqual(S.simulate(P, [{ type: 'dam', tile: id(1, 5, 3) }]).evals[0].status, 'blown out');
 });
 
-t('inlet protection: ok at forecast, overtopped by surprise 10-yr (5 ac guideline)', () => {
+t('inlet protection: ok at forecast and the 10-yr on level 3, overtopped above 5 ac (bigger storm)', () => {
   const L = S.makeLevel(3), inl = L.types.indexOf('I');
   assert.strictEqual(S.simulate(L, [{ type: 'inlet', tile: inl }], { intensity: 1 }).evals[0].status, 'ok');
-  assert.strictEqual(S.simulate(L, [{ type: 'inlet', tile: inl }]).evals[0].status, 'overtopped');
+  assert.strictEqual(S.simulate(L, [{ type: 'inlet', tile: inl }]).evals[0].status, 'ok');
+  assert.strictEqual(S.simulate(L, [{ type: 'inlet', tile: inl }], { intensity: 2.0 }).evals[0].status, 'overtopped');
 });
 
 t('construction exit stops tracking; seeding reduces erosion', () => {
@@ -151,6 +152,23 @@ t('deterministic', () => {
   const a = S.score(S.makeLevel(3), [{ type: 'fence', tile: id(5, 12) }]);
   const b = S.score(S.makeLevel(3), [{ type: 'fence', tile: id(5, 12) }]);
   assert.strictEqual(a.score, b.score); assert.strictEqual(a.result.discharge, b.result.discharge);
+});
+
+t('level 3 retune: inlet protection survives the surprise 10-yr; two distinct plans earn 3 stars; naive fence row does not', () => {
+  const L = S.makeLevel(3), inl = L.types.indexOf('I');
+  assert.strictEqual(S.simulate(L, [{ type: 'inlet', tile: inl }]).evals[0].status, 'ok');
+  const base = [{ type: 'exit', tile: L.types.indexOf('A') }, { type: 'inlet', tile: inl }, { type: 'washout', tile: id(5, 5) }];
+  const row = (y, x0, x1) => { const r = []; for (let x = x0; x <= x1; x++) r.push({ type: 'fence', tile: id(x, y) }); return r; };
+  const naive = S.score(L, [...base, ...row(12, 3, 16)]);
+  assert.ok(naive.stars < 3 && naive.failed.some(f => f.status === 'overtopped'), JSON.stringify([naive.score, naive.stars]));
+  const fencesOnly = S.score(L, [...base, ...row(12, 3, 15), { type: 'fence', tile: id(16, 5) }]); // split the swale flow upslope
+  const basin = S.score(L, [...base, ...row(12, 3, 15), { type: 'basin', tile: id(16, 12) }]);      // catch it in a basin
+  assert.strictEqual(fencesOnly.stars, 3, JSON.stringify([fencesOnly.score, fencesOnly.failed]));
+  assert.strictEqual(basin.stars, 3, JSON.stringify([basin.score, basin.failed]));
+  assert.strictEqual(basin.result.evals[3 + 13].status, 'ok');
+  assert.ok(S.score(L, []).stars === 0 && S.score(L, [{ type: 'inlet', tile: inl }]).stars === 0);
+  // no washout on a concrete site costs the 3rd star
+  assert.ok(S.score(L, [base[0], base[1], ...row(12, 3, 15), { type: 'fence', tile: id(16, 5) }]).stars < 3);
 });
 
 // ---------- picking ----------
