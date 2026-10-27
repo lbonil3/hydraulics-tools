@@ -7,17 +7,34 @@ Every version is tagged. Going back never needs a force push: you either revert 
 |---|---|---|
 | `bid-estimator-v1` | 9728237 | First live version (no unbalanced-bid flags) |
 | `bid-estimator-v1.1` | 35e343a | + "Possibly unbalanced" flags (flagged, never removed) |
-| `bid-estimator-v2-base` | (this file's commit) | Same as v1.1 plus this note; base for the v2 batch |
+| `bid-estimator-v2-base` | 3deec6a | Same as v1.1 plus this note; base for the v2 batch |
+| `bid-estimator-v2` | (tag on the commit that adds this table row) | All six v2 improvements |
 
 ## Undo one change (recommended)
 
-Each v2 improvement is its own commit (listed below once pushed). To undo just one:
+Each v2 improvement is its own commit:
+
+| Change | Commit |
+|---|---|
+| 1 Grouped quantity slope (shrinkage) | ac894b1 |
+| 2 Escalation (FHWA NHCCI + user %/yr) | 9e3dd18, fix 8316d27 |
+| 3 Unit conversions | 2981213 |
+| 4 "Often bid with" | 9042747 |
+| 5 Notes + print summary | fcf0c1a |
+| 6 Project size context | 4d7fa8e |
+
+To undo just one:
 
 ```
 git pull
-git revert --no-edit <sha>        # e.g. the "unit conversions" commit
+git revert --no-edit <sha>        # e.g. 2981213 for unit conversions (for item 2 revert 8316d27 then 9e3dd18)
+node bid-estimator/test.js        # must print ok
 git push origin main
 ```
+
+The six commits touch the same files (estimator.js, app.js, the regenerated data), so
+reverting an older one can stop with a conflict. If that happens, run `git revert --abort`
+and either revert the newer commits too (newest first), or use the tag restore below.
 
 ## Go back to a tagged version (files only)
 
