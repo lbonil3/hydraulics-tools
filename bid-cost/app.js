@@ -47,7 +47,9 @@
         '">Example</button></span>';
     }
     return '<tr>' +
-      '<td>' + escapeHtml(r.bid_code) + '</td>' +
+      '<td>' + escapeHtml(r.bid_code) +
+        ' <a class="est-link" href="../bid-estimator/?code=' + encodeURIComponent(r.bid_code) +
+        '" title="Estimate a unit price for a quantity" aria-label="Estimate ' + escapeHtml(r.bid_code) + '">Estimate</a></td>' +
       '<td>' + escapeHtml(r.description) + '</td>' +
       '<td>' + escapeHtml(r.unit) + '</td>' +
       '<td>' + L.formatMoney(x.price) + '</td>' +

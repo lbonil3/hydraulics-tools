@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1f4e79">
+  <title>Bid Estimator – TxDOT unit price from quantity</title>
+  <link rel="stylesheet" href="../bid-cost/style.css">
+  <link rel="stylesheet" href="../bid-cost/mobile.css">
+  <link rel="stylesheet" href="estimator.css">
+  <link rel="stylesheet" href="../home-btn.css">
+</head>
+<body>
+<header>
+  <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">← Home</a>
+  <h1>Bid Estimator</h1>
+  <span>Suggested unit price, low/mid/high range and the reasons, from TxDOT low bids at similar quantities. Planning-level only.</span>
+</header>
+<p class="disclaimer" role="note">
+  Planning-level estimate from TxDOT Bid Tabulations (low bidder). Not an official bid. Check project conditions before use.
+</p>
+<p class="meta" id="metaLine">Loading bid data…</p>
+
+<section class="est-form" aria-labelledby="addTitle">
+  <h2 id="addTitle">Add a line item</h2>
+  <div class="form-grid">
+    <div class="field code-field">
+      <label for="codeSearch">Bid code or description</label>
+      <input id="codeSearch" type="search" inputmode="search" autocomplete="off" placeholder="e.g. 5002-7001, FTB, RC PIPE 24"
+             role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
+      <ul id="suggest" class="suggest" role="listbox" hidden></ul>
+      <p class="picked" id="picked" aria-live="polite"></p>
+    </div>
+    <div class="field qty-field">
+      <label for="qty">Quantity <span id="qtyUnit"></span></label>
+      <input id="qty" type="number" inputmode="decimal" min="0" step="any" placeholder="12000">
+    </div>
+    <div class="field scope-field">
+      <label for="scope">Region</label>
+      <select id="scope">
+        <option value="auto">Auto</option>
+        <option value="houston">Houston District</option>
+        <option value="statewide">Statewide</option>
+      </select>
+    </div>
+    <div class="field add-field">
+      <button id="addBtn" type="button" class="btn primary">Add item</button>
+    </div>
+  </div>
+  <p class="form-msg" id="formMsg" role="status" aria-live="polite"></p>
+</section>
+
+<section class="est-tab" aria-labelledby="tabTitle">
+  <div class="tab-head">
+    <h2 id="tabTitle">Estimate</h2>
+    <div class="tab-actions">
+      <button type="button" class="btn" id="copyTable">Copy table</button>
+      <button type="button" class="btn" id="downloadCsv">Download CSV</button>
+      <button type="button" class="btn ghost" id="clearAll">Clear all</button>
+    </div>
+  </div>
+  <div class="tab-wrap" id="tabWrap"></div>
+  <p class="saved-note">Saved on this device (browser storage). Data stays on this device.</p>
+</section>
+
+<div id="cards" class="cards"></div>
+
+<section class="method" id="method" aria-labelledby="methodTitle">
+  <h2 id="methodTitle">Sources &amp; method</h2>
+  <p id="methodData"></p>
+  <ol>
+    <li><b>Which bids.</b> Low-bidder unit prices for the bid code. Houston District bids are used when there are at least 5; otherwise statewide (labeled). You can force either region.</li>
+    <li><b>Base price.</b> The median low bid of jobs within 3x of your quantity. If fewer than 5 jobs are that close, the 5 jobs closest in size are used. Far outliers (beyond 3x the interquartile range on a log scale) are left out.</li>
+    <li><b>Quantity adjustment.</b> A straight-line fit of log(price) vs log(quantity). It is used only when it is statistically meaningful (at least 8 bids and p &lt; 0.1). When your quantity is outside the sizes on record and the code has no usable fit, the typical slope across all TxDOT codes with a significant fit is used and labeled <i>assumed</i>. The adjustment never lowers the base more than 25% or raises it more than 25%, never goes above the 90th percentile, and inside the data never goes below the 10th percentile.</li>
+    <li><b>Range.</b> Low and high scale the suggestion by the 25th and 75th percentiles relative to the median. The range is widened 15% each way when extrapolating, and to at least −40% / +50% with fewer than 5 bids.</li>
+    <li><b>Confidence.</b> High / Medium / Low from the number of bids, whether your quantity is inside the sizes on record, how spread out prices are, and whether there are bids in the last 12 months. More than 2x beyond the largest (or below half the smallest) job is labeled <i>extrapolated beyond data</i> and always Low.</li>
+    <li><b>Backup sentence.</b> Built only from the numbers shown. Assumed values are marked <i>(assumed)</i>.</li>
+  </ol>
+  <p><b>What it does not know:</b> project-specific conditions (access, water depth, traffic control, phasing), escalation after the bid date, how a contractor spread mobilization or overhead across items (unbalanced bids), and anything not in the TxDOT bid tabulations. It is planning-level only; ESBD / Electronic Bidding System remain official.</p>
+  <p class="cite">Source: Texas Open Data Portal, TxDOT Bid Tabulations (<a href="https://data.texas.gov/dataset/Bid-Tabulations/de7b-7dna" target="_blank" rel="noopener noreferrer">dataset de7b-7dna</a>), low bidder rank = 1, plus all-bidder count and average per job. Item titles from TxDOT 2024 Standard Specifications (via Bid Cost). Data regenerated with <code>bid-estimator/scripts/fetch-bids.js</code> and <code>build-data.js</code>.</p>
+</section>
+
+<script src="estimator.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

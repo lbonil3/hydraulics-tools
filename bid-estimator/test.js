@@ -1,0 +1,138 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const E = require('./estimator.js');
+const C = require('./charts.js');
+const dir = __dirname;
+let passed = 0;
+function t(name, fn) { fn(); passed++; }
+
+// ---- statistics ----
+t('quantile/median', () => {
+  assert.strictEqual(E.quantile([1, 2, 3, 4], 0.5), 2.5);
+  assert.strictEqual(E.median([5, 1, 3]), 3);
+  assert.strictEqual(E.quantile([7], 0.9), 7);
+});
+t('t p-values', () => {
+  assert(Math.abs(E.tPValue(2.228, 10) - 0.05) < 0.001);
+  assert(Math.abs(E.tPValue(1.812, 10) - 0.1) < 0.001);
+});
+t('linreg exact line', () => {
+  const r = E.linreg([0, 1, 2, 3], [1, 3, 5, 7]);
+  assert(Math.abs(r.slope - 2) < 1e-12 && Math.abs(r.r2 - 1) < 1e-12 && r.p < 1e-6);
+});
+t('log-log significance needs n>=8', () => {
+  const obs = [10, 20, 40, 80, 160].map((q) => [q, 100 * Math.pow(q, -0.3), null, '2025-01-01', 0, 0, 'p' + q]);
+  obs[1][1] *= 1.05;
+  assert.strictEqual(E.logLogFit(obs).significant, false);
+});
+
+// ---- real data ----
+const ix = JSON.parse(fs.readFileSync(path.join(dir, 'data/index.json'), 'utf8'));
+const ctx = { districts: ix.districts, counties: ix.counties, pooled_slope: ix.pooled_slope, data_date_max: ix.meta.let_date_max };
+const entry = (code) => {
+  const sh = JSON.parse(fs.readFileSync(path.join(dir, 'data/items', code.split('-')[0] + '.json'), 'utf8'));
+  return Object.assign({ code: code }, sh.codes[code]);
+};
+t('index meta', () => {
+  assert.strictEqual(ix.meta.let_date_min, '2024-09-06');
+  assert(ix.meta.codes > 10000 && ix.index.length === ix.meta.codes);
+  assert(ix.pooled_slope.slope < 0 && ix.pooled_slope.n > 100);
+});
+t('shard stats match observations', () => {
+  const e = entry('464-7005');
+  const s = E.summarize(e.obs);
+  assert.deepStrictEqual(s, e.stats.statewide);
+  assert(s.p10 <= s.p25 && s.p25 <= s.median && s.median <= s.p75 && s.p75 <= s.p90);
+});
+
+// FTB at 12,000 LF — largest job on record is 580 LF.
+const ftbI = E.estimate(entry('5002-7001'), 12000, ctx, {});
+const ftbR = E.estimate(entry('5002-7002'), 12000, ctx, {});
+t('FTB install 12,000 LF', () => {
+  assert.strictEqual(ftbI.scope, 'statewide'); // Houston has 1 bid
+  assert.strictEqual(ftbI.stats.qty_max, 580);
+  assert(ftbI.extrapolated && ftbI.confidence === 'Low');
+  assert(ftbI.mid >= 33 && ftbI.mid <= 42, 'install mid ' + ftbI.mid);
+  assert(ftbI.low < ftbI.mid && ftbI.high > ftbI.mid);
+  assert.strictEqual(ftbI.slopeSource, 'pooled');
+  assert(ftbI.warnings.some((w) => /Extrapolated beyond data/.test(w)));
+  assert(/580 LF, Smith County/.test(ftbI.sentence) && /\(assumed\)/.test(ftbI.sentence) && /extrapolated/.test(ftbI.sentence));
+  assert(/^Unit price based on 2024–2026 TxDOT bid tabulations/.test(ftbI.sentence));
+});
+t('FTB remove 12,000 LF', () => {
+  assert(ftbR.extrapolated && ftbR.confidence === 'Low');
+  assert(ftbR.mid >= 6 && ftbR.mid <= 10.5, 'remove mid ' + ftbR.mid);
+  // its own fit rises with size (driven by one unbalanced bid) -> not used upward beyond data
+  assert.strictEqual(ftbR.slopeSource, 'pooled');
+  assert(ftbR.mid <= ftbR.base);
+});
+t('sentence numbers come from data', () => {
+  const nums = (ftbI.sentence.match(/\$[\d,.]+/g) || []).map((s) => Number(s.replace(/[$,]/g, '')));
+  const allowed = new Set([ftbI.mid, ftbI.low, ftbI.high].concat(ftbI.obs.map((o) => o[1])).concat(ftbI.obs.map((o) => o[8])).map((x) => Math.round(x * 100) / 100));
+  nums.forEach((n) => assert(allowed.has(n), 'unexpected number ' + n));
+});
+t('well-populated code inside data range', () => {
+  const r = E.estimate(entry('432-7001'), 300, ctx, {});
+  assert.strictEqual(r.scope, 'houston');
+  assert(!r.extrapolated && r.confidence !== 'Low');
+  assert(r.mid >= r.p10 && r.mid <= r.p90);
+});
+t('n=1 code', () => {
+  const r = E.estimate(entry('5033-7001'), 200, ctx, {});
+  assert.strictEqual(r.stats.n, 1);
+  assert.strictEqual(r.confidence, 'Low');
+  assert.strictEqual(r.mid, 177);
+  assert(r.low <= 177 * 0.6 + 0.01 && r.high >= 177 * 1.5 - 0.01);
+  assert(r.warnings.some((w) => /Small sample/.test(w)));
+});
+t('never above p90 when extrapolating down', () => {
+  const r = E.estimate(entry('464-7005'), 1, ctx, {});
+  assert(r.extrapolated && r.mid <= r.p90 + 0.01);
+});
+t('scope forcing and bad input', () => {
+  assert.strictEqual(E.estimate(entry('5002-7001'), 100, ctx, { scope: 'houston' }).scope, 'houston');
+  assert.strictEqual(E.estimate(entry('5033-7001'), 100, ctx, { scope: 'houston' }).scope, 'statewide');
+  assert.strictEqual(E.estimate(entry('5002-7001'), 0, ctx, {}).ok, false);
+});
+
+// ---- search, query, export ----
+t('search', () => {
+  assert.strictEqual(E.search(ix.index, '5002-7001')[0][0], '5002-7001');
+  assert(E.search(ix.index, 'ftb').some((r) => r[0] === '5002-7002'));
+  assert(E.search(ix.index, 'rc pipe 24').length > 0);
+});
+t('parseQuery', () => {
+  assert.deepStrictEqual(E.parseQuery('?code=5002-7001&qty=12000'), { code: '5002-7001', qty: 12000, scope: null });
+  assert.strictEqual(E.parseQuery('?code=bad').code, null);
+});
+t('TSV / CSV export', () => {
+  const rows = [E.lineRow({ code: '5002-7001', qty: 12000 }, ftbI), E.lineRow({ code: '5002-7002', qty: 12000 }, ftbR)];
+  const tsv = E.toTSV(rows).split('\n');
+  assert.strictEqual(tsv.length, 4);
+  assert(tsv[0].startsWith('Bid code\tDescription'));
+  assert(tsv.every((l) => l.split('\t').length === 11));
+  const total = Number(tsv[3].split('\t')[7]);
+  assert(Math.abs(total - (ftbI.mid + ftbR.mid) * 12000) < 0.01);
+  const csv = E.toCSV(rows);
+  assert(/"Unit price based on/.test(csv) || /,Unit price based on/.test(csv));
+});
+t('charts are self-contained SVG', () => {
+  const s = C.scatter(ftbI, ix.districts.indexOf('Houston')) + C.boxplot(ftbI);
+  assert(/^<svg/.test(s) && !/https?:\/\/(?!www\.w3)/.test(s) && !/NaN|undefined/.test(s));
+  assert.strictEqual((s.match(/<circle/g) || []).length, ftbI.obs.length * 2);
+});
+
+// ---- page wiring ----
+const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+t('page', () => {
+  ['codeSearch', 'qty', 'scope', 'addBtn', 'copyTable', 'downloadCsv', 'methodTitle'].forEach((id) => assert(html.includes('id="' + id + '"'), id));
+  assert(/Sources &amp; method/.test(html) && /Planning-level/.test(html));
+  assert(!/<script[^>]+src="https?:/.test(html));
+});
+t('data size', () => {
+  const files = fs.readdirSync(path.join(dir, 'data/items'));
+  const max = Math.max.apply(null, files.map((f) => fs.statSync(path.join(dir, 'data/items', f)).size));
+  assert(max < 2e6, 'largest shard ' + max);
+});
+console.log('ok (' + passed + ' tests)');

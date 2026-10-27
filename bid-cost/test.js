@@ -435,3 +435,9 @@ console.log('ok');
   assert.ok(/\.example-sheet\[hidden\]\{[^}]*display:\s*none/.test(css));
   console.log('ok code examples');
 }
+
+{
+  const appSrc = require('fs').readFileSync(require('path').join(__dirname, 'app.js'), 'utf8');
+  assert(/class="est-link" href="\.\.\/bid-estimator\/\?code=' \+ encodeURIComponent\(r\.bid_code\)/.test(appSrc), 'Estimate deep link on each row');
+  console.log('ok estimate link');
+}
