@@ -134,3 +134,18 @@ table.wit input{width:92px;min-height:44px;padding:4px 6px;border-radius:8px;bor
 #shBody h4{margin:12px 0 4px}
 #wiTot table.wit{width:100%}#wiTot td{white-space:normal}
 .wiln{border-bottom:1px solid var(--line);padding:8px 0;font-size:13px}.wiq{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}.wiq input{width:100px;min-height:44px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:16px;text-align:right}.wis{color:var(--dim)}
+
+/* ---- PS&E / H&H lens controls and badges ---- */
+.pse-ctl{margin:0 calc(14px + env(safe-area-inset-right)) 8px calc(14px + env(safe-area-inset-left));display:grid;gap:8px}
+.pc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.pcl{display:block;font-size:13px;font-weight:700;margin-bottom:4px}
+.pcrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pcrow input[type=number]{width:96px;min-height:44px;padding:0 10px;border-radius:12px;border:1px solid var(--acc);background:var(--panel2);font-size:18px;font-weight:700;text-align:right}
+.pcop{font-size:22px;font-weight:800;color:var(--acc);min-width:18px;text-align:center}.pcd{font-size:18px;font-weight:700;color:var(--dim)}
+.pc h3{margin:8px 0 4px;font-size:13px}
+.exact{margin-top:8px;border:1px dashed var(--warn);border-radius:10px;padding:6px 10px;font-size:13px;color:var(--ink)}
+.exact button{display:block;width:100%;min-height:44px;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:var(--acc);font-weight:600;cursor:pointer;padding:4px 0}
+.tag.conf{border-color:var(--ok);color:var(--ok)}.tag.unconf{border-color:var(--bad);color:var(--bad)}.tag.db{border-color:#c4b5fd;color:#c4b5fd}.tag.est{border-color:var(--warn);color:var(--warn);background:rgba(251,191,36,.08)}.tag.plain{border-color:var(--line);color:var(--dim)}
+.money.db{border-color:#c4b5fd}.money.pipe{border-color:#94a3b8}
+.estline{display:block;margin-top:4px;font-size:12.5px;color:var(--warn)}
+.card .b .big.sm{font-size:16px}

@@ -1,9 +1,23 @@
 # National Radar
 
-Big consultant engineering opportunities for drainage, stormwater, flood, hydraulics, water and wastewater, in all states.
-Phone-first static page (vanilla JS, no build step, works offline).
+Phone-first static page (vanilla JS, no build step, works offline). Three views of the same public feeds, selected by the buttons under the banner:
 
-## The rule
+- **PS&E / H&H, fee > $5M (default).** Consultant engineering services for PS&E / final design and hydrology and hydraulics (drainage, stormwater, floodplain, culverts, storm drains, coastal and resilience, water and wastewater design), all states, whose SOURCE states a fee or contract value. The threshold is an editable control (default strictly greater than $5,000,000, a one-tap "include exactly" toggle, and a visible note listing records at exactly the cutoff). Tabs: All, Upcoming / open, Forecast, Awarded, **Large projects, fee not published**, **Design-build**, Watchlist.
+- **Preset: water, fee > $20M** and **Preset: roadway + drainage**: the two earlier, stricter lanes (below), unchanged.
+
+## PS&E / H&H lens (`pse.js`, `data/pse.json`)
+
+- **Badges, not gates.** `Confirmed` = engineering classification from a structured code or category, scope words in the title, amount from a structured field, status open / upcoming / forecast / awarded. Everything else that passes the scope and amount tests is shown as `Unconfirmed` with the reasons: `Text-parsed` (amount read from free text), `Inferred sector` (scope words only in the description), `Range lower bound`, `Status unclear`, `Closed`, `Exactly $5M`. The "Hide unconfirmed" and "Hide text-parsed" buttons narrow the list. Sorted by confidence, then fee.
+- **Threshold semantics.** The data keeps stated amounts of $5,000,000 or more; the screen threshold is applied with strict `>` (or `>=` with the toggle). Amounts are what the source states; nothing is estimated.
+- **Large projects, fee not published.** TxDOT Project Information projects in stage PE or PS&E with a stated construction cost over $25M (kept in data) whose text names drainage / H&H words, plus open or forecast engineering notices that state a project cost but no fee. Default screen threshold $50M = $5M / 10%, using the 6% to 10% design-fee range in the Arkansas State Highway and Transportation Department Design-Build Procurement Manual, Appendix H (Sept 2015). The "Illustrative fee range" on those cards is labeled Estimate, cites that source, and is never read by a fee filter.
+- **Design-build.** Design-build, progressive design-build, CMGC / CM-at-risk and P3 / CDA procurements and awards with a civil, drainage or roadway scope (SAM extract, USAspending, TxDOT Project Information, DHS and Acquisition Gateway forecasts). The only dollar figure is the design-build contract value or estimated project cost, which includes construction: it is shown as "NOT a design fee" and never reaches a fee filter. A design fee or design portion stated separately in the text becomes its own Unconfirmed, Text-parsed fee record. A stipend is shown, not counted. Role (DB prime vs design subconsultant to a DB team) is inferred from NAICS and wording, and labeled so.
+- **Exclusions kept.** Construction contracts and supplies, construction management / inspection / program-support / IT services (no design), non-civil contexts, outside the US. Counts per reason are on the Data tab ("Excluded: construction" and others).
+- **Sources added for this lens:** USAspending prime awards and IDIQ ceilings (base_and_all_options from the award detail), USAspending design-build awards, NYC City Record and Chicago contracts at a $5M floor, City of Austin Professional Services master agreements, TxDOT Project Information. All older sources (SAM extract, TxDOT Projected Contracts, DHS APFS, Acquisition Gateway, Caltrans, WSDOT) feed this lens too.
+- `node national-radar/test-pse.js` covers strict `>` vs `>=`, the exact-$5M note, badge logic, hide-unconfirmed, and that design-build values and project costs never satisfy a fee filter.
+
+## Earlier water lane (preset)
+
+### The rule
 
 A record is **confirmed** only if all of these hold, using what the source itself states:
 
@@ -24,6 +38,8 @@ Uncertain records go to **Needs review**; open or upcoming water-sector engineer
 | proj.js, us-geo.js | map projection and state outlines (US Census TIGERweb, public domain) |
 | sources.js | text for sources tested but not used, and the rules in plain words |
 | data/national.json | the snapshot, written by scripts/build-national.js |
+| pse.js, test-pse.js | PS&E / H&H lens, design-build and pipeline evaluator, filters, CSV; tests |
+| data/pse.json | the PS&E / H&H snapshot (fee, design-build and large-project records, per-source counts) |
 | workflow/refresh-national.yml | daily refresh; copy to .github/workflows/ to install |
 | roadway.js | the Roadway + drainage lane: rules, extra normalizers, tab filters, CSV (the water rules in model.js are untouched) |
 | cost.js | construction cost base: scope parser and line-by-line estimator (display only) |

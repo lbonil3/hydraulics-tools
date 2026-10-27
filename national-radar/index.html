@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <title>National Radar – big consultant drainage and water opportunities, all states</title>
+  <title>National Radar – PS&amp;E and H&amp;H consultant opportunities over $5M, all states</title>
   <link rel="stylesheet" href="../home-btn.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -26,16 +26,43 @@
 </header>
 
 <section class="banner" id="banner" aria-label="Read this first">
-  <p id="bannerTxt"><b>Fee &gt; $20M as stated by the source, engineering consultants only.</b> Most agencies publish no fee before award, so counts are small and true; nothing is padded or estimated.</p>
+  <p id="bannerTxt"><b>Loading…</b></p>
   <button type="button" class="linkbtn" id="btnHow" aria-expanded="false" aria-controls="how">What counts, and what does not</button>
   <div id="how" hidden></div>
 </section>
 
 <nav class="modes" id="modes" aria-label="Which lane">
-  <button type="button" class="on" data-mode="water" aria-pressed="true">Water &amp; drainage, fee &gt; $20M</button>
-  <button type="button" data-mode="road" aria-pressed="false">Roadway + drainage</button>
+  <button type="button" class="on" data-mode="pse" aria-pressed="true">PS&amp;E / H&amp;H, fee &gt; $5M</button>
+  <button type="button" data-mode="water" aria-pressed="false">Preset: water, fee &gt; $20M</button>
+  <button type="button" data-mode="road" aria-pressed="false">Preset: roadway + drainage</button>
 </nav>
 <nav class="scopes" id="scopes" aria-label="What to show"></nav>
+<section class="pse-ctl" id="pseCtl" aria-label="Fee and design-build controls" hidden>
+  <div class="pc" id="pcFee">
+    <label class="pcl" for="feeIn">Consultant fee threshold <span class="hint">(stated fee, in $ millions)</span></label>
+    <div class="pcrow">
+      <span class="pcop" id="feeOp" aria-hidden="true">&gt;</span><span class="pcd">$</span><input id="feeIn" type="number" inputmode="decimal" step="0.5" min="0" value="5" aria-label="Fee threshold in millions of dollars"><span class="pcd">M</span>
+      <button type="button" class="chip" id="btnIncl" aria-pressed="false">&ge; include exactly this</button>
+      <button type="button" class="chip" id="btnConf" aria-pressed="false">Hide unconfirmed</button>
+      <button type="button" class="chip" id="btnText" aria-pressed="false">Hide text-parsed</button>
+    </div>
+    <div class="chips" id="feePre"></div>
+    <div class="exact" id="exactNote" hidden></div>
+  </div>
+  <div class="pc" id="pcPipe" hidden>
+    <label class="pcl" for="costIn">Stated project cost greater than <span class="hint">($ millions; this is NOT a fee)</span></label>
+    <div class="pcrow"><span class="pcop" aria-hidden="true">&gt;</span><span class="pcd">$</span><input id="costIn" type="number" inputmode="decimal" step="5" min="0" value="50" aria-label="Project cost threshold in millions of dollars"><span class="pcd">M</span></div>
+    <p class="note" id="pipeNote"></p>
+  </div>
+  <div class="pc" id="pcDb" hidden>
+    <label class="pcl" for="dbIn">Design-build value greater than <span class="hint">($ millions; contract value / project cost, NOT a fee; blank = show all)</span></label>
+    <div class="pcrow"><span class="pcop" aria-hidden="true">&gt;</span><span class="pcd">$</span><input id="dbIn" type="number" inputmode="decimal" step="5" min="0" value="" placeholder="all" aria-label="Design-build value threshold in millions of dollars"><span class="pcd">M</span></div>
+    <h3>Your role <span class="hint">(inferred, not stated by the owner)</span></h3><div class="chips" id="dbRole"></div>
+    <h3>Procurement type</h3><div class="chips" id="dbType"></div>
+    <h3>Stage</h3><div class="chips" id="dbStage"></div>
+    <p class="note" id="dbNote"></p>
+  </div>
+</section>
 <section class="kpis" id="kpis" aria-label="Summary"></section>
 
 <section class="filters" aria-label="Filters">
@@ -74,7 +101,7 @@
 
   <section id="v-list" class="view" hidden aria-label="List">
     <div class="listbar">
-      <label class="sortl">Sort <select id="sort"><option value="fee">Stated value, high to low</option><option value="date">Date, soonest first</option><option value="agency">Agency</option></select></label>
+      <label class="sortl">Sort <select id="sort"><option value="conf">Confirmed first, then value</option><option value="fee">Stated value, high to low</option><option value="date">Date, soonest first</option><option value="agency">Agency</option></select></label>
       <span id="listCount" class="hint"></span>
     </div>
     <div id="list" class="cards"></div>
@@ -129,6 +156,7 @@
 <script src="model.js"></script>
 <script src="cost.js"></script>
 <script src="roadway.js"></script>
+<script src="pse.js"></script>
 <script src="sources.js"></script>
 <script src="app.js"></script>
 </body>
