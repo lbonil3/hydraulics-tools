@@ -43,6 +43,19 @@
     { id: 'demolish', icon: '✖', label: 'Remove' }
   ];
 
+  var SB_TOOLS = [
+    { id: 'raise', icon: '⬆', label: 'Raise', help: '<b>Raise:</b> tap a tile to raise it 1 ft. Water flows to the lowest neighbor (flow view ≋ updates).' },
+    { id: 'lower', icon: '⬇', label: 'Lower', help: '<b>Lower:</b> tap a tile to lower it 1 ft. Dig a low point to collect flow for a basin.' },
+    { id: 'p:S', paint: 'S', label: 'Pad', help: '<b>Paint disturbed soil (pad):</b> bare soil erodes.' },
+    { id: 'p:G', paint: 'G', label: 'Grass', help: '<b>Paint grass:</b> undisturbed, barely erodes.' },
+    { id: 'p:D', paint: 'D', label: 'Ditch', help: '<b>Paint ditch:</b> concentrated flow; rock filter dams go here. Lower the tiles so water follows it.' },
+    { id: 'p:R', paint: 'R', label: 'Road', help: '<b>Paint road.</b>' },
+    { id: 'p:C', paint: 'C', label: 'Creek', help: '<b>Paint creek:</b> water of the state; flow that reaches it is discharged.' },
+    { id: 'p:I', paint: 'I', label: 'Inlet', help: '<b>Paint storm inlet:</b> flow that reaches it is discharged unless protected.' },
+    { id: 'p:A', paint: 'A', label: 'Access', help: '<b>Paint site access:</b> trucks leave here; needs a construction exit.' }
+  ];
+  function findTool(id) { return TOOLS.concat(SB_TOOLS).filter(function (x) { return x.id === id; })[0]; }
+
   // ---------- state ----------
   var G = {
     level: null, L: null, controls: [], history: [], tool: 'fence', phase: 'plan',
@@ -345,7 +358,7 @@
     var b = P.clientToBuffer(cx, cy, { rect: view.getBoundingClientRect(), viewW: view.width, viewH: view.height, zoom: G.zoom, panX: G.panX, panY: G.panY, dpr: dpr, geoW: geo.w, geoH: geo.h });
     return P.pickTile({ W: G.L.W, H: G.L.H, z: geo.z, ox: geo.ox, oy: geo.oy, TW: TW, TH: TH, BASE: BASE }, b.x, b.y);
   }
-  window.__swp3Load = function (n) { loadLevel(n); $('overlay').classList.add('hidden'); selectTool('inspect'); };
+  window.__swp3Load = function (n) { if (n === 0) loadSandbox(false); else loadLevel(n); $('overlay').classList.add('hidden'); selectTool('inspect'); };
   window.__swp3State = function () { return { sel: G.selTile, hover: G.hoverTile, n: G.L.W * G.L.H, controls: G.controls.length, zoom: G.zoom }; };
   window.__swp3Pick = function (cx, cy) { return screenToTile(cx, cy); }; // debug/test hook
   window.__swp3TileClient = function (i) { // client coords of tile i top-face centre (test hook)
@@ -360,6 +373,12 @@
     G.selTile = i;
     var tool = G.tool;
     if (tool === 'inspect') { showTileInfo(i); return; }
+    var st = findTool(tool);
+    if (st && (st.paint || tool === 'raise' || tool === 'lower')) {
+      var oh = G.L.heights[i], ot = G.L.types[i];
+      if (!S.editTile(G.L, i, st.paint ? 'paint' : tool, st.paint)) { toast(st.paint ? 'Already ' + TYPE_NAME[ot] : 'Height limit'); return; }
+      G.history.push({ op: 'terrain', i: i, h: oh, t: ot }); terrainChanged(); showTileInfo(i, true); return;
+    }
     if (tool === 'demolish') {
       for (var k = G.controls.length - 1; k >= 0; k--) if (G.controls[k].tile === i) { var c = G.controls.splice(k, 1)[0]; G.history.push({ op: 'remove', c: c, k: k }); toast('Removed ' + S.CONTROLS[c.type].name + ' (+$' + S.CONTROLS[c.type].cost + ')'); rebornIndex(); updateHud(); return; }
       toast('Nothing to remove here'); return;
@@ -381,6 +400,7 @@
   function undo() {
     if (G.phase !== 'plan') return;
     var h = G.history.pop(); if (!h) { toast('Nothing to undo'); return; }
+    if (h.op === 'terrain') { G.L.heights[h.i] = h.h; G.L.types[h.i] = h.t; terrainChanged(); return; }
     if (h.op === 'add') G.controls.pop(); else G.controls.splice(h.k, 0, h.c);
     rebornIndex(); updateHud();
   }
@@ -400,6 +420,31 @@
     $('budgetLeft').textContent = (G.L.budget - spent()).toLocaleString();
     $('undoBtn').disabled = G.phase !== 'plan' || !G.history.length;
     $('runBtn').disabled = G.phase !== 'plan';
+    if (G.L.sandbox) saveSandbox();
+  }
+  function terrainChanged() { // keep the view steady while geometry is rebuilt
+    var oldW = geo.w, oldH = geo.h; geo = buildGeometry(G.L); drawTerrain();
+    void oldW; void oldH;
+    G.sim = S.simulate(G.L, agedControls(), { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir; updateHud();
+  }
+  var SB_KEY = 'swp3-game-sandbox-v1';
+  function saveSandbox() { try { localStorage.setItem(SB_KEY, JSON.stringify(S.sandboxData(G.L, G.controls))); } catch (e) { /* private mode */ } }
+  function loadSandbox(fresh) {
+    var d = null; if (!fresh) try { d = JSON.parse(localStorage.getItem(SB_KEY) || 'null'); } catch (e) { d = null; }
+    var L = S.makeSandbox(d);
+    var ctl = (d && Array.isArray(d.controls) ? d.controls : []).filter(function (c) { return c && S.CONTROLS[c.type] && c.tile >= 0 && c.tile < L.W * L.H; })
+      .map(function (c) { return { type: c.type, tile: c.tile | 0, round: c.round | 0 }; });
+    setupLevel(L, 0, ctl);
+    $('lvlName').textContent = 'Sandbox'; selectTool('inspect'); showStormPicker();
+  }
+  function showStormPicker() {
+    var L = G.L, h = '<h2>Sandbox storm</h2><p>Pick the storm for Rain Check. <small>Rainfall depths and storm factors are <b>game values</b>, not TxDOT/NOAA data. TxDOT EC sheets size controls for a 2-yr storm.</small></p><div class="storms">';
+    S.STORMS.forEach(function (st) { h += '<button type="button" class="lvl' + (st.key === L.stormKey ? ' sel' : '') + '" data-act="storm:' + st.key + '"><b>' + st.label + '</b><span>' + st.rainIn + ' in · ×' + st.intensity + ' (game)</span></button>'; });
+    h += '</div><label class="chk"><input type="checkbox" id="sbConcrete"' + (L.concrete ? ' checked' : '') + '> Concrete work on site (needs a washout)</label>' +
+      '<p><small>Edit terrain with ⬆ ⬇ and the paint tools in the toolbar, place controls, then 🌧 Rain Check. Saved automatically on this device.</small></p>' +
+      '<div class="btns"><button type="button" data-act="sbreset">Reset site</button><button type="button" data-act="levels">Levels</button><button type="button" class="primary" data-act="close">Build</button></div>';
+    openPanel(h);
+    $('sbConcrete').addEventListener('change', function () { G.L.concrete = this.checked; buildToolbar(); selectTool(G.tool === 'washout' && !G.L.concrete ? 'inspect' : G.tool); terrainChanged(); });
   }
 
   // ---------- toolbar ----------
@@ -417,13 +462,22 @@
     if (id === 'seed') { for (q = 0; q < 12; q++) { x.fillStyle = q % 3 ? '#e6cf7a' : '#7fbf5f'; x.fillRect(8 + (q * 5) % 16, 9 + (q * 3) % 7, 2, 1); } }
     void save; return c;
   }
+  function paintIcon(ty) {
+    var c = document.createElement('canvas'); c.width = 32; c.height = 24; var x = c.getContext('2d'), pal = PAL[ty];
+    poly(x, [16, 6, 30, 13, 16, 20, 2, 13], pal[0]); poly(x, [2, 13, 16, 20, 16, 23, 2, 16], pal[1]); poly(x, [30, 13, 16, 20, 16, 23, 30, 16], pal[2]);
+    if (ty === 'I') { x.fillStyle = '#222'; x.fillRect(12, 11, 8, 3); }
+    if (ty === 'A') { x.fillStyle = '#ff7a1a'; x.fillRect(10, 10, 2, 3); x.fillRect(20, 10, 2, 3); }
+    return c;
+  }
   function buildToolbar() {
     var wrap = $('tools'); wrap.innerHTML = '';
-    TOOLS.forEach(function (t) {
+    var list = G.L.sandbox ? [TOOLS[0]].concat(SB_TOOLS, TOOLS.slice(1)) : TOOLS;
+    list.forEach(function (t) {
       if (t.id === 'washout' && !G.L.concrete) return;
       var b = document.createElement('button'); b.type = 'button'; b.className = 'tool'; b.dataset.tool = t.id;
       b.setAttribute('aria-label', t.label);
       if (t.icon) { var s = document.createElement('span'); s.textContent = t.icon; b.appendChild(s); }
+      else if (t.paint) b.appendChild(paintIcon(t.paint));
       else b.appendChild(toolIcon(t.id));
       var l = document.createElement('small'); l.textContent = t.label; b.appendChild(l);
       if (S.CONTROLS[t.id]) { var pr = document.createElement('small'); pr.className = 'price'; pr.textContent = '$' + S.CONTROLS[t.id].cost; b.appendChild(pr); }
@@ -434,8 +488,9 @@
   function selectTool(id) {
     G.tool = id;
     Array.prototype.forEach.call(document.querySelectorAll('.tool'), function (b) { b.classList.toggle('sel', b.dataset.tool === id); });
-    var t = TOOLS.filter(function (x) { return x.id === id; })[0], card = $('infoCard');
-    if (!t.rule) {
+    var t = findTool(id), card = $('infoCard');
+    if (t.help) card.innerHTML = t.help + ' <small>(Undo works for terrain too.)</small>';
+    else if (!t.rule) {
       card.innerHTML = id === 'inspect' ? '<b>Inspect:</b> tap any tile to see its slope, drainage area and outlet. Tip: ≋ shows flow arrows (orange &gt; 2 ac, red &gt; 5 ac).' : '<b>Remove:</b> tap a tile to remove its last control (full refund while planning).';
     } else {
       var C = S.CONTROLS[id];
@@ -447,15 +502,20 @@
 
   // ---------- levels / flow ----------
   function loadLevel(n) {
-    G.level = n; G.L = S.makeLevel(n); geo = buildGeometry(G.L);
-    G.controls = []; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1; G.hoverTile = -1; G.round = 0;
-    G.sim = S.simulate(G.L, [], { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir;
+    setupLevel(S.makeLevel(n), n, []);
+    $('lvlName').textContent = 'Level ' + n + ': ' + G.L.name;
+    selectTool(n === 1 ? 'fence' : 'inspect');
+    if (G.L.tutorial && !progress.tutDone) showTutorial(0); else showForecast();
+  }
+  function setupLevel(L, n, controls) {
+    G.level = n; G.L = L; geo = buildGeometry(G.L);
+    G.controls = controls; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1; G.hoverTile = -1; G.round = 0;
+    G.sim = S.simulate(G.L, controls, { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir;
     drawTerrain(); resize(); fitView();
-    $('lvlName').textContent = 'Level ' + n + ': ' + G.L.name; $('lvlGoal').textContent = G.L.goal;
+    $('lvlGoal').textContent = G.L.goal;
     $('forecastLabel').textContent = G.L.forecast.label;
     $('stormHud').classList.add('hidden'); $('banner').classList.add('hidden');
-    buildToolbar(); selectTool(n === 1 ? 'fence' : 'inspect'); updateHud();
-    if (G.L.tutorial && !progress.tutDone) showTutorial(0); else showForecast();
+    G.tool = 'inspect'; buildToolbar(); updateHud();
     G.reviseMode = false; $('runBtn').textContent = '🌧 Rain Check';
   }
   function showForecast() {
@@ -490,7 +550,7 @@
     if (G.phase !== 'storm') return;
     G.phase = 'report'; $('stormHud').classList.add('hidden'); G.round = (G.round || 0) + 1; // each storm grows seeded tiles in
     var r = G.scoreRes, L = G.L, prev = progress.stars[L.id] || 0;
-    if (r.stars > prev) { progress.stars[L.id] = r.stars; saveProgress(); }
+    if (r.stars > prev && !L.sandbox) { progress.stars[L.id] = r.stars; saveProgress(); }
     var st = ''; for (var k = 1; k <= 3; k++) st += k <= r.stars ? '★' : '<span class="off">★</span>';
     var res = r.result, base = r.baseline;
     var items = r.failed.map(function (f) {
@@ -508,7 +568,7 @@
       '<h3>What went wrong?</h3>' + (items || '<div class="fail okitem">Nothing! All ' + okCount + ' controls performed.</div>') +
       '<div class="tip">💡 ' + L.tip + '</div>' +
       '<div class="btns"><button type="button" data-act="view">See site</button><button type="button" data-act="retry">Revise plan</button>' +
-      (L.id < S.LEVEL_COUNT ? '<button type="button" class="primary" data-act="next"' + (r.stars < 1 ? ' disabled' : '') + '>Next level</button>' : '<button type="button" class="primary" data-act="levels">Levels</button>') + '</div>';
+      (L.sandbox ? '<button type="button" class="primary" data-act="sbstorm">Change storm</button>' : L.id < S.LEVEL_COUNT ? '<button type="button" class="primary" data-act="next"' + (r.stars < 1 ? ' disabled' : '') + '>Next level</button>' : '<button type="button" class="primary" data-act="levels">Levels</button>') + '</div>';
     openPanel(html);
   }
   function backToPlan() {
@@ -522,6 +582,7 @@
       var st = ''; for (var k = 1; k <= 3; k++) st += k <= s ? '★' : '☆';
       html += '<button type="button" class="lvl" data-act="lvl' + n + '"' + (locked ? ' disabled' : '') + '><b>' + n + '. ' + L.name + '</b><span>' + (locked ? '🔒' : st) + '</span></button>';
     }
+    html += '<button type="button" class="lvl" data-act="sandbox"><b>🧪 Sandbox</b><span>build your own site</span></button>';
     html += '<div class="btns">' + (G.L ? '<button type="button" data-act="close">Back</button>' : '') + '<button type="button" data-act="reset">Reset progress</button></div>';
     openPanel(html);
   }
@@ -542,6 +603,10 @@
     else if (a === 'view') { closePanel(); toast('Failed controls blink red. Tap ☰ for the report menu, or Revise.'); showReviseBar(); }
     else if (a === 'next') { closePanel(); loadLevel(G.L.id + 1); }
     else if (a === 'levels') showLevels();
+    else if (a === 'sbstorm') { backToPlan(); showStormPicker(); }
+    else if (a === 'sandbox') { closePanel(); loadSandbox(false); }
+    else if (a === 'sbreset') { if (confirm('Reset the sandbox site and controls?')) { closePanel(); loadSandbox(true); saveSandbox(); } }
+    else if (a && a.indexOf('storm:') === 0) { var st = S.stormByKey(a.slice(6)); G.L.stormKey = st.key; G.L.forecast = { label: st.label, intensity: st.intensity }; G.L.actual = { label: st.label, intensity: st.intensity }; $('forecastLabel').textContent = st.label; terrainChanged(); showStormPicker(); }
     else if (a === 'reset') { progress = { stars: {} }; saveProgress(); showLevels(); }
   });
   function showReviseBar() { $('runBtn').disabled = false; $('runBtn').textContent = '✎ Revise plan'; G.reviseMode = true; }
@@ -559,7 +624,7 @@
   $('speedBtn').addEventListener('click', function () { G.speed = G.speed === 1 ? 2 : G.speed === 2 ? 4 : 1; this.textContent = G.speed + '×'; });
   $('skipBtn').addEventListener('click', function () { G.stormT = G.stormDur * 2; G.particles = []; endStorm(); });
   $('btnLevels').addEventListener('click', showLevels);
-  $('forecastChip').addEventListener('click', function () { if (G.phase === 'plan') showForecast(); });
+  $('forecastChip').addEventListener('click', function () { if (G.phase === 'plan') { if (G.L.sandbox) showStormPicker(); else showForecast(); } });
   window.addEventListener('resize', function () { resize(); });
   window.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); } });
 

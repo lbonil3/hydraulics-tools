@@ -112,6 +112,49 @@
     return L;
   }
 
+  // ---- Sandbox ----
+  // Storm sizes for sandbox play. Intensity factors and rainfall depths are GAME VALUES (not TxDOT/NOAA data).
+  var STORMS = [
+    { key: '2-yr', label: '2-yr storm', intensity: 1.0, rainIn: 3.5 },
+    { key: '5-yr', label: '5-yr storm', intensity: 1.25, rainIn: 4.5 },
+    { key: '10-yr', label: '10-yr storm', intensity: 1.5, rainIn: 5.5 },
+    { key: '25-yr', label: '25-yr storm', intensity: 1.9, rainIn: 7.0 }
+  ];
+  var SANDBOX_TYPES = ['G', 'S', 'A', 'R', 'D', 'C', 'I'];
+  function stormByKey(k) { for (var i = 0; i < STORMS.length; i++) if (STORMS[i].key === k) return STORMS[i]; return STORMS[0]; }
+  function defaultSandbox() {
+    var W = 16, H = 16, types = [], heights = [];
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+      types.push(y >= 14 ? 'C' : y === 12 ? 'R' : (x >= 3 && x <= 12 && y >= 2 && y <= 10) ? 'S' : 'G');
+      heights.push(Math.round((24 - y * 1.5) * 10) / 10);
+    }
+    types[11 * W + 7] = 'A';
+    return { v: 1, W: W, H: H, types: types, heights: heights, storm: '2-yr', controls: [], concrete: false, budget: 50000 };
+  }
+  // Build a playable level object from saved sandbox data (validates/repairs bad saves).
+  function makeSandbox(d) {
+    var def = defaultSandbox();
+    if (!d || d.W !== def.W || d.H !== def.H || !Array.isArray(d.types) || d.types.length !== def.W * def.H || !Array.isArray(d.heights) || d.heights.length !== def.W * def.H) d = def;
+    var types = d.types.map(function (t) { return SANDBOX_TYPES.indexOf(t) >= 0 ? t : 'G'; });
+    var heights = d.heights.map(function (h) { h = +h; return isFinite(h) ? Math.max(-20, Math.min(80, h)) : 0; });
+    var st = stormByKey(d.storm);
+    return { id: 0, sandbox: true, W: d.W, H: d.H, types: types, heights: heights, budget: +d.budget || def.budget, concrete: !!d.concrete,
+      name: 'Sandbox', goal: 'Shape the site, pick a storm, place controls, then Rain Check.',
+      tip: 'Sandbox: storm sizes and rainfall depths are game values. Try a 25-yr storm to see which controls are overtopped.',
+      forecast: { label: st.label, intensity: st.intensity }, actual: { label: st.label, intensity: st.intensity }, stormKey: st.key };
+  }
+  // Pure terrain edit. op: 'raise' | 'lower' | 'paint'. Returns true if anything changed.
+  function editTile(L, i, op, arg) {
+    if (i < 0 || i >= L.W * L.H) return false;
+    if (op === 'raise' || op === 'lower') { var nh = Math.round((L.heights[i] + (op === 'raise' ? 1 : -1)) * 10) / 10; if (nh > 80 || nh < -20) return false; L.heights[i] = nh; return true; }
+    if (op === 'paint' && SANDBOX_TYPES.indexOf(arg) >= 0 && L.types[i] !== arg) { L.types[i] = arg; return true; }
+    return false;
+  }
+  function sandboxData(L, controls) {
+    return { v: 1, W: L.W, H: L.H, types: L.types.slice(), heights: L.heights.slice(), storm: L.stormKey, concrete: !!L.concrete, budget: L.budget,
+      controls: (controls || []).map(function (c) { return { type: c.type, tile: c.tile, round: c.round || 0 }; }) };
+  }
+
   // ---- Flow direction (D4 steepest descent) ----
   function isSink(type) { return type === 'C' || type === 'I'; }
 
@@ -302,6 +345,7 @@
 
   var api = { TILE_FT: TILE_FT, TILE_AC: TILE_AC, RULES: RULES, CONTROLS: CONTROLS, rng: rng, makeLevel: makeLevel,
     flowDirections: flowDirections, flowAccumulation: flowAccumulation, slopeOf: slopeOf, erosion: erosion,
+    STORMS: STORMS, stormByKey: stormByKey, defaultSandbox: defaultSandbox, makeSandbox: makeSandbox, editTile: editTile, sandboxData: sandboxData,
     evalControls: evalControls, seedFactorFor: seedFactorFor, nearSensitive: nearSensitive, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 3 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SWP3 = api;
 })(this);

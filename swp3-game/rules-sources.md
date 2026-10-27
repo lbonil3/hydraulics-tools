@@ -52,3 +52,17 @@ Not used (not verified here): TxDOT Hydraulic Design Manual and the Storm Water 
 | Erosion per tile | bare soil 1, grass 0.03, ditch 0.6, road 0; × storm × (0.5 + slope%/4) | game rule |
 | Score | 90 × min(1, reduction/90%) + 10 × budget left − penalties | game rule |
 | Costs per block | fence $285 (50 LF × ~$5.71); rock dam $985 (20 LF × ~$49.27 Ty 2); inlet logs $150 (20 LF × ~$7.29 12-in. log); exit $3,430 (111 SY × ~$30.87 Ty 1); seed+mulch $280 (278 SY × ~$1.01) | TxDOT bid tabs (unit prices); quantities per block are game rules |
+
+## Level 3 tuning (game rules)
+- Inlet catchment narrowed to 3 road columns (≈ 2.6 ac; 3.9 ac storm-adjusted in the surprise 10-yr), so properly placed inlet protection holds under the 5 ac EC(9)-16 guideline.
+- East swale (x = 15–17) collects ≈ 1.4 ac (2.15 ac storm-adjusted): a fence at its toe is fine at the 2-yr forecast but overtopped in the 10-yr (> 2 ac, EC(1)-16). Fixes: a fence upslope in the swale, or a sediment basin at the toe.
+- Concrete pour on site: a washout is required (EPA 50 ft siting).
+- Budget $26,000 (fits a basin plan). Tests prove two distinct 3-star plans and that a naive fence row is not 3 stars.
+
+## Sandbox (game rules)
+| Item | Value | Basis |
+|---|---|---|
+| Storm sizes | 2-yr ×1.0 (3.5 in), 5-yr ×1.25 (4.5 in), 10-yr ×1.5 (5.5 in), 25-yr ×1.9 (7.0 in) | **game values** — not TxDOT/NOAA rainfall data |
+| Terrain edits | ±1 ft per tap, heights clamped −20…80 ft; paint grass/pad/ditch/road/creek/inlet/access | game rule |
+| Budget | $50,000 | game rule |
+| Save | localStorage key `swp3-game-sandbox-v1` (site, storm, concrete flag, controls) | — |

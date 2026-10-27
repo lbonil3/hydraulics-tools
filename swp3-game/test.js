@@ -171,6 +171,27 @@ t('level 3 retune: inlet protection survives the surprise 10-yr; two distinct pl
   assert.ok(S.score(L, [base[0], base[1], ...row(12, 3, 15), { type: 'fence', tile: id(16, 5) }]).stars < 3);
 });
 
+t('sandbox: default site is playable, edits are pure, save/load round-trips, storms scale load', () => {
+  const L = S.makeSandbox(null);
+  assert.ok(L.sandbox && L.W === 16 && S.simulate(L, []).discharge > 0);
+  const i = 5 * 16 + 5, h0 = L.heights[i];
+  assert.ok(S.editTile(L, i, 'raise') && L.heights[i] === h0 + 1);
+  assert.ok(S.editTile(L, i, 'lower') && S.editTile(L, i, 'lower') && L.heights[i] === h0 - 1);
+  assert.ok(S.editTile(L, i, 'paint', 'D') && L.types[i] === 'D');
+  assert.ok(!S.editTile(L, i, 'paint', 'D') && !S.editTile(L, i, 'paint', 'X') && !S.editTile(L, -1, 'raise'));
+  L.stormKey = '25-yr';
+  const saved = JSON.parse(JSON.stringify(S.sandboxData(L, [{ type: 'fence', tile: 40, round: 1 }])));
+  const L2 = S.makeSandbox(saved);
+  assert.deepStrictEqual(L2.types, L.types); assert.deepStrictEqual(L2.heights, L.heights);
+  assert.strictEqual(L2.actual.intensity, 1.9); assert.strictEqual(saved.controls[0].tile, 40);
+  const d2 = S.simulate(S.makeSandbox(Object.assign({}, saved, { storm: '2-yr' })), []).discharge;
+  assert.ok(S.simulate(L2, []).discharge > d2);
+  // corrupt saves fall back to the default site
+  assert.strictEqual(S.makeSandbox({ W: 3, H: 3, types: [], heights: [] }).W, 16);
+  assert.strictEqual(S.makeSandbox(Object.assign({}, saved, { types: saved.types.map(() => 'Z') })).types[0], 'G');
+  assert.deepStrictEqual(S.STORMS.map(s => s.key), ['2-yr', '5-yr', '10-yr', '25-yr']);
+});
+
 // ---------- picking ----------
 const PK = require('./pick.js');
 function geom(W, H, z) { const maxZ = Math.max(...z); return { W, H, z, ox: H * 16 + 8, oy: maxZ + 12, TW: 32, TH: 16, BASE: 10, w: (W + H) * 16 + 16, h: (W + H) * 8 + maxZ + 10 + 24 }; }
