@@ -23,12 +23,12 @@
   var SOL = {
     1: { steps: [
       { place: [inl(5, 3, 10)], why: 'Spread grows downhill; it first passes 12 ft around the middle of the block, so the first inlet goes there.', basis: HDM + ' Ch.10 Sec.4 Ponding: spread limit; TxDOT curb inlet on grade (HEC-22 method in the Drainage tool).' },
-      { place: [inl(9, 3, 15)], why: 'The lower half collects the bypass plus new runoff; a 15-ft (14-ft) inlet at the end keeps the spread in limits and lets almost nothing run off the project.', basis: 'Luis\u2019s approach: bypass under ~0.5 cfs (game target).' }],
+      { place: [inl(9, 3, 15)], why: 'The lower half collects the bypass plus new runoff; a 15-ft (14-ft) inlet at the end keeps the spread in limits and lets almost nothing run off the project.', basis: 'Game rule: bypass leaving the project under ~0.5 cfs.(game target).' }],
       alt: [inl(3, 3, 5), inl(6, 3, 5), inl(9, 3, 10)], naive: [inl(9, 3, 5)] },
     2: { steps: [
       { place: [inl(3, 3, 10)], why: 'Catch the upper block before its spread passes the limit.', basis: HDM + ' Ch.10 Sec.4 spread limit.' },
       { place: [inl(9, 3, 5)], why: 'A short inlet is fine where the gutter flow is still small; its bypass carries over to the next inlet.', basis: 'HEC-22 / TxDOT on-grade curb inlet efficiency (Drainage tool curbGrade).' },
-      { place: [inl(14, 3, 15)], why: 'The last inlet takes the carryover plus the lower block; a long inlet keeps the bypass leaving the project under 0.5 cfs.', basis: 'Luis\u2019s approach: bypass under ~0.5 cfs.' }],
+      { place: [inl(14, 3, 15)], why: 'The last inlet takes the carryover plus the lower block; a long inlet keeps the bypass leaving the project under 0.5 cfs.', basis: 'Game rule: bypass leaving the project under ~0.5 cfs.' }],
       alt: [inl(6, 3, 10), inl(9, 3, 10), inl(14, 3, 10)], naive: [inl(5, 3, 5), inl(9, 3, 5), inl(12, 3, 5), inl(14, 3, 5)] },
     3: { steps: [
       { place: [inl(5, 2, 15)], why: 'The low point: TxDOT says put inlets at all low points. A 15-ft sag inlet keeps the ponded spread inside the limit.', basis: HDM + ' Ch.10 Sec.4 Ponding (inlets at low points); sag inlet weir/orifice (Drainage tool curbSag).' },

@@ -1,5 +1,5 @@
 /* Storm Designer - pure drainage simulation (no DOM; node-testable).
- * Hydraulics REUSE Luis's Drainage Studio code directly (same numbers as the tools):
+ * Hydraulics REUSE the repo's Drainage Studio code directly (same numbers as the tools):
  *   gutter spread + curb inlets ........ drainage/calc.js  (DR: HEC-22 Eq 5.4, TxDOT HDM Eq 10-1..10-13, sag Eq 7.16-7.19)
  *   storm sewer capacity, HGL, junctions storm/calc.js     (StormCalc.analyzeNetwork, suggestSizePipe, HEC-22 approx K)
  *   culvert headwater .................. culvert/calc.js   (Culvert.analyze, HDS-5 inlet/outlet control)
@@ -39,12 +39,12 @@
     Tc: 10,              // min, TxDOT HDM Ch.4 Sec.12 minimum Tc (rational/calc.js TC_MIN)
     Sx: 0.02, nGutter: 0.016, curbFt: 0.5, // cross slope (game), n rough asphalt (HDM Table 10-1), 6-in curb (game)
     inletA: 3, inletW: 2, inletH: 0.5,     // TxDOT PCO/CGT: 3-in depression over 2 ft, 6-in throat (drainage/txdot-inlets.js)
-    QbTarget: 0.5,       // cfs, Luis's curb inlet bypass target
+    QbTarget: 0.5,       // cfs, office-practice bypass target (game rule)
     minSL: 0.002,        // game: flattest gutter slope used in the gutter equations
     coverFt: 3.0,        // TxDOT HDM Ch.10 Sec.2: min cover 3.0 ft where possible
     minPipeS: 0.001, maxOutS: 0.02, nPipe: 0.013, // game slopes; RCP n 0.013 (storm/ tool default)
     vMin: 3, vMax: 12,   // fps, TxDOT HDM Ch.10 Sec.2 (f)
-    ditch: { B: 2, z: 3, depth: 2, fb: 0.5 }, // game standard section; 0.5 ft freeboard (Luis's ditch-table check)
+    ditch: { B: 2, z: 3, depth: 2, fb: 0.5 }, // game standard section; 0.5 ft freeboard (game rule, as in the ditch-table tool)
     pondDepth: 4, pondWeirZ: 3, orifC: 0.6, weirC: 3.0, // game pond geometry, orifice/weir coefficients (HEC-22 Ch.10 typical)
     lotPad: 1.0,         // game: house pads 1 ft above the gutter/ditch
     culvLen: 80, culvN: 0.012
@@ -194,10 +194,10 @@
       var e = { el: 'inlet', k: c.k, tile: i, status: 'ok', Q: r.Q, Qi: r.Qi, Qb: r.Qb, T: r.T, d: r.d, sag: r.kind === 'sag',
         reason: (r.kind === 'sag' ? 'Sag inlet: takes all ' + r.Q.toFixed(2) + ' cfs; depth ' + r.d.toFixed(2) + ' ft, spread ' + r.T.toFixed(1) + ' ft.' : 'On grade: catches ' + r.Qi.toFixed(2) + ' of ' + r.Q.toFixed(2) + ' cfs (L ' + INLET_LEN[c.len] + ' ft vs ' + (r.LT || 0).toFixed(1) + ' ft for 100%), bypass ' + r.Qb.toFixed(2) + ' cfs.'),
         basis: r.kind === 'sag' ? 'HEC-22 Eq 7.16-7.19 / TxDOT HDM Eq 10-17 (drainage/calc.js curbSagDepth)' : 'TxDOT HDM Eq 10-5..10-13 curb inlet on grade (drainage/calc.js curbGrade, TxDOT method)' };
-      if (r.kind !== 'sag' && r.Qb > RULES.QbTarget + 1e-9) { e.status = 'bypass'; e.warn = true; e.reason += ' Over Luis\u2019s 0.5 cfs bypass target: the next inlet downstream must pick it up.'; e.basis = 'Luis\u2019s TxDOT curb inlet approach: trial and error until bypass is under about 0.5 cfs.'; }
+      if (r.kind !== 'sag' && r.Qb > RULES.QbTarget + 1e-9) { e.reason += ' The ' + r.Qb.toFixed(2) + ' cfs bypass runs on to the next inlet downstream (fine if that one catches it; only bypass leaving the project counts).'; }
       evals.push(e);
     });
-    streetOrder.forEach(function (i) { var r = gut[i]; if (r.kind === 'end' && r.leaves > RULES.QbTarget + 1e-9) evals.push({ el: 'street', tile: i, status: 'bypass leaves', reason: r.leaves.toFixed(2) + ' cfs runs past the last inlet and off the project (target under 0.5 cfs).', basis: 'Luis\u2019s TxDOT curb inlet approach: bypass under about 0.5 cfs; TxDOT HDM Ch.10 Sec.4: inlets at suitable intervals to prevent excessive gutter flow.' }); });
+    streetOrder.forEach(function (i) { var r = gut[i]; if (r.kind === 'end' && r.leaves > RULES.QbTarget + 1e-9) evals.push({ el: 'street', tile: i, status: 'bypass leaves', reason: r.leaves.toFixed(2) + ' cfs runs past the last inlet and off the project (target under 0.5 cfs).', basis: 'Game rule: bypass leaving the project under about 0.5 cfs (office practice); TxDOT HDM Ch.10 Sec.4: inlets at suitable intervals to prevent excessive gutter flow.' }); });
 
     // ---- storm sewer network (StormCalc) ----
     var net = network(L, ix, toNet, yr, evals);
@@ -213,7 +213,7 @@
       var tau = GAMMA * ch.d * S, rec = { Q: Q, d: ch.d, V: ch.V, S: S, tau: tau, tp: lin.tp };
       ditches[i] = rec;
       var e = { el: 'ditch', k: c.k, tile: i, status: 'ok', Q: Q, d: ch.d, tau: tau, reason: lin.name + ': ' + Q.toFixed(1) + ' cfs, depth ' + ch.d.toFixed(2) + ' ft, V ' + ch.V.toFixed(1) + ' ft/s, shear ' + tau.toFixed(2) + ' of ' + (isFinite(lin.tp) ? lin.tp.toFixed(2) : 'n/a') + ' lb/sf (grade ' + (S * 100).toFixed(1) + '%).', basis: 'Manning (drainage/calc.js chanDepth); shear = 62.4 d S (TxDOT HDM Ch.7 Eq 7-2); permissible shear: TxDOT HDM Ch.7 Sec.3 table.' };
-      if (ch.d > RULES.ditch.depth - RULES.ditch.fb + 1e-9) { e.status = 'overtopped'; e.reason = 'Depth ' + ch.d.toFixed(2) + ' ft leaves less than 0.5 ft freeboard in the 2-ft ditch (' + Q.toFixed(1) + ' cfs). A smoother lining carries more.'; e.basis = 'Luis\u2019s Ditch tool freeboard check (0.5 ft); Manning capacity, TxDOT HDM Ch.6/7.'; }
+      if (ch.d > RULES.ditch.depth - RULES.ditch.fb + 1e-9) { e.status = 'overtopped'; e.reason = 'Depth ' + ch.d.toFixed(2) + ' ft leaves less than 0.5 ft freeboard in the 2-ft ditch (' + Q.toFixed(1) + ' cfs). A smoother lining carries more.'; e.basis = 'Game rule: 0.5 ft freeboard (as in the Ditch tool); Manning capacity, TxDOT HDM Ch.6/7.'; }
       else if (tau > lin.tp + 1e-9) { e.status = 'scoured'; e.reason = 'Shear ' + tau.toFixed(2) + ' lb/sf beats the ' + lin.name.toLowerCase() + ' limit of ' + lin.tp.toFixed(2) + ' lb/sf at ' + (S * 100).toFixed(1) + '% grade: the lining erodes. Use a tougher lining here.'; e.basis = 'TxDOT HDM Ch.7 Sec.3 step 5: if design shear >= permissible shear, choose a more resistant lining (Permissible Shear Stresses table).'; }
       evals.push(e);
     });
@@ -265,8 +265,7 @@
       var outs = comp.filter(function (a) { return isWater(t[a]) || pondIx[a] || L.pondSite === a; });
       var compEdges = edges.filter(function (e) { return comp.indexOf(e.a) >= 0; });
       if (!outs.length) {
-        compEdges.forEach(function (e) { if (!e.existing) evals.push({ el: 'pipe', k: e.k, tile: e.a, tile2: e.b, status: 'no outfall', reason: 'This pipe run does not reach the creek (or the pond). Every storm sewer needs an outfall.', basis: 'TxDOT HDM Ch.10 Sec.2 (outfall considerations); game rule' }); });
-        comp.forEach(function (a) { if (ix.inlet[a] && toNet[a]) evals.push({ el: 'inlet', k: ix.inlet[a].k, tile: a, status: 'not connected', reason: 'The pipe from this inlet never reaches an outfall.', basis: 'game rule' }); });
+        var newE = compEdges.filter(function (e) { return !e.existing; }); if (newE.length) evals.push({ el: 'pipe', k: newE[0].k, ks: newE.map(function (e) { return e.k; }), tile: newE[newE.length - 1].b, tile2: newE[newE.length - 1].a, status: 'no outfall', net: true, reason: 'This pipe run (' + newE.length + ' piece' + (newE.length > 1 ? 's' : '') + ') does not reach the creek (or the pond): the water has nowhere to go. Extend the last pipe onto the creek (or pond) tile.', basis: 'TxDOT HDM Ch.10 Sec.2 (outfall considerations); game rule' });
         res.ok = false; return;
       }
       outs.sort(function (a, b) { return h[a] - h[b]; }); var of = outs[0];
@@ -368,11 +367,11 @@
     var tileP = site;
     if (!hasPond) {
       if (pondTiles.length && !ix.pond[site]) evals.push({ el: 'pond', tile: pondTiles[0], status: 'missed', reason: 'The pond must include the outfall tile where the storm sewer ends (marked on the map).', basis: 'game rule' });
-      evals.push({ el: 'detention', tile: tileP, status: 'peak up', reason: 'Post-development peak ' + best.Qpeak.toFixed(1) + ' cfs is higher than the pre-development ' + pre.Q.toFixed(1) + ' cfs. Detain it.', basis: L.detBasis || 'Level rule (typical local detention criterion: post-development peak \u2264 pre-development peak). TxDOT HDM Ch.10 Sec.3: consider detention to avoid damage to adjacent properties.' });
+      evals.push({ el: 'detention', tile: tileP, status: 'peak up', reason: 'Post-development peak ' + best.Qpeak.toFixed(1) + ' cfs is higher than the pre-development ' + pre.Q.toFixed(1) + ' cfs. Detain it.', basis: L.detBasis || 'TxDOT HDM Ch.10 Sec.3 (storage facilities) + Harris County criterion (HCFCD PCPM Sec.6: detention outflow limited to pre-development peak rates). Game: checks one design storm instead of HCFCD\u2019s 10% and 1% AEP 24-hr pair.' });
     } else {
       var e = { el: 'detention', tile: tileP, status: 'ok', reason: 'Peak out ' + best.Qpeak.toFixed(1) + ' cfs vs pre-development ' + pre.Q.toFixed(1) + ' cfs (Tc ' + pre.tc.toFixed(0) + ' min); pond peaks at ' + (best.hmax || 0).toFixed(2) + ' ft of ' + RULES.pondDepth + ' ft (critical duration ' + best.Td + ' min).', basis: 'Modified rational hydrographs + level-pool routing (game method); Kerby-Kirpich Tc, HDM Eq 4-14/4-15 (rational/calc.js).' };
       if ((best.hmax || 0) > RULES.pondDepth + 1e-9) { e.status = 'overtopped'; e.reason = 'The pond overtops its banks (' + best.hmax.toFixed(2) + ' ft > ' + RULES.pondDepth + ' ft). More storage or a longer weir.'; e.basis = 'game rule (pond banks at 4 ft)'; }
-      else if (best.Qpeak > pre.Q + 1e-9) { e.status = 'peak up'; e.reason = 'Still ' + best.Qpeak.toFixed(1) + ' cfs out vs ' + pre.Q.toFixed(1) + ' cfs pre-development. Smaller orifice, shorter weir, or more storage.'; e.basis = L.detBasis || 'Level rule: post-development peak \u2264 pre-development peak.'; }
+      else if (best.Qpeak > pre.Q + 1e-9) { e.status = 'peak up'; e.reason = 'Still ' + best.Qpeak.toFixed(1) + ' cfs out vs ' + pre.Q.toFixed(1) + ' cfs pre-development. Smaller orifice, shorter weir, or more storage.'; e.basis = L.detBasis || 'TxDOT HDM Ch.10 Sec.3 (storage facilities) + Harris County criterion (HCFCD PCPM Sec.6: detention outflow limited to pre-development peak rates). Game: checks one design storm instead of HCFCD\u2019s 10% and 1% AEP 24-hr pair.'; }
       evals.push(e);
     }
     return r;
@@ -401,14 +400,19 @@
     var budget = opts.round > 0 && L.budgetCut ? L.budgetCut : L.budget;
     var fails = all.filter(function (e) { return e.status !== 'ok' && !e.warn; }), warns = all.filter(function (e) { return e.warn; });
     if (cost > budget) fails.push({ el: 'budget', tile: -1, status: 'over budget', reason: 'Plan costs $' + cost.toLocaleString() + ' but the budget is $' + budget.toLocaleString() + (opts.round > 0 && L.budgetCut ? ' (after the client\u2019s budget cut)' : '') + '.', basis: 'project budget' });
-    var s = 100 - 14 * fails.length - 4 * warns.length;
+    var built = controls.filter(function (c) { return !c.preset; }).length;
+    var CRIT = { 'overtopped': 1, 'ponded': 1, 'no outfall': 1, 'flooded lots': 1, 'flooded lot': 1, 'not connected': 1 }; // road over, sag ponded, sewer to nowhere, houses wet
+    var critical = fails.filter(function (e) { return CRIT[e.status] && (e.el !== 'ditch'); });
+    var s = 100 - 14 * fails.length - 4 * warns.length - 12 * critical.length;
     var ratio = cost / budget; if (ratio > 0.8) s -= Math.round((ratio - 0.8) * 30);
     s = Math.max(0, Math.min(100, Math.round(s)));
-    var stars = fails.length === 0 && s >= 80 ? 3 : fails.length <= 1 && s >= 55 ? 2 : s >= 25 && controls.length ? 1 : 0;
-    if (!controls.length) stars = 0;
-    return { score: s, stars: stars, fails: fails, warns: warns, evals: all, cost: cost, budget: budget, result: res, check: check };
+    if (!built) s = 0; // doing nothing earns nothing
+    var stars = fails.length === 0 && s >= 80 ? 3 : fails.length <= 1 && !critical.length && s >= 55 ? 2 : s >= 25 ? 1 : 0;
+    if (critical.length) stars = Math.min(stars, 1);
+    if (!built) stars = 0;
+    return { score: s, stars: stars, critical: critical, fails: fails, warns: warns, evals: all, cost: cost, budget: budget, result: res, check: check };
   }
-  function manholeCost(L, res) { var c = 0; Object.keys(res.net.nodes || {}).forEach(function (k) { var nn = res.net.nodes[k]; if (nn.kind === 'junction' || nn.kind === 'bend' || nn.kind === 'end') { if (!(L.existingNodes && L.existingNodes[k])) c += COST.manhole; } }); return c; }
+  function manholeCost(L, res) { var c = 0; Object.keys(res.net.nodes || {}).forEach(function (k) { var nn = res.net.nodes[k]; if (nn.kind === 'junction' || nn.kind === 'bend' || nn.kind === 'end') { var onlyOld = (L.existing || []).some(function (e) { return e[0] == k || e[1] == k; }) && !(res.pipes || res.net.pipes || []).some(function (p) { return !p.existing && (p.a == k || p.b == k); }); if (!(L.existingNodes && L.existingNodes[k]) && !onlyOld) c += COST.manhole; } }); return c; }
 
   // Smallest standard size that passes for one pipe (storm/ tool's suggestSizePipe), used by the Suggest helper.
   function suggest(L, controls, k) {
@@ -432,8 +436,7 @@
       function (x, y) { if (x === W - 1) return 94; var r = 100 - 0.25 * x; return y === road ? r : y === 0 || y === H - 1 ? r + 0.6 : r + 0.5 + 0.25 * (Math.abs(y - road) - 1); });
     for (var x = 0; x < W - 1; x++) { /* trees drain away from the street */ }
     L.heights = L.heights.map(function (h, i) { var y = (i / W) | 0; return (y === 0 || y === H - 1) && (i % W) < W - 1 ? h - 1.2 : h; });
-    for (x = 1; x < W - 1; x++) L.existing.push([road * W + x, road * W + x - 1 < road * W + 1 ? road * W + x : road * W + x + 1, 36]);
-    L.existing = []; for (x = 1; x < W - 1; x++) L.existing.push([road * W + x, road * W + x + 1, 36]);
+    L.existing = []; for (x = 0; x < W - 1; x++) L.existing.push([road * W + x, road * W + x + 1, 36]);
     L.existingNodes = {}; for (x = 1; x < W; x++) L.existingNodes[road * W + x] = true;
     L.outfallInv = 92; L.tw = tws(93);
     L.tools = ['inspect', 'inlet', 'demolish']; L.budget = 60000; L.design = 10;
@@ -449,12 +452,12 @@
     var W = 16, H = 7, road = 3;
     var L = base(2, 'Carryover down the hill', W, H, function (x, y) { return x === W - 1 ? 'C' : y === road ? 'R' : y === 0 || y === H - 1 ? 'T' : Math.abs(y - road) === 2 ? 'H' : 'P'; },
       function (x, y) { if (x === W - 1) return 88; var r = 100 - 0.75 * x; return y === road ? r : y === 0 || y === H - 1 ? r - 0.6 : r + 0.9 + 0.8 * (Math.abs(y - road) - 1); });
-    L.existing = []; for (var x = 1; x < W - 1; x++) L.existing.push([road * W + x, road * W + x + 1, 42]);
+    L.existing = []; for (var x = 0; x < W - 1; x++) L.existing.push([road * W + x, road * W + x + 1, 42]);
     L.existingNodes = {}; for (x = 1; x < W; x++) L.existingNodes[road * W + x] = true;
     L.outfallInv = 84; L.tw = tws(86);
     L.tools = ['inspect', 'inlet', 'demolish']; L.budget = 68000; L.design = 10;
     L.goal = 'Commercial strip on a 1.5% grade: use curb inlets on grade and let the bypass carry to the next one.';
-    L.lesson = 'An inlet on grade never catches everything: some flow runs past (bypass or carryover) and joins the next block\u2019s runoff. Short inlets bypass more. TxDOT practice (Luis\u2019s approach): try lengths and spacing until the spread passes and the final bypass is under about 0.5 cfs.';
+    L.lesson = 'An inlet on grade never catches everything: some flow runs past (bypass or carryover) and joins the next block\u2019s runoff. Short inlets bypass more. Common practice: try lengths and spacing until the spread passes and the final bypass is under about 0.5 cfs.';
     L.tip = 'A 5-ft inlet that lets 1 cfs through is fine if the next inlet downstream catches it. Watch the very last one.';
     L.hints = ['Parking lots (C 0.90) pour runoff in fast. Inspect street tiles to see Q and spread.', 'Try three inlets spaced about 4 tiles apart. Bypass from each one adds to the next block.', 'Make the last inlet a 15-ft one so bypass off the project is under 0.5 cfs.'];
     L.hintTiles = [road * W + 4, road * W + 9, road * W + 14];

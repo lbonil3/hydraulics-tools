@@ -12,7 +12,7 @@
   var TOOLS = [
     { id: 'inspect', icon: '🔍', label: 'Inspect' },
     { id: 'inlet', icon: '▭', label: 'Inlet', rule: 'Curb inlet pair (both gutters) on a curbed street tile. On grade some flow runs past (bypass/carryover); at a low point (sag) it takes everything that ponds there. Aim: spread within the limit and bypass leaving the project under about 0.5 cfs.',
-      basis: HDM + ' Ch.10 Sec.4 (spread limits, inlets at all low points), Eq 10-5..10-13 curb inlet on grade; TxDOT PCO curb inlet 5 ft, 9.5 ft (+1 ext), 14 ft (+2 ext) from the TxDOT standard sheets (drainage/txdot-inlets.js).', game: 'Game: the 0.5 cfs bypass target is Luis\u2019s practice rule.' },
+      basis: HDM + ' Ch.10 Sec.4 (spread limits, inlets at all low points), Eq 10-5..10-13 curb inlet on grade; TxDOT PCO curb inlet 5 ft, 9.5 ft (+1 ext), 14 ft (+2 ext) from the TxDOT standard sheets (drainage/txdot-inlets.js).', game: 'Game rule: bypass leaving the project under 0.5 cfs (office practice target).' },
     { id: 'pipe', icon: '═', label: 'Pipe', rule: 'Drag from an inlet toward the outfall to lay RCP storm sewer, one 50-ft tile at a time (or tap start, then tap each next tile). Manholes are added automatically at junctions, bends and ends. Pick the size; slope comes from cover and self-cleaning velocity.',
       basis: HDM + ' Ch.10 Sec.2: non-pressure (gravity) flow, HGL below inlet throats/manhole tops, velocity 3–12 ft/s, cover 3 ft where possible. HGL and junction losses: storm/calc.js (HEC-22 method).', game: 'Game: invert design is automatic; cost = Item 464 RCP $/LF x 50 ft.' },
     { id: 'ditch', icon: '⋁', label: 'Ditch', rule: 'Roadside ditch on open ground: drag along the road to the creek. Pick the lining: the shear stress (62.4 x depth x slope) must stay below the lining\u2019s permissible shear.',
@@ -42,7 +42,7 @@
 
   // ---------- state ----------
   var G = { level: null, L: null, controls: [], history: [], tool: 'inspect', phase: 'plan', zoom: 2, panX: 0, panY: 0, flowView: false, ug: false,
-    opt: { len: 10, dia: 24, lining: 'grass', cdia: 48, cbar: 1, orif: 12, weir: 4 }, live: null, scoreRes: null, stormT: 0, stormDur: 10, speed: 1, born: {}, selTile: -1, hoverTile: -1, round: 0, chainFrom: -1, sugLeft: 0 };
+    opt: { len: 10, dia: 24, lining: 'grass', cdia: 48, cbar: 1, orif: 12, weir: 4 }, live: null, scoreRes: null, stormT: 0, stormDur: 10, speed: 1, born: {}, selTile: -1, editTile: -1, hoverTile: -1, round: 0, chainFrom: -1, sugLeft: 0 };
   var progress = (function () { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || { stars: {} }; } catch (e) { return { stars: {} }; } })();
   function saveProgress() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* private mode */ } }
 
@@ -186,6 +186,8 @@
     vctx.fillStyle = 'rgba(235,240,255,' + a.toFixed(2) + ')'; vctx.fillRect(0, 0, view.width, view.height);
   }
   // ---------- controls ----------
+  function hasNoBuild() { return G.L.nobuild && Object.keys(G.L.nobuild).length > 0; }
+  function utilKnown() { return hasUtil() && (G.round > 0 || G.utilShown); }
   function hasUtil() { return G.L.util && Object.keys(G.L.util).length > 0; }
   function evalFor(k, el) { var r = G.phase === 'plan' ? G.live : G.scoreRes; if (!r) return null; var e = r.evals.filter(function (x) { return x.k === k && (!el || x.el === el); }); return e.filter(function (x) { return x.status !== 'ok'; })[0] || e[0] || null; }
   function prog(k, t, ms) { var b = G.born[k]; return b == null ? 1 : Math.max(0, Math.min(1, (t - b) / (ms || 900))); }
@@ -201,7 +203,7 @@
         var e2 = evalFor(k, 'inlet'); if (e2 && G.phase === 'storm' && e2.Qb > 0.05 && q > 0.3) { var cc = tileCenter(c.tile), dn = r.dir[c.tile] >= 0 ? tileCenter(r.dir[c.tile]) : cc, ph = (t / 600) % 1; ctx.fillStyle = e2.Qb > 0.5 ? '#ff9a3a' : '#bfe6ff'; ctx.fillRect(Math.round(cc.x + (dn.x - cc.x) * ph) - 2, Math.round(cc.y + (dn.y - cc.y) * ph) - 4, 4, 2); } }
     });
     if (L.pondSite != null && G.phase === 'plan' && !G.controls.some(function (c) { return c.type === 'pond' && c.tile === L.pondSite; })) { var c0 = tileCenter(L.pondSite); A.rect(ctx, c0.x - 1, c0.y - 18, 1, 18, '#fff'); A.rect(ctx, c0.x, c0.y - 18, 7, 5, '#2f7a3d'); }
-    if (L.nobuild) Object.keys(L.nobuild).forEach(function (i) { FA.drawNoBuild(ctx, tp(+i)); });
+    if (hasNoBuild()) Object.keys(L.nobuild).forEach(function (i) { FA.drawNoBuild(ctx, tp(+i)); });
     if (hasUtil() && (G.round > 0 || G.utilShown)) Object.keys(L.util).forEach(function (i) { FA.drawUtility(ctx, tp(+i), t); });
     var nr = r && r.net; if (nr && nr.nodes && !G.ug) Object.keys(nr.nodes).forEach(function (k2) { var nd = nr.nodes[k2], cc2 = tileCenter(+k2), sur = G.phase === 'storm' && nd.surch && q > 0.5;
       if (nd.kind === 'junction' || nd.kind === 'bend' || nd.kind === 'end') FA.drawLid(ctx, cc2.x + 8, cc2.y + 2, sur, t); else if (nd.kind === 'inlet' && sur) FA.drawLid(ctx, cc2.x, cc2.y, true, t); });
@@ -238,7 +240,7 @@
   // ---------- underground view: pipes, structures, HGL ----------
   function pipeList() { var r = res(); return r && r.net && r.net.pipes ? Object.keys(r.net.pipes).map(function (k) { return r.net.pipes[k]; }) : []; }
   function drawUnderground(ctx, t, f) {
-    var r = res(), q = G.phase === 'plan' ? 0 : qf(f), drawn = {}; ctx.fillStyle = 'rgba(40,28,18,.55)'; ctx.fillRect(0, 0, geo.w, geo.h);
+    var r = res(), q = G.phase === 'plan' ? 0 : qf(f), drawn = {}; ctx.save(); ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = 'rgba(40,28,18,.55)'; ctx.fillRect(0, 0, geo.w, geo.h); ctx.restore(); // tint only the site, never the sky
     pipeList().forEach(function (pp) {
       var a = tileCenter(pp.a), b = tileCenter(pp.b), w = Math.max(2, Math.round(pp.dia / 9)), full = pp.Qfull ? pp.Q / pp.Qfull : 0, over = full > 1.001, dep = 6;
       drawn[pp.a + ':' + pp.b] = 1; ctx.lineCap = 'round';
@@ -362,10 +364,11 @@
     e.preventDefault();
   });
   function stepDraw(ft) {
-    if (G.tool === 'pipe') gridPath(G.chainFrom, ft).forEach(function (j) { if (addPipe(G.chainFrom, j, true)) gesture.n++; G.chainFrom = j; });
-    else gridPath(gesture.last, ft).forEach(function (j) { if (placeAt(j, true)) gesture.n++; });
+    if (G.tool === 'pipe') gridPath(G.chainFrom, ft).forEach(function (j) { if (gesture.stop) return; var had = G.controls.some(function (c) { return c.type === 'pipe' && ((c.a === G.chainFrom && c.b === j) || (c.b === G.chainFrom && c.a === j)); });
+      if (addPipe(G.chainFrom, j, true)) gesture.n++; else if (!had) { gesture.stop = true; gesture.why = S.isWater(G.L.types[G.chainFrom]) ? null : (hasNoBuild() && G.L.nobuild[j]) ? '⛔ Client no-build lot: no pipe through it' : (utilKnown() && G.L.util[j]) ? '⚠ Buried gas line: route the pipe around it' : null; if (gesture.why) snd('buzz'); return; } G.chainFrom = j; });
+    else gridPath(gesture.last, ft).forEach(function (j) { if (placeAt(j, true)) gesture.n++; else if (!gesture.why) gesture.why = placeBlock(G.tool, j); });
   }
-  function endDraw() { if (gesture.n > 0) { refresh(); if (G.tool === 'pipe') showPipeInfo(); else toast(gesture.n + ' placed (drag)'); } if (G.tool === 'pipe') G.chainFrom = -1; }
+  function endDraw() { if (gesture.n > 0) { refresh(); if (G.tool === 'pipe') { showPipeInfo(); if (G.chainFrom >= 0 && S.isWater(G.L.types[G.chainFrom])) toast('✓ Outfall: the pipe run ends in the creek'); } else toast(gesture.n + ' placed (drag)'); } else if (gesture.why) toast(gesture.why); if (G.tool === 'pipe') G.chainFrom = -1; }
   function gridPath(a, b) { var W = G.L.W, x = a % W, y = (a / W) | 0, x1 = b % W, y1 = (b / W) | 0, o = []; while (x !== x1 || y !== y1) { if (Math.abs(x1 - x) >= Math.abs(y1 - y)) x += Math.sign(x1 - x); else y += Math.sign(y1 - y); o.push(y * W + x); } return o; }
   function endPointer(e) {
     if (!pointers[e.pointerId]) return; delete pointers[e.pointerId];
@@ -423,7 +426,9 @@
     if (tool === 'pipe') {
       if (G.chainFrom < 0) { G.chainFrom = i; toast('Pipe starts at (' + (i % G.L.W) + ',' + ((i / G.L.W) | 0) + '): tap the next tiles toward the outfall'); return; }
       if (i === G.chainFrom) { G.chainFrom = -1; toast('Pipe run ended'); return; }
-      var n = 0; gridPath(G.chainFrom, i).forEach(function (j) { if (addPipe(G.chainFrom, j, false)) n++; G.chainFrom = j; }); refresh(); if (n) showPipeInfo(); return;
+      var n = 0, blocked = false; gridPath(G.chainFrom, i).forEach(function (j) { if (blocked) return; if (addPipe(G.chainFrom, j, false)) n++; else if (!G.controls.some(function (c) { return c.type === 'pipe' && ((c.a === G.chainFrom && c.b === j) || (c.b === G.chainFrom && c.a === j)); })) { blocked = true; return; } G.chainFrom = j; }); refresh(); if (n) showPipeInfo();
+      if (G.chainFrom >= 0 && S.isWater(G.L.types[G.chainFrom])) { G.chainFrom = -1; toast('✓ Outfall: the pipe run ends in the creek'); }
+      return;
     }
     if (placeAt(i, false)) refresh();
   }
@@ -433,6 +438,7 @@
   }
   function placeBlock(tool, i) {
     var L = G.L, ty = L.types[i];
+    if (hasNoBuild() && L.nobuild[i]) return '⛔ Client no-build lot: nothing can be built here';
     if (tool === 'inlet' && ty !== 'R') return 'Curb inlets go on curbed street tiles';
     if (tool === 'ditch' && !/[GT]/.test(ty) && !(L.sandbox && ty === 'H')) return 'Ditches go on open ground (lawn or trees) beside the road';
     if (tool === 'pond' && (L.sandbox ? /[RQXC]/.test(ty) : ty !== 'G')) return 'Pond blocks go on open lawn';
@@ -453,8 +459,8 @@
     var tool = G.tool, why = placeBlock(tool, i); if (why) { if (!quiet) { toast(why); snd('buzz'); } return false; }
     var c = makeCtl(tool, i); if (!c) return false;
     var same = -1; G.controls.forEach(function (x, k) { if (x.type === tool && x.tile === i) same = k; });
-    if (same >= 0) { var prev = G.controls[same]; if (JSON.stringify(plain1(prev)) === JSON.stringify(c)) { if (!quiet) toast('Already here'); return false; } G.history.push({ op: 'set', k: same, c: prev }); G.controls[same] = Object.assign({ round: G.round }, c); if (!quiet) toast('Changed ' + tool); }
-    else { G.controls.push(Object.assign({ round: G.round }, c)); G.history.push({ op: 'add' }); G.born[G.controls.length - 1] = performance.now(); }
+    if (same >= 0) { var prev = G.controls[same]; if (JSON.stringify(plain1(prev)) === JSON.stringify(c)) { if (!quiet) { G.editTile = i; toast('Selected this ' + tool + ': option changes now edit it'); } return false; } G.history.push({ op: 'set', k: same, c: prev }); G.controls[same] = Object.assign({ round: G.round }, c); if (!quiet) toast('Changed ' + tool); }
+    else { if (!quiet) G.editTile = -1; G.controls.push(Object.assign({ round: G.round }, c)); G.history.push({ op: 'add' }); G.born[G.controls.length - 1] = performance.now(); }
     snd({ inlet: 'grate', ditch: 'dirt', pond: 'dirt', culvert: 'concrete', outlet: 'concrete' }[tool] || 'thunk');
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ }
     if (!quiet) { refresh(); showElementInfo(i, tool); }
@@ -463,7 +469,9 @@
   function addPipe(a, b, quiet) {
     var L = G.L, W = L.W; if (a < 0 || b < 0 || a === b) return false;
     if (!(Math.abs(a - b) === W || (Math.abs(a - b) === 1 && ((a / W) | 0) === ((b / W) | 0)))) return false;
-    if (S.isWater(L.types[a]) || S.isWater(L.types[b])) { if (!quiet) toast('Pipes end at the bank: the outfall tile is next to the creek'); return false; }
+    if (S.isWater(L.types[a])) { if (!quiet) toast('The pipe already ends in the creek (outfall). Start a new run at an inlet.'); return false; }
+    if (hasNoBuild() && (L.nobuild[a] || L.nobuild[b])) { if (!quiet) { toast('⛔ Client no-build lot: no pipe through it'); snd('buzz'); } return false; }
+    if (utilKnown() && (L.util[a] || L.util[b])) { if (!quiet) { toast('⚠ Buried gas line: route the pipe around the yellow tiles'); snd('buzz'); } return false; }
     if ((L.existing || []).some(function (e) { return (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a); })) { if (!quiet) toast('An existing pipe is already here'); return false; }
     var k0 = -1; G.controls.forEach(function (c, k) { if (c.type === 'pipe' && ((c.a === a && c.b === b) || (c.a === b && c.b === a))) k0 = k; });
     if (!G.chainStart || performance.now() - G.chainStart > 2500) G.lastChain = []; G.chainStart = performance.now();
@@ -558,7 +566,9 @@
     var b = e.target.closest('button'); if (!b) return; var k = b.dataset.opt;
     if (k === 'suggest') { doSuggest(); return; }
     var v = b.dataset.v; G.opt[k] = isNaN(+v) ? v : +v; buildOpts(); G.ghostKey = null;
-    var i = G.selTile; if (i >= 0 && G.tool !== 'pipe' && G.controls.some(function (c) { return c.type === G.tool && c.tile === i; })) placeAt(i, false); // re-size the selected element
+    var i = G.editTile; // only a piece the player picked (tapped again with the same tool) is edited; new pieces use the new option
+    if (i >= 0 && G.tool !== 'pipe' && G.controls.some(function (c) { return c.type === G.tool && c.tile === i; })) { if (placeAt(i, true)) { refresh(); toast('Changed the ' + G.tool + ' at (' + (i % G.L.W) + ',' + ((i / G.L.W) | 0) + ') to ' + b.innerText); } }
+    else toast('New ' + (findTool(G.tool) || {}).label + 's: ' + b.innerText);
   });
   function doSuggest() {
     if (G.sugLeft <= 0) { toast('No sizing suggestions left on this level'); snd('buzz'); return; }
@@ -568,7 +578,7 @@
     toast('Sized your last pipe run: ' + ks.map(function (k) { return cs[k].dia + '"'; }).join(', ') + ' (smallest that is not overloaded)'); snd('pipe');
   }
   function selectTool(id) {
-    G.tool = id; G.chainFrom = -1; G.ghost = null; Array.prototype.forEach.call(document.querySelectorAll('.tool'), function (b) { b.classList.toggle('sel', b.dataset.tool === id); });
+    G.tool = id; G.chainFrom = -1; G.editTile = -1; G.ghost = null; Array.prototype.forEach.call(document.querySelectorAll('.tool'), function (b) { b.classList.toggle('sel', b.dataset.tool === id); });
     if (id === 'pipe' && !G.ug) { setUG(true); G.autoUG = true; } else if (id !== 'pipe' && id !== 'inspect' && G.ug && G.autoUG) setUG(false);
     if (G.phase === 'plan') buildOpts();
     var t = findTool(id), card = $('infoCard');
@@ -589,7 +599,7 @@
     G.hintLevel = 0; G.hintTiles = null; G.solGhost = null; G.ghost = null; G.paused = false; G.utilShown = false; G.cutShown = false; G.lastChain = []; G.focus = null;
     if (window.FlowSound) FlowSound.rain(0);
     G.level = n; G.L = L; RQ = baseRQ; geo = buildGeometry(G.L, RQ);
-    G.controls = (controls || S.presetControls(L)).map(function (c) { return Object.assign({ round: 0 }, c); }); G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.showRes = null; G.selTile = -1; G.hoverTile = -1; G.round = 0; G.sugLeft = L.suggests || 0;
+    G.editTile = -1; G.controls = (controls || S.presetControls(L)).map(function (c) { return Object.assign({ round: 0 }, c); }); G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.showRes = null; G.selTile = -1; G.hoverTile = -1; G.round = 0; G.sugLeft = L.suggests || 0;
     drawTerrain(); resize(); fitView(); scheduleLOD(); setUG(false);
     $('lvlGoal').textContent = L.goal || ''; $('forecastLabel').textContent = L.design + '-yr';
     $('stormHud').classList.add('hidden'); $('banner').classList.add('hidden'); $('chart').classList.add('hidden');
@@ -600,9 +610,9 @@
     openPanel('<h2>' + L.name + '</h2><div class="forecast"><div class="big">⛈</div><div><b>Design storm: ' + L.design + '-yr</b> · ' + i.toFixed(2) + ' in/hr at 10 min (Harris Co., TxDOT EBDLKUP-2019)' +
       (L.culvert && L.culvert.design !== L.design ? '<br>Culvert: ' + L.culvert.design + '-yr' : '') + (L.detDesign && L.detDesign !== L.design ? '<br>Detention: ' + L.detDesign + '-yr' : '') + (L.check ? '<br>Check: ' + L.check + '-yr (1% AEP)' : '') + '</div></div>' +
       '<p><b>Your job:</b> ' + (L.goal || '') + '</p>' + (L.lesson ? '<p class="lesson"><b>Lesson:</b> ' + L.lesson + '</p>' : '') +
-      '<p>Budget: <b>$' + L.budget.toLocaleString() + '</b> · Spread limit ' + L.Tallow + ' ft' + (L.nobuild ? '<br>⛔ <b>Client surprise:</b> the red-hatched lots are now no-build.' : '') + '</p>' +
+      '<p>Budget: <b>$' + L.budget.toLocaleString() + '</b> · Spread limit ' + L.Tallow + ' ft' + (hasNoBuild() ? '<br>⛔ <b>Client surprise:</b> the red-hatched lots are now no-build.' : '') + '</p>' +
       '<div class="btns"><button type="button" class="primary" data-act="close">Start designing</button></div>');
-    if (L.nobuild) snd('alarm');
+    if (hasNoBuild()) snd('alarm');
   }
   function showLevels() {
     var html = '<h2>Storm Designer</h2><p>You are the drainage engineer. Design inlets, storm sewers, ditches, culverts and detention for Houston storms, then run the storm. All levels are open.</p>', rec = 0, n;

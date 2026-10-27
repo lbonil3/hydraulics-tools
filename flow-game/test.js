@@ -98,6 +98,45 @@ t('client no-build lots fail when built on (level 7)', () => {
   const L = S.makeLevel(7), nb = +Object.keys(L.nobuild)[0];
   assert.ok(S.score(L, [{ type: 'pond', tile: nb }]).fails.some(f => f.status === 'no-build lot'));
 });
+t('scoring v2: doing nothing scores 0 on every level; critical failures cap at 1 star; no-outfall counts once per network', () => {
+  for (let k = 1; k <= S.LEVEL_COUNT; k++) { const L = S.makeLevel(k), r = S.score(L, S.presetControls(L), {}); assert.strictEqual(r.score, 0, 'L' + k + ' empty score'); assert.strictEqual(r.stars, 0, 'L' + k + ' empty stars'); }
+  // L6: road overtopped (no culvert / too small) -> at most 1 star
+  const L6 = S.makeLevel(6), r6 = S.score(L6, [{ type: 'culvert', tile: L6.culvert.tile, dia: 48, barrels: 1 }], {});
+  assert.ok(r6.fails.some(e => e.status === 'overtopped') && r6.stars <= 1, 'overtopped road caps at 1 star, got ' + r6.stars);
+  // L3: sag with no inlet ponds -> at most 1 star
+  const L3 = S.makeLevel(3), W = L3.W, mid = 2 * W + 5;
+  const rp = S.score(L3, [{ type: 'inlet', tile: 2 * W + 1, len: 15 }, ...[1, 2, 3, 4, 5, 6].map(y => ({ type: 'pipe', a: (y + 1) * W + 1, b: (y + 2) * W + 1, dia: 24 })), { type: 'pipe', a: 2 * W + 1, b: 3 * W + 1, dia: 24 }], {});
+  assert.ok(rp.fails.some(e => e.status === 'ponded') && rp.stars <= 1, 'ponded sag caps at 1 star');
+  // a 6-piece pipe run that stops one tile short of the creek: ONE "no outfall" failure, 1 star at most
+  const pts = [2, 3, 4, 5, 6, 7].map(y => y * W + 5), short = [{ type: 'inlet', tile: mid, len: 15 }];
+  for (let i = 0; i + 1 < pts.length; i++) short.push({ type: 'pipe', a: pts[i], b: pts[i + 1], dia: 24 });
+  const rs = S.score(L3, short, {});
+  assert.strictEqual(rs.fails.filter(e => e.status === 'no outfall').length, 1, 'no outfall once per network');
+  assert.strictEqual(rs.fails.filter(e => e.status === 'not connected').length, 0, 'inlets in that network are not double counted');
+  assert.ok(rs.stars <= 1);
+  // ...and the same run extended onto the creek tile (what the pipe tool now allows) earns 3 stars
+  const full = short.concat([{ type: 'pipe', a: 7 * W + 5, b: 8 * W + 5, dia: 24 }]);
+  assert.strictEqual(S.score(L3, full, {}).stars, 3, 'pipe ending on the creek tile is an outfall');
+});
+t('scoring v2: bypass that the next inlet catches is not penalised; bypass leaving the project is', () => {
+  const L = S.makeLevel(2), W = L.W, inl = (x, len) => ({ type: 'inlet', tile: 3 * W + x, len });
+  const r = S.score(L, [inl(5, 10), inl(10, 10), inl(14, 15)], {});
+  assert.ok(r.evals.some(e => e.el === 'inlet' && e.reason.indexOf('runs on to the next inlet') >= 0), 'upstream inlet reports its bypass');
+  assert.strictEqual(r.warns.filter(e => e.status === 'bypass').length, 0, 'no warning for caught bypass');
+  const r2 = S.score(L, [inl(5, 10), inl(10, 10), inl(14, 5)], {});
+  assert.ok(r2.fails.some(e => e.status === 'bypass leaves'), 'bypass leaving the project still fails');
+});
+t('no-build: only levels with real no-build tiles have them; building on one fails in every tool', () => {
+  for (let k = 1; k <= S.LEVEL_COUNT; k++) { const L = S.makeLevel(k); if (k !== 7) assert.ok(!L.nobuild || Object.keys(L.nobuild).length === 0, 'L' + k + ' should have no no-build tiles'); }
+  const L = S.makeLevel(7), nb = Object.keys(L.nobuild).map(Number); assert.ok(nb.length > 0);
+  const r = S.score(L, S.presetControls(L).concat([{ type: 'pond', tile: nb[0] }]), {});
+  assert.ok(r.fails.some(e => e.status === 'no-build lot'), 'pond on a no-build tile fails');
+});
+t('player text never names a person; detention basis cites TxDOT HDM + HCFCD', () => {
+  ['sim.js', 'game.js', 'solutions.js'].forEach(f => assert.ok(!/Luis/.test(fs.readFileSync(path.join(__dirname, f), 'utf8')), f));
+  const L = S.makeLevel(7), e = S.score(L, S.presetControls(L).concat([{ type: 'pond', tile: L.pondSite }, { type: 'outlet', tile: L.pondSite, orif: 18, weir: 8 }]), {}).evals.find(x => x.el === 'detention' && x.status === 'peak up');
+  assert.ok(e && /TxDOT HDM Ch.10 Sec.3/.test(e.basis) && /HCFCD/.test(e.basis), e && e.basis);
+});
 t('100-yr check (level 8): solution keeps houses dry; no culvert floods them', () => {
   const L = S.makeLevel(8), r = run(L, SOL.solutionPlan(8)); assert.ok(r.check && r.check.wet.length === 0);
   const noC = run(L, SOL.solutionPlan(8).filter(p => p.type !== 'culvert')); assert.ok(noC.fails.some(f => f.el === 'check'));

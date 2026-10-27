@@ -30,7 +30,7 @@ The math is the repo's own tool code, loaded at runtime (not copied): `drainage/
 | Crowned street: each gutter carries half the flow | Q/2 | Game rule | |
 | Depth over the 6-in curb = fail | 0.5 ft | Game rule | |
 | Curb inlet on grade: interception and bypass | TxDOT method, PCO 5/9.5/14 ft, 3-in depression | TxDOT | HDM Eq 10-5 … 10-13; DR.curbGrade; drainage/txdot-inlets.js |
-| Bypass leaving the last inlet ≤ 0.5 cfs | | Game rule (Luis's office target) | |
+| Bypass leaving the project (past the last inlet) ≤ 0.5 cfs; bypass caught by a downstream inlet is not penalised | | Game rule (office-practice target) | |
 | Inlets at every low point; sag inlet weir/orifice | | TxDOT / FHWA | HDM Ch.10 Sec.4 (inlets at all sags); HEC-22 Eq 7.16–7.19, HDM Eq 10-17; DR.curbSagDepth |
 | Road runoff onto a house lot = flooded lot | | Game rule | |
 | Flattest gutter slope used | 0.2% | Game rule | |
@@ -54,7 +54,7 @@ The math is the repo's own tool code, loaded at runtime (not copied): `drainage/
 | Rule in the game | Value | Basis | Source |
 |---|---|---|---|
 | Normal depth, Manning trapezoid | 2-ft bottom, 3:1 sides, 2 ft deep | TxDOT / game section | HDM Eq 6-3, DR.chanDepth; the section is the game's |
-| Freeboard ≥ 0.5 ft | | Game rule (Luis's ditch-table check) | |
+| Freeboard ≥ 0.5 ft | | Game rule (same check as the repo's Ditch tool) | |
 | Shear τ = γ d S vs permissible | grass (Retardance D) 0.60, mat 2.0, 6-in riprap 2.5 lb/sf, concrete unlimited | FHWA / TxDOT | HEC-15 Eq 2.3 and permissible-shear tables; HDM Ch.7 shear table |
 | Ditch tile entering the creek uses the upstream slope | protected outfall | Game rule | |
 
@@ -70,7 +70,7 @@ The math is the repo's own tool code, loaded at runtime (not copied): `drainage/
 
 | Rule in the game | Value | Basis | Source |
 |---|---|---|---|
-| Post-development peak ≤ pre-development peak (25-yr) | | TxDOT | HDM Ch.10 Sec.3 (storage facilities); local Harris County practice |
+| Post-development peak ≤ pre-development peak | 25-yr in levels 7–8 | TxDOT + Harris County | HDM Ch.10 Sec.3 (storage facilities: detention to avoid damage downstream); HCFCD Policy Criteria & Procedures Manual Sec.6.3 (maximum outflow restricted to the pre-development 10% and 1% AEP 24-hr rates). **Game simplification:** one design storm (25-yr rational) instead of the 10%/1% 24-hr pair. |
 | Modified-rational inflow hydrograph, storage-indication routing | | FHWA | HEC-22 Ch.10 |
 | Orifice C 0.6, weir C 3.0 | | FHWA | HEC-22 Ch.10 typical coefficients |
 | Pond 4 ft deep, weir crest at 3 ft, block = 50×50 ft | | Game rule | |
@@ -90,4 +90,8 @@ The math is the repo's own tool code, loaded at runtime (not copied): `drainage/
 
 ## Scoring (game rule)
 
-Score = 100 − 14 per failed check − 4 per warning, minus a penalty when the plan uses over 80% of the budget. 3★ = no failures and a score of 80 or more; 2★ = at most one failure and 55 or more; 1★ = 25 or more.
+Score = 100 − 14 per failed check − 4 per warning − 12 extra per critical failure, minus a penalty when the plan uses over 80% of the budget. A plan with nothing built scores 0.
+
+- Critical failures: road overtopped at the culvert, street sag ponded with no inlet, a pipe run with no outfall, an inlet not connected, houses flooded, pond overtopped. Any critical failure caps the plan at 1★.
+- "No outfall" counts once per pipe network (not once per pipe piece).
+- 3★ = no failures and 80 or more; 2★ = at most one (non-critical) failure and 55 or more; 1★ = 25 or more.
