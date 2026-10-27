@@ -79,13 +79,15 @@
     else if (window.SwpSummaryUI) window.SwpSummaryUI.render();
   }
   function setTab(t, fromHash) {
+    var prev = ui.tab;
     ui.tab = t === 'design' ? 'design' : 'summary';
     if (!fromHash) {
       var next = ui.tab === 'design' ? (location.hash.indexOf('#design/') === 0 ? location.hash : '#design') : '#summary';
       if (location.hash !== next) history.pushState(null, '', next);
     }
+    var keep = fromHash && prev === ui.tab && ui.tab === 'design' && window.matchMedia && window.matchMedia('(min-width: 1024px)').matches;
     render();
-    window.scrollTo(0, 0);
+    if (!keep) window.scrollTo(0, 0);
   }
 
   document.addEventListener('change', function (e) {
@@ -100,7 +102,7 @@
     if (!tb) return;
     var t = tb.getAttribute('data-t');
     if (t === 'design' && ui.tab === 'design' && location.hash.indexOf('#design/') === 0) {
-      location.hash = '#design';
+      if (!window.matchMedia || !window.matchMedia('(min-width: 1024px)').matches) location.hash = '#design';
       return;
     }
     setTab(t);

@@ -112,7 +112,7 @@
       (view.variant === 'B' ? row('MS4', site.ms4.join('\n')) : '') +
       (site.buffer ? row('Buffer', site.buffer) : '') +
       '</dl></section>';
-    h += '<section class="card"><h2>Controls</h2>';
+    h += '<section class="card sum-wide"><h2>Controls</h2>';
     if (view.starter) h += '<p class="lede">A new project starts with silt fence and seeding marked, because those are the usual minimum. Turn off anything this job will not use.</p>';
     if (!view.controls.length) h += '<p class="empty">No controls marked yet.</p>';
     else h += '<ul class="clist">' + view.controls.map(function (c) {
@@ -134,7 +134,7 @@
   function pressed(on) { return on ? ' aria-pressed="true" class="chip on"' : ' aria-pressed="false" class="chip"'; }
   function editHtml(view) {
     var v = vals(), p = A.cur(), f = p.form, h = '';
-    h += '<div class="card"><h2>Edit summary</h2><p class="lede">Short labels for the same TxDOT summary sheet. What you type is saved on this device and shows up in the reading view.</p>' +
+    h += '<div class="card sum-wide"><h2>Edit summary</h2><p class="lede">Short labels for the same TxDOT summary sheet. What you type is saved on this device and shows up in the reading view.</p>' +
       '<div class="seg" role="group" aria-label="Which sheet">' +
       [['', 'Match the acres'], ['B', '1 acre or more'], ['A', 'Under 1 acre']].map(function (x) {
         return '<button type="button" data-var="' + x[0] + '"' + ((sm().variant || '') === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
@@ -157,7 +157,7 @@
       field('Classified segment', 'recv.0.1', v['recv.0.1']) +
       (view.variant === 'B' ? '<label class="f"><span>MS4 operator, one per line</span><textarea data-sv="ms4" rows="2">' + esc((view.site.ms4 || []).join('\n')) + '</textarea></label>' : '') +
       '</section>';
-    h += '<section class="card"><h2>Controls</h2><p class="lede">Temporary means during construction. Permanent means it stays. Street sweeping is just on or off.</p>';
+    h += '<section class="card sum-wide"><h2>Controls</h2><p class="lede">Temporary means during construction. Permanent means it stays. Street sweeping is just on or off.</p>';
     S.EDIT_GROUPS.forEach(function (g) {
       h += '<h3>' + esc(g.title) + '</h3>';
       g.items.forEach(function (item) {

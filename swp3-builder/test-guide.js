@@ -26,9 +26,14 @@ G.CATS.forEach(function (c) {
   assert.ok(G.inCat(c.id).length >= 2, 'empty cat ' + c.id);
   assert.ok(c.title && c.blurb, 'cat text ' + c.id);
 });
-['silt-fence', 'rock-filter-dam', 'check-dam', 'inlet-protection', 'construction-exit', 'seeding-mulch', 'blanket', 'sediment-basin'].forEach(function (id) {
+['silt-fence', 'rock-filter-dam', 'check-dam', 'inlet-protection', 'construction-exit', 'seeding-mulch', 'blanket', 'sediment-basin', 'sandbag-berm', 'rock-berm', 'floating-turbidity', 'stream-crossing', 'concrete-washout'].forEach(function (id) {
   assert.ok(G.byId(id), 'missing ' + id);
 });
+assert.ok(/floating silt curtain|turbidity curtain/i.test(G.byId('floating-turbidity').what));
+assert.ok(/>Section</.test(G.byId('silt-fence').svg) && />Plan</.test(G.byId('silt-fence').svg));
+assert.ok(/Floats/.test(G.byId('floating-turbidity').svg));
+assert.ok(/Drive up and down the slope/.test(G.byId('vertical-tracking').install.join(' ')));
+assert.ok(!/Drive along the contour so the grooves/.test(G.byId('vertical-tracking').install.join(' ')));
 assert.strictEqual(G.byId('nope'), null);
 
 var html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
@@ -46,6 +51,7 @@ assert.ok(css.indexOf('prefers-color-scheme: dark') > 0);
 assert.ok(css.indexOf('prefers-reduced-motion: reduce') > 0);
 assert.ok(css.indexOf('safe-area-inset') > 0);
 assert.ok(css.indexOf('min-height:44px') > 0);
+assert.ok(css.indexOf('min-width:1024px') > 0);
 
 var home = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 assert.ok(home.indexOf('Summary sheet and erosion control guide') > 0);
