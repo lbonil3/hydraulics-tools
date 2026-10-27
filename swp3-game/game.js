@@ -11,10 +11,10 @@
   var PAL = {
     G: ['#6aa84f', '#4f7d3a', '#3d6230'], S: ['#a87444', '#7d5432', '#634126'], A: ['#a87444', '#7d5432', '#634126'],
     R: ['#7b7b80', '#5c5c61', '#48484c'], D: ['#8a6a3c', '#6a502c', '#523e22'], C: ['#3f7fbf', '#2e6194', '#244c75'],
-    I: ['#7b7b80', '#5c5c61', '#48484c']
+    I: ['#7b7b80', '#5c5c61', '#48484c'], W: ['#86704a', '#2e6194', '#244c75']
   };
   var SPECK = { G: ['#7fbf5f', '#55913f', '#9ccf6a'], S: ['#b98552', '#8f6038', '#c79a62'], A: ['#b98552', '#8f6038'],
-    R: ['#8a8a8f', '#6a6a70'], D: ['#9c7a48', '#73572f', '#6a8a44'], C: ['#6aa6e0', '#2e6194', '#a8d0f0'], I: ['#8a8a8f'] };
+    R: ['#8a8a8f', '#6a6a70'], D: ['#9c7a48', '#73572f', '#6a8a44'], C: ['#6aa6e0', '#2e6194', '#a8d0f0'], I: ['#8a8a8f'], W: ['#a08a5c', '#6c5a3c'] };
 
   // ---------- tool definitions (info card text; numbers verified in rules-sources.md) ----------
   var TOOLS = [
@@ -52,6 +52,9 @@
     { id: 'apron', label: 'Riprap', rule: 'Riprap energy dissipator at the OUTLET of a pipe slope drain (the first flatter tile at the toe). Anywhere else it does nothing.',
       basis: 'TxDOT EC(7)-16 Detail A: concrete or rubble riprap energy dissipator at the pipe outlet, 6 x pipe dia long and 3 x dia wide. Item 506.4.4.2: construct energy dissipaters as shown; riprap per Item 432. Price: Item 432 stone riprap (Ty R, dry, 18 in.) bid tabs.',
       game: 'Game rule: needs a pipe slope drain outlet on this tile; in the creek = violation.' },
+    { id: 'curtain', label: 'Curtain', rule: 'Floating turbidity curtain for work IN the water. Place it on water tiles to make a closed line around the muddy in-water work tiles; the bank closes the ends. Only in slow water (5 ft/s or less) where the skirt reaches near the bottom (6 ft deep or less). Deploy it in your first plan, before the work starts. On land = wasted; a gap = violation.',
+      basis: 'TxDOT Special Specification 5129 Floating Turbidity Barrier (08-21, statewide): FTB and installation must handle flow up to 5 ft/s (~3 knots); place the FTB before any work that could affect the area; when next to a shoreline or bank, secure the ends to fully enclose the area; enough ballast to anchor along the bottom; 18–22 oz PVC-coated nylon float section, bright yellow or orange, at least 6 in. freeboard; 5/16 in. chain ballast; lighted buoys every 100 ft when shown on plans; paid per linear foot.',
+      game: 'Game rule: max 6 ft water depth (standard 5 ft skirt reaching within about 1 ft of the bottom, per a TxDOT/TTI sediment-control report); a closed ring traps 90% of the in-water work plume and any runoff entering the enclosed water; deployed after a storm = late (40%); cost $1,250 per 50 LF is a game value.' },
     { id: 'demolish', icon: '✖', label: 'Remove' }
   ];
 
@@ -269,7 +272,7 @@
     for (k = G.mud.length - 1; k >= 0; k--) { var m2 = G.mud[k], age = (t - m2.t) / 9000; if (age > 1 || !noExit) { G.mud.splice(k, 1); continue; }
       ctx.fillStyle = 'rgba(106,68,34,' + (0.8 * (1 - age)).toFixed(2) + ')'; ctx.fillRect(Math.round(m2.x) - 2, Math.round(m2.y), 4, 2); ctx.fillRect(Math.round(m2.x) - 1, Math.round(m2.y) - 1, 2, 1); }
   }
-  function buildMs(type) { return type === 'basin' ? 2200 : type === 'psd' ? 1900 : type === 'exit' || type === 'dam' || type === 'apron' ? 1600 : type === 'dike' || type === 'blanket' ? 1400 : 1100; }
+  function buildMs(type) { return type === 'basin' ? 2200 : type === 'psd' ? 1900 : type === 'exit' || type === 'dam' || type === 'apron' ? 1600 : type === 'dike' || type === 'blanket' ? 1400 : type === 'curtain' ? 2000 : 1100; }
 
 
   // ---------- frame ----------
@@ -492,7 +495,7 @@
   };
 
   // ---------- gameplay ----------
-  var TYPE_NAME = { G: 'Grass (undisturbed)', S: 'Disturbed soil', A: 'Site access (trucks exit)', R: 'Road', D: 'Ditch (concentrated flow)', C: 'Creek (waters of the state)', I: 'Storm inlet' };
+  var TYPE_NAME = { G: 'Grass (undisturbed)', S: 'Disturbed soil', A: 'Site access (trucks exit)', R: 'Road', D: 'Ditch (concentrated flow)', C: 'Creek (waters of the state)', I: 'Storm inlet', W: 'In-water work (outfall / bank work in the water)' };
   function onTap(cx, cy) {
     if (G.phase !== 'plan') return;
     var i = screenToTile(cx, cy); if (i < 0) return;
@@ -523,7 +526,7 @@
   function placeControl(tool, i, quiet) {
     var why = placeBlock(tool, i);
     if (why) { if (!quiet) { toast(why); if (/budget/.test(why)) { snd('buzz'); flashMoney(); } } return false; }
-    G.controls.push({ type: tool, tile: i, round: G.round || 0 }); snd({ dike: 'dirt', blanket: 'unroll', psd: 'clank', apron: 'rocks' }[tool] || 'thunk');
+    G.controls.push({ type: tool, tile: i, round: G.round || 0 }); snd({ dike: 'dirt', blanket: 'unroll', psd: 'clank', apron: 'rocks', curtain: 'splash' }[tool] || 'thunk'); if (tool === 'curtain') setTimeout(function () { snd('anchor'); }, 700);
     G.born[G.controls.length - 1] = performance.now();
     G.history.push({ op: 'add' }); G.ghostKey = null;
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ }
@@ -569,6 +572,7 @@
     var here = G.controls.filter(function (c) { return c.tile === i; }).map(function (c) { return S.CONTROLS[c.type].name; });
     el.innerHTML = '<b>' + TYPE_NAME[ty] + '</b><br>Slope ' + sl.toFixed(1) + '% · Drains ' + ac.toFixed(2) + ' ac' +
       (sim.dir[i] < 0 ? '<br>Outlet: ' + sim.sink[i] : '') + (here.length ? '<br>Has: ' + here.join(', ') : '') +
+      (ty === 'C' || ty === 'W' ? '<br>Water: ' + S.waterAt(G.L, i).d + ' ft deep, current ' + S.waterAt(G.L, i).v + ' ft/s' : '') +
       (ty === 'D' ? '<br>Max dam spacing: ' + Math.round(S.RULES.damHeightFt / Math.max(0.001, sl / 100)) + ' ft (game rule)' : '');
     el.classList.remove('hidden');
     clearTimeout(showTileInfo.t); showTileInfo.t = setTimeout(function () { el.classList.add('hidden'); }, brief ? 1800 : 4500);
@@ -622,6 +626,7 @@
     if (id === 'dike') { x.fillStyle = '#8a6038'; x.fillRect(5, 11, 22, 4); x.fillStyle = '#c49460'; x.fillRect(6, 10, 20, 2); }
     if (id === 'blanket') { x.fillStyle = '#d9bd6a'; poly(x, [16, 8, 27, 13, 16, 18, 5, 13], '#d9bd6a'); x.fillStyle = '#9fd06c'; for (q = 0; q < 5; q++) x.fillRect(8 + q * 4, 11 + (q % 2), 1, 4); }
     if (id === 'psd') { x.fillStyle = '#2a2a2e'; for (q = 0; q < 12; q++) x.fillRect(8 + q, 7 + q * 0.6, 4, 4); x.fillStyle = '#b8b8c0'; x.fillRect(6, 6, 6, 4); }
+    if (id === 'curtain') { poly(x, [16, 6, 30, 13, 16, 20, 2, 13], '#3f7fbf'); for (q = 0; q < 6; q++) { x.fillStyle = q % 3 ? '#f4c21c' : '#e88a1a'; x.fillRect(5 + q * 4, 12 - (q % 2), 4, 3); } x.fillStyle = 'rgba(70,52,30,.6)'; x.fillRect(5, 15, 24, 3); }
     if (id === 'apron') { for (q = 0; q < 14; q++) { x.fillStyle = ['#d6d6d0', '#a8a8a2', '#86867f'][q % 3]; x.fillRect(8 + (q * 5) % 16, 9 + (q * 3) % 7, 3, 2); } }
     if (id === 'seed') { for (q = 0; q < 12; q++) { x.fillStyle = q % 3 ? '#e6cf7a' : '#7fbf5f'; x.fillRect(8 + (q * 5) % 16, 9 + (q * 3) % 7, 2, 1); } }
     void save; return c;
@@ -712,7 +717,7 @@
     if (G.L.actual.intensity !== G.L.forecast.intensity) banner('⚡ Surprise! ' + G.L.actual.label + '<br><small>Bigger than the ' + G.L.forecast.label + ' forecast</small>');
   }
   function snd(n) { if (window.SWP3Sound) SWP3Sound.play(n); }
-  function agedControls() { return G.controls.map(function (c) { return { type: c.type, tile: c.tile, age: (G.round || 0) - (c.round || 0) }; }); }
+  function agedControls() { return G.controls.map(function (c) { return { type: c.type, tile: c.tile, age: (G.round || 0) - (c.round || 0), round: c.round || 0 }; }); }
   function replayStorm() { // re-watch the last storm; the score is not recomputed
     if (!G.scoreRes) return; G.phase = 'storm'; G.sim = G.scoreRes.result; G.speed = 1; startStormParticles(); G.replay = true;
     $('stormHud').classList.remove('hidden'); $('stormLabel').textContent = '↻ ' + G.L.actual.label; if (window.SWP3Sound) SWP3Sound.rain(G.L.actual.intensity);
@@ -792,7 +797,7 @@
   function trySolution() {
     var cs = SWP3Solutions.controlsFor(G.L.id, G.L.W), now = performance.now();
     G.history.push({ op: 'replace', prev: G.controls.slice() });
-    G.controls = cs.map(function (c) { return { type: c.type, tile: c.tile, round: G.round || 0 }; });
+    G.controls = cs.map(function (c) { return { type: c.type, tile: c.tile, round: c.type === 'curtain' ? 0 : G.round || 0 }; }); // the stored plan deploys curtains before work starts
     G.born = {}; G.controls.forEach(function (c, k) { G.born[k] = now + k * 60; });
     G.solGhost = null; snd('thunk'); updateHud(); toast('Solution placed. Press 🌧 Rain Check (Undo restores your plan).');
   }

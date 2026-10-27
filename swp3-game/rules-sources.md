@@ -104,3 +104,23 @@ Sources were read directly on 2026-10-26 from ftp.txdot.gov. The standard sheets
 | Gully (concentrated flow > 0.5 ac on bare slope > 3:1), scour without apron | gullyRate 30, scour 40 per ac | **game rule** |
 | Costs | dike $555 = Item 506 earthwork $39.98/CY × 13.9 CY; blanket $450 = 169 Cl 1 Ty C $1.62/SY × 278 SY (1 bid only); riprap $875 = 432 stone Ty R dry 18 in. $218.75/CY × 4 CY; pipe drain $1,800 = **game cost** | TxDOT bid tabs (data.texas.gov, lets 2024-09 → 2026-10) |
 | Level 8 | dikes needed (6.0 → 3.2 ac at PSD), PSD + apron needed, blankets needed for 3 stars | tests in test.js |
+
+## v6: rendering quality tiers (no rule changes)
+Low/Medium/High draw tiles at 64×32 / 96×48 / 128×64 px. Game logic and picking stay in 64×32 base units, and the geometry is snapped so it scales exactly. Node tests check that art and picking agree at all three sizes on every level.
+
+## v7: floating turbidity curtain (level 9)
+
+Source, read directly 2026-10-26: **TxDOT Special Specification 5129, Floating Turbidity Barrier** (08-21, statewide; replaced void SS5048): <https://ftp.txdot.gov/pub/txdot-info/cmd/cserve/specs/2014/spec/ss5129.pdf>
+
+| Rule in game | Value | Basis |
+|---|---|---|
+| Max current | 5 ft/s; faster water = washed out | **TxDOT SS5129 §1**: "enough for a flow condition where the velocity of flow may reach 5 ft. per second (or a current of approximately 3 knots)" |
+| Deploy before work | a curtain placed after a storm already ran = "late" (40% trap, fails 3 stars) | **TxDOT SS5129 §3**: "Place the FTB before commencement of any work that could impact the area of concern." The 40% is a **game rule** |
+| Closed enclosure | ends tied to the bank; any gap to open water = violation | **TxDOT SS5129 §3**: "When located adjacent to a shoreline or bank, the ends of the curtain will be secured to fully enclose the area" |
+| Ballast / anchoring | chain ballast, anchors, mooring buoys (shown in sprite) | **TxDOT SS5129 §2.6–2.8, §3** |
+| Materials (info card) | 18–22 oz PVC-coated nylon, bright yellow/orange, ≥ 6 in. freeboard, 5/16 in. chain, lighted buoys 100 ft o.c. when shown | **TxDOT SS5129 §2** |
+| Max depth 6 ft | standard 5 ft skirt reaching within about 1 ft of the bottom | **game rule**. The "within 1 ft of the bottom" practice comes from a TxDOT/TTI sediment-control report (ROSAP 73230, secondary). It is not in SS5129 |
+| Only on water tiles; wasted on land, on the work tile, or with no in-water work | — | **game rule** |
+| Trap 90%; in-water work load 25 per tile per storm; contains runoff entering the enclosed water | — | **game rule** |
+| Cost $1,250 per 50 LF | — | **game cost**. SS5129 pays per LF (furnish/install, remove), but the bid data has no statewide average |
+| Level 9 water | cove 3–4 ft at ≤ 0.8 ft/s, 8–9 ft hole at the cove mouth, main channel 5 ft at 6.5 ft/s | level design (game values) |

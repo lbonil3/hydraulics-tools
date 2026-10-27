@@ -43,7 +43,14 @@
     gullyRate: 30,          // game rule: gully sediment per storm-adjusted acre per steep tile (x slope)
     psdMaxAc: 5,            // TxDOT EC(7)-16 usage guidelines: drainage area to a pipe slope drain should not exceed 5 ac
     psdSizes: [[12, 0.5], [18, 1.5], [21, 2.5], [24, 3.5], [30, 5.0]], // TxDOT EC(7)-16 design criteria: diameter (in) vs max drainage area (ac)
-    psdScourRate: 40        // game rule: scour at an unprotected pipe outlet, per storm-adjusted acre
+    psdScourRate: 40,       // game rule: scour at an unprotected pipe outlet, per storm-adjusted acre
+    // --- v6: floating turbidity curtain ---
+    curtainMaxVel: 5,       // TxDOT Special Specification 5129 (08-21) 1: FTB and installation must be enough for flow up to 5 ft/s (~3 knots)
+    curtainMaxDepth: 6,     // game rule: standard 5 ft skirt; skirt should reach within ~1 ft of the bottom (TxDOT/TTI sediment-control report, FHWA-funded ROSAP 73230)
+    curtainTrap: 0.9,       // game rule
+    curtainLateTrap: 0.4,   // game rule: deployed after in-water work had already started
+    inWaterLoad: 25,        // game rule: sediment per in-water work tile per storm (not scaled by rain)
+    waterDefault: { d: 4, v: 3 } // game rule: creek depth (ft) / velocity (ft/s) where a level does not set them
   };
 
   // Costs: TxDOT low-bid statewide averages (Bid Tabulations on data.texas.gov, lets 2024-09 to 2026-10,
@@ -59,6 +66,7 @@
     dike: { name: 'Diversion dike', short: 'Dike', cost: 555, qty: '50 LF (13.9 CY)', unitNote: '506 Earthwork (Erosn & Sedmt Cont) ~$39.98/CY x 13.9 CY (EC(4) 18 in. high, 2 ft top, 2:1 sides, 50 LF)' },
     blanket: { name: 'Erosion control blanket', short: 'Blanket', cost: 450, qty: '278 SY', unitNote: '169 Soil Retention Blankets (Cl 1)(Ty C) ~$1.62/SY x 278 SY (only 1 recent bid: low confidence)' },
     psd: { name: 'Pipe slope drain', short: 'Pipe drain', cost: 1800, qty: '1 run (~100 LF)', unitNote: 'game cost (no recent TxDOT bid item for temporary pipe slope drains in the bid data)' },
+    curtain: { name: 'Floating turbidity curtain', short: 'Curtain', cost: 1250, qty: '50 LF', unitNote: 'game cost ~$25/LF (TxDOT SS5129 pays per LF furnish/install + remove; no recent statewide bid average in the bid data)' },
     apron: { name: 'Outlet riprap apron', short: 'Riprap', cost: 875, qty: '4 CY', unitNote: '432 Riprap (Stone Ty R)(Dry)(18 in) ~$218.75/CY x 4 CY (EC(7) apron 6 x dia long, 3 x dia wide)' }
   };
 
@@ -241,6 +249,30 @@
       L.tip = 'Inspect the pad low point: with the hillside draining onto it the pipe drain sees more than 5 ac. Dikes on the grass above the pad cut that down. Seed alone washes off a slope steeper than 3:1.';
       L.hints = ['Water from the grass hill runs onto the pad and to its centre, then pours down the steep fill. Inspect the centre of the pad edge.', 'Diversion dikes along the grass row just above the pad, a pipe slope drain at the pad edge low point with a riprap apron at its outlet on the bench, and blankets (with seed) on the slope face.'];
       L.hintTiles = [9 * W + 10];
+    } else if (n === 9) {
+      // Outfall construction in a quiet cove off a fast creek. In-water work tiles (W) muddy the water directly.
+      L.water = {};
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        var hz, cove = x >= 5 && x <= 11;
+        if (y <= 7) hz = 20 - y;                                   // land sloping south to the cove (2%)
+        else if (y <= 10) hz = cove ? 5 : 7 - (y - 8) * 0.5;      // cove water, low banks either side
+        else if (y <= 13) hz = 4;                                  // main channel
+        else hz = 6 + (y - 14) * 0.5;                              // far bank drains back north
+        h[y * W + x] = hz + r() * 0.01;
+        if ((y >= 8 && y <= 10 && cove) || (y >= 11 && y <= 13)) { set(x, y, 'C'); L.water[y * W + x] = y >= 11 ? { d: 5, v: 6.5 } : { d: y === 8 ? 3 : 4, v: 0.4 }; }
+      }
+      L.water[10 * W + 10] = { d: 8, v: 0.6 }; L.water[10 * W + 11] = { d: 9, v: 0.8 };   // dredged hole near the mouth
+      for (x = 7; x <= 9; x++) { set(x, 8, 'W'); L.water[8 * W + x] = { d: 3, v: 0.3 }; }
+      for (y = 2; y <= 7; y++) for (x = 5; x <= 11; x++) set(x, y, y === 7 ? 'G' : 'S');
+      for (x = 0; x < W; x++) set(x, 0, 'R');
+      set(8, 1, 'A');
+      L.name = 'Outfall in a quiet cove'; L.budget = 14000;
+      L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '2-yr storm', intensity: 1.0 };
+      L.goal = 'Build a new outfall where the cove meets the bank. The work stirs up the bed right in the water, where silt fence cannot help. Contain the plume.';
+      L.lesson = 'In-water work needs a floating turbidity curtain: anchored, ends tied to the bank so it fully encloses the work, deployed BEFORE work starts, and only where the current is slow and the skirt reaches near the bottom (TxDOT SS5129).';
+      L.tip = 'Inspect the water: the cove is slow (under 1 ft/s), the main channel runs about 6.5 ft/s, and the mouth of the cove has a 8-9 ft deep hole.';
+      L.hints = ['The muddy tiles at the shore are in-water work. Inspect the cove and the channel: depth and current matter for a curtain.', 'Ring the work tiles with curtains on the slow, shallow water next to them (or close off the whole cove one row out), plus silt fence on the shore if the pad still drains outside the ring, and a construction exit.'];
+      L.hintTiles = [8 * W + 8];
     }
   }
 
@@ -288,13 +320,15 @@
   }
 
   // ---- Flow direction (D4 steepest descent) ----
-  function isSink(type) { return type === 'C' || type === 'I'; }
+  function isSink(type) { return type === 'C' || type === 'I' || type === 'W'; }
+  function isWater(type) { return type === 'C' || type === 'W'; }
+  function waterAt(L, i) { return (L.water && L.water[i]) || RULES.waterDefault; }
 
   function flowDirections(L) {
     var W = L.W, H = L.H, n = W * H, dir = new Array(n), sink = new Array(n);
     for (var i = 0; i < n; i++) {
       var x = i % W, y = (i / W) | 0;
-      if (isSink(L.types[i])) { dir[i] = -1; sink[i] = L.types[i] === 'C' ? 'creek' : 'inlet'; continue; }
+      if (isSink(L.types[i])) { dir[i] = -1; sink[i] = L.types[i] === 'I' ? 'inlet' : 'creek'; continue; }
       var best = -1, bestDrop = 0, d, nx, ny;
       for (var d = 0; d < 4; d++) {
         nx = x + DX[d]; ny = y + DY[d];
@@ -431,6 +465,15 @@
           if (pp.outlet < 0 || !apronAt[pp.outlet]) { r.status = 'scour'; r.reason = 'PSD ' + dia + ' (' + dia + ' in., ' + effAc.toFixed(1) + ' ac) carried the flow down, but there is no riprap energy dissipator at the outlet: the jet scoured a hole at the toe (TxDOT EC(7)-16 Detail A).'; }
           else r.reason = 'PSD ' + dia + ': ' + dia + ' in. pipe for ' + effAc.toFixed(1) + ' ac (TxDOT EC(7)-16 design criteria), outlet onto a riprap apron.';
         }
+      } else if (c.type === 'curtain') {
+        var wq = waterAt(L, i);
+        if (ty === 'W') { r.status = 'wasted'; r.reason = 'This is the work zone itself. Float the curtain in the open water AROUND the work.'; }
+        else if (ty !== 'C') { r.status = 'wasted'; r.reason = 'A floating curtain only works in water. On land use silt fence.'; }
+        else if (L.types.indexOf('W') < 0) { r.status = 'wasted'; r.reason = 'No in-water work on this site to contain.'; }
+        else if (wq.v > RULES.curtainMaxVel) { r.status = 'washed out'; r.reason = 'Current here is about ' + wq.v + ' ft/s. TxDOT SS5129 sizes floating turbidity barriers for flow up to 5 ft/s; this one was dragged off its anchors and left a gap.'; }
+        else if (wq.d > RULES.curtainMaxDepth) { r.status = 'too deep'; r.reason = 'Water here is ' + wq.d + ' ft deep. A standard 5 ft skirt cannot reach within about 1 ft of the bottom, so turbid water passed underneath (game rule).'; }
+        else { r.candidate = true; r.reason = 'Curtain afloat in ' + wq.d + ' ft of water at ' + wq.v + ' ft/s.'; }
+        if ((c.round || 0) > 0 && r.candidate) r.late = true;
       } else if (c.type === 'apron') {
         if (ty === 'C') { r.status = 'violation'; r.reason = 'No riprap in the creek without a permit (game rule).'; }
         else if (!outlets[i]) { r.status = 'wasted'; r.reason = 'Outlet protection belongs at the toe where a pipe slope drain discharges.'; }
@@ -464,6 +507,33 @@
     var ac = acc[i] * TILE_AC * intensity; if (ac < RULES.gullyMinAc) return 0;
     return RULES.gullyRate * ac * slopeOf(L, dir, i);
   }
+  // Floating turbidity curtain enclosure: flood through open water from the in-water work tiles; working curtains
+  // (and the shore) are walls. If the flood reaches water at the edge of the map the enclosure has a gap.
+  function contain(L, controls, ev) {
+    var W = L.W, H = L.H, n = W * H, wall = {}, start = [], k;
+    for (k = 0; k < n; k++) if (L.types[k] === 'W') start.push(k);
+    if (!start.length) return null;
+    controls.forEach(function (c, j) { if (c.type === 'curtain' && ev[j].candidate) wall[c.tile] = j; });
+    var inside = {}, q = start.slice(), escape = false, touched = {};
+    start.forEach(function (i) { inside[i] = true; });
+    while (q.length) {
+      var i = q.pop(), x = i % W, y = (i / W) | 0;
+      if (x === 0 || y === 0 || x === W - 1 || y === H - 1) escape = true;
+      for (var d = 0; d < 4; d++) { var nx = x + DX[d], ny = y + DY[d]; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        var j2 = ny * W + nx; if (!isWater(L.types[j2]) || inside[j2]) continue;
+        if (wall[j2] != null) { touched[wall[j2]] = true; continue; }
+        inside[j2] = true; q.push(j2); }
+    }
+    var ks = Object.keys(touched).map(Number), late = ks.some(function (j) { return ev[j].late; }), cnt = Object.keys(inside).length;
+    controls.forEach(function (c, j) {
+      var e = ev[j]; if (c.type !== 'curtain' || !e.candidate) return;
+      if (!touched[j]) { e.status = 'wasted'; e.reason = 'Afloat, but not part of the line around the in-water work.'; return; }
+      if (escape) { e.status = 'violation'; e.reason = 'The curtain line has a gap: turbid water from the in-water work reaches open water. TxDOT SS5129: secure the ends at the bank so the barrier fully encloses the work area.'; return; }
+      if (e.late) { e.status = 'late'; e.trap = 0; e.reason = 'Deployed after in-water work had already started. TxDOT SS5129: place the barrier before any work that could affect the area. Restart the level and deploy it first.'; return; }
+      e.reason += ' Encloses ' + cnt + ' water tile' + (cnt > 1 ? 's' : '') + ' around the work (TxDOT SS5129).';
+    });
+    return { inside: inside, escape: escape, k: ks.length ? ks[0] : -1, trap: escape || !ks.length ? 0 : late ? RULES.curtainLateTrap : RULES.curtainTrap, count: cnt };
+  }
   function seedFactorFor(age) { var a = RULES.seedGrowIn; return a[Math.max(0, Math.min(a.length - 1, age | 0))]; }
   // EPA: >= 50 ft from storm drains, open ditches, waterbodies. Tiles are 50 ft, so any tile touching one (incl. diagonal) is too close.
   function nearSensitive(L, i) {
@@ -482,6 +552,7 @@
     var n = L.W * L.H, f0 = flowDirections(L), dk = applyDikes(L, f0, flowAccumulation(L, f0.dir), controls, intensity);
     var f = dk.f, dir = f.dir, acc = dk.acc;
     var ev = evalControls(L, f, acc, controls, intensity, dk.ev);
+    var region = contain(L, controls, ev);
     var seeded = {}, cover = {}, tileCtl = {}, fenceCtl = {}, exitOK = false, washOK = false, piped = {}, scour = {};
     controls.forEach(function (c, k) {
       if (c.type === 'blanket') { if (ev[k].status === 'ok') cover[c.tile] = RULES.blanketFactor; }
@@ -500,13 +571,16 @@
     for (var q = 0; q < ord.length; q++) {
       var i = ord[q];
       var cf = (seeded[i] || 1) * (cover[i] || 1);
-      gen[i] = erosion(L, dir, i, intensity, cf < 1 ? cf : undefined) + gully(L, dir, acc, i, intensity, piped) + (scour[i] || 0);
+      gen[i] = erosion(L, dir, i, intensity, cf < 1 ? cf : undefined) + gully(L, dir, acc, i, intensity, piped) + (scour[i] || 0) + (L.types[i] === 'W' ? RULES.inWaterLoad : 0);
       var s = load[i] + gen[i];
       (tileCtl[i] || []).forEach(function (k) { var t = s * ev[k].trap; trappedBy[k] = (trappedBy[k] || 0) + t; s -= t; });
       if (dir[i] >= 0) {
         (fenceCtl[i] || []).forEach(function (k) { var t = s * ev[k].trap; trappedBy[k] = (trappedBy[k] || 0) + t; s -= t; });
         passed[i] = s; load[dir[i]] += s;
-      } else { passed[i] = s; out[f.sink[i]] += s; }
+      } else {
+        if (region && region.inside[i] && region.trap > 0) { var tc = s * region.trap; trappedBy[region.k] = (trappedBy[region.k] || 0) + tc; s -= tc; }
+        passed[i] = s; out[f.sink[i]] += s;
+      }
     }
     var hasAccess = L.types.indexOf('A') >= 0;
     if (hasAccess && !exitOK) out.tracked = RULES.trackLoad * intensity;
@@ -515,7 +589,7 @@
     var discharge = out.creek + out.inlet + out.offsite + out.tracked + out.washout;
     var cost = controls.reduce(function (a, c) { return a + CONTROLS[c.type].cost; }, 0);
     return { dir: dir, sink: f.sink, acc: acc, gen: gen, passed: passed, out: out, discharge: discharge,
-      evals: ev, trappedBy: trappedBy, cost: cost, intensity: intensity };
+      evals: ev, trappedBy: trappedBy, cost: cost, intensity: intensity, curtainRegion: region };
   }
 
   function score(L, controls, opts) {
@@ -532,6 +606,8 @@
     }
     if (L.requireBasin && !controls.some(function (c, k) { return c.type === 'basin' && res.evals[k].status === 'ok'; }))
       failed.push({ index: -3, control: null, status: 'missing', reason: 'Over 10 acres disturbed with no working sediment basin. TxDOT Item 506: provide a basin with 3,600 cf of storage per acre drained.' });
+    if (L.types.indexOf('W') >= 0 && !(res.curtainRegion && res.curtainRegion.trap > 0))
+      failed.push({ index: -4, control: null, status: 'missing', reason: 'In-water work with no closed floating turbidity curtain around it: the plume reached open water (TxDOT SS5129).' });
     if (res.out.washout > 0) failed.push({ index: -2, control: null, status: 'missing', reason: 'No working concrete washout: washwater ran off the site (EPA concrete washout BMP; game load).' });
     if (res.out.tracked > 0) failed.push({ index: -1, control: null, status: 'missing', reason: 'No construction exit: trucks tracked mud onto the road (TxDOT Item 506 4.4.4 construction exits).' });
     var sc = Math.round(90 * Math.min(1, R / RULES.goodReduction) + 10 * budgetLeft) - 25 * violations - 3 * wasted - 4 * (failed.length - violations - wasted - (res.out.tracked > 0 ? 1 : 0) - (res.out.washout > 0 ? 1 : 0)) - (res.out.tracked > 0 ? 8 : 0) - (res.out.washout > 0 ? 8 : 0);
@@ -544,6 +620,6 @@
   var api = { TILE_FT: TILE_FT, TILE_AC: TILE_AC, RULES: RULES, CONTROLS: CONTROLS, rng: rng, makeLevel: makeLevel,
     flowDirections: flowDirections, flowAccumulation: flowAccumulation, slopeOf: slopeOf, erosion: erosion,
     STORMS: STORMS, stormByKey: stormByKey, defaultSandbox: defaultSandbox, makeSandbox: makeSandbox, editTile: editTile, sandboxData: sandboxData,
-    evalControls: evalControls, applyDikes: applyDikes, psdPath: psdPath, psdSize: psdSize, gully: gully, seedFactorFor: seedFactorFor, nearSensitive: nearSensitive, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 8 };
+    evalControls: evalControls, contain: contain, waterAt: waterAt, applyDikes: applyDikes, psdPath: psdPath, psdSize: psdSize, gully: gully, seedFactorFor: seedFactorFor, nearSensitive: nearSensitive, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 9 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SWP3 = api;
 })(this);

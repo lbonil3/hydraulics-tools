@@ -17,6 +17,7 @@
     D: ramp(['#9a7a4a', '#7e623a', '#634c2d', '#4a3820']),
     C: ramp(['#5aa0dc', '#3f80c0', '#336aa3', '#27558a']),
     I: ramp(['#8e8e95', '#76767d', '#606067', '#4a4a50']),
+    W: ramp(['#a08a5c', '#86704a', '#6c5a3c', '#54452e']),   // turbid water over in-water work
     wallSoil: ramp(['#8a6038', '#74502e', '#5e4024', '#47301b']),
     wallSoil2: ramp(['#94683e', '#7d5733', '#664628', '#4e351e']),
     wallCreek: ramp(['#3a74ad', '#2f6194', '#264f7a', '#1d3e61']),
@@ -37,7 +38,7 @@
     for (var s = 0; s <= W + H - 2; s++) for (var ty = 0; ty < H; ty++) {
       var tx = s - ty; if (tx < 0 || tx >= W) continue;
       var i = ty * W + tx, t = g.types[i], px0 = g.ox + (tx - ty) * TW / 2, py0 = g.oy + (tx + ty) * TH / 2 - g.z[i];
-      var depth = g.z[i] + BASE, wall = t === 'C' ? R.wallCreek : (t === 'R' || t === 'I') ? R.wallRoad : null;
+      var depth = g.z[i] + BASE, wall = t === 'C' || t === 'W' ? R.wallCreek : (t === 'R' || t === 'I') ? R.wallRoad : null;
       // ---- walls (left lit, right shaded), strata + AO ----
       for (var side = 0; side < 2; side++) for (var c = 0; c < TW / 2; c++) {
         var x = side ? px0 + c : px0 - TW / 2 + c, yTop = side ? py0 + TH - (c + 0.5) * 0.5 : py0 + TH / 2 + (c + 0.5) * 0.5;
@@ -74,6 +75,8 @@
         else if (t === 'D') { var m = Math.abs(a - 0.5) * 2; // 0 centre .. 1 bank
           if (m > 0.86) cc = R.G[tone(nn, bb, -0.1)]; else if (m > 0.8) cc = [196, 170, 112]; else if (m > 0.34) cc = rp[tone(nn, bb, (0.8 - m) * 0.35 - 0.12)]; else if (m > 0.28) cc = [60, 46, 30]; else cc = (hash(X, Y, 8) > 0.55 ? [96, 140, 176] : [74, 112, 150]); if (m <= 0.28 && hash(X, Y, 9) > 0.93) cc = [190, 220, 240]; }
         else if (t === 'C') { cc = rp[tone(nn, bb, 0.1 + (Math.abs(a - 0.5) < 0.3 ? 0.15 : 0))]; }
+        else if (t === 'W') { var sw = Math.sin(u * 9 + v * 5 + hash(X >> 2, Y >> 2, 12) * 2); cc = rp[tone(nn, bb, sw * 0.12)]; if (sw > 0.92 && hash(X, Y, 13) > 0.5) cc = [196, 176, 132];
+          var pu = (u * 3) % 1, pv = (v * 3) % 1; if (Math.abs(pu - 0.5) < 0.09 && Math.abs(pv - 0.5) < 0.09 && (Math.floor(u * 3) + Math.floor(v * 3)) % 2 === 0) cc = pu < 0.47 ? [150, 120, 80] : [90, 64, 40]; } // timber piles
         else cc = rp[1];
         if (t === 'I') { var gu = Math.abs(u - 0.5), gv = Math.abs(v - 0.5);
           if (gu < 0.24 && gv < 0.24) { cc = (gu > 0.2 || gv > 0.2) ? (gu > 0.225 || gv > 0.225 ? [120, 120, 126] : [176, 176, 182]) : ((Math.floor(u * 40) % 2) ? [40, 40, 44] : (Q > 1 && Math.floor(u * 80) % 2 ? [128, 128, 136] : [96, 96, 104])); } }
@@ -178,6 +181,18 @@
         r(ctx, tx - 3, ty - 3, 7, 6, '#2a2a2e'); r(ctx, tx - 3, ty - 3, 7, 1, q % 3 ? '#6a6a72' : '#9a9aa4'); r(ctx, tx - 3, ty + 2, 7, 1, '#141416'); if (q % 2) fd(ctx, tx - 3, ty - 1, 14, 1, '#4a4a52'); }
       r(ctx, cx - 6, cy - 4, 12, 7, '#b8b8c0'); r(ctx, cx - 5, cy - 3, 10, 5, '#1a1a1c'); r(ctx, cx - 6, cy - 4, 12, 1, '#e8e8f0');  // flared end section
       for (q = 1; q < 5; q++) { if (q / 5 > prog) break; var hx = cx + (to.x - cx) * q / 5, hy = cy + (to.y - cy) * q / 5; r(ctx, hx - 5, hy - 5, 2, 9, '#8a5e2c'); r(ctx, hx + 4, hy - 5, 2, 9, '#8a5e2c'); r(ctx, hx - 5, hy - 5, 11, 1, '#c08a4a'); }
+    } else if (type === 'curtain') {
+      // floating turbidity barrier: yellow PVC float boom on the water, weighted skirt below, mooring buoy; deployed from a work boat
+      var segs = 16, sh2 = Math.round(segs * prog), L0 = at(p, 0.0, 1.0), L1 = at(p, 1.0, 0.0);
+      for (q = 0; q < sh2; q++) { var f0 = (q + 0.5) / segs, bxx = L0.x + (L1.x - L0.x) * f0, byy = L0.y + (L1.y - L0.y) * f0 + Math.sin(t / 420 + q * 0.7) * 0.8;
+        ctx.fillStyle = 'rgba(70,52,30,.45)'; ctx.fillRect(bxx - 2, byy + 1, 4, 5);                    // skirt seen through the water
+        fd(ctx, bxx - 2, byy + 5, 8, 1, 'rgba(40,40,44,.6)');                                            // ballast chain at the hem
+        r(ctx, bxx - 2, byy - 2, 4, 3, q % 4 === 0 ? '#e88a1a' : '#f4c21c'); r(ctx, bxx - 2, byy - 2, 4, 1, '#fff08a'); // float + connector bands
+        fd(ctx, bxx - 1, byy - 2, 2, 1, '#ffffff'); r(ctx, bxx - 3, byy + 1, 6, 1, 'rgba(230,245,255,.5)'); }  // glint, wake ripple
+      if (prog >= 1) { var mb = at(p, 0.5, 0.5), bob = Math.sin(t / 380) * 1; r(ctx, mb.x - 2, mb.y - 6 + bob, 5, 5, '#e85a1a'); r(ctx, mb.x - 2, mb.y - 6 + bob, 5, 1, '#ffb070'); r(ctx, mb.x, mb.y - 1 + bob, 1, 6, '#d0d0d0'); } // mooring buoy + anchor line
+      else { var bf = Math.max(0, sh2 - 1) / segs, bb2 = { x: L0.x + (L1.x - L0.x) * bf, y: L0.y + (L1.y - L0.y) * bf + 4 };    // work boat paying out the boom
+        shadow(ctx, bb2.x, bb2.y + 2, 9, 2, 0.3); r(ctx, bb2.x - 8, bb2.y - 3, 16, 4, '#b8bcc4'); r(ctx, bb2.x - 8, bb2.y - 3, 16, 1, '#e8ecf0'); r(ctx, bb2.x - 6, bb2.y + 1, 12, 1, '#6a6e76');
+        r(ctx, bb2.x + 2, bb2.y - 9, 3, 6, '#ff7a1a'); r(ctx, bb2.x + 2, bb2.y - 11, 3, 2, '#e0a878'); r(ctx, bb2.x + 1, bb2.y - 12, 5, 1, '#ffd400'); }
     } else if (type === 'apron') {
       // riprap energy dissipator pad (EC(7) Detail A), stone placed one by one
       diamond(ctx, p, 0.1, 'rgba(0,0,0,.2)');

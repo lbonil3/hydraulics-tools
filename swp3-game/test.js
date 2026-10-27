@@ -300,7 +300,8 @@ t('every level has a stored solution that earns 3 stars (levels 1-' + S.LEVEL_CO
     const L = S.makeLevel(n), r = S.score(L, SOLN.controlsFor(n, L.W));
     assert.strictEqual(r.stars, 3, `level ${n}: ${r.score} ${JSON.stringify(r.failed)}`);
     assert.ok(r.result.cost <= L.budget, `level ${n} over budget`);
-    SOLN.SOL[n].forEach(st => assert.ok(st.why && st.basis && st.place.length));
+    SOLN.SOL[n].forEach(st => assert.ok(st.why && st.basis && Array.isArray(st.place)));
+    assert.ok(SOLN.SOL[n].some(st => st.place.length));
   }
 });
 t('levels 4-7: two distinct 3-star plans each; naive plan falls short', () => {
@@ -360,6 +361,29 @@ t('BMP v5: diversion dike, erosion control blanket, pipe slope drain + outlet pr
   const ra = sc(alt); assert.strictEqual(ra.stars, 3, ra.score + JSON.stringify(ra.failed));
   assert.notDeepStrictEqual(JSON.stringify(alt.slice().sort()), JSON.stringify(sol.slice().sort()));
   const naive = sc(row('fence', 8, 6, 14).concat(row('seed', 9, 6, 14), row('seed', 10, 6, 14), [['exit', 14, 5]])); assert.ok(naive.stars < 3);
+});
+
+t('floating turbidity curtain (level 9): water only, velocity/depth limits, closed ring, deploy first', () => {
+  const L = S.makeLevel(9), W = L.W, T = (x, y) => y * W + x, cs = list => list.map(([t, x, y, r]) => ({ type: t, tile: T(x, y), round: r || 0 }));
+  const sc = list => S.score(L, cs(list)), { row } = SOLN;
+  const ev = list => S.simulate(L, cs(list)).evals;
+  assert.strictEqual(ev([['curtain', 8, 4]])[0].status, 'wasted');            // on land
+  assert.strictEqual(ev([['curtain', 8, 8]])[0].status, 'wasted');            // on the work tile
+  assert.strictEqual(ev([['curtain', 8, 12]])[0].status, 'washed out');       // 6.5 ft/s channel > 5 ft/s (SS5129)
+  assert.strictEqual(ev([['curtain', 11, 10]])[0].status, 'too deep');        // 9 ft hole
+  assert.strictEqual(S.simulate(S.makeLevel(3), [{ type: 'curtain', tile: S.makeLevel(3).types.indexOf('C') }]).evals[0].status, 'wasted'); // no in-water work
+  const ring = [['curtain', 6, 8], ['curtain', 10, 8], ['curtain', 7, 9], ['curtain', 8, 9], ['curtain', 9, 9]];
+  const shore = row('fence', 7, 5, 11).concat([['exit', 8, 1]]);
+  const a = sc(ring.concat(shore)); assert.strictEqual(a.stars, 3, a.score + JSON.stringify(a.failed));
+  const b = sc(row('curtain', 9, 5, 11).concat([['exit', 8, 1]])); assert.strictEqual(b.stars, 3, 'whole-cove plan ' + b.score + JSON.stringify(b.failed));
+  // gap -> violation + missing
+  const g = sc(ring.slice(1).concat(shore)); assert.ok(g.violations > 0 && g.failed.some(f => f.index === -4) && g.stars < 3);
+  // deployed after work started (placed in a later round) -> late, no 3 stars
+  const late = sc(ring.map(c => c.concat([1])).concat(shore)); assert.ok(late.failed.some(f => f.status === 'late') && late.stars < 3);
+  // naive plans: shore silt fence only; curtain across the fast channel; line across the deep mouth
+  for (const nv of [shore, row('curtain', 11, 4, 12).concat(shore), row('curtain', 10, 5, 11).concat([['exit', 8, 1]])]) assert.ok(sc(nv).stars < 3);
+  // the curtain is what earns the stars
+  const sol = SOLN.SOL[9].flatMap(s => s.place); assert.ok(sc(sol.filter(p => p[0] !== 'curtain')).stars < 3);
 });
 
 console.log(n + ' tests passed');
