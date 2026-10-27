@@ -261,7 +261,7 @@ a.cn{display:flex;align-items:center;justify-content:space-between;gap:8px;min-h
 .chip{min-height:44px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #1b5e45;background:#fff;color:#1b5e45;font-weight:700;font-size:14px;cursor:pointer}
 .chip.on{background:#1b5e45;color:#fff}
 .radios{margin:4px 0 8px}
-details.export>summary,details.more>summary{list-style:none;display:flex;align-items:center;min-height:44px;font-weight:700;color:#1b5e45;cursor:pointer}
+details.export>summary,details.more>summary{list-style:none;display:flex;align-items:center;min-height:44px;min-width:0;font-weight:700;color:#1b5e45;cursor:pointer}
 details.export>summary::-webkit-details-marker,details.more>summary::-webkit-details-marker{display:none}
 details.export>summary::after,details.more>summary::after{content:"";margin-left:auto;width:9px;height:9px;border-right:2px solid #1b5e45;border-bottom:2px solid #1b5e45;transform:rotate(-45deg)}
 details.export[open]>summary::after,details.more[open]>summary::after{transform:rotate(45deg)}

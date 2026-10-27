@@ -219,8 +219,6 @@
       '<li>Controls from the plan set and the ' + SWP + '. Practices are also described on the ' + BMP + '. Build from the current EC sheet in the plan set, and from the ' + SPEC + '. Ask the project engineer which sheet revision this job uses.</li>' +
       '</ul></div></details>';
 
-    h += checklistHtml(view, v);
-
     if (filled.length) {
       h += '<section class="card fields" id="sumFilled"><h2>On this summary</h2>' + filled.map(fieldBlock).join('') + '</section>';
     }
@@ -229,6 +227,7 @@
         empty.map(fieldBlock).join('') + '</div></details>';
     }
 
+    h += checklistHtml(view, v);
     h += '<section class="card people"><h2>Who does what</h2>' + view.people.lines.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</section>';
 
     h += '<section class="card remind"><h2>While the job is open</h2>' + view.reminders.map(function (r, i) {
