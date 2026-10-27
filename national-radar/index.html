@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="National Radar">
+  <meta name="theme-color" content="#0a1020">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>National Radar – big consultant drainage and water opportunities, all states</title>
+  <link rel="stylesheet" href="../home-btn.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-l">
+    <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">&#8592; Home</a>
+    <h1>National Radar</h1>
+  </div>
+  <div class="fresh" id="fresh" role="status" aria-live="polite"><span class="dot" id="freshDot"></span><span id="freshTxt">Loading data…</span></div>
+</header>
+
+<section class="banner" id="banner" aria-label="Read this first">
+  <p id="bannerTxt"><b>Fee &gt; $20M as stated by the source, engineering consultants only.</b> Most agencies publish no fee before award, so counts are small and true; nothing is padded or estimated.</p>
+  <button type="button" class="linkbtn" id="btnHow" aria-expanded="false" aria-controls="how">What counts, and what does not</button>
+  <div id="how" hidden></div>
+</section>
+
+<nav class="modes" id="modes" aria-label="Which lane">
+  <button type="button" class="on" data-mode="water" aria-pressed="true">Water &amp; drainage, fee &gt; $20M</button>
+  <button type="button" data-mode="road" aria-pressed="false">Roadway + drainage</button>
+</nav>
+<nav class="scopes" id="scopes" aria-label="What to show"></nav>
+<section class="kpis" id="kpis" aria-label="Summary"></section>
+
+<section class="filters" aria-label="Filters">
+  <div class="row">
+    <input id="q" type="search" inputmode="search" enterkeyhint="search" placeholder="Search title, agency, state, vendor…" aria-label="Search" autocomplete="off">
+    <button type="button" class="btn" id="btnMore" aria-expanded="false" aria-controls="adv">Filters <span id="advCount"></span></button>
+  </div>
+  <div id="adv" hidden>
+    <h3>State</h3><div class="chips" id="fState"></div>
+    <h3>Agency</h3><div class="chips" id="fAgency"></div>
+    <h3>Status <span class="hint">(as the source states it)</span></h3><div class="chips" id="fStatus"></div>
+    <h3>Sector <span class="hint">(keyword match, inferred)</span></h3><div class="chips" id="fSector"></div>
+    <h3>Source</h3><div class="chips" id="fSource"></div>
+    <h3>Stated fee, strictly greater than</h3><div class="chips" id="fFee"></div>
+    <div id="costBox" hidden>
+      <h3>Project cost (NOT a fee) <span class="hint">off by default; only for records with no stated fee</span></h3>
+      <div class="chips" id="fCost"></div>
+    </div>
+    <h3>Actions</h3>
+    <div class="chips"><button type="button" class="btn small" id="btnCsv">Export CSV</button><button type="button" class="btn small" id="btnLive">Refresh live awards</button><button type="button" class="btn small" id="btnClear">Clear filters</button></div>
+    <p class="note" id="liveNote"></p>
+  </div>
+  <div class="active" id="activeNote" hidden></div>
+</section>
+
+<main id="main">
+  <section id="v-map" class="view" aria-label="US map">
+    <div class="mapwrap">
+      <svg id="usmap" viewBox="0 0 975 610" role="img" aria-label="Map of the United States. Bubbles show state totals. Use the List tab for an accessible list."></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+    <p class="note" id="mapNote"></p>
+    <h2 class="sec">Top of this view <span class="hint" id="topHint"></span></h2>
+    <div id="mapTop" class="cards"></div>
+  </section>
+
+  <section id="v-list" class="view" hidden aria-label="List">
+    <div class="listbar">
+      <label class="sortl">Sort <select id="sort"><option value="fee">Stated value, high to low</option><option value="date">Date, soonest first</option><option value="agency">Agency</option></select></label>
+      <span id="listCount" class="hint"></span>
+    </div>
+    <div id="list" class="cards"></div>
+    <button type="button" class="btn wide" id="btnMoreRows" hidden>Show 50 more</button>
+  </section>
+
+  <section id="v-timeline" class="view" hidden aria-label="Timeline">
+    <h2 class="sec">When things happen <span class="hint">by month of the date each source gives (response due, forecast award year, contract end). Tap a bar.</span></h2>
+    <div class="scrollx" id="tlScroll"><div id="tl"></div></div>
+    <p class="note" id="tlNote"></p>
+    <h2 class="sec" id="tlSel">Soonest dates</h2>
+    <div id="tlList" class="cards"></div>
+  </section>
+
+  <section id="v-break" class="view" hidden aria-label="Breakdown">
+    <h2 class="sec">By state <span class="hint">stated value; tap to filter</span></h2><div id="bState" class="bars"></div>
+    <h2 class="sec">By agency</h2><div id="bAgency" class="bars"></div>
+    <h2 class="sec">By sector <span class="hint">(inferred from words)</span></h2><div id="bSector" class="bars"></div>
+    <h2 class="sec">By source</h2><div id="bSource" class="bars"></div>
+  </section>
+
+  <section id="v-data" class="view" hidden aria-label="Data quality and sources">
+    <h2 class="sec">Data freshness</h2><div id="dqFresh" class="panel"></div>
+    <h2 class="sec">Counts by source <span class="hint">how many rows survived each rule</span></h2><div id="dqFunnel" class="panel scrollx"></div>
+    <h2 class="sec">Why rows were excluded</h2><div id="dqExcl" class="panel"></div>
+    <h2 class="sec">Closest misses <span class="hint">excluded, but worth knowing about</span></h2><div id="dqMiss" class="cards"></div>
+    <h2 class="sec">Sources used</h2><div id="dqSrc" class="cards"></div>
+    <h2 class="sec">Sources tested, not used</h2><div id="dqNo" class="cards"></div>
+    <h2 class="sec">Rules</h2><div id="dqRules" class="panel"></div>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Views">
+  <button type="button" data-tab="map" class="on">Map</button>
+  <button type="button" data-tab="list">List</button>
+  <button type="button" data-tab="timeline">Timeline</button>
+  <button type="button" data-tab="break">Breakdown</button>
+  <button type="button" data-tab="data">Data</button>
+</nav>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <div class="sheet-bg" id="shBg"></div>
+  <div class="sheet-card">
+    <div class="sheet-head"><button type="button" class="btn small" id="shClose">Close</button><button type="button" class="star big" id="shStar" aria-label="Add to watchlist">&#9734;</button></div>
+    <div id="shBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="proj.js"></script>
+<script src="us-geo.js"></script>
+<script src="model.js"></script>
+<script src="cost.js"></script>
+<script src="roadway.js"></script>
+<script src="sources.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

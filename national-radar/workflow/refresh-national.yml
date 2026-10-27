@@ -1,0 +1,41 @@
+# Daily refresh of national-radar/data/national.json, roadway.json and cost-prices.json from public feeds.
+# INSTALL: copy this file to .github/workflows/refresh-national.yml.
+# It could not be pushed with the PR because the GitHub token used to open the PR has no "workflow" scope.
+# OPTIONAL: add a repository secret named SAM_API_KEY (Settings > Secrets and variables > Actions) to switch on the
+# SAM.gov API path. Without it the build uses the public SAM.gov daily extract, which needs no key.
+name: Refresh National Radar data
+on:
+  schedule:
+    - cron: '41 10 * * *'   # 10:41 UTC daily (5:41 AM Central during daylight time)
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: refresh-national
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run tests
+        run: node national-radar/test.js
+      - name: Build snapshot
+        env:
+          SAM_API_KEY: ${{ secrets.SAM_API_KEY }}
+        run: node scripts/build-national.js
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- national-radar/data/; then
+            echo "No data changes."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add national-radar/data/national.json national-radar/data/roadway.json national-radar/data/cost-prices.json
+            git commit -m "data(national-radar): daily snapshot refresh"
+            git push
+          fi
