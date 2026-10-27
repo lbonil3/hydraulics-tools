@@ -224,6 +224,38 @@
     return { rows: near, how: 'closest in size (fewer than ' + METHOD.MIN_NEIGHBORS + ' were within ' + METHOD.NEAR_FACTOR + 'x of your quantity)' };
   }
 
+  // ---- escalation (FHWA NHCCI, then a user-entered %/yr) ----
+  function quarterOf(d) {
+    const m = /^(\d{4})-(\d{2})/.exec(d || '');
+    return m ? m[1] + ' Q' + (Math.floor((Number(m[2]) - 1) / 3) + 1) : null;
+  }
+  function quarterMid(q) {
+    const m = /^(\d{4}) Q([1-4])$/.exec(q);
+    return Number(m[1]) + (Number(m[2]) - 1) / 4 + 0.125;
+  }
+  /**
+   * Factor from the median let date of the bids used to an expected letting date.
+   * Index part: NHCCI (seasonally adjusted) from the median-let quarter to the target quarter,
+   * or to the latest published quarter when the target is later; the remaining time uses
+   * annualPct (user input, assumed; 0 by default). Returns null when not computable.
+   */
+  function escalation(medianLet, letDate, annualPct, nhcci) {
+    if (!letDate || !medianLet || !nhcci || !nhcci.rows || !nhcci.rows.length) return null;
+    const idx = {};
+    nhcci.rows.forEach(function (r) { idx[r[0]] = r[2]; });
+    const last = nhcci.rows[nhcci.rows.length - 1][0];
+    const q0 = quarterOf(medianLet), qt = quarterOf(letDate);
+    if (!q0 || !qt || idx[q0] == null) return null;
+    const qIdxEnd = qt <= last ? qt : last;
+    if (idx[qIdxEnd] == null) return null;
+    const indexFactor = idx[qIdxEnd] / idx[q0];
+    const yrs = qt > last ? Math.max(0, yearFrac(letDate) - quarterMid(last)) : 0;
+    const r = Number(annualPct) || 0;
+    const userFactor = Math.pow(1 + r / 100, yrs);
+    return { from: q0, fromVal: idx[q0], to: qIdxEnd, toVal: idx[qIdxEnd], indexFactor: indexFactor, last: last,
+      userYears: yrs, annualPct: r, userFactor: userFactor, factor: indexFactor * userFactor, letDate: letDate };
+  }
+
   /** Plain words for where a grouped slope came from (weights are the shrinkage shares). */
   function slopeWords(g) {
     const k = METHOD.SHRINK_K;
@@ -329,6 +361,11 @@
       if (!outside && adj < p10) { adj = p10; capped = 'p10'; }
     }
     if (adj > p90 && adj > base) { adj = Math.max(base, p90); capped = capped || 'p90'; }
+    // Escalation to the expected letting date (optional).
+    const medLet = (function () { const ds = obs.map(function (o) { return o[O.DATE]; }).filter(Boolean).sort(); return ds.length ? ds[Math.floor((ds.length - 1) / 2)] : null; })();
+    const esc = opts.letDate ? escalation(medLet, opts.letDate, opts.annualPct, ctx.nhcci) : null;
+    const preEsc = adj;
+    if (esc) adj = adj * esc.factor;
     const mid = roundPrice(adj);
 
     // 4. Range from the scope's spread around its median.
@@ -408,6 +445,13 @@
     } else if (outside && slope == null) {
       comments.push('Quantity adjustment: none — no price-vs-quantity slope available, so the base is used as is.');
     }
+    if (esc) {
+      comments.push('Escalation: median let date of these bids ' + medLet + ' → expected letting ' + esc.letDate + '. FHWA NHCCI (seasonally adjusted) ' + esc.from + ' ' + esc.fromVal.toFixed(3) + ' → ' + esc.to + ' ' + esc.toVal.toFixed(3) + ' (' + (esc.indexFactor >= 1 ? '+' : '') + ((esc.indexFactor - 1) * 100).toFixed(1) + '%)' +
+        (esc.userYears > 0 ? ', then ' + esc.annualPct + '%/yr (user input, assumed) for ' + esc.userYears.toFixed(1) + ' yr past the latest published quarter' : '') +
+        ' → factor ' + esc.factor.toFixed(3) + ' (' + fmtMoney(preEsc) + ' → ' + fmtMoney(adj) + ').');
+    } else if (opts.letDate) {
+      warnings.push('Escalation not applied: no NHCCI value for the bids\' median let quarter.');
+    }
     if (houMed != null && scope === 'statewide') {
       comments.push('Houston vs statewide: Houston has ' + hou.length + ' low bid' + (hou.length === 1 ? '' : 's') + ' (median ' + fmtMoney(houMed) + ') vs statewide median ' + fmtMoney(swMed) + (hou.length < METHOD.MIN_HOUSTON_N ? '; too few to use on their own.' : '.'));
     } else if (houMed != null) {
@@ -462,6 +506,7 @@
       (allBig ? ' and an average of ' + fmtMoney(big[O.AVG]) + '/' + unit + ' across ' + big[O.NB] + ' bids' : '') +
       '; ' + fmtMoney(mid) + '/' + unit + ' used for ' + fmtQty(qty) + ' ' + unit +
       (slope != null && Math.abs(adj - base) > 1e-9 ? ' after a ' + (adj < base ? 'quantity discount' : 'small-quantity premium') + (slopeSource === 'pooled' || slopeSource === 'global' || (slopeSource === 'grouped' && g && (g.code_n || 0) < METHOD.SHRINK_K) ? ' (assumed)' : '') + (capped === 'discount' ? ' capped at ' + pct(METHOD.MAX_DISCOUNT) : '') : '') +
+      (esc ? ', escalated ' + (esc.factor >= 1 ? '+' : '') + ((esc.factor - 1) * 100).toFixed(1) + '% to ' + esc.letDate + ' by FHWA NHCCI' + (esc.userYears > 0 ? ' and ' + esc.annualPct + '%/yr (assumed)' : '') : '') +
       (extrapolated ? ', extrapolated beyond the data' : '') + ' (' + confidence.toLowerCase() + ' confidence; range ' + fmtMoney(low) + '–' + fmtMoney(high) + ').';
 
     return {
@@ -473,6 +518,7 @@
       confidence: confidence, score: pts,
       extrapolated: extrapolated, outside: outside, capped: capped,
       slope: slope, slopeSource: slopeSource, fit: fit,
+      escalation: esc, medianLet: medLet,
       neighbors: nb.rows.length, outliers: nOut, flagStats: flagStats, neighborsFlagged: nbFlagged,
       stats: st, p10: p10, p25: p25, p50: p50, p75: p75, p90: p90,
       houstonMedian: houMed, statewideMedian: swMed, eeMedian: eeMed, lowToEe: lowToEe,
@@ -540,7 +586,7 @@
   }
 
   const api = {
-    O: O, METHOD: METHOD, slopeSums: slopeSums, shrink: shrink, quantile: quantile, median: median, mean: mean, linreg: linreg, tPValue: tPValue,
+    O: O, METHOD: METHOD, escalation: escalation, quarterOf: quarterOf, slopeSums: slopeSums, shrink: shrink, quantile: quantile, median: median, mean: mean, linreg: linreg, tPValue: tPValue,
     logLogFit: logLogFit, summarize: summarize, outlierFence: outlierFence, neighbors: neighbors,
     estimate: estimate, roundPrice: roundPrice, fmtMoney: fmtMoney, fmtQty: fmtQty,
     lineRow: lineRow, toTSV: toTSV, toCSV: toCSV, search: search, parseQuery: parseQuery, r4: r4

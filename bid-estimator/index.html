@@ -49,6 +49,20 @@
     </div>
   </div>
   <p class="form-msg" id="formMsg" role="status" aria-live="polite"></p>
+  <details class="settings" id="settings">
+    <summary>Estimate settings (apply to every item)</summary>
+    <div class="form-grid settings-grid">
+      <div class="field">
+        <label for="letDate">Expected letting date (optional)</label>
+        <input id="letDate" type="date">
+      </div>
+      <div class="field">
+        <label for="escPct">%/yr after latest index <small>(user input, assumed)</small></label>
+        <input id="escPct" type="number" inputmode="decimal" step="0.1" value="0">
+      </div>
+    </div>
+    <p class="hint" id="escHint">Escalation uses FHWA's National Highway Construction Cost Index (NHCCI) from the bids' median let quarter to your letting date; past the latest published quarter it uses your %/yr. Leave the date empty for no escalation.</p>
+  </details>
 </section>
 
 <section class="est-tab" aria-labelledby="tabTitle">
@@ -75,6 +89,7 @@
     <li><b>Quantity adjustment.</b> A grouped price-vs-quantity slope (log price vs log quantity) that borrows strength from related codes: this code's own slope is shrunk toward the slope of its Item family (same spec item and unit), which is shrunk toward the slope across all TxDOT items. Each level counts like its number of bids against 10 bids' worth of the level above, so a code with 300 bids mostly keeps its own slope and a code with 10 bids is about half its own, half borrowed. The comment shows the shares. Beyond the sizes on record a slope that says bigger jobs cost more is never extrapolated (the family or all-items slope is used, labeled <i>assumed</i>). The adjustment never lowers the base more than 25% or raises it more than 25%, never goes above the 90th percentile, and inside the data never goes below the 10th percentile.</li>
     <li><b>Range.</b> Low and high scale the suggestion by the 25th and 75th percentiles relative to the median. The range is widened 15% each way when extrapolating, and to at least −40% / +50% with fewer than 5 bids.</li>
     <li><b>Confidence.</b> High / Medium / Low from the number of bids, whether your quantity is inside the sizes on record, how spread out prices are, and whether there are bids in the last 12 months. More than 2x beyond the largest (or below half the smallest) job is labeled <i>extrapolated beyond data</i> and always Low.</li>
+    <li><b>Escalation (optional).</b> With an expected letting date, prices are moved from the median let date of the bids used to that date with the FHWA National Highway Construction Cost Index (NHCCI, seasonally adjusted, <a href="https://data.transportation.gov/d/r94d-n4f9" target="_blank" rel="noopener noreferrer">data.transportation.gov r94d-n4f9</a>; <a href="https://www.fhwa.dot.gov/policy/otps/nhcci/" target="_blank" rel="noopener noreferrer">FHWA NHCCI page</a>). The NHCCI is national, not Texas-specific. Past the latest published quarter, your %/yr (default 0%) is used and labeled <i>user input, assumed</i>.</li>
     <li><b>Possibly unbalanced bids are flagged, never removed.</b> Every flagged bid stays in every statistic and in the suggested price; the page shows the median and range with and without them for information only. A low bid is flagged when any of these hold (thresholds in <code>flags.js</code>):
       <ul>
         <li><i>Install/remove pair</i> — on the same project, an install item and its matching remove item (same spec item, same description without the install/remove words, e.g. 5002-7001/7002, 506-7039/7041): remove priced at or above install, or the remove/install ratio more than 3x (or under 1/3) the typical ratio for that pair, while install + remove stays within 0.5x–2x of the typical combined price (money moved between the halves). Typical values need at least 3 jobs of the pair; otherwise only the remove ≥ install test applies.</li>

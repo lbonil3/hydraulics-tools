@@ -99,6 +99,22 @@ t('grouped slope shrinkage', () => {
   assert(g.code_n > 100 && Math.abs(g.final - g.code) < Math.abs(g.final - g.global));
   assert(Math.abs(ix.global_within_slope) > 0 && ix.shrink_k === 10);
 });
+t('escalation uses real NHCCI values and labels user %/yr', () => {
+  const nh = JSON.parse(fs.readFileSync(path.join(dir, 'data/nhcci.json'), 'utf8'));
+  const v = Object.fromEntries(nh.rows.map((r) => [r[0], r[2]]));
+  const last = nh.rows[nh.rows.length - 1][0];
+  const e1 = E.escalation('2025-08-01', '2025-11-15', 0, nh);
+  assert(Math.abs(e1.factor - v['2025 Q4'] / v['2025 Q3']) < 1e-12 && e1.userYears === 0);
+  const e2 = E.escalation('2025-08-01', '2028-01-15', 3, nh);
+  assert.strictEqual(e2.to, last);
+  assert(e2.userYears > 1 && Math.abs(e2.factor - (v[last] / v['2025 Q3']) * Math.pow(1.03, e2.userYears)) < 1e-12);
+  const c2 = Object.assign({}, ctx, { nhcci: nh });
+  const r = E.estimate(entry('432-7001'), 300, c2, { letDate: '2028-01-15', annualPct: 3 });
+  const r0 = E.estimate(entry('432-7001'), 300, c2, {});
+  assert(r.escalation && Math.abs(r.mid - E.roundPrice(r0.adjusted * r.escalation.factor)) < 0.01);
+  assert(r.comments.some((c) => /FHWA NHCCI .* 3%\/yr \(user input, assumed\)/.test(c)));
+  assert(/escalated .* by FHWA NHCCI and 3%\/yr \(assumed\)/.test(r.sentence));
+});
 t('scope forcing and bad input', () => {
   assert.strictEqual(E.estimate(entry('5002-7001'), 100, ctx, { scope: 'houston' }).scope, 'houston');
   assert.strictEqual(E.estimate(entry('5033-7001'), 100, ctx, { scope: 'houston' }).scope, 'statewide');

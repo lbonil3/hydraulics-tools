@@ -3,6 +3,7 @@
   const E = window.BidEstimator;
   const C = window.BidEstimatorCharts;
   const STORE = 'bidEstimator.items.v1';
+  const SETTINGS = 'bidEstimator.settings.v1';
   const $ = function (id) { return document.getElementById(id); };
   const els = { search: $('codeSearch'), suggest: $('suggest'), picked: $('picked'), qty: $('qty'), qtyUnit: $('qtyUnit'),
     scope: $('scope'), add: $('addBtn'), msg: $('formMsg'), tab: $('tabWrap'), cards: $('cards'), meta: $('metaLine'), method: $('methodData') };
@@ -13,6 +14,7 @@
   let picked = null;                // index row
   let sugRows = [], sugActive = -1;
   let openId = null;
+  let settings = (function () { try { return JSON.parse(localStorage.getItem(SETTINGS) || '{}') || {}; } catch (e) { return {}; } })();
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function load() { try { const a = JSON.parse(localStorage.getItem(STORE) || '[]'); return Array.isArray(a) ? a.filter(function (x) { return x && x.code; }) : []; } catch (e) { return []; } }
@@ -124,7 +126,7 @@
   function compute(it) {
     return shard(it.code).then(function (sh) {
       const e = sh.codes[it.code];
-      results[it.id] = e ? E.estimate(Object.assign({ code: it.code }, e), it.qty, ctx, { scope: it.scope })
+      results[it.id] = e ? E.estimate(Object.assign({ code: it.code }, e), it.qty, ctx, { scope: it.scope, letDate: settings.letDate || null, annualPct: Number(settings.escPct) || 0 })
         : { ok: false, reason: 'Bid code ' + it.code + ' is not in the data.' };
     }).catch(function () { results[it.id] = { ok: false, reason: 'Could not load data for ' + it.code + '.' }; });
   }
@@ -248,14 +250,30 @@
     items = []; save(); renderAll();
   });
 
+  // ---------- settings ----------
+  const letEl = $('letDate'), escEl = $('escPct');
+  if (settings.letDate) letEl.value = settings.letDate;
+  if (settings.escPct != null) escEl.value = settings.escPct;
+  if (settings.letDate) $('settings').open = true;
+  function onSettings() {
+    settings = { letDate: letEl.value || '', escPct: escEl.value === '' ? 0 : Number(escEl.value) };
+    try { localStorage.setItem(SETTINGS, JSON.stringify(settings)); } catch (e) { /* ignore */ }
+    if (ctx) Promise.all(items.map(compute)).then(renderAll);
+  }
+  letEl.addEventListener('change', onSettings);
+  escEl.addEventListener('change', onSettings);
+
   // ---------- boot ----------
   Promise.all([
     fetch('data/index.json').then(function (r) { return r.json(); }),
-    fetch('../bid-cost/item-info.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    fetch('../bid-cost/item-info.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    fetch('data/nhcci.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
   ]).then(function (v) {
     idx = v[0]; itemInfo = v[1];
+    const nh = v[2];
     houstonIdx = idx.districts.indexOf('Houston');
-    ctx = { districts: idx.districts, counties: idx.counties, pooled_slope: idx.pooled_slope, data_date_max: idx.meta.let_date_max };
+    ctx = { districts: idx.districts, counties: idx.counties, pooled_slope: idx.pooled_slope, data_date_max: idx.meta.let_date_max, nhcci: nh };
+    if (nh && nh.rows.length) $('escHint').textContent += ' NHCCI loaded: ' + nh.rows[0][0] + ' to ' + nh.rows[nh.rows.length - 1][0] + ' (accessed ' + nh.accessed + ').';
     const m = idx.meta;
     els.meta.textContent = 'Data accessed ' + m.accessed + '. Lettings ' + m.let_date_min + ' → ' + m.let_date_max + ' (all the dataset holds). ' +
       m.rows_used.toLocaleString('en-US') + ' low bids, ' + m.codes.toLocaleString('en-US') + ' bid codes.';

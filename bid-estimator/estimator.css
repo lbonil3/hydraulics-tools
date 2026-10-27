@@ -118,3 +118,8 @@ details.more summary{cursor:pointer;color:#1f4e79;font-weight:600;font-size:13px
 .bids-table tr.is-flag{background:#fff5f5}
 .bids-wrap{max-height:320px;overflow:auto}
 .bids-table td{white-space:nowrap}
+
+.settings{margin-top:8px;border-top:1px solid #e3e8ef;padding-top:6px}
+.settings summary{cursor:pointer;color:#1f4e79;font-weight:600;font-size:13px;min-height:36px;display:flex;align-items:center}
+.settings-grid{grid-template-columns:repeat(2,minmax(160px,260px))}
+.hint{font-size:12px;color:#556;margin:6px 0 0}
