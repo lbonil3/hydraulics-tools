@@ -3,7 +3,7 @@
   'use strict';
   var S = window.SWP3;
   var P = window.SWP3Pick;
-  var TW = 32, TH = 16, BASE = 10; // iso tile size in low-res pixels, slab thickness
+  var A = window.SWP3Art, TW = A.TW, TH = A.TH, BASE = A.BASE, U = TW / 32; // iso tile size in art pixels (64x32), slab thickness; U = art scale vs v1
   var SAVE_KEY = 'swp3-game-v1';
   var $ = function (id) { return document.getElementById(id); };
 
@@ -86,7 +86,7 @@
   function buildGeometry(L) {
     var minH = Infinity, maxH = -Infinity, i;
     for (i = 0; i < L.heights.length; i++) { minH = Math.min(minH, L.heights[i]); maxH = Math.max(maxH, L.heights[i]); }
-    var zs = Math.min(4, 110 / Math.max(1, maxH - minH));
+    var zs = Math.min(4 * U, 110 * U / Math.max(1, maxH - minH));
     var z = L.heights.map(function (h) { return Math.round((h - minH) * zs); });
     var maxZ = Math.max.apply(null, z);
     var w = (L.W + L.H) * TW / 2 + 16, h = (L.W + L.H) * TH / 2 + maxZ + BASE + 24;
@@ -102,48 +102,20 @@
 
   function drawTerrain() {
     var L = G.L; terrain.width = geo.w; terrain.height = geo.h;
-    var ctx = tctx; ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, geo.w, geo.h);
-    var r = S.rng(77 + L.id), bottomY = function (x, y) { return geo.oy + (x + y) * TH / 2; };
-    for (var s = 0; s <= L.W + L.H - 2; s++) {
-      for (var y = 0; y < L.H; y++) {
-        var x = s - y; if (x < 0 || x >= L.W) continue;
-        var i = y * L.W + x, ty = L.types[i], p = tileTop(x, y), pal = PAL[ty];
-        var gz = geo.oy + BASE; // slab base (z = -BASE)
-        // side faces down to slab base
-        var lb = bottomY(x, y) + TH / 2 + BASE, depth = lb - (p.y + TH / 2);
-        poly(ctx, [p.x - TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x, p.y + TH + depth, p.x - TW / 2, p.y + TH / 2 + depth], ty === 'C' ? '#2e6194' : '#6b4a2c');
-        poly(ctx, [p.x + TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x, p.y + TH + depth, p.x + TW / 2, p.y + TH / 2 + depth], ty === 'C' ? '#244c75' : '#553a22');
-        // grass/soil lip on side faces
-        poly(ctx, [p.x - TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x, p.y + TH + 2, p.x - TW / 2, p.y + TH / 2 + 2], pal[1]);
-        poly(ctx, [p.x + TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x, p.y + TH + 2, p.x + TW / 2, p.y + TH / 2 + 2], pal[2]);
-        // strata lines on deep faces
-        ctx.fillStyle = 'rgba(0,0,0,.18)';
-        for (var d = 6; d < depth; d += 5) { ctx.fillRect(p.x - TW / 2 + 2, Math.round(p.y + TH / 2 + d), 1, 1); ctx.fillRect(p.x + TW / 2 - 3, Math.round(p.y + TH / 2 + d + 2), 1, 1); }
-        // top face
-        poly(ctx, [p.x, p.y, p.x + TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x - TW / 2, p.y + TH / 2], pal[0]);
-        // texture specks inside diamond
-        var sp = SPECK[ty];
-        for (var k = 0; k < 14; k++) {
-          var u = r(), v = r(); var px = Math.round(p.x + (u - v) * TW / 2 * 0.9), py = Math.round(p.y + TH / 2 + (u + v - 1) * TH / 2 * 0.9);
-          ctx.fillStyle = sp[(r() * sp.length) | 0]; ctx.fillRect(px, py, 1, 1);
-        }
-        if (ty === 'G') { ctx.fillStyle = '#3d6230'; for (k = 0; k < 3; k++) { var gx = Math.round(p.x - 8 + r() * 16), gy = Math.round(p.y + 4 + r() * 8); ctx.fillRect(gx, gy, 1, 2); ctx.fillRect(gx + 2, gy + 1, 1, 1); } }
-        if (ty === 'S' || ty === 'A') { ctx.fillStyle = 'rgba(70,40,20,.35)'; for (k = -2; k <= 2; k++) ctx.fillRect(Math.round(p.x - 6 + k * 3), Math.round(p.y + 6 + k * 1.5), 6, 1); }
-        if (ty === 'R') { ctx.fillStyle = '#d9c35a'; if ((x + y) % 2 === 0 && L.id !== 3) ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y + TH / 2), 3, 1); }
-        if (ty === 'D') { ctx.fillStyle = '#5a7d36'; ctx.fillRect(Math.round(p.x - 10), Math.round(p.y + 7), 3, 1); ctx.fillRect(Math.round(p.x + 7), Math.round(p.y + 9), 3, 1); ctx.fillStyle = '#4a3a20'; ctx.fillRect(Math.round(p.x - 1), Math.round(p.y + 3), 2, 10); }
-        if (ty === 'C') { ctx.fillStyle = '#a8d0f0'; ctx.fillRect(Math.round(p.x - 6 + r() * 8), Math.round(p.y + 6 + r() * 4), 4, 1); }
-        if (ty === 'I') { ctx.fillStyle = '#222'; ctx.fillRect(Math.round(p.x - 5), Math.round(p.y + 6), 10, 4); ctx.fillStyle = '#666'; for (k = 0; k < 5; k++) ctx.fillRect(Math.round(p.x - 4 + k * 2), Math.round(p.y + 6), 1, 4); }
-        if (ty === 'A') { // orange access cones + tire tracks
-          ctx.fillStyle = '#5a3a1c'; ctx.fillRect(Math.round(p.x - 3), Math.round(p.y + 3), 1, 10); ctx.fillRect(Math.round(p.x + 3), Math.round(p.y + 3), 1, 10);
-          drawCone(ctx, p.x - 9, p.y + 8); drawCone(ctx, p.x + 9, p.y + 8);
-        }
-        // edge highlight (top-left light)
-        ctx.fillStyle = 'rgba(255,255,255,.12)';
-        for (k = 0; k < TW / 2; k += 2) ctx.fillRect(Math.round(p.x - TW / 2 + k), Math.round(p.y + TH / 2 - k / 2), 2, 1);
+    A.drawTerrain(tctx, { W: L.W, H: L.H, types: L.types, z: geo.z, ox: geo.ox, oy: geo.oy, w: geo.w, h: geo.h });
+    G.creekTiles = []; G.accessTiles = [];
+    for (var i = 0; i < L.types.length; i++) { if (L.types[i] === 'C') G.creekTiles.push(i); if (L.types[i] === 'A') G.accessTiles.push(i); }
+  }
+  function drawCreek(ctx, t) { // animated pixel ripples
+    for (var k = 0; k < G.creekTiles.length; k++) {
+      var i = G.creekTiles[k], p = tileTop(i % G.L.W, (i / G.L.W) | 0);
+      for (var q = 0; q < 3; q++) {
+        var ph = ((t / 1600 + A.hash(i, q, 51)) % 1), u = 0.15 + 0.7 * ph, v = 0.2 + 0.6 * A.hash(i, q, 52), w = A.at(p, u, v);
+        var a = Math.sin(ph * Math.PI); ctx.fillStyle = 'rgba(200,232,255,' + (0.55 * a).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 3, Math.round(w.y), 6, 1);
+        ctx.fillStyle = 'rgba(30,70,120,' + (0.35 * a).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 2, Math.round(w.y) + 1, 4, 1);
       }
     }
   }
-  function drawCone(ctx, x, y) { x = Math.round(x); y = Math.round(y); ctx.fillStyle = '#ff7a1a'; ctx.fillRect(x, y - 4, 1, 1); ctx.fillRect(x - 1, y - 3, 3, 2); ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - 2, 3, 1); ctx.fillStyle = '#ff7a1a'; ctx.fillRect(x - 2, y - 1, 5, 1); }
 
   // ---------- control sprites ----------
   function edgeCorners(i, j) {
@@ -154,36 +126,14 @@
     return [Lf, B];
   }
   function drawControl(ctx, c, k, t) {
-    var i = c.tile, cen = tileCenter(i), bornAt = G.born[k], lift = 0;
-    if (bornAt != null) { var a = (t - bornAt) / 260; if (a < 1) lift = Math.round(-8 * Math.sin(a * Math.PI) * (1 - a)); }
-    var x = Math.round(cen.x), y = Math.round(cen.y) + lift, n, q;
-    if (c.type === 'fence') {
-      var dir = G.simDir[i]; var e = edgeCorners(i, dir >= 0 ? dir : i + G.L.W);
-      var x0 = e[0][0], y0 = e[0][1] + lift, x1 = e[1][0], y1 = e[1][1] + lift;
-      // pull fence slightly inside the tile
-      var mx = cen.x - (x0 + x1) / 2, my = cen.y - (y0 + y1) / 2; x0 += mx * 0.2; x1 += mx * 0.2; y0 += my * 0.2; y1 += my * 0.2;
-      n = 10;
-      for (q = 0; q <= n; q++) { var fx = Math.round(x0 + (x1 - x0) * q / n), fy = Math.round(y0 + (y1 - y0) * q / n); ctx.fillStyle = '#1d1d1d'; ctx.fillRect(fx, fy - 4, 1, 4); ctx.fillStyle = '#333'; ctx.fillRect(fx, fy - 4, 1, 1); }
-      for (q = 0; q <= 2; q++) { var px = Math.round(x0 + (x1 - x0) * q / 2), py = Math.round(y0 + (y1 - y0) * q / 2); ctx.fillStyle = '#7a5428'; ctx.fillRect(px, py - 6, 1, 7); }
-    } else if (c.type === 'dam') {
-      var rocks = [[-7, 0], [-4, -2], [-1, -3], [2, -2], [5, -1], [-5, 1], [-1, 0], [3, 1], [7, 1], [-2, -5], [1, -5]];
-      rocks.forEach(function (rk, m) { ctx.fillStyle = m % 3 ? '#9a9a9a' : '#bdbdbd'; ctx.fillRect(x + rk[0] - 1, y + rk[1] - 1, 3, 2); ctx.fillStyle = '#5e5e5e'; ctx.fillRect(x + rk[0] - 1, y + rk[1] + 1, 3, 1); });
-    } else if (c.type === 'inlet') {
-      ctx.fillStyle = '#c99a4a'; ctx.fillRect(x - 9, y - 3, 18, 2); ctx.fillRect(x - 9, y + 2, 18, 2); ctx.fillStyle = '#8a6430'; ctx.fillRect(x - 9, y - 1, 18, 1); ctx.fillRect(x - 9, y + 4, 18, 1);
-    } else if (c.type === 'exit') {
-      for (q = 0; q < 26; q++) { var gx = x - 10 + ((q * 7) % 21), gy = y - 4 + ((q * 5) % 9); ctx.fillStyle = q % 2 ? '#cfcfcf' : '#8f8f8f'; ctx.fillRect(gx, gy, 2, 1); }
-    } else if (c.type === 'basin') {
-      ctx.fillStyle = '#5a3a1c'; for (q = -12; q <= 12; q++) { var hy = Math.round(5.5 * (1 - Math.abs(q) / 12)); ctx.fillRect(x + q, y - hy, 1, 1); ctx.fillRect(x + q, y + hy, 1, 1); }
-      ctx.fillStyle = '#4a7fa8'; for (q = -10; q <= 10; q++) { var hh = Math.round(4.5 * (1 - Math.abs(q) / 10)); ctx.fillRect(x + q, y - hh + 1, 1, Math.max(1, 2 * hh - 1)); }
-      ctx.fillStyle = '#a8d0f0'; ctx.fillRect(x - 3, y, 4, 1);
-    } else if (c.type === 'washout') {
-      ctx.fillStyle = '#222'; ctx.fillRect(x - 7, y - 6, 14, 9); ctx.fillStyle = '#bdbdbd'; ctx.fillRect(x - 6, y - 5, 12, 6); ctx.fillStyle = '#ffd400'; ctx.fillRect(x - 7, y - 7, 14, 1);
-    } else if (c.type === 'seed') {
-      var grown = Math.min(2, (G.round || 0) - (c.round || 0)), nSp = 12 + grown * 8;
-      if (grown > 0) { ctx.fillStyle = grown > 1 ? 'rgba(106,168,79,.75)' : 'rgba(106,168,79,.4)'; for (q = -12; q <= 12; q += 2) { var gh = Math.round(5 * (1 - Math.abs(q) / 13)); ctx.fillRect(x + q, y - gh, 2, 2 * gh); } }
-      for (q = 0; q < nSp; q++) { var sx = x - 9 + ((q * 5) % 19), sy = y - 4 + ((q * 3) % 9); ctx.fillStyle = q % 3 && !grown ? '#e6cf7a' : '#7fbf5f'; ctx.fillRect(sx, sy, q % 3 ? 2 : 1, 1); if (q % 3 === 0) ctx.fillRect(sx, sy - 1, 1, 1); }
-    }
+    var i = c.tile, W = G.L.W, p = tileTop(i % W, (i / W) | 0), bornAt = G.born[k], prog = 1;
+    if (bornAt != null) prog = Math.max(0, Math.min(1, (t - bornAt) / buildMs(c.type)));
+    var o = { prog: prog, t: t, age: (G.round || 0) - (c.round || 0) };
+    if (c.type === 'fence') { var dir = G.simDir[i]; o.edge = edgeCorners(i, dir >= 0 ? dir : i + W); }
+    A.drawControl(ctx, c.type, p, o);
   }
+  function buildMs(type) { return type === 'basin' ? 2200 : type === 'exit' || type === 'dam' ? 1600 : 1100; }
+
 
   // ---------- frame ----------
   var lastT = 0;
@@ -195,7 +145,8 @@
     ctx.clearRect(0, 0, geo.w, geo.h);
     ctx.drawImage(terrain, 0, 0);
     // creek shimmer
-    if (Math.floor(t / 400) % 2 === 0) { ctx.fillStyle = 'rgba(200,230,255,.25)'; for (var i = 0; i < G.L.types.length; i++) if (G.L.types[i] === 'C' && (i * 7 + Math.floor(t / 800)) % 5 === 0) { var cc = tileCenter(i); ctx.fillRect(Math.round(cc.x) - 3, Math.round(cc.y) - 1, 5, 1); } }
+    if (Math.floor(t / 400) % 2 === 0) { ctx.fillStyle = 'rgba(200,230,255,.25)'; for (var i = 0; i < G.L.types.length; i++) if (G.L.types[i] === 'C' && (i * 7 + Math.floor(t / 800)) % 5 === 0) { var cc = tileCenter(i); ctx.fillRect(Math.round(cc.x) - 6, Math.round(cc.y) - 2, 10, 2); } }
+    drawCreek(ctx, t);
     if (G.flowView) drawFlowView(ctx);
     // controls in depth order
     var order = G.controls.map(function (c, k) { return k; }).sort(function (a, b) { return depth(G.controls[a].tile) - depth(G.controls[b].tile); });
@@ -208,8 +159,9 @@
     // blit
     vctx.setTransform(1, 0, 0, 1, 0, 0);
     vctx.fillStyle = G.phase === 'storm' ? '#5a6f80' : '#87b7d6'; vctx.fillRect(0, 0, view.width, view.height);
-    vctx.imageSmoothingEnabled = false;
     var sc = G.zoom * dpr;
+    vctx.imageSmoothingEnabled = sc < 0.999; // magnify: crisp nearest-neighbour; minify: smooth (avoids dropped pixels/shimmer)
+    if (vctx.imageSmoothingEnabled) vctx.imageSmoothingQuality = 'high';
     vctx.setTransform(sc, 0, 0, sc, Math.round(view.width / 2 + G.panX * dpr), Math.round(view.height / 2 + G.panY * dpr));
     vctx.drawImage(buf, -geo.w / 2, -geo.h / 2);
     vctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -220,8 +172,8 @@
   function outlineTile(ctx, i, col) {
     var p = tileTop(i % G.L.W, (i / G.L.W) | 0); ctx.fillStyle = col;
     for (var k = 0; k <= TW / 2; k += 1) {
-      ctx.fillRect(Math.round(p.x - k), Math.round(p.y + k / 2), 1, 1); ctx.fillRect(Math.round(p.x + k), Math.round(p.y + k / 2), 1, 1);
-      ctx.fillRect(Math.round(p.x - k), Math.round(p.y + TH - k / 2), 1, 1); ctx.fillRect(Math.round(p.x + k), Math.round(p.y + TH - k / 2), 1, 1);
+      ctx.fillRect(Math.round(p.x - k), Math.floor(p.y + k / 2), 1, 2); ctx.fillRect(Math.round(p.x + k), Math.floor(p.y + k / 2), 1, 2);
+      ctx.fillRect(Math.round(p.x - k), Math.floor(p.y + TH - k / 2) - 1, 1, 2); ctx.fillRect(Math.round(p.x + k), Math.floor(p.y + TH - k / 2) - 1, 1, 2);
     }
   }
   function drawFlowView(ctx) {
@@ -230,10 +182,10 @@
       var ac = sim.acc[i] * S.TILE_AC, c = tileCenter(i), col = ac > 5 ? '#e0533a' : ac > 2 ? '#ff9a3a' : '#cfe8ff';
       if (G.L.types[i] === 'C') continue;
       var j = sim.dir[i]; ctx.fillStyle = col;
-      if (j < 0) { ctx.fillRect(Math.round(c.x) - 1, Math.round(c.y) - 1, 3, 3); continue; }
+      if (j < 0) { ctx.fillRect(Math.round(c.x) - 2, Math.round(c.y) - 2, 5, 5); continue; }
       var d = tileCenter(j), dx = (d.x - c.x), dy = (d.y - c.y);
-      for (var q = 0; q < 5; q++) ctx.fillRect(Math.round(c.x + dx * q / 12), Math.round(c.y + dy * q / 12), 1, 1);
-      ctx.fillRect(Math.round(c.x + dx * 5 / 12) - 1, Math.round(c.y + dy * 5 / 12) - 1, 3, 3);
+      for (var q = 0; q < 10; q++) ctx.fillRect(Math.round(c.x + dx * q / 24), Math.round(c.y + dy * q / 24), 2, 2);
+      ctx.fillRect(Math.round(c.x + dx * 10 / 24) - 2, Math.round(c.y + dy * 10 / 24) - 2, 5, 5);
     }
   }
   function drawFailures(ctx, t) {
@@ -242,7 +194,7 @@
       var tile = f.control ? f.control.tile : G.L.types.indexOf('A');
       if (tile < 0) return;
       outlineTile(ctx, tile, on ? '#ff3b2f' : '#ffd23a');
-      var c = tileCenter(tile); ctx.fillStyle = '#ff3b2f'; ctx.fillRect(Math.round(c.x) - 1, Math.round(c.y) - 18, 3, 7); ctx.fillRect(Math.round(c.x) - 1, Math.round(c.y) - 9, 3, 2);
+      var c = tileCenter(tile), bx = Math.round(c.x), by = Math.round(c.y) - 30; ctx.fillStyle = '#5a0e08'; ctx.fillRect(bx - 4, by - 1, 9, 22); ctx.fillStyle = '#ff3b2f'; ctx.fillRect(bx - 3, by, 7, 13); ctx.fillRect(bx - 3, by + 15, 7, 5); ctx.fillStyle = '#ff9a8a'; ctx.fillRect(bx - 3, by, 2, 13);
     });
   }
 
@@ -262,8 +214,8 @@
     G.spawnAcc += rate * dt;
     while (G.spawnAcc > 1 && G.particles.length < 900) {
       G.spawnAcc -= 1; var i = pickTile(), c = tileCenter(i);
-      G.particles.push({ i: i, t: G.prng(), x: c.x, y: c.y, ox: (G.prng() - 0.5) * 10, oy: (G.prng() - 0.5) * 5, sed: G.L.types[i] !== 'R' });
-      if (G.prng() < 0.5) { var w = (G.prng() * G.L.types.length) | 0; if (G.L.types[w] !== 'C') { var cw = tileCenter(w); G.particles.push({ i: w, t: 0, x: cw.x, y: cw.y, ox: (G.prng() - 0.5) * 10, oy: (G.prng() - 0.5) * 5, sed: false }); } }
+      G.particles.push({ i: i, t: G.prng(), x: c.x, y: c.y, ox: (G.prng() - 0.5) * 10 * U, oy: (G.prng() - 0.5) * 5 * U, sed: G.L.types[i] !== 'R' });
+      if (G.prng() < 0.5) { var w = (G.prng() * G.L.types.length) | 0; if (G.L.types[w] !== 'C') { var cw = tileCenter(w); G.particles.push({ i: w, t: 0, x: cw.x, y: cw.y, ox: (G.prng() - 0.5) * 10 * U, oy: (G.prng() - 0.5) * 5 * U, sed: false }); } }
     }
     var dir = G.sim.dir, keep = [];
     for (var k = 0; k < G.particles.length; k++) {
@@ -345,11 +297,11 @@
   view.addEventListener('wheel', function (e) { e.preventDefault(); setZoom(G.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });
   document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
   function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-  function setZoom(z) { G.zoom = Math.max(0.8, Math.min(7, z)); clampPan(); }
+  function setZoom(z) { G.zoom = Math.max(0.4, Math.min(3.5, z)); clampPan(); }
   function clampPan() { if (!geo) return; var lim = geo.w * G.zoom / 2 + 50; G.panX = Math.max(-lim, Math.min(lim, G.panX)); G.panY = Math.max(-lim, Math.min(lim, G.panY)); }
   function fitView() {
     var r = view.getBoundingClientRect();
-    G.zoom = Math.max(0.8, Math.min(5, Math.min(r.width / geo.w, r.height / geo.h) * 0.98)); G.panX = 0; G.panY = 0;
+    G.zoom = Math.max(0.4, Math.min(2.5, Math.min(r.width / geo.w, r.height / geo.h) * 0.98)); G.panX = 0; G.panY = 0;
   }
 
   // Single pick function used by BOTH hover highlight and click/tap (see pick.js).
@@ -360,6 +312,7 @@
   }
   window.__swp3Load = function (n) { if (n === 0) loadSandbox(false); else loadLevel(n); $('overlay').classList.add('hidden'); selectTool('inspect'); };
   window.__swp3State = function () { return { sel: G.selTile, hover: G.hoverTile, n: G.L.W * G.L.H, controls: G.controls.length, zoom: G.zoom }; };
+  window.__swp3Center = function (i) { centerOn(i); };
   window.__swp3Pick = function (cx, cy) { return screenToTile(cx, cy); }; // debug/test hook
   window.__swp3TileClient = function (i) { // client coords of tile i top-face centre (test hook)
     var c = tileCenter(i); return P.bufferToClient(c.x, c.y, { rect: view.getBoundingClientRect(), viewW: view.width, viewH: view.height, zoom: G.zoom, panX: G.panX, panY: G.panY, dpr: dpr, geoW: geo.w, geoH: geo.h });
