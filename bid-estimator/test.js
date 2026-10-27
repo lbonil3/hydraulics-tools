@@ -208,9 +208,11 @@ t('TSV / CSV export', () => {
   const tsv = E.toTSV(rows).split('\n');
   assert.strictEqual(tsv.length, 4);
   assert(tsv[0].startsWith('Bid code\tDescription'));
-  assert(tsv.every((l) => l.split('\t').length === 12));
+  assert(tsv.every((l) => l.split('\t').length === 13));
   const total = Number(tsv[3].split('\t')[8]);
   assert(Math.abs(total - (ftbI.mid + ftbR.mid) * 12000) < 0.01);
+  const withNote = E.toTSV([E.lineRow({ code: '5002-7001', qty: 12000, notes: 'Use\tboom\nfor channel' }, ftbI)]).split('\n');
+  assert(withNote[1].split('\t')[11] === 'Use boom for channel' && withNote.length === 3);
   const csv = E.toCSV(rows);
   assert(/"Unit price based on/.test(csv) || /,Unit price based on/.test(csv));
 });

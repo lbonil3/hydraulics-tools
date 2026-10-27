@@ -19,7 +19,7 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function load() { try { const a = JSON.parse(localStorage.getItem(STORE) || '[]'); return Array.isArray(a) ? a.filter(function (x) { return x && x.code; }) : []; } catch (e) { return []; } }
-  function save() { try { localStorage.setItem(STORE, JSON.stringify(items.map(function (i) { return { id: i.id, code: i.code, qty: i.qty, scope: i.scope, qtyUnit: i.qtyUnit || null }; }))); } catch (e) { /* private mode */ } }
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(items.map(function (i) { return { id: i.id, code: i.code, qty: i.qty, scope: i.scope, qtyUnit: i.qtyUnit || null, notes: i.notes || '' }; }))); } catch (e) { /* private mode */ } }
   function newId() { return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function toast(t) {
     let el = document.querySelector('.toast');
@@ -224,6 +224,7 @@
       '<p class="sub">' + (info ? 'Item ' + esc(itemOf(it.code)) + ' · ' + esc(info.title) + ' · ' : '') + E.fmtQty(res.qty) + ' ' + esc(res.unit) + ' · ' + esc(res.scopeLabel) + '</p></div>' +
       '<div><span class="conf conf-' + res.confidence + '">' + res.confidence + ' confidence</span>' + (res.extrapolated ? '<span class="extrap">Extrapolated beyond data</span>' : '') +
       (res.flagStats.n ? '<span class="flagb">' + res.flagStats.n + ' possibly unbalanced</span>' : '') + '</div></div>' +
+      '<label class="notes-field">Notes <input class="notes-in" type="text" maxlength="300" placeholder="e.g. assumes boat access; check channel width" value="' + esc(it.notes || '') + '"></label>' +
       '<div class="nums">' +
         '<div><span class="k">Low</span><span class="v">' + E.fmtMoney(res.low) + '</span><span class="t">' + E.fmtMoney(res.total.low) + '</span></div>' +
         '<div class="mid"><span class="k">Suggested / ' + esc(res.unit) + '</span><span class="v">' + E.fmtMoney(res.mid) + '</span><span class="t">Total ' + E.fmtMoney(res.total.mid) + '</span></div>' +
@@ -264,6 +265,12 @@
     const id = del.closest('tr').getAttribute('data-id');
     items = items.filter(function (x) { return x.id !== id; }); delete results[id]; save(); renderAll();
   });
+  els.cards.addEventListener('change', function (ev) {
+    const n = ev.target.closest('.notes-in'); if (!n) return;
+    const it = items.find(function (x) { return x.id === n.closest('.card').getAttribute('data-id'); });
+    if (!it) return;
+    it.notes = n.value.trim(); save(); renderTable();
+  });
   els.cards.addEventListener('click', function (ev) {
     const ra = ev.target.closest('.rel-add');
     if (ra) {
@@ -294,6 +301,24 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   });
+  function printHtml() {
+    const rows = lineRows();
+    const total = rows.reduce(function (t, r) { return t + (r.extension || 0); }, 0);
+    const m = idx ? idx.meta : {};
+    return '<h2>Bid estimate summary</h2><p class="ps-meta">Printed ' + new Date().toLocaleDateString('en-US') + ' · TxDOT Bid Tabulations lettings ' + esc(m.let_date_min) + ' to ' + esc(m.let_date_max) + ' (accessed ' + esc(m.accessed) + ')' +
+      (settings.letDate ? ' · escalated to ' + esc(settings.letDate) + ' (FHWA NHCCI' + (Number(settings.escPct) ? ', then ' + Number(settings.escPct) + '%/yr user input, assumed' : '') + ')' : '') + ' · Planning-level only.</p>' +
+      '<table class="ps-table"><thead><tr><th>Code</th><th>Description</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Range</th><th>Extension</th><th>Conf.</th><th>Notes</th></tr></thead><tbody>' +
+      rows.map(function (r) { return '<tr><td>' + esc(r.code) + '</td><td>' + esc(r.desc) + '</td><td class="n">' + E.fmtQty(r.qty) + (r.entered ? '<br><small>(' + esc(r.entered) + ')</small>' : '') + '</td><td>' + esc(r.unit) + '</td><td class="n">' + E.fmtMoney(r.unit_price) + '</td><td class="n">' + (r.low != null ? E.fmtMoney(r.low) + '–' + E.fmtMoney(r.high) : '') + '</td><td class="n">' + E.fmtMoney(r.extension) + '</td><td>' + esc(r.confidence) + '</td><td>' + esc(r.notes) + '</td></tr>'; }).join('') +
+      '</tbody><tfoot><tr><td colspan="6">Total (' + rows.length + ' items)</td><td class="n">' + E.fmtMoney(total) + '</td><td colspan="2"></td></tr></tfoot></table>' +
+      '<h3>Backup</h3><ol class="ps-backup">' + rows.map(function (r) { return '<li><b>' + esc(r.code) + ':</b> ' + esc(r.backup) + '</li>'; }).join('') + '</ol>' +
+      '<p class="ps-meta">Source: Texas Open Data Portal, TxDOT Bid Tabulations (dataset de7b-7dna), low bidder. Not an official bid; ESBD / EBS remain official. Possibly unbalanced bids are flagged, not removed.</p>';
+  }
+  $('printBtn').addEventListener('click', function () {
+    if (!items.length) return toast('Nothing to print yet');
+    $('printSummary').innerHTML = printHtml();
+    window.print();
+  });
+  window.addEventListener('beforeprint', function () { $('printSummary').innerHTML = printHtml(); });
   $('clearAll').addEventListener('click', function () {
     if (!items.length || !window.confirm('Remove all ' + items.length + ' items?')) return;
     items = []; save(); renderAll();

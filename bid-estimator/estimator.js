@@ -570,11 +570,12 @@
       low: ok ? res.low : null, high: ok ? res.high : null,
       extension: ok && q ? res.mid * q : null,
       confidence: res && res.ok ? res.confidence : '', scope: res && res.ok ? res.scopeLabel : '',
-      backup: res && res.ok ? res.sentence : (res && res.reason) || ''
+      backup: res && res.ok ? res.sentence : (res && res.reason) || '',
+      notes: it.notes || ''
     };
   }
   const COLS = [['code', 'Bid code'], ['desc', 'Description'], ['unit', 'Unit'], ['qty', 'Qty'], ['entered', 'Entered as'], ['unit_price', 'Unit price'],
-    ['low', 'Low'], ['high', 'High'], ['extension', 'Extension'], ['confidence', 'Confidence'], ['scope', 'Scope'], ['backup', 'Backup']];
+    ['low', 'Low'], ['high', 'High'], ['extension', 'Extension'], ['confidence', 'Confidence'], ['scope', 'Scope'], ['notes', 'Notes'], ['backup', 'Backup']];
   function cell(v) { return v == null ? '' : typeof v === 'number' ? String(Math.round(v * 100) / 100) : String(v); }
   function toTSV(rows) {
     const total = rows.reduce(function (s, r) { return s + (r.extension || 0); }, 0);
