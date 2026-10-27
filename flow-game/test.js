@@ -205,4 +205,33 @@ t('picking: client<->buffer round trip at desktop 1280x800 and iPhone 390x844 DP
       near(b.x, c.x, 1e-6); near(b.y, c.y + 16, 1e-6); }
   }
 });
+// ---------- culvert sprite: ordering/geometry regression (recording mock canvas) ----------
+function recCtx() { const ops = []; let m = [1, 0, 0, 1, 0, 0], st = [], path = [], fill = '';
+  const T = (x, y) => ({ x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5] });
+  return { ops, set fillStyle(v) { fill = v; }, get fillStyle() { return fill; }, strokeStyle: '', lineWidth: 1, globalAlpha: 1,
+    save() { st.push(m.slice()); }, restore() { m = st.pop(); }, translate(x, y) { m[4] += m[0] * x + m[2] * y; m[5] += m[1] * x + m[3] * y; },
+    transform(a, b, c, d, e, f) { const n = [m[0] * a + m[2] * b, m[1] * a + m[3] * b, m[0] * c + m[2] * d, m[1] * c + m[3] * d, m[0] * e + m[2] * f + m[4], m[1] * e + m[3] * f + m[5]]; m = n; },
+    beginPath() { path = []; }, moveTo(x, y) { path.push(T(x, y)); }, lineTo(x, y) { path.push(T(x, y)); }, closePath() {},
+    ellipse(x, y, rx, ry) { const c = T(x, y); path.push({ x: c.x, y: c.y, ell: true, rx, ry, top: T(x, y - ry), bot: T(x, y + ry) }); }, arc(x, y, r) { path.push(T(x, y)); },
+    fill() { ops.push({ fill, pts: path.slice() }); }, fillRect(x, y, w, h) { ops.push({ fill, pts: [T(x, y), T(x + w, y + h)], rect: true }); }, stroke() {} };
+}
+t('culvert sprite: barrels sit in the near embankment face under the road, count/size match, nothing paints over the road deck', () => {
+  const p = { x: 200, y: 100 }, TW2 = 32, TH2 = 16;
+  for (const axis of ['u', 'v']) for (const [dia, n] of [[36, 1], [48, 3], [60, 2], [72, 1], [72, 3]]) {
+    const ctx = recCtx(), drop = 18; FA.drawCulvert(ctx, p, { dia, barrels: n, axis, drop, zs: 3, prog: 1 });
+    const f = FA.culvertFace(p, axis), bores = ctx.ops.filter(o => o.fill === '#14181d');
+    assert.strictEqual(bores.length, n, axis + ' ' + dia + 'x' + n + ' barrel count');
+    const lo = Math.min(f.a.x, f.b.x) - 0.01, hi = Math.max(f.a.x, f.b.x) + 0.01;
+    let prevR = 0; bores.forEach(o => { const e = o.pts[0]; assert.ok(e.x >= lo && e.x <= hi, 'barrel inside the face width');
+      const edgeY = f.a.y + (e.x - f.a.x) * (f.b.y - f.a.y) / (f.b.x - f.a.x); // road edge above this point
+      assert.ok(e.top.y > edgeY + 2, 'barrel top is below the road edge (under the embankment)'); assert.ok(e.bot.y <= edgeY + drop + 0.01, 'barrel bottom at or above the bed'); prevR = e.ry; });
+    // the road deck (top diamond) is never painted except the 2-px far parapet strip along the far edge
+    const top = [FA.R ? null : null]; const inDeck = q => { const u = ((q.x - p.x) / TW2 + (q.y - p.y) / TH2) / 2, v = ((q.y - p.y) / TH2 - (q.x - p.x) / TW2) / 2; return u > 0.12 && u < 0.88 && v > 0.12 && v < 0.88; };
+    ctx.ops.forEach(o => o.pts.forEach(q => assert.ok(!inDeck(q), axis + ' ' + dia + 'x' + n + ': culvert paints inside the road deck at ' + JSON.stringify(q))));
+  }
+  // bigger pipe -> bigger bore (single barrel)
+  const r = d => { const c = recCtx(); FA.drawCulvert(c, p, { dia: d, barrels: 1, axis: 'u', drop: 24, zs: 3 }); return c.ops.find(o => o.fill === '#14181d').pts[0].ry; };
+  assert.ok(r(36) < r(48) && r(48) < r(72), 'bore grows with diameter');
+});
+
 console.log('\n' + n + ' tests passed');

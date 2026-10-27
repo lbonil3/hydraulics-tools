@@ -104,7 +104,7 @@
     ctx.clearRect(0, 0, geo.w, geo.h); ctx.drawImage(terrain, 0, 0, geo.w, geo.h);
     if (G.phase === 'storm') stepStorm(G.paused ? 0 : dt * G.speed);
     var f = stormF();
-    drawCreek(ctx, t, f);
+    drawCreek(ctx, t, f); drawCulvertFarWater(ctx, t, f);
     if (G.phase !== 'plan') drawWater(ctx, t, f);
     G.post = []; drawFlatControls(ctx, t, f);
     if (G.flowView) drawFlowView(ctx);
@@ -140,6 +140,30 @@
     var p = tp(i), lw = 1.5, ins = lw; ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath();
     ctx.moveTo(p.x, p.y + ins / 2); ctx.lineTo(p.x + TW / 2 - ins, p.y + TH / 2); ctx.lineTo(p.x, p.y + TH - ins / 2); ctx.lineTo(p.x - TW / 2 + ins, p.y + TH / 2); ctx.closePath(); ctx.stroke(); ctx.restore();
   }
+  // culvert geometry: which way the creek runs through the road tile, the visible (near) face and how deep the bed is below the road
+  function culvertGeo(i) { var L = G.L, W = L.W, x = i % W, y = (i / W) | 0, wat = function (xx, yy) { return xx >= 0 && yy >= 0 && xx < W && yy < L.H && S.isWater(L.types[yy * W + xx]); };
+    var axis = (wat(x - 1, y) || wat(x + 1, y)) ? 'u' : 'v', near = axis === 'u' ? (x + 1 < W ? i + 1 : -1) : (y + 1 < L.H ? i + W : -1), far = axis === 'u' ? (x > 0 ? i - 1 : -1) : (y > 0 ? i - W : -1);
+    var bedTile = near >= 0 && S.isWater(L.types[near]) ? near : far, drop = bedTile >= 0 ? geo.z[i] - geo.z[bedTile] : 12;
+    if (near < 0) drop = geo.z[i] + BASE - 2; // map edge: the face runs down the side of the block
+    var upNear = near >= 0 && far >= 0 && L.heights[near] > L.heights[far] + 1e-9;
+    return { axis: axis, near: near, far: far, drop: Math.max(4, drop), zs: geo.zs, upNear: upNear, bedEl: bedTile >= 0 ? L.heights[bedTile] : L.heights[i] - drop / geo.zs }; }
+  // headwater (upstream) and tailwater (downstream) depths in px above the bed at this moment of the storm
+  function culvertWater(g, f) { var L = G.L, r = res(), cv = r && r.culvert, q = G.phase === 'plan' ? 0 : qf(f); if (!cv || q <= 0) return { up: 0, dn: 0 };
+    var d = L.culvert.design || L.design, base = 0.6, hw = cv.HW != null ? cv.HW : L.culvert.roadEl + 1.5, tw = L.culvert.tw ? L.culvert.tw[d] : g.bedEl + 1;
+    var cap = (L.culvert.roadEl - g.bedEl) * g.zs + 3, up = Math.min(cap, (base + Math.max(0, hw - g.bedEl - base) * q) * g.zs), dn = Math.min(cap, (base + Math.max(0, tw - g.bedEl - base) * q) * g.zs);
+    return { up: up, dn: dn }; }
+  function culvertOpts(c, k, t, f) { var g = culvertGeo(c.tile); return { dia: c.dia, barrels: c.barrels, axis: g.axis, drop: g.drop, zs: g.zs, prog: k == null ? 1 : prog(k, t, 1400), t: t, flow: G.phase === 'storm' ? qf(f) : 0 }; }
+  // far-side water against the embankment: clipped so it never paints over the road tile's top or faces
+  // water standing in a creek tile, clipped so it never paints over the down-screen neighbours (banks, the road block) that hide it
+  function bankCap(i) { var L = G.L, W = L.W, x = i % W, y = (i / W) | 0, m = Infinity; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var xx = x + d[0], yy = y + d[1]; if (xx < 0 || yy < 0 || xx >= W || yy >= L.H) return; var j = yy * W + xx; if (!S.isWater(L.types[j]) && L.types[j] !== 'X') m = Math.min(m, geo.z[j] - geo.z[i]); }); return m === Infinity ? 99 : Math.max(0, m - 0.5); }
+  function drawSlotWater(ctx, i, depth, t, seed) { depth = Math.min(depth, bankCap(i)); if (depth <= 0.3) return; var L = G.L, W = L.W, x = i % W, y = (i / W) | 0, nb = []; // the slot holds the water; overtopping shows on the road
+    if (x + 1 < W) nb.push(i + 1); if (y + 1 < L.H) nb.push(i + W); if (x + 1 < W && y + 1 < L.H) nb.push(i + W + 1);
+    ctx.save(); ctx.beginPath(); ctx.rect(-50, -50, geo.w + 100, geo.h + 100);
+    nb.forEach(function (j) { if (S.isWater(L.types[j]) || geo.z[j] <= geo.z[i] + depth - 0.5) return; var p = tp(j), a0 = A.at(p, 0, 0), a1 = A.at(p, 1, 0), a2 = A.at(p, 1, 1), a3 = A.at(p, 0, 1), dz = geo.z[j] + BASE;
+      ctx.moveTo(a0.x, a0.y); ctx.lineTo(a3.x, a3.y); ctx.lineTo(a3.x, a3.y + dz); ctx.lineTo(a2.x, a2.y + dz); ctx.lineTo(a1.x, a1.y + dz); ctx.lineTo(a1.x, a1.y); ctx.closePath(); });
+    ctx.clip('evenodd'); FA.drawCreekWater(ctx, tp(i), depth, t, seed); ctx.restore(); }
+  function drawCulvertFarWater(ctx, t, f) { var L = G.L; if (!L.culvert || G.phase === 'plan') return; var i = L.culvert.tile, g = culvertGeo(i); if (g.far < 0 || !S.isWater(L.types[g.far])) return;
+    var w = culvertWater(g, f); drawSlotWater(ctx, g.far, g.upNear ? w.dn : w.up, t, 7); }
   function drawCreek(ctx, t, f) {
     var lvl = G.phase === 'plan' ? 0 : f;
     for (var k = 0; k < G.creekTiles.length; k++) {
@@ -263,7 +287,8 @@
   function drawTallControls(ctx, t, f) {
     var q = qf(f), hasCulv = false;
     G.controls.forEach(function (c, k) {
-      if (c.type === 'culvert') { hasCulv = true; var p = tp(c.tile), cen = tileCenter(c.tile); Q(cen.y + 2, function () { FA.drawCulvert(ctx, p, { dia: c.dia, barrels: c.barrels, alongY: !alongY(c.tile), prog: prog(k, t, 1400) });
+      if (c.type === 'culvert') { hasCulv = true; var p = tp(c.tile), cen = tileCenter(c.tile); Q(cen.y + 2, function () { var o = culvertOpts(c, k, t, f), g = culvertGeo(c.tile); FA.drawCulvert(ctx, p, o);
+        if (g.near >= 0 && S.isWater(G.L.types[g.near]) && G.phase !== 'plan') { var w = culvertWater(g, f); drawSlotWater(ctx, g.near, g.upNear ? w.up : w.dn, t, 5); }
         var e = evalFor(k, 'culvert'); if (e && e.status === 'overtopped' && G.phase !== 'plan' && q > 0.4) overtop(ctx, c.tile, t, k); }); }
       if (c.type === 'outlet') { var p2 = tp(c.tile); Q(tileCenter(c.tile).y + 3, function () { FA.drawOutlet(ctx, p2, { t: t, flow: G.phase === 'storm' ? q : 0 }); }); }
     });
@@ -547,7 +572,7 @@
     if (c.type === 'inlet') FA.drawInlet(ctx, p, { len: c.len, alongY: alongY(c.tile), t: t });
     else if (c.type === 'ditch') FA.drawDitch(ctx, p, { lining: c.lining, alongV: true });
     else if (c.type === 'pond') FA.drawPond(ctx, p, {});
-    else if (c.type === 'culvert') FA.drawCulvert(ctx, p, { dia: c.dia, barrels: c.barrels, alongY: !alongY(c.tile) });
+    else if (c.type === 'culvert') FA.drawCulvert(ctx, p, culvertOpts(c, null, t, 0));
     else if (c.type === 'outlet') FA.drawOutlet(ctx, p, {});
   }
   function drawSolGhost(ctx, t) {

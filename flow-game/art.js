@@ -150,13 +150,46 @@
         if (o.lining === 'grass' && k >= 0.25 && hash(s2, w, 5) > 0.7) col = pal[1];
         ctx.fillStyle = col; ctx.fillRect(Math.round(pt.x), Math.round(pt.y + 2 - 2 * (1 - k)), 2, 1); } }
   }
-  function drawCulvert(ctx, p, o) { // headwalls on both sides of the road over the creek
-    var n = o.barrels || 1, d = Math.max(3, Math.round((o.dia || 48) / 12)), prog = o.prog == null ? 1 : o.prog;
-    [0.02, 0.98].forEach(function (a, sd) {
-      var c = o.alongY ? at(p, 0.5, a) : at(p, a, 0.5), cx = Math.round(c.x), cy = Math.round(c.y);
-      var wdt = 8 + n * (d + 3); r(ctx, cx - wdt / 2, cy - d - 4 + (1 - prog) * 10, wdt, d + 6, sd ? '#a8a8a2' : '#c8c8c2'); r(ctx, cx - wdt / 2, cy - d - 5 + (1 - prog) * 10, wdt, 1, '#e0e0da');
-      for (var k = 0; k < n; k++) { var bx = cx - wdt / 2 + 5 + k * (d + 3) + d / 2; ctx.fillStyle = '#1a1e24'; ctx.beginPath(); ctx.arc(bx, cy - d / 2, d / 2 + 0.5, 0, 6.283); ctx.fill(); ctx.fillStyle = '#6a6a66'; ctx.fillRect(bx - d / 2, cy, d, 1); }
-    });
+  // Road-over-creek culvert in the isometric view (fix: barrels in the embankment faces, aligned with the creek, under the road).
+  // p = top vertex of the road tile; o.axis 'u' (creek runs along +x) or 'v' (along +y); o.drop = px from road top down to the creek
+  // bed on the visible (near) side; o.zs = px per ft vertically; o.dia (in), o.barrels; o.near/o.far = water depth px above the bed
+  // on the near / far creek tile (headwater or tailwater). Only the near face is visible in this projection (faces +x/+y point at
+  // the viewer); the far end shows as a parapet cap along the far road edge, the far barrels are hidden by the road fill.
+  function culvertFace(p, axis) { return axis === 'u' ? { a: at(p, 1, 0), b: at(p, 1, 1), out: { x: TW / 2, y: TH / 2 }, fa: at(p, 0, 0), fb: at(p, 0, 1) }
+    : { a: at(p, 0, 1), b: at(p, 1, 1), out: { x: -TW / 2, y: TH / 2 }, fa: at(p, 0, 0), fb: at(p, 1, 0) }; }
+  function quad(ctx, pts, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (var k = 1; k < pts.length; k++) ctx.lineTo(pts[k].x, pts[k].y); ctx.closePath(); ctx.fill(); }
+  // barrels are drawn round at the game's (exaggerated) vertical scale so 36" vs 72" reads clearly; all shrink together to fit the face
+  function culvertBarrels(o, len) { var n = Math.max(1, o.barrels || 1), Dft = (o.dia || 48) / 12, rv = Math.min(Dft * (o.zs || 3) / 2, (o.drop - 3) / 2), rh = rv * 0.95, gap = Math.max(1.5, rh * 0.4);
+    var tot = n * 2 * rh + (n - 1) * gap, sc = tot > len * 0.8 ? len * 0.8 / tot : 1; rh *= sc; rv *= sc; gap *= sc; tot *= sc; rv = Math.max(1.5, rv); rh = Math.max(1.5, rh);
+    var c = []; for (var k = 0; k < n; k++) c.push((len - tot) / 2 + rh + k * (2 * rh + gap)); return { rh: rh, rv: rv, c: c }; }
+  function drawCulvertFar(ctx, p, o) { // parapet along the far road edge (drawn with the road tile, before anything in front)
+    var f = culvertFace(p, o.axis), up = 2; quad(ctx, [f.fa, f.fb, { x: f.fb.x, y: f.fb.y - up }, { x: f.fa.x, y: f.fa.y - up }], '#d6d6cf');
+    quad(ctx, [{ x: f.fa.x, y: f.fa.y - up }, { x: f.fb.x, y: f.fb.y - up }, { x: f.fb.x, y: f.fb.y - up - 1 }, { x: f.fa.x, y: f.fa.y - up - 1 }], '#efefe9'); }
+  function drawCulvert(ctx, p, o) {
+    var f = culvertFace(p, o.axis), drop = Math.max(4, o.drop || 12), prog = o.prog == null ? 1 : o.prog, a = f.a, b = f.b;
+    var ex = b.x - a.x, ey = b.y - a.y, len = Math.sqrt(ex * ex + ey * ey), ux = ex / len, uy = ey / len, dn = function (q, d) { return { x: q.x, y: q.y + d }; };
+    var rise = (1 - prog) * drop; // build animation: the wall rises out of the bed
+    drawCulvertFar(ctx, p, o);
+    // wingwalls flaring onto the near creek tile, top sloping down to the bed
+    [a, b].forEach(function (q, s2) { var flare = s2 ? 1 : -1, side = { x: q.x + f.out.x * 0.16 + ux * flare * 2, y: q.y + f.out.y * 0.16 + uy * flare * 2 }; // short wingwalls, top sloping to the bed
+      quad(ctx, [dn(q, Math.max(rise, drop * 0.35)), dn(q, drop), dn(side, drop), dn(side, Math.max(rise, drop * 0.8))], s2 ? '#a3a39c' : '#b3b3ac'); });
+    // headwall: the whole near face of the embankment, concrete, with a light cap
+    quad(ctx, [dn(a, rise), dn(b, rise), dn(b, drop), dn(a, drop)], '#c4c4bd');
+    quad(ctx, [dn(a, rise), dn(b, rise), dn(b, rise + 2), dn(a, rise + 2)], '#e2e2dc');
+    quad(ctx, [dn(a, drop - 1), dn(b, drop - 1), dn(b, drop), dn(a, drop)], '#8d8d86');
+    if (prog < 0.6) return;
+    var g = culvertBarrels({ dia: o.dia, barrels: o.barrels, zs: o.zs, drop: drop }, len);
+    g.c.forEach(function (d) { var cx = a.x + ux * d, cy = a.y + uy * d + drop - g.rv - 0.5;
+      ctx.save(); ctx.translate(cx, cy); ctx.transform(ux, uy, 0, 1, 0, 0);
+      ctx.fillStyle = '#8a8a84'; ctx.beginPath(); ctx.ellipse(0, 0, g.rh + 1, g.rv + 1, 0, 0, Math.PI * 2); ctx.fill(); // concrete ring
+      ctx.fillStyle = '#14181d'; ctx.beginPath(); ctx.ellipse(0, 0, g.rh, g.rv, 0, 0, Math.PI * 2); ctx.fill();          // dark bore
+      ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.ellipse(-g.rh * 0.25, -g.rv * 0.35, g.rh * 0.45, g.rv * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+      if (o.flow > 0.02) { var t = o.t || 0; for (var k = 0; k < 4; k++) { var ph = (t / 260 + k / 4) % 1; ctx.fillStyle = 'rgba(205,235,255,' + (0.8 * (1 - ph)).toFixed(2) + ')'; ctx.fillRect(-g.rh * 0.7 + k * g.rh * 0.45, g.rv * (0.9 - Math.min(0.9, o.flow) * 0.9) + ph * 2, Math.max(1, g.rh * 0.3), 1); } }
+      ctx.restore(); });
+  }
+  // water standing on a creek tile at depth px above its bed (headwater against the far wall / tailwater at the near outlet)
+  function drawCreekWater(ctx, p, depth, t, seed, col) { if (depth <= 0.3) return; var q = { x: p.x, y: p.y - depth };
+    B.diamond(ctx, q, 0.0, col || 'rgba(78,128,178,.78)'); for (var k = 0; k < 3; k++) { var ph = ((t || 0) / 900 + hash(k, seed || 0, 9)) % 1, w = at(q, 0.2 + 0.6 * ph, 0.2 + 0.6 * hash(k, 3, seed || 0)); ctx.fillStyle = 'rgba(225,242,255,' + (0.6 * Math.sin(ph * 3.14)).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 3, Math.round(w.y), 6, 1); }
   }
   function drawPond(ctx, p, o) { // excavated basin; o.level 0..1 water depth fraction
     B.diamond(ctx, p, 0.04, '#7d5733'); B.diamond(ctx, p, 0.1, '#5a9a48'); B.diamond(ctx, p, 0.2, '#6a8a4a');
@@ -173,5 +206,5 @@
   function drawNoBuild(ctx, p) { for (var k = 0; k < 8; k++) { var a = at(p, 0.1 + k * 0.1, 0.1), b = at(p, 0.1, 0.1 + k * 0.1); ctx.strokeStyle = 'rgba(230,60,40,.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); } }
   function drawFlag(ctx, x, y, col) { x = Math.round(x); y = Math.round(y); r(ctx, x, y - 26, 1, 26, '#5a0e08'); r(ctx, x + 1, y - 26, 8, 6, col || '#ff3b2f'); }
   root.FlowArt = { drawTerrain: drawTerrain, drawHouse: drawHouse, drawTree: drawTree, drawCar: drawCar, drawInlet: drawInlet, drawLid: drawLid, drawDitch: drawDitch,
-    drawCulvert: drawCulvert, drawPond: drawPond, drawOutlet: drawOutlet, drawUtility: drawUtility, drawNoBuild: drawNoBuild, drawFlag: drawFlag, LIN: LIN, R: R };
+    drawCulvert: drawCulvert, drawCulvertFar: drawCulvertFar, culvertFace: culvertFace, culvertBarrels: culvertBarrels, drawCreekWater: drawCreekWater, drawPond: drawPond, drawOutlet: drawOutlet, drawUtility: drawUtility, drawNoBuild: drawNoBuild, drawFlag: drawFlag, LIN: LIN, R: R };
 })(this);
