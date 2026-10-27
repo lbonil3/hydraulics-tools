@@ -410,6 +410,7 @@ a.tool .local {
 .tool-pse .icon { background: linear-gradient(155deg, #ea580c 0%, #c2410c 58%, #9a3412 100%); }
 .tool-capture .icon { background: linear-gradient(155deg, #5c5c56 0%, #3f3f3a 55%, #2e2e2c 100%); }
 .tool-radar .icon { background: linear-gradient(155deg, #0f766e 0%, #115e59 58%, #134e4a 100%); }
+.tool-national .icon { background: linear-gradient(155deg, #2563b8 0%, #1e4f95 58%, #173d75 100%); }
 .tool-swp3 .icon { background: linear-gradient(155deg, #1f7a56 0%, #1b5e45 55%, #134532 100%); }
 
 footer {

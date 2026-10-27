@@ -21,11 +21,11 @@ if (/recently/i.test(html)) fail('home should not add a recently-used section');
 const groups = [
   { title: 'Design', hrefs: ['rational/index.html', 'drainage/index.html', 'storm/index.html', 'ditch-table/index.html', 'culvert/index.html'] },
   { title: 'Estimating', hrefs: ['bid-cost/index.html', 'pse-tracker/index.html'] },
-  { title: 'Pursuits &amp; compliance', hrefs: ['capture-terminal/index.html', 'opportunity-radar/index.html', 'swp3-builder/index.html'] },
+  { title: 'Pursuits &amp; compliance', hrefs: ['capture-terminal/index.html', 'opportunity-radar/index.html', 'national-radar/index.html', 'swp3-builder/index.html'] },
 ];
 const hrefs = groups.flatMap((g) => g.hrefs);
-const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-bid-cost', 'tool-ditch', 'tool-culvert', 'tool-pse', 'tool-capture', 'tool-radar', 'tool-swp3'];
-const names = ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Bid Cost', 'Ditch', 'Culvert Studio', 'PS&amp;E Tracker', 'Capture Terminal', 'Opportunity Radar', 'SWP3 Builder'];
+const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-bid-cost', 'tool-ditch', 'tool-culvert', 'tool-pse', 'tool-capture', 'tool-radar', 'tool-national', 'tool-swp3'];
+const names = ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Bid Cost', 'Ditch', 'Culvert Studio', 'PS&amp;E Tracker', 'Capture Terminal', 'Opportunity Radar', 'National Radar', 'SWP3 Builder'];
 
 let cursor = 0;
 for (const g of groups) {
