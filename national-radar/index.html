@@ -63,6 +63,13 @@
     <p class="note" id="dbNote"></p>
   </div>
 </section>
+<section class="capbar" id="capBar" aria-label="Capture files" hidden>
+  <p class="capstat" id="capStat"></p>
+  <div class="chips" id="capSort" role="group" aria-label="Sort the watchlist"><span class="hint">Sort</span><button type="button" class="chip" data-capsort="due" aria-pressed="false">Due date</button><button type="button" class="chip" data-capsort="decision" aria-pressed="false">Go / No-go</button></div>
+  <div class="chips"><button type="button" class="btn small" id="btnCapCsv">Export capture CSV</button><button type="button" class="btn small" id="btnBackup">Back up (JSON)</button><button type="button" class="btn small" id="btnRestore">Restore (merge)</button><button type="button" class="btn small" id="btnRestoreAll">Restore (replace all)</button></div>
+  <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+  <p class="note">A capture file is your own notes on a starred record. It is saved only on this device. Back up the JSON file before clearing browser data or switching phones. The CSV covers every starred record in all lanes, with its stated fee (if any), status and source link.</p>
+</section>
 <section class="kpis" id="kpis" aria-label="Summary"></section>
 
 <section class="filters" aria-label="Filters">
@@ -101,7 +108,7 @@
 
   <section id="v-list" class="view" hidden aria-label="List">
     <div class="listbar">
-      <label class="sortl">Sort <select id="sort"><option value="conf">Confirmed first, then value</option><option value="fee">Stated value, high to low</option><option value="date">Date, soonest first</option><option value="agency">Agency</option></select></label>
+      <label class="sortl">Sort <select id="sort"><option value="conf">Confirmed first, then value</option><option value="fee">Stated value, high to low</option><option value="date">Date, soonest first</option><option value="agency">Agency</option><option value="due">My due date (watchlist)</option><option value="decision">My Go / No-go (watchlist)</option></select></label>
       <span id="listCount" class="hint"></span>
     </div>
     <div id="list" class="cards"></div>
@@ -153,6 +160,7 @@
 
 <script src="proj.js"></script>
 <script src="us-geo.js"></script>
+<script src="capture.js"></script>
 <script src="model.js"></script>
 <script src="cost.js"></script>
 <script src="roadway.js"></script>
