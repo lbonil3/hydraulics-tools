@@ -296,7 +296,15 @@
   function estimate(entry, qtyIn, ctx, opts) {
     opts = opts || {};
     ctx = ctx || {};
-    const qty = num(qtyIn);
+    const unit0 = entry.unit || '';
+    let qty = num(qtyIn);
+    let conversion = null;
+    if (opts && opts.qtyUnit && String(opts.qtyUnit).toUpperCase() !== String(unit0).toUpperCase()) {
+      const cq = convertQty(qty, opts.qtyUnit, unit0);
+      if (cq == null) return { ok: false, reason: 'Cannot convert ' + opts.qtyUnit + ' to ' + unit0 + ' for ' + entry.code + ' — enter the quantity in ' + unit0 + '.' };
+      conversion = { from: opts.qtyUnit, qty: qty, to: unit0, converted: cq };
+      qty = cq;
+    }
     const districts = ctx.districts || [];
     const counties = ctx.counties || [];
     const unit = entry.unit || '';
@@ -496,6 +504,7 @@
     if (extrapolated) warnings.push('Extrapolated beyond data: your quantity is more than ' + METHOD.EXTRAP_FACTOR + 'x outside the sizes on record. Range widened ' + pct(METHOD.EXTRAP_WIDEN) + ' each way; confidence set to Low.');
     else if (outside) warnings.push('Slightly outside the sizes on record (within ' + METHOD.EXTRAP_FACTOR + 'x).');
     if (nOut) warnings.push(nOut + ' outlier bid' + (nOut === 1 ? '' : 's') + ' (beyond 3x IQR on a log scale) left out of the base and range.');
+    if (conversion) comments.push('Units: you entered ' + fmtQty(conversion.qty) + ' ' + conversion.from + ' = ' + fmtQty(conversion.converted) + ' ' + conversion.to + ' (exact conversion); prices are per ' + conversion.to + ' as bid (' + fmtMoney(mid) + '/' + conversion.to + ' = ' + fmtMoney(mid * conversion.converted / conversion.qty) + '/' + conversion.from + ').');
     if (entry.units && entry.units.length > 1) warnings.push('Unit mismatch: this code was bid in more than one unit (' + entry.units.join(', ') + '); prices assume ' + unit + '.');
     if (slopeSource === 'pooled' || slopeSource === 'global') warnings.push('Quantity discount is assumed from other TxDOT items, not measured for this code.');
     if (slopeSource === 'grouped' && g && (g.code_n || 0) < METHOD.SHRINK_K && outside) warnings.push('Quantity discount mostly borrowed from related items (shrinkage), not measured for this code alone.');
@@ -518,7 +527,7 @@
       confidence: confidence, score: pts,
       extrapolated: extrapolated, outside: outside, capped: capped,
       slope: slope, slopeSource: slopeSource, fit: fit,
-      escalation: esc, medianLet: medLet,
+      escalation: esc, medianLet: medLet, conversion: conversion,
       neighbors: nb.rows.length, outliers: nOut, flagStats: flagStats, neighborsFlagged: nbFlagged,
       stats: st, p10: p10, p25: p25, p50: p50, p75: p75, p90: p90,
       houstonMedian: houMed, statewideMedian: swMed, eeMedian: eeMed, lowToEe: lowToEe,
@@ -526,18 +535,45 @@
     };
   }
 
+  // ---- unit conversions (only exact, unambiguous ones) ----
+  const UNIT_FAMILIES = {
+    length: { LF: 1, STA: 100, MI: 5280 },   // 1 STA = 100 LF, 1 MI = 5,280 LF
+    area: { SF: 1, SY: 9, AC: 43560 }         // 1 SY = 9 SF, 1 AC = 43,560 SF
+  };
+  function unitFamily(u) {
+    u = String(u || '').toUpperCase();
+    for (const k in UNIT_FAMILIES) if (UNIT_FAMILIES[k][u] != null) return k;
+    return null;
+  }
+  /** Units a quantity can be entered in for a code bid in `unit` (always includes the unit itself). */
+  function compatibleUnits(unit) {
+    const f = unitFamily(unit);
+    return f ? Object.keys(UNIT_FAMILIES[f]) : [String(unit || '')];
+  }
+  /** Convert q from one unit to another; null when not exactly convertible (never guesses). */
+  function convertQty(q, from, to) {
+    from = String(from || '').toUpperCase(); to = String(to || '').toUpperCase();
+    if (!from || from === to) return q;
+    const f = unitFamily(from);
+    if (!f || unitFamily(to) !== f) return null;
+    return q * UNIT_FAMILIES[f][from] / UNIT_FAMILIES[f][to];
+  }
+
   // ---- line items / export ----
   function lineRow(it, res) {
+    const ok = res && res.ok;
+    const q = ok ? res.qty : num(it.qty);
     return {
-      code: it.code, desc: res && res.ok ? res.desc : (it.desc || ''), unit: res && res.ok ? res.unit : '',
-      qty: num(it.qty), unit_price: res && res.ok ? res.mid : null,
-      low: res && res.ok ? res.low : null, high: res && res.ok ? res.high : null,
-      extension: res && res.ok && num(it.qty) ? res.mid * num(it.qty) : null,
+      code: it.code, desc: ok ? res.desc : (it.desc || ''), unit: ok ? res.unit : '',
+      qty: q, entered: it.qtyUnit && ok && it.qtyUnit !== res.unit ? fmtQty(num(it.qty)) + ' ' + it.qtyUnit : '',
+      unit_price: ok ? res.mid : null,
+      low: ok ? res.low : null, high: ok ? res.high : null,
+      extension: ok && q ? res.mid * q : null,
       confidence: res && res.ok ? res.confidence : '', scope: res && res.ok ? res.scopeLabel : '',
       backup: res && res.ok ? res.sentence : (res && res.reason) || ''
     };
   }
-  const COLS = [['code', 'Bid code'], ['desc', 'Description'], ['unit', 'Unit'], ['qty', 'Qty'], ['unit_price', 'Unit price'],
+  const COLS = [['code', 'Bid code'], ['desc', 'Description'], ['unit', 'Unit'], ['qty', 'Qty'], ['entered', 'Entered as'], ['unit_price', 'Unit price'],
     ['low', 'Low'], ['high', 'High'], ['extension', 'Extension'], ['confidence', 'Confidence'], ['scope', 'Scope'], ['backup', 'Backup']];
   function cell(v) { return v == null ? '' : typeof v === 'number' ? String(Math.round(v * 100) / 100) : String(v); }
   function toTSV(rows) {
@@ -546,7 +582,7 @@
     rows.forEach(function (r) {
       lines.push(COLS.map(function (c) { return cell(r[c[0]]).replace(/[\t\r\n]+/g, ' '); }).join('\t'));
     });
-    lines.push(['', 'TOTAL', '', '', '', '', '', cell(total), '', '', ''].join('\t'));
+    lines.push(COLS.map(function (c) { return c[0] === 'desc' ? 'TOTAL' : c[0] === 'extension' ? cell(total) : ''; }).join('\t'));
     return lines.join('\n');
   }
   function csvCell(s) { s = String(s); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
@@ -554,7 +590,7 @@
     const total = rows.reduce(function (s, r) { return s + (r.extension || 0); }, 0);
     const lines = [COLS.map(function (c) { return csvCell(c[1]); }).join(',')];
     rows.forEach(function (r) { lines.push(COLS.map(function (c) { return csvCell(cell(r[c[0]])); }).join(',')); });
-    lines.push(['', 'TOTAL', '', '', '', '', '', cell(total), '', '', ''].join(','));
+    lines.push(COLS.map(function (c) { return c[0] === 'desc' ? 'TOTAL' : c[0] === 'extension' ? cell(total) : ''; }).join(','));
     return lines.join('\r\n');
   }
 
@@ -586,7 +622,7 @@
   }
 
   const api = {
-    O: O, METHOD: METHOD, escalation: escalation, quarterOf: quarterOf, slopeSums: slopeSums, shrink: shrink, quantile: quantile, median: median, mean: mean, linreg: linreg, tPValue: tPValue,
+    O: O, METHOD: METHOD, convertQty: convertQty, compatibleUnits: compatibleUnits, unitFamily: unitFamily, escalation: escalation, quarterOf: quarterOf, slopeSums: slopeSums, shrink: shrink, quantile: quantile, median: median, mean: mean, linreg: linreg, tPValue: tPValue,
     logLogFit: logLogFit, summarize: summarize, outlierFence: outlierFence, neighbors: neighbors,
     estimate: estimate, roundPrice: roundPrice, fmtMoney: fmtMoney, fmtQty: fmtQty,
     lineRow: lineRow, toTSV: toTSV, toCSV: toCSV, search: search, parseQuery: parseQuery, r4: r4

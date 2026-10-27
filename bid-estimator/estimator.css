@@ -123,3 +123,8 @@ details.more summary{cursor:pointer;color:#1f4e79;font-weight:600;font-size:13px
 .settings summary{cursor:pointer;color:#1f4e79;font-weight:600;font-size:13px;min-height:36px;display:flex;align-items:center}
 .settings-grid{grid-template-columns:repeat(2,minmax(160px,260px))}
 .hint{font-size:12px;color:#556;margin:6px 0 0}
+
+.qty-row{display:flex;gap:6px}
+.qty-row input{flex:1;min-width:0}
+.qty-row select{width:auto;flex:0 0 auto}
+.bidtab select.unit-in{min-height:34px;padding:2px 4px;border:1px solid #c9d2dd;border-radius:5px;font:13px system-ui;background:#fff}

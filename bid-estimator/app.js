@@ -18,7 +18,7 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function load() { try { const a = JSON.parse(localStorage.getItem(STORE) || '[]'); return Array.isArray(a) ? a.filter(function (x) { return x && x.code; }) : []; } catch (e) { return []; } }
-  function save() { try { localStorage.setItem(STORE, JSON.stringify(items.map(function (i) { return { id: i.id, code: i.code, qty: i.qty, scope: i.scope }; }))); } catch (e) { /* private mode */ } }
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(items.map(function (i) { return { id: i.id, code: i.code, qty: i.qty, scope: i.scope, qtyUnit: i.qtyUnit || null }; }))); } catch (e) { /* private mode */ } }
   function newId() { return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function toast(t) {
     let el = document.querySelector('.toast');
@@ -79,6 +79,9 @@
     els.suggest.hidden = true; els.search.setAttribute('aria-expanded', 'false');
     els.picked.textContent = r[0] + ' · ' + r[1] + ' · unit ' + r[2] + ' · ' + r[3] + ' low bids statewide, ' + r[4] + ' Houston';
     els.qtyUnit.textContent = '(' + r[2] + ')';
+    const us = E.compatibleUnits(r[2]);
+    $('qtyUnitSel').innerHTML = us.map(function (u) { return '<option' + (u === r[2] ? ' selected' : '') + '>' + esc(u) + '</option>'; }).join('');
+    $('qtyUnitSel').hidden = us.length < 2;
     els.msg.textContent = '';
     els.qty.focus();
   }
@@ -107,14 +110,17 @@
     if (!picked) { els.msg.textContent = 'Pick a bid code from the list first.'; els.search.focus(); return; }
     const q = Number(els.qty.value);
     if (!(q > 0)) { els.msg.textContent = 'Enter a quantity greater than zero.'; els.qty.focus(); return; }
-    addItem(picked[0], q, els.scope.value);
+    const qu = $('qtyUnitSel').hidden ? picked[2] : $('qtyUnitSel').value;
+    addItem(picked[0], q, els.scope.value, qu);
+    $('qtyUnitSel').hidden = true;
     els.search.value = ''; els.qty.value = ''; els.picked.textContent = ''; els.qtyUnit.textContent = ''; picked = null;
     els.msg.textContent = '';
   }
   els.add.addEventListener('click', addFromForm);
 
-  function addItem(code, qty, scope) {
+  function addItem(code, qty, scope, qtyUnit) {
     const it = { id: newId(), code: code, qty: qty, scope: scope || 'auto' };
+    if (qtyUnit) it.qtyUnit = qtyUnit;
     items.push(it); openId = it.id; save();
     return compute(it).then(function () {
       renderAll();
@@ -126,13 +132,19 @@
   function compute(it) {
     return shard(it.code).then(function (sh) {
       const e = sh.codes[it.code];
-      results[it.id] = e ? E.estimate(Object.assign({ code: it.code }, e), it.qty, ctx, { scope: it.scope, letDate: settings.letDate || null, annualPct: Number(settings.escPct) || 0 })
+      results[it.id] = e ? E.estimate(Object.assign({ code: it.code }, e), it.qty, ctx, { scope: it.scope, qtyUnit: it.qtyUnit || null, letDate: settings.letDate || null, annualPct: Number(settings.escPct) || 0 })
         : { ok: false, reason: 'Bid code ' + it.code + ' is not in the data.' };
     }).catch(function () { results[it.id] = { ok: false, reason: 'Could not load data for ' + it.code + '.' }; });
   }
 
   // ---------- render ----------
   function lineRows() { return items.map(function (it) { return E.lineRow(it, results[it.id]); }); }
+  function unitCell(it, unit) {
+    const us = E.compatibleUnits(unit);
+    if (us.length < 2) return esc(unit);
+    const cur = it.qtyUnit || unit;
+    return '<select class="unit-in" aria-label="Unit for ' + esc(it.code) + ' quantity (bid in ' + esc(unit) + ')">' + us.map(function (u) { return '<option' + (u === cur ? ' selected' : '') + '>' + esc(u) + '</option>'; }).join('') + '</select>';
+  }
   function renderTable() {
     if (!items.length) { els.tab.innerHTML = '<p class="empty-tab">No items yet. Search a bid code above, enter a quantity and press Add item.</p>'; return; }
     const rows = lineRows();
@@ -141,7 +153,7 @@
       const r = rows[i], res = results[it.id];
       total += r.extension || 0;
       return '<tr data-id="' + it.id + '"><td class="c-code code">' + esc(it.code) + '</td><td class="c-desc desc">' + esc(r.desc) + '</td><td class="c-unit">' + esc(r.unit) + '</td>' +
-        '<td class="c-qty num"><input class="qty-in" type="number" inputmode="decimal" min="0" step="any" value="' + esc(it.qty) + '" aria-label="Quantity for ' + esc(it.code) + '"><span class="m-unit"> ' + esc(r.unit) + '</span></td>' +
+        '<td class="c-qty num"><input class="qty-in" type="number" inputmode="decimal" min="0" step="any" value="' + esc(it.qty) + '" aria-label="Quantity for ' + esc(it.code) + '"><span class="m-unit"> ' + esc(it.qtyUnit || r.unit) + '</span></td>' +
         '<td class="c-price num" data-k="Unit price"><b>' + E.fmtMoney(r.unit_price) + '</b></td>' +
         '<td class="c-range num" data-k="Range">' + (res && res.ok ? E.fmtMoney(r.low) + '–' + E.fmtMoney(r.high) : '—') + '</td>' +
         '<td class="c-ext num" data-k="Extension">' + E.fmtMoney(r.extension) + '</td>' +
@@ -217,6 +229,12 @@
   function renderAll() { renderTable(); renderCards(); }
 
   els.tab.addEventListener('change', function (ev) {
+    const us = ev.target.closest('.unit-in');
+    if (us) {
+      const it0 = items.find(function (x) { return x.id === us.closest('tr').getAttribute('data-id'); });
+      if (it0) { it0.qtyUnit = us.value; save(); compute(it0).then(renderAll); }
+      return;
+    }
     const inp = ev.target.closest('.qty-in'); if (!inp) return;
     const tr = inp.closest('tr'); const it = items.find(function (x) { return x.id === tr.getAttribute('data-id'); });
     const q = Number(inp.value);

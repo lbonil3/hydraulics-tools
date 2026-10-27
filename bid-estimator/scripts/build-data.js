@@ -157,6 +157,7 @@ for (const [item, obj] of shards) {
 }
 const meta = { source_url: 'https://data.texas.gov/dataset/Bid-Tabulations/de7b-7dna', accessed: fetchMeta.accessed,
   let_date_min: dmin, let_date_max: dmax, low_bid_rows: rows, rows_used: kept, codes: codes.size, flagged_bids: flaggedBids, other_bid_rows: fetchMeta.other_bid_rows || 0, flag_counts: flagCounts,
+  mixed_unit_codes: [...codes.values()].filter((c) => c.units.size > 1).length,
   codes_with_flags: [...codes.values()].filter((c) => c.obs.some((o) => o[9])).length, shards: shards.size,
   note: 'Low bidder (bid_rank_sequence_number=1) rows for every letting in the dataset; all-bidder count/min/avg per project+code+qty. Planning-level only.' };
 const indexJson = JSON.stringify({ meta: meta, pooled_slope: pooled, global_within_slope: E.r4(globalSlope), shrink_k: K, counties: counties, districts: districts, index: index });

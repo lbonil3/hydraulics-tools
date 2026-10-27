@@ -115,6 +115,23 @@ t('escalation uses real NHCCI values and labels user %/yr', () => {
   assert(r.comments.some((c) => /FHWA NHCCI .* 3%\/yr \(user input, assumed\)/.test(c)));
   assert(/escalated .* by FHWA NHCCI and 3%\/yr \(assumed\)/.test(r.sentence));
 });
+t('unit conversions are exact or refused', () => {
+  assert.strictEqual(E.convertQty(120, 'STA', 'LF'), 12000);
+  assert.strictEqual(E.convertQty(900, 'SF', 'SY'), 100);
+  assert.strictEqual(E.convertQty(1, 'AC', 'SF'), 43560);
+  assert.strictEqual(E.convertQty(5, 'EA', 'LF'), null);
+  assert.strictEqual(E.convertQty(5, 'CY', 'SY'), null);
+  assert.deepStrictEqual(E.compatibleUnits('EA'), ['EA']);
+  const a = E.estimate(entry('5002-7001'), 120, ctx, { qtyUnit: 'STA' });
+  assert.strictEqual(a.qty, 12000);
+  assert.strictEqual(a.mid, ftbI.mid);
+  assert(a.comments.some((c) => /120 STA = 12,000 LF/.test(c)));
+  assert.strictEqual(E.estimate(entry('5002-7001'), 5, ctx, { qtyUnit: 'CY' }).ok, false);
+  const row = E.lineRow({ code: '5002-7001', qty: 120, qtyUnit: 'STA' }, a);
+  assert(row.qty === 12000 && row.entered === '120 STA' && row.extension === a.mid * 12000);
+  // no code in the data mixes units (would otherwise be warned, never silently mixed)
+  assert(ix.index.every((r) => r[2]));
+});
 t('scope forcing and bad input', () => {
   assert.strictEqual(E.estimate(entry('5002-7001'), 100, ctx, { scope: 'houston' }).scope, 'houston');
   assert.strictEqual(E.estimate(entry('5033-7001'), 100, ctx, { scope: 'houston' }).scope, 'statewide');
@@ -185,8 +202,8 @@ t('TSV / CSV export', () => {
   const tsv = E.toTSV(rows).split('\n');
   assert.strictEqual(tsv.length, 4);
   assert(tsv[0].startsWith('Bid code\tDescription'));
-  assert(tsv.every((l) => l.split('\t').length === 11));
-  const total = Number(tsv[3].split('\t')[7]);
+  assert(tsv.every((l) => l.split('\t').length === 12));
+  const total = Number(tsv[3].split('\t')[8]);
   assert(Math.abs(total - (ftbI.mid + ftbR.mid) * 12000) < 0.01);
   const csv = E.toCSV(rows);
   assert(/"Unit price based on/.test(csv) || /,Unit price based on/.test(csv));

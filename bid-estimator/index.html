@@ -34,7 +34,10 @@
     </div>
     <div class="field qty-field">
       <label for="qty">Quantity <span id="qtyUnit"></span></label>
-      <input id="qty" type="number" inputmode="decimal" min="0" step="any" placeholder="12000">
+      <div class="qty-row">
+        <input id="qty" type="number" inputmode="decimal" min="0" step="any" placeholder="12000">
+        <select id="qtyUnitSel" aria-label="Quantity unit" hidden></select>
+      </div>
     </div>
     <div class="field scope-field">
       <label for="scope">Region</label>
@@ -90,6 +93,7 @@
     <li><b>Range.</b> Low and high scale the suggestion by the 25th and 75th percentiles relative to the median. The range is widened 15% each way when extrapolating, and to at least −40% / +50% with fewer than 5 bids.</li>
     <li><b>Confidence.</b> High / Medium / Low from the number of bids, whether your quantity is inside the sizes on record, how spread out prices are, and whether there are bids in the last 12 months. More than 2x beyond the largest (or below half the smallest) job is labeled <i>extrapolated beyond data</i> and always Low.</li>
     <li><b>Escalation (optional).</b> With an expected letting date, prices are moved from the median let date of the bids used to that date with the FHWA National Highway Construction Cost Index (NHCCI, seasonally adjusted, <a href="https://data.transportation.gov/d/r94d-n4f9" target="_blank" rel="noopener noreferrer">data.transportation.gov r94d-n4f9</a>; <a href="https://www.fhwa.dot.gov/policy/otps/nhcci/" target="_blank" rel="noopener noreferrer">FHWA NHCCI page</a>). The NHCCI is national, not Texas-specific. Past the latest published quarter, your %/yr (default 0%) is used and labeled <i>user input, assumed</i>.</li>
+    <li><b>Units.</b> You can enter a quantity in another unit only when the conversion is exact: LF ↔ STA (100) ↔ MI (5,280), SF ↔ SY (9) ↔ AC (43,560). Prices stay per the unit TxDOT bid; the comment shows the conversion. Nothing else is converted, and the data build checks that no code mixes units.</li>
     <li><b>Possibly unbalanced bids are flagged, never removed.</b> Every flagged bid stays in every statistic and in the suggested price; the page shows the median and range with and without them for information only. A low bid is flagged when any of these hold (thresholds in <code>flags.js</code>):
       <ul>
         <li><i>Install/remove pair</i> — on the same project, an install item and its matching remove item (same spec item, same description without the install/remove words, e.g. 5002-7001/7002, 506-7039/7041): remove priced at or above install, or the remove/install ratio more than 3x (or under 1/3) the typical ratio for that pair, while install + remove stays within 0.5x–2x of the typical combined price (money moved between the halves). Typical values need at least 3 jobs of the pair; otherwise only the remove ≥ install test applies.</li>
