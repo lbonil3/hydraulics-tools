@@ -63,6 +63,11 @@
     s.push('<line class="yourq" x1="' + xq + '" x2="' + xq + '" y1="' + T + '" y2="' + (H - B) + '"/>');
     obs.forEach(function (o) {
       const h = o[5] === houstonIdx;
+      if (o[9] > 0) {
+        const cx = X(o[0]), cy = Y(o[1]);
+        s.push('<rect class="pt flag" x="' + (cx - 5).toFixed(1) + '" y="' + (cy - 5).toFixed(1) + '" width="10" height="10" transform="rotate(45 ' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ')"><title>' + esc('Possibly unbalanced: ' + niceQty(o[0]) + ' ' + res.unit + ' @ $' + o[1] + ' (' + o[3] + ')') + '</title></rect>');
+        return;
+      }
       s.push('<circle class="pt' + (h ? ' hou' : '') + '" cx="' + X(o[0]).toFixed(1) + '" cy="' + Y(o[1]).toFixed(1) + '" r="' + (h ? 4.5 : 3.5) + '"><title>' + esc(niceQty(o[0]) + ' ' + res.unit + ' @ $' + o[1] + ' (' + o[3] + ')') + '</title></circle>');
     });
     const ym = Y(res.mid);
@@ -94,7 +99,10 @@
       s.push('<rect class="iqr" x="' + X(res.p25).toFixed(1) + '" y="' + (yc - 12) + '" width="' + Math.max(1, X(res.p75) - X(res.p25)).toFixed(1) + '" height="24"/>');
       s.push('<line class="med" x1="' + X(res.p50).toFixed(1) + '" x2="' + X(res.p50).toFixed(1) + '" y1="' + (yc - 12) + '" y2="' + (yc + 12) + '"/>');
     }
-    ps.forEach(function (p, i) { s.push('<circle class="pt" cx="' + X(p).toFixed(1) + '" cy="' + (50 - (i % 3) * 3) + '" r="2.6"/>'); });
+    (res.obs || []).forEach(function (o, i) {
+      if (o[9] > 0) s.push('<rect class="pt flag" x="' + (X(o[1]) - 3).toFixed(1) + '" y="' + (47 - (i % 3) * 3) + '" width="6" height="6"/>');
+      else s.push('<circle class="pt" cx="' + X(o[1]).toFixed(1) + '" cy="' + (50 - (i % 3) * 3) + '" r="2.6"/>');
+    });
     const xm = X(res.mid).toFixed(1);
     s.push('<path class="you" d="M' + xm + ' 4l6 7h-12z"/>');
     // axis ticks (log or linear), clamped inside the plot

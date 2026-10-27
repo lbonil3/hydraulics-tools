@@ -166,7 +166,21 @@
       row('Engineer\'s estimate median · low/EE', sw.ee_n ? f(sw.ee_median) + ' · ' + Math.round(sw.low_to_ee_median * 100) + '%' : '—') +
       row('Price trend per year', sw.trend ? sw.trend.pct_per_year + '% (p=' + sw.trend.p + (sw.trend.significant ? '' : ', not significant') + ')' : 'too few bids') +
       row('Far outliers', String(sw.outliers)) +
+      (res.flagStats.n ? row('Possibly unbalanced (flagged)', res.flagStats.n + ' of ' + res.flagStats.with.n) +
+        row('With flagged: median · IQR · range', f(res.flagStats.with.median) + ' · ' + f(res.flagStats.with.p25) + '–' + f(res.flagStats.with.p75) + ' · ' + f(res.flagStats.with.min) + '–' + f(res.flagStats.with.max)) +
+        row('Without flagged (info only)', res.flagStats.without ? f(res.flagStats.without.median) + ' · ' + f(res.flagStats.without.p25) + '–' + f(res.flagStats.without.p75) + ' · ' + f(res.flagStats.without.min) + '–' + f(res.flagStats.without.max) : '—') : '') +
       '</tbody></table>';
+  }
+
+  function bidsTable(res) {
+    const rows = res.obs.slice().sort(function (a, b) { return b[0] - a[0]; });
+    return '<div class="bids-wrap"><table class="bids-table"><thead><tr><th>Qty</th><th>Low bid</th><th class="l">Let</th><th class="l">County</th><th>Bidders</th><th>Avg all</th><th class="l">Flag</th></tr></thead><tbody>' +
+      rows.map(function (o) {
+        const fl = o[9] > 0;
+        return '<tr' + (fl ? ' class="is-flag"' : '') + '><td>' + E.fmtQty(o[0]) + '</td><td>' + E.fmtMoney(o[1]) + '</td><td class="l">' + esc(o[3]) + '</td><td class="l">' + esc(ctx.counties[o[4]] || '') +
+          '</td><td>' + (o[7] == null ? '—' : o[7]) + '</td><td>' + (o[8] == null ? '—' : E.fmtMoney(o[8])) + '</td><td class="l">' +
+          (fl ? '<span class="flagb" title="' + esc(window.BidFlags.describe(o[9]).join('; ')) + '">Possibly unbalanced</span>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
   }
 
   function cardHtml(it) {
@@ -177,7 +191,8 @@
     return '<article class="card" id="card-' + it.id + '" data-id="' + it.id + '">' +
       '<div class="card-head"><div><h3>' + esc(res.code) + ' · ' + esc(res.desc) + '</h3>' +
       '<p class="sub">' + (info ? 'Item ' + esc(itemOf(it.code)) + ' · ' + esc(info.title) + ' · ' : '') + E.fmtQty(res.qty) + ' ' + esc(res.unit) + ' · ' + esc(res.scopeLabel) + '</p></div>' +
-      '<div><span class="conf conf-' + res.confidence + '">' + res.confidence + ' confidence</span>' + (res.extrapolated ? '<span class="extrap">Extrapolated beyond data</span>' : '') + '</div></div>' +
+      '<div><span class="conf conf-' + res.confidence + '">' + res.confidence + ' confidence</span>' + (res.extrapolated ? '<span class="extrap">Extrapolated beyond data</span>' : '') +
+      (res.flagStats.n ? '<span class="flagb">' + res.flagStats.n + ' possibly unbalanced</span>' : '') + '</div></div>' +
       '<div class="nums">' +
         '<div><span class="k">Low</span><span class="v">' + E.fmtMoney(res.low) + '</span><span class="t">' + E.fmtMoney(res.total.low) + '</span></div>' +
         '<div class="mid"><span class="k">Suggested / ' + esc(res.unit) + '</span><span class="v">' + E.fmtMoney(res.mid) + '</span><span class="t">Total ' + E.fmtMoney(res.total.mid) + '</span></div>' +
@@ -189,9 +204,10 @@
       '<button type="button" class="btn small copy-sentence">Copy backup sentence</button></div>' +
       '<ul class="comments">' + res.comments.map(function (c) { const i = c.indexOf(': '); return '<li>' + (i > 0 && i < 30 ? '<b>' + esc(c.slice(0, i)) + ':</b> ' + esc(c.slice(i + 2)) : esc(c)) + '</li>'; }).join('') + '</ul>' +
       '<div class="charts"><div>' + C.scatter(res, houstonIdx, chartOpts()) +
-      '<p class="legend"><i style="background:#2563eb"></i>low bid <i style="background:#ea580c"></i>Houston <i style="background:#1f4e79;opacity:.3;border-radius:2px"></i>suggested range <i style="background:#b45309"></i>your qty / suggested</p></div>' +
+      '<p class="legend"><i style="background:#2563eb"></i>low bid <i style="background:#ea580c"></i>Houston <i style="background:#1f4e79;opacity:.3;border-radius:2px"></i>suggested range <i style="background:#b45309"></i>your qty / suggested' + (res.flagStats.n ? ' <i style="background:#fff;border:2px solid #dc2626;border-radius:1px;transform:rotate(45deg)"></i>possibly unbalanced (kept)' : '') + '</p></div>' +
       '<div>' + C.boxplot(res, chartOpts()) + '<p class="legend">▲ suggested ' + E.fmtMoney(res.mid) + ' · shaded = your range ' + E.fmtMoney(res.low) + '–' + E.fmtMoney(res.high) + '. Box = middle half of low bids (' + E.fmtMoney(res.p25) + '–' + E.fmtMoney(res.p75) + '), line = median ' + E.fmtMoney(res.p50) + ', whiskers = 10th–90th percentile, dots = each low bid.</p>' +
-      '<details class="more"><summary>Statistics</summary>' + statsTable(res) + '</details></div></div>' +
+      '<details class="more"><summary>Statistics</summary>' + statsTable(res) + '</details>' +
+      '<details class="more"><summary>All ' + res.obs.length + ' low bids' + (res.flagStats.n ? ' (' + res.flagStats.n + ' flagged)' : '') + '</summary>' + bidsTable(res) + '</details></div></div>' +
       '</article>';
   }
   function chartOpts() { return window.innerWidth < 700 ? { width: 360, height: 240 } : { width: 560, height: 260 }; }

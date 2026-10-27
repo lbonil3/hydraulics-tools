@@ -75,12 +75,19 @@
     <li><b>Quantity adjustment.</b> A straight-line fit of log(price) vs log(quantity). It is used only when it is statistically meaningful (at least 8 bids and p &lt; 0.1). When your quantity is outside the sizes on record and the code has no usable fit, the typical slope across all TxDOT codes with a significant fit is used and labeled <i>assumed</i>. The adjustment never lowers the base more than 25% or raises it more than 25%, never goes above the 90th percentile, and inside the data never goes below the 10th percentile.</li>
     <li><b>Range.</b> Low and high scale the suggestion by the 25th and 75th percentiles relative to the median. The range is widened 15% each way when extrapolating, and to at least −40% / +50% with fewer than 5 bids.</li>
     <li><b>Confidence.</b> High / Medium / Low from the number of bids, whether your quantity is inside the sizes on record, how spread out prices are, and whether there are bids in the last 12 months. More than 2x beyond the largest (or below half the smallest) job is labeled <i>extrapolated beyond data</i> and always Low.</li>
+    <li><b>Possibly unbalanced bids are flagged, never removed.</b> Every flagged bid stays in every statistic and in the suggested price; the page shows the median and range with and without them for information only. A low bid is flagged when any of these hold (thresholds in <code>flags.js</code>):
+      <ul>
+        <li><i>Install/remove pair</i> — on the same project, an install item and its matching remove item (same spec item, same description without the install/remove words, e.g. 5002-7001/7002, 506-7039/7041): remove priced at or above install, or the remove/install ratio more than 3x (or under 1/3) the typical ratio for that pair, while install + remove stays within 0.5x–2x of the typical combined price (money moved between the halves). Typical values need at least 3 jobs of the pair; otherwise only the remove ≥ install test applies.</li>
+        <li><i>Far from the other bidders</i> — low bid under 25% or over 250% of the median of the other bidders' prices for that item on the same job (at least 2 other bids).</li>
+        <li><i>Placeholder price</i> — $0.01 or less, or $1.00 or less when that is under 5% of the code's statewide median.</li>
+      </ul></li>
     <li><b>Backup sentence.</b> Built only from the numbers shown. Assumed values are marked <i>(assumed)</i>.</li>
   </ol>
   <p><b>What it does not know:</b> project-specific conditions (access, water depth, traffic control, phasing), escalation after the bid date, how a contractor spread mobilization or overhead across items (unbalanced bids), and anything not in the TxDOT bid tabulations. It is planning-level only; ESBD / Electronic Bidding System remain official.</p>
   <p class="cite">Source: Texas Open Data Portal, TxDOT Bid Tabulations (<a href="https://data.texas.gov/dataset/Bid-Tabulations/de7b-7dna" target="_blank" rel="noopener noreferrer">dataset de7b-7dna</a>), low bidder rank = 1, plus all-bidder count and average per job. Item titles from TxDOT 2024 Standard Specifications (via Bid Cost). Data regenerated with <code>bid-estimator/scripts/fetch-bids.js</code> and <code>build-data.js</code>.</p>
 </section>
 
+<script src="flags.js"></script>
 <script src="estimator.js"></script>
 <script src="charts.js"></script>
 <script src="app.js"></script>

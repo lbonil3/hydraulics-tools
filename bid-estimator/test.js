@@ -96,6 +96,56 @@ t('scope forcing and bad input', () => {
   assert.strictEqual(E.estimate(entry('5002-7001'), 0, ctx, {}).ok, false);
 });
 
+// ---- possibly-unbalanced flags (flagged, never removed) ----
+const F = require('./flags.js');
+t('flag rules: FTB 580 LF job A00027293 ($47 install / $47 remove) is a pair flag', () => {
+  const rows = [];
+  const pairs = [[580, 47, 47, 'A00027293'], [228, 60, 20, 'p1'], [200, 50, 10, 'p2'], [175, 50, 5, 'p3'], [136, 100, 10, 'p4'], [100, 66, 22, 'p5']];
+  pairs.forEach(([q, i, r, pid]) => {
+    rows.push({ key: pid + 'i', project: pid, code: '5002-7001', desc: 'INSTALL FTB', qty: q, price: i, othersN: 0, codeMedian: 55 });
+    rows.push({ key: pid + 'r', project: pid, code: '5002-7002', desc: 'REMOVE FTB', qty: q, price: r, othersN: 0, codeMedian: 10 });
+  });
+  const res = F.computeFlags(rows);
+  assert.strictEqual(res.flags.get('A00027293i').flags & F.RULES.PAIR, F.RULES.PAIR);
+  assert.strictEqual(res.flags.get('A00027293r').partner, 47);
+  assert(!res.flags.has('p2i') && !res.flags.has('p2r'));
+  assert.strictEqual(res.pairTypes['5002-7001|5002-7002'].n, 6);
+});
+t('flag rules: vs other bidders and placeholder', () => {
+  const base = { project: 'x', code: '432-7001', desc: 'RIPRAP', qty: 10, codeMedian: 600 };
+  const r = F.computeFlags([
+    Object.assign({ key: 'a', price: 100, othersMedian: 600, othersN: 4 }, base),  // 17% -> flag
+    Object.assign({ key: 'b', price: 500, othersMedian: 600, othersN: 4 }, base),  // ok
+    Object.assign({ key: 'c', price: 100, othersMedian: 600, othersN: 1 }, base),  // too few others
+    Object.assign({ key: 'd', price: 0.01, othersN: 0 }, base),                     // placeholder
+    Object.assign({ key: 'e', price: 1, othersN: 0 }, base, { codeMedian: 10 })      // $1 on a $10 item: not flagged
+  ]).flags;
+  assert.strictEqual(r.get('a').flags, F.RULES.VS_OTHERS);
+  assert(!r.has('b') && !r.has('c') && !r.has('e'));
+  assert.strictEqual(r.get('d').flags, F.RULES.PLACEHOLDER);
+  assert.deepStrictEqual(F.describe(3), ['install/remove pair out of line', 'far from the other bidders on the job']);
+});
+t('stored data flags the real 580 LF FTB job and keeps it in the stats', () => {
+  const sh = JSON.parse(fs.readFileSync(path.join(dir, 'data/items/5002.json'), 'utf8'));
+  ['5002-7001', '5002-7002'].forEach((c) => {
+    const o = sh.codes[c].obs.find((x) => sh.pids[x[6]] === 'A00027293' && x[0] === 580);
+    assert(o && (o[9] & 1) && o[1] === 47 && o[10] === 47, c);
+    assert.strictEqual(sh.codes[c].stats.statewide.n, sh.codes[c].obs.length);
+  });
+});
+t('flags are information only: suggested price unchanged', () => {
+  assert.strictEqual(ftbI.mid, 37.5);
+  assert.strictEqual(ftbR.mid, 7.5);
+  const strip = (e) => Object.assign({}, e, { obs: e.obs.map((o) => o.slice(0, 9).concat([0, null])) });
+  assert.strictEqual(E.estimate(strip(entry('5002-7001')), 12000, ctx, {}).mid, ftbI.mid);
+  assert(ftbI.comments.some((c) => /580 LF\) low bid of \$47\.00 install \/ \$47\.00 remove looks unbalanced \(remove priced equal to install; combined \$94\.00\/LF/.test(c)));
+  assert(ftbI.warnings.some((w) => /similar-size bids used for the base price is flagged/.test(w)));
+  assert(/\$47\.00\/LF \(flagged as possibly unbalanced\)/.test(ftbI.sentence));
+  assert(ftbI.flagStats.without.median > 0 && ftbI.flagStats.n === 2);
+  const r = E.estimate(entry('464-7005'), 500, ctx, {});
+  assert(!/flagged/.test(r.sentence) || r.obs.slice().sort((a, b) => b[0] - a[0])[0][9] > 0);
+});
+
 // ---- search, query, export ----
 t('search', () => {
   assert.strictEqual(E.search(ix.index, '5002-7001')[0][0], '5002-7001');
@@ -120,12 +170,15 @@ t('TSV / CSV export', () => {
 t('charts are self-contained SVG', () => {
   const s = C.scatter(ftbI, ix.districts.indexOf('Houston')) + C.boxplot(ftbI);
   assert(/^<svg/.test(s) && !/https?:\/\/(?!www\.w3)/.test(s) && !/NaN|undefined/.test(s));
-  assert.strictEqual((s.match(/<circle/g) || []).length, ftbI.obs.length * 2);
+  const nf = ftbI.obs.filter((o) => o[9] > 0).length;
+  assert.strictEqual((s.match(/<circle/g) || []).length, (ftbI.obs.length - nf) * 2);
+  assert.strictEqual((s.match(/class="pt flag"/g) || []).length, nf * 2);
 });
 
 // ---- page wiring ----
 const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
 t('page', () => {
+  assert(/flags\.js/.test(html) && /flagged, never removed/.test(html));
   ['codeSearch', 'qty', 'scope', 'addBtn', 'copyTable', 'downloadCsv', 'methodTitle'].forEach((id) => assert(html.includes('id="' + id + '"'), id));
   assert(/Sources &amp; method/.test(html) && /Planning-level/.test(html));
   assert(!/<script[^>]+src="https?:/.test(html));

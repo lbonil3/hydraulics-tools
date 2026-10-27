@@ -6,7 +6,8 @@
  * compact shards under bid-estimator/data/.
  *
  * Usage: node bid-estimator/scripts/fetch-bids.js [out=/tmp/estimator-raw/lowbid.ndjson]
- * Also writes <out>-allbids.ndjson (all-bidder count/min/avg/max per project+code+qty).
+ * Also writes <out>-allbids.ndjson (all-bidder count/min/avg/max per project+code+qty)
+ * and <out>-otherbids.ndjson (every rank>=2 bid; ~900k rows, for per-job medians).
  * Optional env SOCRATA_APP_TOKEN (otherwise unauthenticated, throttled).
  * Engineer's estimate comes from each row's engineer_s_estimate_unit field.
  */
@@ -29,6 +30,9 @@ const AGG = {
   group: 'project_id,bid_code,bid_item_quantity',
   order: 'project_id,bid_code,bid_item_quantity'
 };
+// Every non-EE bid (for the per-job median of the OTHER bidders used by the unbalanced flags).
+const ALLROWS = { select: 'project_id,bid_code,bid_item_quantity,bid_item_unit_price_amount,bid_rank_sequence_number',
+  where: "bid_rank_sequence_number!='EE' AND bid_rank_sequence_number!='1'", order: ':id' };
 const LOW = { select: FIELDS.join(','), where: "bid_rank_sequence_number='1'", order: ':id' };
 
 async function page(q, offset) {
@@ -70,6 +74,7 @@ async function pull(q, file) {
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const total = await pull(LOW, out);
   const agg = await pull(AGG, out.replace(/\.ndjson$/, '') + '-allbids.ndjson');
+  const others = await pull(ALLROWS, out.replace(/\.ndjson$/, '') + '-otherbids.ndjson');
   fs.writeFileSync(path.join(path.dirname(out), 'fetch-meta.json'),
-    JSON.stringify({ accessed: new Date().toISOString().slice(0, 10), rows: total, allbid_groups: agg }, null, 1));
+    JSON.stringify({ accessed: new Date().toISOString().slice(0, 10), rows: total, allbid_groups: agg, other_bid_rows: others }, null, 1));
 })();

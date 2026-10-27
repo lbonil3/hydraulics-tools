@@ -4,11 +4,12 @@
  *
  * Observation tuple (one low-bid row, as stored in data/items/<item>.json):
  *   [qty, lowBidUnitPrice, engEstUnit|null, letDate 'YYYY-MM-DD', countyIdx,
- *    districtIdx, projectIdx (into shard.pids), nBidders|null, avgAllBids|null]
+ *    districtIdx, projectIdx (into shard.pids), nBidders|null, avgAllBids|null,
+ *    flagBits (flags.js; 0 = not flagged), pairedItemPrice|null]
  */
 (function (root) {
   'use strict';
-  const O = { Q: 0, P: 1, EE: 2, DATE: 3, CTY: 4, DIST: 5, PID: 6, NB: 7, AVG: 8 };
+  const O = { Q: 0, P: 1, EE: 2, DATE: 3, CTY: 4, DIST: 5, PID: 6, NB: 7, AVG: 8, FLAG: 9, PARTNER: 10 };
 
   // Method constants (stated on the page; change here only).
   const METHOD = {
@@ -183,6 +184,7 @@
         significant: fit.significant
       },
       trend: trend,
+      flagged: obs.filter(function (o) { return o[O.FLAG] > 0; }).length,
       outliers: fence ? obs.filter(function (o) { return isOutlier(fence, o[O.P]); }).length : 0,
       date_min: dates[0] || null, date_max: dates[dates.length - 1] || null
     };
@@ -328,6 +330,17 @@
     const eeMed = ees.length ? median(ees.map(function (o) { return o[O.EE]; })) : null;
     const lowToEe = ees.length ? median(ees.map(function (o) { return o[O.P] / o[O.EE]; })) : null;
 
+    // Possibly-unbalanced flags: information only — never removed or down-weighted.
+    const flagged = obs.filter(function (o) { return o[O.FLAG] > 0; });
+    const unflaggedP = sortNum(obs.filter(function (o) { return !(o[O.FLAG] > 0); }).map(function (o) { return o[O.P]; }));
+    const allP = sortNum(obs.map(function (o) { return o[O.P]; }));
+    const flagStats = {
+      n: flagged.length,
+      with: { n: allP.length, median: quantile(allP, 0.5), p25: quantile(allP, 0.25), p75: quantile(allP, 0.75), min: allP[0], max: allP[allP.length - 1] },
+      without: unflaggedP.length ? { n: unflaggedP.length, median: quantile(unflaggedP, 0.5), p25: quantile(unflaggedP, 0.25), p75: quantile(unflaggedP, 0.75), min: unflaggedP[0], max: unflaggedP[unflaggedP.length - 1] } : null
+    };
+    const nbFlagged = nb.rows.filter(function (o) { return o[O.FLAG] > 0; }).length;
+
     // Comments (plain language, real numbers only).
     comments.push('Where it comes from: ' + st.n + ' low bid' + (st.n === 1 ? '' : 's') + ' on ' + st.n_projects + ' project' + (st.n_projects === 1 ? '' : 's') + ' (' + scopeLabel + '), let ' + (st.date_min === st.date_max ? st.date_min : st.date_min + ' to ' + st.date_max) + '. The base is the median low bid of the ' + nb.rows.length + ' job' + (nb.rows.length === 1 ? '' : 's') + ' ' + nb.how + ': ' + fmtMoney(base) + '/' + unit + (nb.rows.length > 1 ? ' (sizes ' + fmtQty(Math.min.apply(null, nb.rows.map(function (o) { return o[O.Q]; }))) + '–' + fmtQty(Math.max.apply(null, nb.rows.map(function (o) { return o[O.Q]; }))) + ' ' + unit + ')' : '') + '.');
     if (st.n > 1) {
@@ -377,6 +390,29 @@
     }
     if (st.trend && st.trend.significant) comments.push('Trend: low bids moved about ' + st.trend.pct_per_year + '% per year over ' + years + ' (p=' + st.trend.p + ').');
 
+    if (flagged.length) {
+      const pr = entry.pair && entry.pair.codes ? entry.pair : null;
+      const isInstall = pr && pr.codes[0] === entry.code;
+      const describeOne = function (o) {
+        const bits = o[O.FLAG];
+        const why = [];
+        if (bits & 1 && o[O.PARTNER] != null && pr) {
+          const ins = isInstall ? o[O.P] : o[O.PARTNER], rem = isInstall ? o[O.PARTNER] : o[O.P];
+          why.push((rem >= ins ? 'remove priced ' + (rem === ins ? 'equal to' : 'above') + ' install' : 'remove/install ratio ' + (rem / ins).toFixed(2) + (pr.median_ratio != null ? ' vs typical ' + pr.median_ratio.toFixed(2) : '')) +
+            '; combined ' + fmtMoney(ins + rem) + '/' + unit + (pr.median_combined != null ? ' vs typical ' + fmtMoney(pr.median_combined) + '/' + unit : ''));
+          return { lead: 'low bid of ' + fmtMoney(ins) + ' install / ' + fmtMoney(rem) + ' remove', why: why };
+        }
+        if (bits & 2) why.push('far from the other bidders on that job');
+        if (bits & 4) why.push('placeholder-style price');
+        return { lead: 'low bid of ' + fmtMoney(o[O.P]) + '/' + unit, why: why };
+      };
+      const lead = flagged.slice().sort(function (a, b) { return b[O.Q] - a[O.Q]; })[0];
+      const d = describeOne(lead);
+      comments.push('Possibly unbalanced: ' + flagged.length + ' of ' + obs.length + ' low bids flagged. ' +
+        (lead === big ? 'The largest job' : 'The largest flagged job') + ' (' + fmtQty(lead[O.Q]) + ' ' + unit + ') ' + d.lead + ' looks unbalanced (' + d.why.join('; ') + '); kept in the statistics but flagged. ' +
+        'Median with flagged bids ' + fmtMoney(flagStats.with.median) + (flagStats.without ? ', without ' + fmtMoney(flagStats.without.median) : '') + ' (information only; the suggested price uses all bids).');
+      if (nbFlagged) warnings.push(nbFlagged + ' of the ' + nb.rows.length + ' similar-size bids used for the base price ' + (nbFlagged === 1 ? 'is' : 'are') + ' flagged as possibly unbalanced (kept, not removed).');
+    }
     if (st.n < 5) warnings.push('Small sample: only ' + st.n + ' low bid' + (st.n === 1 ? '' : 's') + '. Range set to at least −40% / +50% because the spread cannot be measured.');
     if (extrapolated) warnings.push('Extrapolated beyond data: your quantity is more than ' + METHOD.EXTRAP_FACTOR + 'x outside the sizes on record. Range widened ' + pct(METHOD.EXTRAP_WIDEN) + ' each way; confidence set to Low.');
     else if (outside) warnings.push('Slightly outside the sizes on record (within ' + METHOD.EXTRAP_FACTOR + 'x).');
@@ -386,7 +422,7 @@
 
     // Backup sentence.
     const allBig = big[O.NB] > 1 && big[O.AVG] > 0;
-    const sentence = 'Unit price based on ' + years + ' TxDOT bid tabulations (low bidder) for bid code ' + entry.code + ' ' + (entry.desc || '') + ' (' + st.n_projects + ' project' + (st.n_projects === 1 ? '' : 's') + ' ' + scopeLabel + '), where the largest job (' + fmtQty(big[O.Q]) + ' ' + unit + (bigCounty ? ', ' + bigCounty + ' County' : '') + ') had a low bid of ' + fmtMoney(big[O.P]) + '/' + unit +
+    const sentence = 'Unit price based on ' + years + ' TxDOT bid tabulations (low bidder) for bid code ' + entry.code + ' ' + (entry.desc || '') + ' (' + st.n_projects + ' project' + (st.n_projects === 1 ? '' : 's') + ' ' + scopeLabel + '), where the largest job (' + fmtQty(big[O.Q]) + ' ' + unit + (bigCounty ? ', ' + bigCounty + ' County' : '') + ') had a low bid of ' + fmtMoney(big[O.P]) + '/' + unit + (big[O.FLAG] > 0 ? ' (flagged as possibly unbalanced)' : '') +
       (allBig ? ' and an average of ' + fmtMoney(big[O.AVG]) + '/' + unit + ' across ' + big[O.NB] + ' bids' : '') +
       '; ' + fmtMoney(mid) + '/' + unit + ' used for ' + fmtQty(qty) + ' ' + unit +
       (slope != null && Math.abs(adj - base) > 1e-9 ? ' after a ' + (adj < base ? 'quantity discount' : 'small-quantity premium') + (slopeSource === 'pooled' ? ' (assumed)' : '') + (capped === 'discount' ? ' capped at ' + pct(METHOD.MAX_DISCOUNT) : '') : '') +
@@ -401,7 +437,7 @@
       confidence: confidence, score: pts,
       extrapolated: extrapolated, outside: outside, capped: capped,
       slope: slope, slopeSource: slopeSource, fit: fit,
-      neighbors: nb.rows.length, outliers: nOut,
+      neighbors: nb.rows.length, outliers: nOut, flagStats: flagStats, neighborsFlagged: nbFlagged,
       stats: st, p10: p10, p25: p25, p50: p50, p75: p75, p90: p90,
       houstonMedian: houMed, statewideMedian: swMed, eeMedian: eeMed, lowToEe: lowToEe,
       comments: comments, warnings: warnings, sentence: sentence, obs: obs, years: years

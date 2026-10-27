@@ -108,3 +108,13 @@ details.more summary{cursor:pointer;color:#1f4e79;font-weight:600;font-size:13px
 .m-unit{font-size:12px;color:#556}
 @media (min-width:701px){.m-unit{display:none}}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.chart .pt.flag{fill:#fff;fill-opacity:1;stroke:#dc2626;stroke-width:2}
+.flagb{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;margin-left:4px;white-space:nowrap}
+.bids-table{border-collapse:collapse;font-size:12.5px;margin:6px 0;width:100%}
+.bids-table th,.bids-table td{border:1px solid #e3e8ef;padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.bids-table th{background:#eef4fa;color:#1f4e79}
+.bids-table td.l,.bids-table th.l{text-align:left}
+.bids-table tr.is-flag{background:#fff5f5}
+.bids-wrap{max-height:320px;overflow:auto}
+.bids-table td{white-space:nowrap}
