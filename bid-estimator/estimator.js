@@ -21,8 +21,25 @@
     MAX_DISCOUNT: 0.25,        // quantity adjustment never lowers price > 25% below base
     MAX_PREMIUM: 0.25,         // ... nor raises it > 25% (and never above p90)
     EXTRAP_FACTOR: 2,          // beyond 2x max (or below min/2) = extrapolated
-    EXTRAP_WIDEN: 0.15         // widen the range 15% each way when extrapolating
+    EXTRAP_WIDEN: 0.15,        // widen the range 15% each way when extrapolating
+    SHRINK_K: 10               // grouped slope: a level's own slope counts like n bids vs 10 "prior" bids from the level above
   };
+
+  /** Within-group log-log sums (demeaned per code) for pooled slopes: returns {sxx, sxy, n}. */
+  function slopeSums(obs) {
+    const pts = obs.filter(function (o) { return o[0] > 0 && o[1] > 0; });
+    if (pts.length < 3) return { sxx: 0, sxy: 0, n: 0 };
+    const xs = pts.map(function (o) { return Math.log10(o[0]); }), ys = pts.map(function (o) { return Math.log10(o[1]); });
+    const mx = mean(xs), my = mean(ys);
+    let sxx = 0, sxy = 0;
+    for (let i = 0; i < xs.length; i++) { sxx += (xs[i] - mx) * (xs[i] - mx); sxy += (xs[i] - mx) * (ys[i] - my); }
+    return { sxx: sxx, sxy: sxy, n: pts.length };
+  }
+  /** Shrink a level's slope toward the level above: (n*b + K*prior)/(n + K). */
+  function shrink(b, n, prior, k) {
+    if (b == null || !(n > 0)) return prior;
+    return (n * b + k * prior) / (n + k);
+  }
 
   function num(x) { return x == null || x === '' || Number.isNaN(Number(x)) ? null : Number(x); }
 
@@ -207,6 +224,20 @@
     return { rows: near, how: 'closest in size (fewer than ' + METHOD.MIN_NEIGHBORS + ' were within ' + METHOD.NEAR_FACTOR + 'x of your quantity)' };
   }
 
+  /** Plain words for where a grouped slope came from (weights are the shrinkage shares). */
+  function slopeWords(g) {
+    const k = METHOD.SHRINK_K;
+    const wc = g.code_n > 0 && g.code != null ? g.code_n / (g.code_n + k) : 0;
+    const wf = (1 - wc) * (g.family_n > 0 && g.family != null ? g.family_n / (g.family_n + k) : 0);
+    const wg = 1 - wc - wf;
+    const parts = [];
+    parts.push(Math.round(wc * 100) + '% this code (' + (g.code == null ? 'no fit' : g.code.toFixed(3) + ', n=' + g.code_n) + ')');
+    parts.push(Math.round(wf * 100) + '% Item ' + g.family_key + ' family (' + (g.family == null ? 'no fit' : g.family.toFixed(3) + ', n=' + g.family_n) + ')');
+    parts.push(Math.round(wg * 100) + '% all TxDOT items (' + g.global.toFixed(3) + ')');
+    const lead = wc >= wf && wc >= wg ? 'mostly this code' : wf >= wg ? 'mostly the Item ' + g.family_key + ' family' : 'mostly all TxDOT items (assumed)';
+    return lead + ': ' + parts.join(', ');
+  }
+
   function fmtMoney(n) {
     if (n == null || !Number.isFinite(n)) return '—';
     return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -279,13 +310,15 @@
     // 3. Quantity adjustment from anchorQty to qty.
     const fit = logLogFit(clean);
     let slope = null, slopeSource = null, adj = base, capped = null, wrongWay = false;
-    // Beyond the data, a fit that says price RISES with size (above) or FALLS for
-    // smaller jobs (below) is not trusted for extrapolation; the pooled slope is used.
-    wrongWay = fit.significant && ((qty > qmax && fit.slope > 0) || (qty < qmin && fit.slope > 0));
-    if (fit.significant && !wrongWay) { slope = fit.slope; slopeSource = 'this code'; }
-    else if (outside && ctx.pooled_slope && ctx.pooled_slope.slope != null) {
-      slope = ctx.pooled_slope.slope; slopeSource = 'pooled';
-    }
+    // Grouped (shrinkage) slope from the data build: code slope shrunk toward its
+    // Item-family+unit slope, which is shrunk toward the all-items slope.
+    const g = entry.slope || null;
+    if (g && g.final != null) {
+      slope = g.final; slopeSource = 'grouped';
+      // Beyond the data, never extrapolate a slope that says bigger jobs cost more (or smaller jobs less).
+      if (outside && slope > 0) { wrongWay = true; slope = g.family != null && g.family <= 0 ? g.family : Math.min(0, g.global); slopeSource = g.family != null && g.family <= 0 ? 'family' : 'global'; }
+    } else if (fit.significant) { slope = fit.slope; slopeSource = 'this code'; }
+    else if (outside && ctx.pooled_slope && ctx.pooled_slope.slope != null) { slope = ctx.pooled_slope.slope; slopeSource = 'pooled'; }
     if (slope != null && anchorQty > 0) {
       const raw = base * Math.pow(qty / anchorQty, slope);
       adj = raw;
@@ -367,7 +400,9 @@
     comments.push('Your quantity: ' + where);
     if (slope != null && Math.abs(adj - base) > 1e-9) {
       comments.push('Quantity adjustment: ' + fmtMoney(base) + ' at a typical ' + fmtQty(anchorQty) + ' ' + unit + ' → ' + fmtMoney(adj) + ' at ' + fmtQty(qty) + ' ' + unit + ' using ' +
-        (slopeSource === 'this code' ? 'this code\'s own price-vs-quantity fit (slope ' + fit.slope.toFixed(3) + ')'
+        (slopeSource === 'grouped' ? 'a grouped price-vs-quantity slope of ' + slope.toFixed(3) + ' — ' + slopeWords(g) :
+         slopeSource === 'family' || slopeSource === 'global' ? 'the ' + (slopeSource === 'family' ? 'Item ' + g.family_key + ' family' : 'all-items') + ' slope ' + slope.toFixed(3) + ' (assumed), because the grouped slope for this code points the wrong way for extrapolation (+' + g.final.toFixed(3) + ')' :
+         slopeSource === 'this code' ? 'this code\'s own price-vs-quantity fit (slope ' + fit.slope.toFixed(3) + ')'
           : 'the typical TxDOT price-vs-quantity slope ' + ctx.pooled_slope.slope.toFixed(3) + ' (assumed; median of ' + ctx.pooled_slope.n + ' codes with a significant fit), because ' + (wrongWay ? 'this code\'s own fit points the wrong way for extrapolation (price rising with size, likely driven by a few jobs)' : 'this code has no significant fit of its own')) +
         (capped === 'discount' ? '; the discount is capped at ' + pct(METHOD.MAX_DISCOUNT) + ' below the base' : capped === 'premium' ? '; the increase is capped at ' + pct(METHOD.MAX_PREMIUM) + ' and the 90th percentile' : capped === 'p10' ? '; held at the 10th percentile floor' : capped === 'p90' ? '; held at the 90th percentile' : '') + '.');
     } else if (outside && slope == null) {
@@ -418,14 +453,15 @@
     else if (outside) warnings.push('Slightly outside the sizes on record (within ' + METHOD.EXTRAP_FACTOR + 'x).');
     if (nOut) warnings.push(nOut + ' outlier bid' + (nOut === 1 ? '' : 's') + ' (beyond 3x IQR on a log scale) left out of the base and range.');
     if (entry.units && entry.units.length > 1) warnings.push('Unit mismatch: this code was bid in more than one unit (' + entry.units.join(', ') + '); prices assume ' + unit + '.');
-    if (slopeSource === 'pooled') warnings.push('Quantity discount is assumed from other TxDOT items, not measured for this code.');
+    if (slopeSource === 'pooled' || slopeSource === 'global') warnings.push('Quantity discount is assumed from other TxDOT items, not measured for this code.');
+    if (slopeSource === 'grouped' && g && (g.code_n || 0) < METHOD.SHRINK_K && outside) warnings.push('Quantity discount mostly borrowed from related items (shrinkage), not measured for this code alone.');
 
     // Backup sentence.
     const allBig = big[O.NB] > 1 && big[O.AVG] > 0;
     const sentence = 'Unit price based on ' + years + ' TxDOT bid tabulations (low bidder) for bid code ' + entry.code + ' ' + (entry.desc || '') + ' (' + st.n_projects + ' project' + (st.n_projects === 1 ? '' : 's') + ' ' + scopeLabel + '), where the largest job (' + fmtQty(big[O.Q]) + ' ' + unit + (bigCounty ? ', ' + bigCounty + ' County' : '') + ') had a low bid of ' + fmtMoney(big[O.P]) + '/' + unit + (big[O.FLAG] > 0 ? ' (flagged as possibly unbalanced)' : '') +
       (allBig ? ' and an average of ' + fmtMoney(big[O.AVG]) + '/' + unit + ' across ' + big[O.NB] + ' bids' : '') +
       '; ' + fmtMoney(mid) + '/' + unit + ' used for ' + fmtQty(qty) + ' ' + unit +
-      (slope != null && Math.abs(adj - base) > 1e-9 ? ' after a ' + (adj < base ? 'quantity discount' : 'small-quantity premium') + (slopeSource === 'pooled' ? ' (assumed)' : '') + (capped === 'discount' ? ' capped at ' + pct(METHOD.MAX_DISCOUNT) : '') : '') +
+      (slope != null && Math.abs(adj - base) > 1e-9 ? ' after a ' + (adj < base ? 'quantity discount' : 'small-quantity premium') + (slopeSource === 'pooled' || slopeSource === 'global' || (slopeSource === 'grouped' && g && (g.code_n || 0) < METHOD.SHRINK_K) ? ' (assumed)' : '') + (capped === 'discount' ? ' capped at ' + pct(METHOD.MAX_DISCOUNT) : '') : '') +
       (extrapolated ? ', extrapolated beyond the data' : '') + ' (' + confidence.toLowerCase() + ' confidence; range ' + fmtMoney(low) + '–' + fmtMoney(high) + ').';
 
     return {
@@ -504,7 +540,7 @@
   }
 
   const api = {
-    O: O, METHOD: METHOD, quantile: quantile, median: median, mean: mean, linreg: linreg, tPValue: tPValue,
+    O: O, METHOD: METHOD, slopeSums: slopeSums, shrink: shrink, quantile: quantile, median: median, mean: mean, linreg: linreg, tPValue: tPValue,
     logLogFit: logLogFit, summarize: summarize, outlierFence: outlierFence, neighbors: neighbors,
     estimate: estimate, roundPrice: roundPrice, fmtMoney: fmtMoney, fmtQty: fmtQty,
     lineRow: lineRow, toTSV: toTSV, toCSV: toCSV, search: search, parseQuery: parseQuery, r4: r4

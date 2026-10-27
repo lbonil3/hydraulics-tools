@@ -260,8 +260,7 @@
     els.meta.textContent = 'Data accessed ' + m.accessed + '. Lettings ' + m.let_date_min + ' → ' + m.let_date_max + ' (all the dataset holds). ' +
       m.rows_used.toLocaleString('en-US') + ' low bids, ' + m.codes.toLocaleString('en-US') + ' bid codes.';
     els.method.textContent = 'Data: ' + m.rows_used.toLocaleString('en-US') + ' low-bid rows for ' + m.codes.toLocaleString('en-US') + ' bid codes, lettings ' + m.let_date_min + ' to ' + m.let_date_max +
-      ' (the dataset has no earlier years), accessed ' + m.accessed + '. Typical price-vs-quantity slope across ' + idx.pooled_slope.n + ' codes with a significant fit: ' + idx.pooled_slope.slope +
-      ' (middle half ' + idx.pooled_slope.p25 + ' to ' + idx.pooled_slope.p75 + '), i.e. about ' + Math.round((1 - Math.pow(10, idx.pooled_slope.slope)) * 100) + '% lower unit price per 10x quantity. Because it comes only from codes where the fit was significant, it may overstate the typical discount; it is labeled assumed wherever it is used.';
+      ' (the dataset has no earlier years), accessed ' + m.accessed + '. All-items within-code price-vs-quantity slope: ' + idx.global_within_slope + ' (about ' + Math.round((1 - Math.pow(10, idx.global_within_slope)) * 100) + '% lower unit price per 10x quantity); Item-family and code slopes are shrunk toward it with a weight of ' + idx.shrink_k + ' bids.';
     const q = E.parseQuery(location.search);
     const pending = items.map(compute);
     if (q.code) {

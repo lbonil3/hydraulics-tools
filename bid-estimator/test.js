@@ -53,18 +53,20 @@ t('FTB install 12,000 LF', () => {
   assert.strictEqual(ftbI.scope, 'statewide'); // Houston has 1 bid
   assert.strictEqual(ftbI.stats.qty_max, 580);
   assert(ftbI.extrapolated && ftbI.confidence === 'Low');
-  assert(ftbI.mid >= 33 && ftbI.mid <= 42, 'install mid ' + ftbI.mid);
+  assert(ftbI.mid >= 33 && ftbI.mid <= 45, 'install mid ' + ftbI.mid);
   assert(ftbI.low < ftbI.mid && ftbI.high > ftbI.mid);
-  assert.strictEqual(ftbI.slopeSource, 'pooled');
+  assert.strictEqual(ftbI.slopeSource, 'grouped');
+  assert(ftbI.comments.some((c) => /grouped price-vs-quantity slope .* this code .* Item 5002 \(LF\) family .* all TxDOT items/.test(c)));
   assert(ftbI.warnings.some((w) => /Extrapolated beyond data/.test(w)));
-  assert(/580 LF, Smith County/.test(ftbI.sentence) && /\(assumed\)/.test(ftbI.sentence) && /extrapolated/.test(ftbI.sentence));
+  assert(/580 LF, Smith County/.test(ftbI.sentence) && /extrapolated/.test(ftbI.sentence));
   assert(/^Unit price based on 2024–2026 TxDOT bid tabulations/.test(ftbI.sentence));
 });
 t('FTB remove 12,000 LF', () => {
   assert(ftbR.extrapolated && ftbR.confidence === 'Low');
   assert(ftbR.mid >= 6 && ftbR.mid <= 10.5, 'remove mid ' + ftbR.mid);
   // its own fit rises with size (driven by one unbalanced bid) -> not used upward beyond data
-  assert.strictEqual(ftbR.slopeSource, 'pooled');
+  assert.strictEqual(ftbR.slopeSource, 'global');
+  assert(/\(assumed\)/.test(ftbR.sentence));
   assert(ftbR.mid <= ftbR.base);
 });
 t('sentence numbers come from data', () => {
@@ -89,6 +91,13 @@ t('n=1 code', () => {
 t('never above p90 when extrapolating down', () => {
   const r = E.estimate(entry('464-7005'), 1, ctx, {});
   assert(r.extrapolated && r.mid <= r.p90 + 0.01);
+});
+t('grouped slope shrinkage', () => {
+  assert.strictEqual(E.shrink(-0.2, 10, 0, 10), -0.1);
+  assert.strictEqual(E.shrink(null, 0, -0.19, 10), -0.19);
+  const g = entry('432-7001').slope;
+  assert(g.code_n > 100 && Math.abs(g.final - g.code) < Math.abs(g.final - g.global));
+  assert(Math.abs(ix.global_within_slope) > 0 && ix.shrink_k === 10);
 });
 t('scope forcing and bad input', () => {
   assert.strictEqual(E.estimate(entry('5002-7001'), 100, ctx, { scope: 'houston' }).scope, 'houston');
@@ -134,7 +143,6 @@ t('stored data flags the real 580 LF FTB job and keeps it in the stats', () => {
   });
 });
 t('flags are information only: suggested price unchanged', () => {
-  assert.strictEqual(ftbI.mid, 37.5);
   assert.strictEqual(ftbR.mid, 7.5);
   const strip = (e) => Object.assign({}, e, { obs: e.obs.map((o) => o.slice(0, 9).concat([0, null])) });
   assert.strictEqual(E.estimate(strip(entry('5002-7001')), 12000, ctx, {}).mid, ftbI.mid);

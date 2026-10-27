@@ -95,6 +95,35 @@ slopes.sort((a, b) => a - b);
 const pooled = { slope: E.r4(E.quantile(slopes, 0.5)), p25: E.r4(E.quantile(slopes, 0.25)), p75: E.r4(E.quantile(slopes, 0.75)), n: slopes.length,
   note: 'median log10(price)/log10(qty) slope of statewide low bids across codes with n>=8 and p<0.1' };
 
+// Grouped quantity slopes (item 1): within-code log-log slopes pooled by Item family
+// (spec item number + unit) and across all codes, then shrunk code -> family -> global.
+const K = E.METHOD.SHRINK_K;
+const fam = new Map();
+let gx = 0, gy = 0, gn = 0;
+const codeSums = new Map();
+for (const c of codes.values()) {
+  const unit = top(c.units)[0];
+  const ss = E.slopeSums(c.obs);
+  codeSums.set(c.code, ss);
+  if (!ss.n || ss.sxx <= 0) continue;
+  const fk = c.code.split('-')[0] + '|' + unit;
+  if (!fam.has(fk)) fam.set(fk, { sxx: 0, sxy: 0, n: 0 });
+  const f = fam.get(fk); f.sxx += ss.sxx; f.sxy += ss.sxy; f.n += ss.n;
+  gx += ss.sxx; gy += ss.sxy; gn += ss.n;
+}
+const globalSlope = gy / gx;
+function groupedSlope(c) {
+  const unit = top(c.units)[0];
+  const item = c.code.split('-')[0];
+  const f = fam.get(item + '|' + unit);
+  const famB = f && f.sxx > 0 ? f.sxy / f.sxx : null;
+  const famShr = E.shrink(famB, f ? f.n : 0, globalSlope, K);
+  const ss = codeSums.get(c.code);
+  const codeB = ss.n && ss.sxx > 0 ? ss.sxy / ss.sxx : null;
+  return { code: codeB == null ? null : E.r4(codeB), code_n: codeB == null ? 0 : ss.n, family: famB == null ? null : E.r4(famB), family_n: f ? f.n : 0,
+    family_key: item + ' (' + unit + ')', family_shrunk: E.r4(famShr), global: E.r4(globalSlope), final: E.r4(E.shrink(codeB, codeB == null ? 0 : ss.n, famShr, K)) };
+}
+
 fs.rmSync(path.join(outDir, 'items'), { recursive: true, force: true });
 fs.mkdirSync(path.join(outDir, 'items'), { recursive: true });
 const shards = new Map();
@@ -112,6 +141,7 @@ for (const c of [...codes.values()].sort((a, b) => a.code.localeCompare(b.code, 
     entry.pair = { codes: pt.split('|'), n: v.n, median_ratio: v.median_ratio == null ? null : E.r4(v.median_ratio), median_combined: v.median_combined == null ? null : E.r4(v.median_combined) };
   }
   entry.flagged = c.obs.filter((o) => o[9]).length;
+  entry.slope = groupedSlope(c);
   if (!shards.has(item)) shards.set(item, {});
   shards.get(item)[c.code] = entry;
   index.push([c.code, entry.desc, entry.unit, c.obs.length, hou.length]);
@@ -129,6 +159,6 @@ const meta = { source_url: 'https://data.texas.gov/dataset/Bid-Tabulations/de7b-
   let_date_min: dmin, let_date_max: dmax, low_bid_rows: rows, rows_used: kept, codes: codes.size, flagged_bids: flaggedBids, other_bid_rows: fetchMeta.other_bid_rows || 0, flag_counts: flagCounts,
   codes_with_flags: [...codes.values()].filter((c) => c.obs.some((o) => o[9])).length, shards: shards.size,
   note: 'Low bidder (bid_rank_sequence_number=1) rows for every letting in the dataset; all-bidder count/min/avg per project+code+qty. Planning-level only.' };
-const indexJson = JSON.stringify({ meta: meta, pooled_slope: pooled, counties: counties, districts: districts, index: index });
+const indexJson = JSON.stringify({ meta: meta, pooled_slope: pooled, global_within_slope: E.r4(globalSlope), shrink_k: K, counties: counties, districts: districts, index: index });
 fs.writeFileSync(path.join(outDir, 'index.json'), indexJson);
 console.log(JSON.stringify(meta), 'pooled', JSON.stringify(pooled), 'index bytes', indexJson.length, 'shard bytes', bytes);
