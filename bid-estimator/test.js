@@ -132,6 +132,12 @@ t('unit conversions are exact or refused', () => {
   // no code in the data mixes units (would otherwise be warned, never silently mixed)
   assert(ix.index.every((r) => r[2]));
 });
+t('often bid with: co-occurrence from data', () => {
+  const r = entry('5002-7001').related;
+  assert(r && r.length && r[0][0] === '5002-7002' && r[0][1] === 1 && r[0][2] === 10);
+  r.forEach((x) => assert(x[2] >= 3 && x[4] >= 2 && x[1] > 0 && x[1] <= 1));
+  assert(ix.meta.projects > 1000);
+});
 t('scope forcing and bad input', () => {
   assert.strictEqual(E.estimate(entry('5002-7001'), 100, ctx, { scope: 'houston' }).scope, 'houston');
   assert.strictEqual(E.estimate(entry('5033-7001'), 100, ctx, { scope: 'houston' }).scope, 'statewide');

@@ -9,6 +9,7 @@
     scope: $('scope'), add: $('addBtn'), msg: $('formMsg'), tab: $('tabWrap'), cards: $('cards'), meta: $('metaLine'), method: $('methodData') };
   let idx = null, itemInfo = null, ctx = null, houstonIdx = -1;
   const shards = Object.create(null); // item -> Promise<shard>
+  const shardCache = Object.create(null); // item -> loaded shard
   let items = load();               // [{id, code, qty, scope}]
   const results = Object.create(null); // id -> estimate result
   let picked = null;                // index row
@@ -46,7 +47,7 @@
     if (!shards[it]) {
       shards[it] = fetch('data/items/' + encodeURIComponent(it) + '.json').then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status); return r.json();
-      }).catch(function (e) { delete shards[it]; throw e; });
+      }).then(function (j) { shardCache[it] = j; return j; }).catch(function (e) { delete shards[it]; throw e; });
     }
     return shards[it];
   }
@@ -197,6 +198,22 @@
       }).join('') + '</tbody></table></div>';
   }
 
+  function relatedHtml(it, res) {
+    const sh = shardCache[itemOf(it.code)];
+    const e = sh && sh.codes[it.code];
+    if (!e || !e.related || !e.related.length) return '';
+    return '<div class="related"><h4>Often bid with <small>(from the bid data — not engineering advice)</small></h4><ul>' +
+      e.related.map(function (r) {
+        const row = rowFor(r[0]);
+        const sq = r[3] > 0 ? E.roundPrice(res.qty * r[3]) : null;
+        const sugQty = sq == null ? null : sq >= 10 ? Math.round(sq) : sq;
+        return '<li><button type="button" class="btn small rel-add" data-code="' + esc(r[0]) + '"' + (sugQty ? ' data-qty="' + sugQty + '"' : '') + '>+ ' + esc(r[0]) + '</button> ' +
+          '<span class="rel-desc">' + esc(row ? row[1] : '') + (row ? ' (' + esc(row[2]) + ')' : '') + '</span> ' +
+          '<span class="rel-stat">co-occurs in ' + Math.round(r[1] * 100) + '% of projects (' + r[2] + ')' + (r[3] > 0 && row ? ' · qty typically ' + fmtRatio(r[3]) + ' this item' : '') + '</span></li>';
+      }).join('') + '</ul></div>';
+  }
+  function fmtRatio(x) { return (x >= 10 ? Math.round(x) : x >= 1 ? x.toFixed(1) : x.toFixed(2)) + '×'; }
+
   function cardHtml(it) {
     const res = results[it.id];
     if (!res) return '';
@@ -220,6 +237,7 @@
       '<div class="charts"><div>' + C.scatter(res, houstonIdx, chartOpts()) +
       '<p class="legend"><i style="background:#2563eb"></i>low bid <i style="background:#ea580c"></i>Houston <i style="background:#1f4e79;opacity:.3;border-radius:2px"></i>suggested range <i style="background:#b45309"></i>your qty / suggested' + (res.flagStats.n ? ' <i style="background:#fff;border:2px solid #dc2626;border-radius:1px;transform:rotate(45deg)"></i>possibly unbalanced (kept)' : '') + '</p></div>' +
       '<div>' + C.boxplot(res, chartOpts()) + '<p class="legend">▲ suggested ' + E.fmtMoney(res.mid) + ' · shaded = your range ' + E.fmtMoney(res.low) + '–' + E.fmtMoney(res.high) + '. Box = middle half of low bids (' + E.fmtMoney(res.p25) + '–' + E.fmtMoney(res.p75) + '), line = median ' + E.fmtMoney(res.p50) + ', whiskers = 10th–90th percentile, dots = each low bid.</p>' +
+      relatedHtml(it, res) +
       '<details class="more"><summary>Statistics</summary>' + statsTable(res) + '</details>' +
       '<details class="more"><summary>All ' + res.obs.length + ' low bids' + (res.flagStats.n ? ' (' + res.flagStats.n + ' flagged)' : '') + '</summary>' + bidsTable(res) + '</details></div></div>' +
       '</article>';
@@ -247,6 +265,19 @@
     items = items.filter(function (x) { return x.id !== id; }); delete results[id]; save(); renderAll();
   });
   els.cards.addEventListener('click', function (ev) {
+    const ra = ev.target.closest('.rel-add');
+    if (ra) {
+      const r = rowFor(ra.getAttribute('data-code'));
+      if (!r) return;
+      pick(r);
+      if (ra.getAttribute('data-qty')) {
+        els.qty.value = ra.getAttribute('data-qty');
+        els.msg.textContent = 'Quantity pre-filled from the typical ratio in the data — check it, then press Add item.';
+      }
+      document.getElementById('addTitle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      els.qty.focus({ preventScroll: true });
+      return;
+    }
     const b = ev.target.closest('.copy-sentence'); if (!b) return;
     const res = results[b.closest('.card').getAttribute('data-id')];
     if (res && res.ok) copyText(res.sentence, 'Backup sentence');

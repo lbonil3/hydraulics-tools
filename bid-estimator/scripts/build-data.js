@@ -124,6 +124,47 @@ function groupedSlope(c) {
     family_key: item + ' (' + unit + ')', family_shrunk: E.r4(famShr), global: E.r4(globalSlope), final: E.r4(E.shrink(codeB, codeB == null ? 0 : ss.n, famShr, K)) };
 }
 
+// "Often bid with" (item 5): co-occurrence in the same projects. For code A, related B are
+// ranked by the share of A's projects that also bid B, keeping only pairs that co-occur
+// in >= 3 projects and at least 2x as often as chance (lift >= 2) so that items on nearly
+// every job (mobilization, barricades) do not crowd out specific companions.
+const REL = { MIN_BOTH: 3, MIN_LIFT: 2, TOP: 6 };
+const projCodes = new Map(); // pid -> Map(code -> qty sum)
+for (const c of codes.values()) for (const o of c.obs) {
+  if (!projCodes.has(o[6])) projCodes.set(o[6], new Map());
+  const m = projCodes.get(o[6]); m.set(c.code, (m.get(c.code) || 0) + o[0]);
+}
+const nProj = projCodes.size;
+const codeProj = new Map();
+for (const [, m] of projCodes) for (const code of m.keys()) codeProj.set(code, (codeProj.get(code) || 0) + 1);
+const related = new Map();
+for (const [, m] of projCodes) {
+  const list = [...m.keys()];
+  for (const a of list) {
+    if (!related.has(a)) related.set(a, new Map());
+    const ra = related.get(a), qa = m.get(a);
+    for (const b of list) {
+      if (a === b) continue;
+      let r = ra.get(b); if (!r) { r = []; ra.set(b, r); }
+      r.push(m.get(b) / qa);
+    }
+  }
+}
+function relatedFor(code) {
+  const ra = related.get(code); if (!ra) return [];
+  const na = codeProj.get(code);
+  const out = [];
+  for (const [b, ratios] of ra) {
+    if (ratios.length < REL.MIN_BOTH) continue;
+    const share = ratios.length / na;
+    const lift = share / (codeProj.get(b) / nProj);
+    if (lift < REL.MIN_LIFT) continue;
+    out.push([b, E.r4(share), ratios.length, E.r4(E.median(ratios)), E.r4(lift)]);
+  }
+  out.sort((x, y) => y[1] - x[1] || y[4] - x[4]);
+  return out.slice(0, REL.TOP);
+}
+
 fs.rmSync(path.join(outDir, 'items'), { recursive: true, force: true });
 fs.mkdirSync(path.join(outDir, 'items'), { recursive: true });
 const shards = new Map();
@@ -142,6 +183,8 @@ for (const c of [...codes.values()].sort((a, b) => a.code.localeCompare(b.code, 
   }
   entry.flagged = c.obs.filter((o) => o[9]).length;
   entry.slope = groupedSlope(c);
+  const rel = relatedFor(c.code);
+  if (rel.length) entry.related = rel; // [code, share of this code's projects, n projects with both, median qty ratio B/A, lift]
   if (!shards.has(item)) shards.set(item, {});
   shards.get(item)[c.code] = entry;
   index.push([c.code, entry.desc, entry.unit, c.obs.length, hou.length]);
@@ -160,6 +203,8 @@ const meta = { source_url: 'https://data.texas.gov/dataset/Bid-Tabulations/de7b-
   mixed_unit_codes: [...codes.values()].filter((c) => c.units.size > 1).length,
   codes_with_flags: [...codes.values()].filter((c) => c.obs.some((o) => o[9])).length, shards: shards.size,
   note: 'Low bidder (bid_rank_sequence_number=1) rows for every letting in the dataset; all-bidder count/min/avg per project+code+qty. Planning-level only.' };
+meta.projects = nProj;
+meta.related_rule = REL;
 const indexJson = JSON.stringify({ meta: meta, pooled_slope: pooled, global_within_slope: E.r4(globalSlope), shrink_k: K, counties: counties, districts: districts, index: index });
 fs.writeFileSync(path.join(outDir, 'index.json'), indexJson);
 console.log(JSON.stringify(meta), 'pooled', JSON.stringify(pooled), 'index bytes', indexJson.length, 'shard bytes', bytes);
