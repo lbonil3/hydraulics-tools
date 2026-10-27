@@ -138,6 +138,19 @@ t('often bid with: co-occurrence from data', () => {
   r.forEach((x) => assert(x[2] >= 3 && x[4] >= 2 && x[1] > 0 && x[1] <= 1));
   assert(ix.meta.projects > 1000);
 });
+t('project size context (info only)', () => {
+  const sh = JSON.parse(fs.readFileSync(path.join(dir, 'data/items/432.json'), 'utf8'));
+  assert(sh.ptot_k.length === sh.pids.length && sh.ptot_k.every((x) => x >= 0));
+  const e = Object.assign({ code: '432-7001', ptot_k: sh.ptot_k }, sh.codes['432-7001']);
+  const base = E.estimate(e, 300, ctx, {});
+  const r = E.estimate(e, 300, ctx, { projectTotal: 10e6 });
+  assert.strictEqual(r.mid, base.mid);
+  assert(r.projectSize && r.projectSize.n >= 3);
+  assert(r.comments.some((c) => /^Project size: /.test(c) && /suggested price is not changed/.test(c)));
+  if (!r.projectSize.shift) assert(!r.comments.some((c) => /for each 10x in project size/.test(c)));
+  const lr = E.linreg2([1, 2, 3, 4, 5, 6, 7], [2, 1, 4, 3, 6, 5, 8], [1, 2, 3, 4, 5, 6, 7].map((x, i) => 1 + 0.5 * x + 2 * [2, 1, 4, 3, 6, 5, 8][i]));
+  assert(Math.abs(lr.b2 - 2) < 1e-9 && Math.abs(lr.b1 - 0.5) < 1e-9);
+});
 t('scope forcing and bad input', () => {
   assert.strictEqual(E.estimate(entry('5002-7001'), 100, ctx, { scope: 'houston' }).scope, 'houston');
   assert.strictEqual(E.estimate(entry('5033-7001'), 100, ctx, { scope: 'houston' }).scope, 'statewide');

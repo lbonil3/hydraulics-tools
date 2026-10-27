@@ -133,7 +133,7 @@
   function compute(it) {
     return shard(it.code).then(function (sh) {
       const e = sh.codes[it.code];
-      results[it.id] = e ? E.estimate(Object.assign({ code: it.code }, e), it.qty, ctx, { scope: it.scope, qtyUnit: it.qtyUnit || null, letDate: settings.letDate || null, annualPct: Number(settings.escPct) || 0 })
+      results[it.id] = e ? E.estimate(Object.assign({ code: it.code, ptot_k: sh.ptot_k }, e), it.qty, ctx, { scope: it.scope, projectTotal: Number(settings.projectTotal) || 0, qtyUnit: it.qtyUnit || null, letDate: settings.letDate || null, annualPct: Number(settings.escPct) || 0 })
         : { ok: false, reason: 'Bid code ' + it.code + ' is not in the data.' };
     }).catch(function () { results[it.id] = { ok: false, reason: 'Could not load data for ' + it.code + '.' }; });
   }
@@ -325,17 +325,19 @@
   });
 
   // ---------- settings ----------
-  const letEl = $('letDate'), escEl = $('escPct');
+  const letEl = $('letDate'), escEl = $('escPct'), ptEl = $('projTotal');
+  if (settings.projectTotal) ptEl.value = settings.projectTotal;
   if (settings.letDate) letEl.value = settings.letDate;
   if (settings.escPct != null) escEl.value = settings.escPct;
-  if (settings.letDate) $('settings').open = true;
+  if (settings.letDate || settings.projectTotal) $('settings').open = true;
   function onSettings() {
-    settings = { letDate: letEl.value || '', escPct: escEl.value === '' ? 0 : Number(escEl.value) };
+    settings = { letDate: letEl.value || '', escPct: escEl.value === '' ? 0 : Number(escEl.value), projectTotal: Number(ptEl.value) > 0 ? Number(ptEl.value) : '' };
     try { localStorage.setItem(SETTINGS, JSON.stringify(settings)); } catch (e) { /* ignore */ }
     if (ctx) Promise.all(items.map(compute)).then(renderAll);
   }
   letEl.addEventListener('change', onSettings);
   escEl.addEventListener('change', onSettings);
+  ptEl.addEventListener('change', onSettings);
 
   // ---------- boot ----------
   Promise.all([

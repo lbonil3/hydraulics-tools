@@ -224,6 +224,43 @@
     return { rows: near, how: 'closest in size (fewer than ' + METHOD.MIN_NEIGHBORS + ' were within ' + METHOD.NEAR_FACTOR + 'x of your quantity)' };
   }
 
+  /** OLS y = b0 + b1 x1 + b2 x2; returns b2 with its two-sided p-value (n-3 df). */
+  function linreg2(x1, x2, y) {
+    const n = y.length;
+    if (n < 6) return null;
+    const m1 = mean(x1), m2 = mean(x2), my = mean(y);
+    let s11 = 0, s22 = 0, s12 = 0, s1y = 0, s2y = 0, syy = 0;
+    for (let i = 0; i < n; i++) {
+      const a = x1[i] - m1, b = x2[i] - m2, c = y[i] - my;
+      s11 += a * a; s22 += b * b; s12 += a * b; s1y += a * c; s2y += b * c; syy += c * c;
+    }
+    const det = s11 * s22 - s12 * s12;
+    if (!(det > 1e-12)) return null;
+    const b1 = (s22 * s1y - s12 * s2y) / det, b2 = (s11 * s2y - s12 * s1y) / det;
+    const sse = Math.max(0, syy - b1 * s1y - b2 * s2y);
+    const se2 = Math.sqrt(sse / (n - 3) * s11 / det);
+    const t = se2 > 0 ? b2 / se2 : Infinity;
+    return { n: n, b1: b1, b2: b2, p2: tPValue(t, n - 3) };
+  }
+
+  /**
+   * Project-size context (information only; does not change the suggested price).
+   * obs carry projectIdx; ptotK[projectIdx] = project total of low-bid extensions in $1,000s.
+   */
+  function projectSizeContext(obs, ptotK, projTotal, unit) {
+    if (!ptotK || !(projTotal > 0)) return null;
+    const pts = obs.filter(function (o) { return ptotK[o[O.PID]] > 0; });
+    if (pts.length < 3) return null;
+    const T = function (o) { return ptotK[o[O.PID]] * 1000; };
+    const similar = pts.filter(function (o) { return T(o) >= projTotal / 3 && T(o) <= projTotal * 3; });
+    const out = { n: pts.length, target: projTotal, similarN: similar.length,
+      similarMedian: similar.length ? median(similar.map(function (o) { return o[O.P]; })) : null,
+      allMedian: median(pts.map(function (o) { return o[O.P]; })), shift: null };
+    const fit = linreg2(pts.map(function (o) { return Math.log10(o[O.Q]); }), pts.map(function (o) { return Math.log10(T(o)); }), pts.map(function (o) { return Math.log10(o[O.P]); }));
+    if (fit && fit.n >= METHOD.SIG_MIN_N && fit.p2 != null && fit.p2 < METHOD.SIG_P) out.shift = { pctPer10x: (Math.pow(10, fit.b2) - 1) * 100, p: fit.p2, n: fit.n };
+    return out;
+  }
+
   // ---- escalation (FHWA NHCCI, then a user-entered %/yr) ----
   function quarterOf(d) {
     const m = /^(\d{4})-(\d{2})/.exec(d || '');
@@ -453,6 +490,14 @@
     } else if (outside && slope == null) {
       comments.push('Quantity adjustment: none — no price-vs-quantity slope available, so the base is used as is.');
     }
+    const ps = opts.projectTotal > 0 ? projectSizeContext(obs, entry.ptot_k, Number(opts.projectTotal), unit) : null;
+    if (ps) {
+      comments.push('Project size: ' + (ps.similarN >= 3
+        ? 'on ' + ps.similarN + ' ' + scopeLabel + ' projects of similar total size (within 3x of ' + fmtMoney(ps.target).replace(/\.00$/, '') + ') the median low bid was ' + fmtMoney(ps.similarMedian) + ' vs ' + fmtMoney(ps.allMedian) + ' across all ' + ps.n + '.'
+        : 'only ' + ps.similarN + ' ' + scopeLabel + ' project' + (ps.similarN === 1 ? '' : 's') + ' within 3x of ' + fmtMoney(ps.target).replace(/\.00$/, '') + ' total, too few to compare.') +
+        (ps.shift ? ' Holding quantity fixed, unit prices change about ' + (ps.shift.pctPer10x >= 0 ? '+' : '') + Math.round(ps.shift.pctPer10x) + '% for each 10x in project size (n=' + ps.shift.n + ', p=' + ps.shift.p.toFixed(3) + ').' : '') +
+        ' Shown for context; the suggested price is not changed.');
+    }
     if (esc) {
       comments.push('Escalation: median let date of these bids ' + medLet + ' → expected letting ' + esc.letDate + '. FHWA NHCCI (seasonally adjusted) ' + esc.from + ' ' + esc.fromVal.toFixed(3) + ' → ' + esc.to + ' ' + esc.toVal.toFixed(3) + ' (' + (esc.indexFactor >= 1 ? '+' : '') + ((esc.indexFactor - 1) * 100).toFixed(1) + '%)' +
         (esc.userYears > 0 ? ', then ' + esc.annualPct + '%/yr (user input, assumed) for ' + esc.userYears.toFixed(1) + ' yr past the latest published quarter' : '') +
@@ -527,7 +572,7 @@
       confidence: confidence, score: pts,
       extrapolated: extrapolated, outside: outside, capped: capped,
       slope: slope, slopeSource: slopeSource, fit: fit,
-      escalation: esc, medianLet: medLet, conversion: conversion,
+      escalation: esc, medianLet: medLet, conversion: conversion, projectSize: ps,
       neighbors: nb.rows.length, outliers: nOut, flagStats: flagStats, neighborsFlagged: nbFlagged,
       stats: st, p10: p10, p25: p25, p50: p50, p75: p75, p90: p90,
       houstonMedian: houMed, statewideMedian: swMed, eeMedian: eeMed, lowToEe: lowToEe,
@@ -623,7 +668,7 @@
   }
 
   const api = {
-    O: O, METHOD: METHOD, convertQty: convertQty, compatibleUnits: compatibleUnits, unitFamily: unitFamily, escalation: escalation, quarterOf: quarterOf, slopeSums: slopeSums, shrink: shrink, quantile: quantile, median: median, mean: mean, linreg: linreg, tPValue: tPValue,
+    O: O, METHOD: METHOD, linreg2: linreg2, projectSizeContext: projectSizeContext, convertQty: convertQty, compatibleUnits: compatibleUnits, unitFamily: unitFamily, escalation: escalation, quarterOf: quarterOf, slopeSums: slopeSums, shrink: shrink, quantile: quantile, median: median, mean: mean, linreg: linreg, tPValue: tPValue,
     logLogFit: logLogFit, summarize: summarize, outlierFence: outlierFence, neighbors: neighbors,
     estimate: estimate, roundPrice: roundPrice, fmtMoney: fmtMoney, fmtQty: fmtQty,
     lineRow: lineRow, toTSV: toTSV, toCSV: toCSV, search: search, parseQuery: parseQuery, r4: r4

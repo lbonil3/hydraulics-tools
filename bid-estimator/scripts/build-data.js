@@ -135,6 +135,9 @@ for (const c of codes.values()) for (const o of c.obs) {
   const m = projCodes.get(o[6]); m.set(c.code, (m.get(c.code) || 0) + o[0]);
 }
 const nProj = projCodes.size;
+// Project size (item 7): total of low-bid extensions (qty x unit price) over every code on the project.
+const projTotal = new Map();
+for (const c of codes.values()) for (const o of c.obs) projTotal.set(o[6], (projTotal.get(o[6]) || 0) + o[0] * o[1]);
 const codeProj = new Map();
 for (const [, m] of projCodes) for (const code of m.keys()) codeProj.set(code, (codeProj.get(code) || 0) + 1);
 const related = new Map();
@@ -194,7 +197,8 @@ for (const [item, obj] of shards) {
   // Project ids -> small integers per shard (only distinct counts are needed).
   const pids = [], pmap = new Map();
   for (const code in obj) for (const o of obj[code].obs) { if (!pmap.has(o[6])) { pmap.set(o[6], pids.length); pids.push(o[6]); } o[6] = pmap.get(o[6]); }
-  const s = JSON.stringify({ item: item, pids: pids, codes: obj });
+  const ptot = pids.map((p) => Math.round((projTotal.get(p) || 0) / 1000)); // $ thousands
+  const s = JSON.stringify({ item: item, pids: pids, ptot_k: ptot, codes: obj });
   bytes += s.length;
   fs.writeFileSync(path.join(outDir, 'items', item + '.json'), s);
 }

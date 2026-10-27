@@ -63,6 +63,10 @@
         <label for="escPct">%/yr after latest index <small>(user input, assumed)</small></label>
         <input id="escPct" type="number" inputmode="decimal" step="0.1" value="0">
       </div>
+      <div class="field">
+        <label for="projTotal">Project total bid value, $ (optional)</label>
+        <input id="projTotal" type="number" inputmode="decimal" min="0" step="1000" placeholder="e.g. 8000000">
+      </div>
     </div>
     <p class="hint" id="escHint">Escalation uses FHWA's National Highway Construction Cost Index (NHCCI) from the bids' median let quarter to your letting date; past the latest published quarter it uses your %/yr. Leave the date empty for no escalation.</p>
   </details>
@@ -98,6 +102,7 @@
     <li><b>Escalation (optional).</b> With an expected letting date, prices are moved from the median let date of the bids used to that date with the FHWA National Highway Construction Cost Index (NHCCI, seasonally adjusted, <a href="https://data.transportation.gov/d/r94d-n4f9" target="_blank" rel="noopener noreferrer">data.transportation.gov r94d-n4f9</a>; <a href="https://www.fhwa.dot.gov/policy/otps/nhcci/" target="_blank" rel="noopener noreferrer">FHWA NHCCI page</a>). The NHCCI is national, not Texas-specific. Past the latest published quarter, your %/yr (default 0%) is used and labeled <i>user input, assumed</i>.</li>
     <li><b>Units.</b> You can enter a quantity in another unit only when the conversion is exact: LF ↔ STA (100) ↔ MI (5,280), SF ↔ SY (9) ↔ AC (43,560). Prices stay per the unit TxDOT bid; the comment shows the conversion. Nothing else is converted, and the data build checks that no code mixes units.</li>
     <li><b>Often bid with.</b> Codes that appear on the same projects in the data: ranked by the share of this code's projects that also bid them, kept only when they share at least 3 projects and co-occur at least 2x as often as chance (so items on nearly every job don't crowd the list). "Typical qty" is the median ratio of the two quantities on shared projects. Pressing a code pre-fills the form with that ratio-based quantity for you to check. This is a data pattern, not engineering advice.</li>
+    <li><b>Project size (optional).</b> With a project total, each item compares the low bids on projects of similar total size (within 3x; project total = sum of every low-bid extension on that project) with all projects in the same region. A "how price shifts with project size" sentence appears only when a fit of log price on log quantity and log project total gives p &lt; 0.1 with at least 8 bids. Context only — the suggested price is not changed.</li>
     <li><b>Notes &amp; printing.</b> Each item has a notes line that goes into Copy table, the CSV and the one-page printable summary (Print summary), together with the backup sentences, total, print date and data range.</li>
     <li><b>Possibly unbalanced bids are flagged, never removed.</b> Every flagged bid stays in every statistic and in the suggested price; the page shows the median and range with and without them for information only. A low bid is flagged when any of these hold (thresholds in <code>flags.js</code>):
       <ul>

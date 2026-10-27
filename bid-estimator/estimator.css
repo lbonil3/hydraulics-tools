@@ -159,3 +159,6 @@ details.more summary{cursor:pointer;color:#1f4e79;font-weight:600;font-size:13px
   .ps-backup{font-size:9pt;padding-left:18px}
   .ps-backup li{margin:2px 0;break-inside:avoid}
 }
+
+.settings-grid{grid-template-columns:repeat(3,minmax(160px,260px))}
+@media (max-width:700px){.settings-grid{grid-template-columns:1fr}}
