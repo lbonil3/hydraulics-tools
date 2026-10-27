@@ -45,6 +45,9 @@
     concrete: function () { noise(0.5, 0.35, 'lowpass', 500, 0.8, 0, 0.05); tone('sine', 90, 60, 0.4, 0.3); },
     whoosh: function () { noise(0.6, 0.35, 'bandpass', 900, 0.5, 0, 0.2); },
     alarm: function () { tone('square', 880, 0, 0.12, 0.08); tone('square', 660, 0, 0.12, 0.08, 0.15); },
+    win: function () { [523, 659, 784, 1047, 1319].forEach(function (f, i) { tone('triangle', f, 0, 0.22, 0.13, i * 0.09); tone('sine', f * 2, 0, 0.12, 0.04, i * 0.09 + 0.02); }); },
+    fail: function () { [392, 311, 262].forEach(function (f, i) { tone('sawtooth', f, f * 0.97, 0.26, 0.07, i * 0.2); }); noise(0.4, 0.12, 'lowpass', 300, 1, 0.55, 0.01); },
+    tick: function () { tone('sine', 1320, 1760, 0.07, 0.06); },
     buzz: function () { tone('sawtooth', 140, 110, 0.35, 0.18); tone('sawtooth', 147, 112, 0.35, 0.12); }
   };
   function play(name) { if (!unlocked || muted || !ctx || !SFX[name]) return; try { SFX[name](); } catch (e) { /* ignore */ } }

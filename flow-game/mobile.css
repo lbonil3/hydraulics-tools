@@ -24,3 +24,15 @@ html{-webkit-text-size-adjust:100%}
   #chart{right:56px;bottom:84px;width:calc(100vw - 120px);height:78px}
   .legend{right:56px;bottom:140px}
 }
+
+/* fix round: phone layout */
+@media (max-width:700px){
+  .opts{flex-wrap:wrap;overflow-x:visible;padding-bottom:2px}
+  .opts .opt{min-width:44px;min-height:44px}
+  .infocard{max-height:34vh}
+  .infocard.collapsed{max-height:none;padding-top:4px;padding-bottom:4px}
+  .panel{padding:14px;max-height:92dvh}
+  .panel .btns{margin:10px -14px -14px;padding:8px 14px 14px;bottom:-14px}
+  .panel .btns button{flex:1 1 40%}
+  .tiletip{max-width:calc(100vw - 80px)}
+}

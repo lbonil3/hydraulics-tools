@@ -91,3 +91,12 @@ details.more{margin:6px 0}details.more summary{cursor:pointer;min-height:36px;di
 .costs{font-size:12px}
 .costs td{padding:1px 6px}.costs td:last-child{text-align:right}
 .ugbtn.on{background:#7a4a2f!important}
+
+/* fix round: collapsible info card, sticky report actions */
+.infocard .ichead{display:flex;width:100%;align-items:center;gap:8px;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:32px}
+.infocard .ictitle{flex:1;font-weight:700;font-size:14px}
+.infocard .ictog{flex:none;font-size:12px;color:#9fd3ec;border:1px solid #3f5a73;border-radius:6px;padding:3px 8px}
+.infocard .icbody{margin-top:4px}
+.infocard.collapsed .icbody{display:none}
+.infocard.collapsed .ictitle{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel .btns{position:sticky;bottom:-16px;margin:12px -16px -16px;padding:10px 16px 16px;background:#22313f;border-top:1px solid #3f5a73;z-index:2}

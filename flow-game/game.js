@@ -73,13 +73,19 @@
     buildScenery();
   }
   // static scenery (houses, trees) as painter-queue items; skipped on tiles that hold a pond/ditch
+  // a lot whose house can hide a street or gutter tile behind it (the tile up-screen: x-1, y-1 or the diagonal) or that borders a street
+  function nearStreet(i) { var L = G.L, W = L.W, x = i % W, y = (i / W) | 0;
+    for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= L.H) continue; if (/[RQPX]/.test(L.types[yy * W + xx])) return true; } return false; }
+  // x-ray: fade houses/trees by streets so gutter spread, inlets and pipes read clearly (setting: auto / always show)
+  function xray() { if (G.houses === 'show') return false; if (G.houses === 'xray') return true; return G.phase !== 'plan' || /^(inlet|pipe|inspect)$/.test(G.tool); }
   function buildScenery() {
     var L = G.L, sc = [], r = S.rng(77 + (L.id || 0)), i, k;
     for (i = 0; i < L.types.length; i++) {
       var t = L.types[i], p = tp(i);
-      if (t === 'H') sc.push({ i: i, kind: 'house', y: p.y + TH / 2 + 4, seed: i });
-      if (t === 'H' && r() < 0.35) { var a = A.at(p, 0.85, 0.2); sc.push({ i: i, kind: 'tree', x: a.x, y: a.y, seed: i * 3 }); }
-      if (t === 'T') for (k = 0; k < 2; k++) { var b = A.at(p, 0.25 + 0.5 * r(), 0.25 + 0.5 * r()); sc.push({ i: i, kind: 'tree', x: b.x, y: b.y, seed: i * 5 + k }); }
+      var nr = nearStreet(i);
+      if (t === 'H') sc.push({ i: i, kind: 'house', y: p.y + TH / 2 + 4, seed: i, near: nr });
+      if (t === 'H' && r() < 0.35) { var a = A.at(p, 0.85, 0.2); sc.push({ i: i, kind: 'tree', x: a.x, y: a.y, seed: i * 3, near: nr }); }
+      if (t === 'T') for (k = 0; k < 2; k++) { var b = A.at(p, 0.25 + 0.5 * r(), 0.25 + 0.5 * r()); sc.push({ i: i, kind: 'tree', x: b.x, y: b.y, seed: i * 5 + k, near: nr }); }
     }
     G.scen = sc;
     G.cars = []; var roads = []; for (i = 0; i < L.types.length; i++) if (/[RQ]/.test(L.types[i])) roads.push(i);
@@ -100,13 +106,15 @@
     var f = stormF();
     drawCreek(ctx, t, f);
     if (G.phase !== 'plan') drawWater(ctx, t, f);
-    drawFlatControls(ctx, t, f);
+    G.post = []; drawFlatControls(ctx, t, f);
     if (G.flowView) drawFlowView(ctx);
     G.q = [];
     drawScenery(ctx, t, dt, f);
     drawTallControls(ctx, t, f);
     G.q.sort(function (a, b) { return a.y - b.y; }).forEach(function (e) { e.f(); });
+    G.post.forEach(function (fn) { fn(); });
     if (G.ug) drawUnderground(ctx, t, f);
+    if (G.phase === 'report' || (G.phase === 'storm' && f > 0.75)) drawMarks(ctx, t);
     if (G.phase === 'plan') {
       if (G.ghost) drawGhost(ctx, t);
       if (G.solGhost) drawSolGhost(ctx, t);
@@ -165,6 +173,8 @@
           var uu = ay ? 0.08 + 0.8 * fr * A.hash(i, k, 62) : 0.5 + dxs * (ph - 0.5), vv = ay ? 0.5 + dys * (ph - 0.5) : 0.08 + 0.8 * fr * A.hash(i, k, 62), w = A.at(p, uu, vv);
           ctx.fillStyle = 'rgba(235,248,255,.75)'; ctx.fillRect(Math.round(w.x) - 2, Math.round(w.y), 4, 1); }
         if (over && Math.floor(t / 300) % 2) outlineTile(ctx, i, '#ff6a4a');
+        if (g.kind === 'sag' && (g.ponded || over) && q > 0.4) { A.diamond(ctx, p, 0.02, 'rgba(70,130,210,' + (0.55 + 0.12 * Math.sin(t / 260)).toFixed(2) + ')'); // water standing across the lanes
+          for (k = 0; k < 4; k++) { var rp = ((t / 900) + k / 4) % 1, cc0 = tileCenter(i); ctx.strokeStyle = 'rgba(220,240,255,' + (0.7 * (1 - rp)).toFixed(2) + ')'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cc0.x + (A.hash(i, k, 5) - 0.5) * 20, cc0.y + (A.hash(i, k, 6) - 0.5) * 8, 2 + rp * 9, 1 + rp * 4.5, 0, 0, Math.PI * 2); ctx.stroke(); } }
       }
       if (flooded[i] && (q > 0.3 || G.phase === 'report')) A.diamond(ctx, p, 0.06, 'rgba(70,120,190,' + (0.45 + 0.15 * Math.sin(t / 300)).toFixed(2) + ')');
     }
@@ -197,7 +207,8 @@
       if (c.type === 'ditch') { var d = r ? r.dir[c.tile] : -1, alongV = d >= 0 ? Math.abs(d - c.tile) === W : true; FA.drawDitch(ctx, tp(c.tile), { lining: c.lining, alongV: alongV, prog: prog(k, t) });
         var dr = r && r.ditches[c.tile]; if (dr && G.phase !== 'plan') { var dd = Math.min(1.6, dr.d) * q, cen = tileCenter(c.tile); ctx.fillStyle = 'rgba(80,150,220,' + Math.min(0.85, 0.3 + dd * 0.5).toFixed(2) + ')';
           var ww = Math.max(1, Math.round(dd * 6)); for (var s2 = 0; s2 < 30; s2++) { var l = s2 / 30; for (var w = -ww; w <= ww; w++) { var pt = alongV ? A.at(tp(c.tile), 0.5 + w / 26, l) : A.at(tp(c.tile), l, 0.5 + w / 26); ctx.fillRect(Math.round(pt.x), Math.round(pt.y + 1), 2, 1); } }
-          var e = evalFor(k, 'ditch'); if (e && e.status !== 'ok' && q > 0.5) spray(ctx, cen.x, cen.y, t, k, e.status === 'scoured' ? '#a87444' : '#dff2ff'); } }
+          var e = evalFor(k, 'ditch'); if (e && e.status !== 'ok' && q > 0.5) { spray(ctx, cen.x, cen.y, t, k, e.status === 'scoured' ? '#a87444' : '#dff2ff');
+            if (e.status === 'overtopped' || e.status === 'dead end') { A.diamond(ctx, tp(c.tile), 0.0, 'rgba(70,130,210,.5)'); [-1, 1].forEach(function (sd) { var nb = alongV ? c.tile + sd : c.tile + sd * W; if (nb >= 0 && nb < L.types.length && L.types[nb] !== 'C') A.diamond(ctx, tp(nb), 0.15, 'rgba(70,130,210,' + (0.25 + 0.1 * Math.sin(t / 250 + sd)).toFixed(2) + ')'); }); } } } }
       if (c.type === 'pond') { var pd = r && r.pond, lv = 0; if (pd && pd.hasPond && G.phase !== 'plan') lv = pondLevel(pd, f); FA.drawPond(ctx, tp(c.tile), { level: lv, t: t, seed: k }); }
       if (c.type === 'inlet') { var g = r && r.gut[c.tile]; FA.drawInlet(ctx, tp(c.tile), { len: c.len, alongY: alongY(c.tile), t: t, prog: prog(k, t), flow: G.phase === 'storm' && g ? Math.min(1, (g.Qi || 0) / 3) * q : 0, box: true });
         var e2 = evalFor(k, 'inlet'); if (e2 && G.phase === 'storm' && e2.Qb > 0.05 && q > 0.3) { var cc = tileCenter(c.tile), dn = r.dir[c.tile] >= 0 ? tileCenter(r.dir[c.tile]) : cc, ph = (t / 600) % 1; ctx.fillStyle = e2.Qb > 0.5 ? '#ff9a3a' : '#bfe6ff'; ctx.fillRect(Math.round(cc.x + (dn.x - cc.x) * ph) - 2, Math.round(cc.y + (dn.y - cc.y) * ph) - 4, 4, 2); } }
@@ -206,9 +217,29 @@
     if (hasNoBuild()) Object.keys(L.nobuild).forEach(function (i) { FA.drawNoBuild(ctx, tp(+i)); });
     if (hasUtil() && (G.round > 0 || G.utilShown)) Object.keys(L.util).forEach(function (i) { FA.drawUtility(ctx, tp(+i), t); });
     var nr = r && r.net; if (nr && nr.nodes && !G.ug) Object.keys(nr.nodes).forEach(function (k2) { var nd = nr.nodes[k2], cc2 = tileCenter(+k2), sur = G.phase === 'storm' && nd.surch && q > 0.5;
-      if (nd.kind === 'junction' || nd.kind === 'bend' || nd.kind === 'end') FA.drawLid(ctx, cc2.x + 8, cc2.y + 2, sur, t); else if (nd.kind === 'inlet' && sur) FA.drawLid(ctx, cc2.x, cc2.y, true, t); });
+      if (nd.kind === 'junction' || nd.kind === 'bend' || nd.kind === 'end') FA.drawLid(ctx, cc2.x + 8, cc2.y + 2, sur, t); else if (nd.kind === 'inlet' && sur) FA.drawLid(ctx, cc2.x, cc2.y, true, t);
+      if (sur) G.post.push(function () { geyser(ctx, cc2.x + (nd.kind === 'inlet' ? 0 : 8), cc2.y + 2, t, +k2); }); });
   }
-  function spray(ctx, x, y, t, k, col) { for (var f2 = 0; f2 < 10; f2++) { var ph = ((t / 500) + A.hash(k, f2, 91)) % 1; ctx.fillStyle = f2 % 3 ? col : '#ffffff'; ctx.fillRect(Math.round(x + (A.hash(k, f2, 92) - 0.5) * 30), Math.round(y - 8 * (1 - ph) * (1 - ph) + 6 * ph), 2, 1); } }
+  // the creek pouring over the road: brown-blue sheet, moving streaks across the lanes, spray on the downstream edge
+  function overtop(ctx, i, t, k) { var L = G.L, W = L.W, ay = alongY(i), tiles = [i]; // the road tile over the creek and the road tiles either side
+    [ay ? -W : -1, ay ? W : 1].forEach(function (d) { var j = i + d; if (j >= 0 && j < L.types.length && /[QRX]/.test(L.types[j])) tiles.push(j); });
+    tiles.forEach(function (ti, n) { var p = tp(ti); A.diamond(ctx, p, 0.0, 'rgba(84,130,170,' + ((n ? 0.45 : 0.78) + 0.1 * Math.sin(t / 200 + n)).toFixed(2) + ')');
+      for (var s = 0; s < 16; s++) { var ph = ((t / 480) + A.hash(ti, s, 33)) % 1, w = A.hash(ti, s, 34), pt = ay ? A.at(p, ph, w) : A.at(p, w, ph); ctx.fillStyle = 'rgba(235,246,255,' + (0.9 * (1 - Math.abs(ph - 0.5) * 1.6)).toFixed(2) + ')'; ctx.fillRect(Math.round(pt.x) - 4, Math.round(pt.y), 8, 2); } });
+    var c = tileCenter(i); for (var m = 0; m < 3; m++) spray(ctx, c.x + (m - 1) * 14, c.y + 6, t + m * 170, k + m, m === 1 ? '#ffffff' : '#cfe8ff');
+    if (Math.floor(t / 400) % 2) outlineTile(ctx, i, '#ff6a4a'); }
+  // a geyser out of a surcharged manhole/inlet lid
+  function geyser(ctx, x, y, t, k) { var h = 16 + 5 * Math.sin(t / 140 + k); ctx.fillStyle = 'rgba(200,230,255,.85)'; ctx.fillRect(Math.round(x) - 1, Math.round(y - h), 3, Math.round(h));
+    for (var f2 = 0; f2 < 12; f2++) { var ph = ((t / 420) + A.hash(k, f2, 81)) % 1, dx = (A.hash(k, f2, 82) - 0.5) * 22 * ph; ctx.fillStyle = f2 % 3 ? '#cfe8ff' : '#ffffff'; ctx.fillRect(Math.round(x + dx), Math.round(y - h + h * ph * ph * 1.1), 2, 2); } }
+  // ✓ / ✗ badges over every checked element once the storm has peaked; passing ones pulse green
+  var MARK_EL = { inlet: 1, pipe: 1, ditch: 1, culvert: 1, detention: 1, street: 1, node: 1, lot: 1, check: 1, pond: 1 };
+  function drawMarks(ctx, t) { var r = G.scoreRes || G.live; if (!r) return; var by = {};
+    r.evals.forEach(function (e) { if (!MARK_EL[e.el] || e.tile == null || e.tile < 0) return; if (e.el === 'street' && e.status === 'ok') return; var bad = e.status !== 'ok' && !e.warn; var cur = by[e.tile]; if (!cur || (bad && !cur.bad)) by[e.tile] = { bad: bad }; });
+    var age = G.reportAt ? t - G.reportAt : 0, pulse = 0.5 + 0.5 * Math.sin(t / 220);
+    Object.keys(by).forEach(function (k) { var m = by[k], c = tileCenter(+k), y = c.y - 20 - (G.phase === 'report' ? Math.max(0, 6 - age / 80) : 0);
+      if (!m.bad) { ctx.strokeStyle = 'rgba(80,230,120,' + (0.35 + 0.4 * pulse).toFixed(2) + ')'; ctx.lineWidth = 1.5; outlineTile(ctx, +k, ctx.strokeStyle); }
+      ctx.fillStyle = m.bad ? '#e8463a' : '#2fbf5b'; ctx.beginPath(); ctx.arc(c.x, y, 6, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); if (m.bad) { ctx.moveTo(c.x - 2.5, y - 2.5); ctx.lineTo(c.x + 2.5, y + 2.5); ctx.moveTo(c.x + 2.5, y - 2.5); ctx.lineTo(c.x - 2.5, y + 2.5); } else { ctx.moveTo(c.x - 3, y); ctx.lineTo(c.x - 1, y + 2.5); ctx.lineTo(c.x + 3, y - 2.5); } ctx.stroke(); }); }
+  function spray(ctx, x, y, t, k, col) { for (var f2 = 0; f2 < 10; f2++) { var ph = ((t / 500) + A.hash(k, f2, 91)) % 1; ctx.fillStyle = f2 % 3 ? col : '#ffffff'; ctx.fillRect(Math.round(x + (A.hash(k, f2, 92) - 0.5) * 30), Math.round(y - 12 * (1 - ph) * (1 - ph) + 8 * ph), 2, 2); } }
   function pondLevel(pd, f) { var ser = pd.ser; if (!ser || !ser.length) return 0; var tEnd = ser[ser.length - 1][0], tm = f * tEnd, k = 0; while (k < ser.length - 1 && ser[k + 1][0] < tm) k++; return Math.min(1.2, (ser[k][3] || 0) / 4); }
   function big(ctx, x, y, f) { ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(1.5, 1.5); f(); ctx.restore(); }
   function nextRoad(i, prev) { var L = G.L, W = L.W, x = i % W, y = (i / W) | 0, c = []; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var xx = x + d[0], yy = y + d[1]; if (xx >= 0 && yy >= 0 && xx < W && yy < L.H && /[RQX]/.test(L.types[yy * W + xx])) c.push(yy * W + xx); });
@@ -216,7 +247,8 @@
   function drawScenery(ctx, t, dt, f) {
     var busy = {}; G.controls.forEach(function (c) { if (c.type === 'pond' || c.type === 'ditch') busy[c.tile] = 1; });
     var wind = G.phase === 'storm' ? rainF(f) : 0.15;
-    (G.scen || []).forEach(function (s) { if (busy[s.i]) return; if (s.kind === 'house') { var p = tp(s.i); Q(s.y, function () { FA.drawHouse(ctx, p, s.seed); }); } else Q(s.y, function () { FA.drawTree(ctx, s.x, s.y, s.seed, G.reduced ? 0 : t, wind); }); });
+    var xr = xray(), fa = xr ? 0.3 : 1;
+    (G.scen || []).forEach(function (s) { if (busy[s.i]) return; var al = s.near ? fa : 1; if (s.kind === 'house') { var p = tp(s.i); Q(s.y, function () { if (al < 1) ctx.globalAlpha = al; FA.drawHouse(ctx, p, s.seed); ctx.globalAlpha = 1; }); } else Q(s.y, function () { if (al < 1) ctx.globalAlpha = al; FA.drawTree(ctx, s.x, s.y, s.seed, G.reduced ? 0 : t, wind); ctx.globalAlpha = 1; }); });
     (G.cars || []).forEach(function (c) {
       if (G.phase !== 'storm' && !G.reduced) { c.t += dt * c.sp; while (c.t >= 1) { c.t -= 1; var nx = nextRoad(c.i, c.prev); c.prev = c.i; c.i = nx; } }
       var a = tileCenter(c.i), b = tileCenter(nextRoad(c.i, c.prev)), x = a.x + (b.x - a.x) * c.t, y = a.y + (b.y - a.y) * c.t, dirX = (b.x - a.x) * (b.y - a.y) >= 0 ? 1 : -1;
@@ -232,10 +264,10 @@
     var q = qf(f), hasCulv = false;
     G.controls.forEach(function (c, k) {
       if (c.type === 'culvert') { hasCulv = true; var p = tp(c.tile), cen = tileCenter(c.tile); Q(cen.y + 2, function () { FA.drawCulvert(ctx, p, { dia: c.dia, barrels: c.barrels, alongY: !alongY(c.tile), prog: prog(k, t, 1400) });
-        var e = evalFor(k, 'culvert'); if (e && e.status === 'overtopped' && G.phase !== 'plan' && q > 0.4) { A.diamond(ctx, p, 0.05, 'rgba(110,100,80,.55)'); spray(ctx, cen.x, cen.y, t, k, '#dff2ff'); } }); }
+        var e = evalFor(k, 'culvert'); if (e && e.status === 'overtopped' && G.phase !== 'plan' && q > 0.4) overtop(ctx, c.tile, t, k); }); }
       if (c.type === 'outlet') { var p2 = tp(c.tile); Q(tileCenter(c.tile).y + 3, function () { FA.drawOutlet(ctx, p2, { t: t, flow: G.phase === 'storm' ? q : 0 }); }); }
     });
-    if (G.L.culvert && !hasCulv && G.phase !== 'plan' && q > 0.3) { var p3 = tp(G.L.culvert.tile), c3 = tileCenter(G.L.culvert.tile); A.diamond(ctx, p3, 0.04, 'rgba(110,100,80,.6)'); spray(ctx, c3.x, c3.y, t, 99, '#dff2ff'); }
+    if (G.L.culvert && !hasCulv && G.phase !== 'plan' && q > 0.3) Q(tileCenter(G.L.culvert.tile).y + 3, function () { overtop(ctx, G.L.culvert.tile, t, 99); });
   }
   // ---------- underground view: pipes, structures, HGL ----------
   function pipeList() { var r = res(); return r && r.net && r.net.pipes ? Object.keys(r.net.pipes).map(function (k) { return r.net.pipes[k]; }) : []; }
@@ -302,7 +334,7 @@
   function endStorm() {
     if (G.phase !== 'storm') return; G.phase = 'report'; $('stormHud').classList.add('hidden'); if (window.FlowSound) FlowSound.rain(0);
     var r = G.scoreRes, L = G.L, wasReplay = G.replay; if (!wasReplay) G.round = (G.round || 0) + 1;
-    setTimeout(function () { snd(r.stars >= 3 ? 'jingle' : r.stars >= 2 ? 'gurgle' : 'buzz'); }, 200);
+    G.reportAt = performance.now(); setTimeout(function () { snd(r.stars >= 3 ? 'win' : r.stars >= 2 ? 'jingle' : 'fail'); }, 200);
     if (!L.sandbox && !wasReplay && r.stars > (progress.stars[L.id] || 0)) { progress.stars[L.id] = r.stars; saveProgress(); }
     G.replay = false; showReport();
   }
@@ -343,6 +375,7 @@
   var pointers = {}, gesture = null, DRAG_TOOLS = { pipe: 1, ditch: 1, pond: 1 };
   view.addEventListener('pointerdown', function (e) {
     view.setPointerCapture && view.setPointerCapture(e.pointerId); pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    G.lastTouch = e.pointerType !== 'mouse';
     var ids = Object.keys(pointers);
     if (ids.length === 1) gesture = { type: 'maybeTap', sx: e.clientX, sy: e.clientY, px: G.panX, py: G.panY };
     if (ids.length === 1 && G.phase === 'plan' && DRAG_TOOLS[G.tool] && !e.shiftKey && e.button === 0) { var t0 = screenToTile(e.clientX, e.clientY); if (t0 >= 0) gesture = { type: 'maybeDraw', start: t0, last: t0, n: 0, sx: e.clientX, sy: e.clientY, px: G.panX, py: G.panY, touch: e.pointerType !== 'mouse', t0: performance.now() }; }
@@ -385,7 +418,7 @@
   function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function setZoom(z) { G.zoom = Math.max(0.4, Math.min(3.5, z)); clampPan(); scheduleLOD(); }
   function clampPan() { if (!geo) return; var lim = geo.w * G.zoom / 2 + 50; G.panX = Math.max(-lim, Math.min(lim, G.panX)); G.panY = Math.max(-lim, Math.min(lim, G.panY)); }
-  function fitView() { var r = view.getBoundingClientRect(); G.zoom = Math.max(0.4, Math.min(2.5, Math.min(r.width / geo.w, r.height / geo.h) * 0.98)); G.panX = 0; G.panY = 0; }
+  function fitView() { var r = view.getBoundingClientRect(), zw = r.width / geo.w, zh = r.height / geo.h, z = Math.min(zw, zh) * 0.98; if (r.width < 600 && zh > zw) z = Math.min(zh * 0.98, zw * 1.22); G.zoom = Math.max(0.4, Math.min(2.5, z)); G.panX = 0; G.panY = 0; } // portrait phone: fill more of the screen, edges pan
   function screenToTile(cx, cy) { // single pick function for hover and tap (pick.js)
     if (!geo || !G.L) return -1;
     var b = P.clientToBuffer(cx, cy, { rect: view.getBoundingClientRect(), viewW: view.width, viewH: view.height, zoom: G.zoom, panX: G.panX, panY: G.panY, dpr: dpr, geoW: geo.w, geoH: geo.h });
@@ -422,6 +455,9 @@
       if (!S.editTile(G.L, i, st.paint ? 'paint' : tool, st.paint)) { toast(st.paint ? 'Already ' + TYPE_NAME[ot] : 'Height limit'); return; }
       G.history.push({ op: 'terrain', i: i, h: oh, t: ot }); snd('click'); terrainChanged(); showTileInfo(i, true); return;
     }
+    if (G.lastTouch && TW * G.zoom < 72 && /^(inlet|ditch|pond|culvert|outlet|demolish)$/.test(tool) && G.pendTile !== i) { // small tiles under a finger: first tap aims, second tap places
+      G.pendTile = i; updateGhost(i); G.hoverTile = i; var gm = G.ghost ? G.ghost.msg : ''; $('tileTip').innerHTML = (gm ? gm + '<br>' : '') + '<b>Tap again to ' + (tool === 'demolish' ? 'remove' : 'place') + '</b> (' + (i % G.L.W) + ',' + ((i / G.L.W) | 0) + ')'; $('tileTip').classList.remove('hidden'); snd('click'); return; }
+    G.pendTile = -1; G.hoverTile = -1; $('tileTip').classList.add('hidden');
     if (tool === 'demolish') { removeAt(i); return; }
     if (tool === 'pipe') {
       if (G.chainFrom < 0) { G.chainFrom = i; toast('Pipe starts at (' + (i % G.L.W) + ',' + ((i / G.L.W) | 0) + '): tap the next tiles toward the outfall'); return; }
@@ -578,15 +614,19 @@
     toast('Sized your last pipe run: ' + ks.map(function (k) { return cs[k].dia + '"'; }).join(', ') + ' (smallest that is not overloaded)'); snd('pipe');
   }
   function selectTool(id) {
-    G.tool = id; G.chainFrom = -1; G.editTile = -1; G.ghost = null; Array.prototype.forEach.call(document.querySelectorAll('.tool'), function (b) { b.classList.toggle('sel', b.dataset.tool === id); });
+    G.tool = id; G.chainFrom = -1; G.editTile = -1; G.pendTile = -1; G.ghost = null; Array.prototype.forEach.call(document.querySelectorAll('.tool'), function (b) { b.classList.toggle('sel', b.dataset.tool === id); });
     if (id === 'pipe' && !G.ug) { setUG(true); G.autoUG = true; } else if (id !== 'pipe' && id !== 'inspect' && G.ug && G.autoUG) setUG(false);
     if (G.phase === 'plan') buildOpts();
     var t = findTool(id), card = $('infoCard');
-    if (t.help) card.innerHTML = t.help + ' <small>(Undo works for terrain too.)</small>';
-    else if (!t.rule) card.innerHTML = id === 'inspect' ? '<b>Inspect:</b> tap a tile for its runoff, gutter spread, ditch shear or HGL. ⛏ shows pipes underground; ≋ shows flow arrows.' : '<b>Remove:</b> tap a tile to remove the last element on it (full refund while planning).';
-    else card.innerHTML = '<h3>' + t.label + '</h3><div>' + t.rule + '</div><div class="basis"><b>Basis:</b> ' + t.basis + '<br><span class="game">' + t.game + '</span></div>';
-    card.classList.remove('hidden');
+    var head, body;
+    if (t.help) { head = t.label; body = t.help + ' <small>(Undo works for terrain too.)</small>'; }
+    else if (!t.rule) { head = id === 'inspect' ? 'Inspect: tap a tile' : 'Remove: tap a piece'; body = id === 'inspect' ? 'Tap a tile for its runoff, gutter spread, ditch shear or HGL. ⛏ shows pipes underground; ≋ shows flow arrows; 🏠 fades the houses by the streets.' : 'Tap a tile to remove the last element on it (full refund while planning).'; }
+    else { head = t.label + ': ' + (t.rule.split('. ')[0].replace(/\.$/, '') + '.'); body = '<div>' + t.rule + '</div><div class="basis"><b>Basis:</b> ' + t.basis + '<br><span class="game">' + t.game + '</span></div>'; }
+    card.innerHTML = '<button type="button" class="ichead" aria-expanded="' + !infoCollapsed() + '"><span class="ictitle">' + head + '</span><span class="ictog">' + (infoCollapsed() ? 'Details ▾' : 'Hide ▴') + '</span></button><div class="icbody">' + body + '</div>';
+    card.classList.toggle('collapsed', infoCollapsed()); card.classList.remove('hidden');
   }
+  function infoCollapsed() { if (settings.info === 'open') return false; if (settings.info === 'closed') return true; return !!(G.L && (G.L.sandbox || G.L.id > 1)); } // collapsed by default after level 1
+  $('infoCard').addEventListener('click', function (e) { if (!e.target.closest('.ichead')) return; settings.info = infoCollapsed() ? 'open' : 'closed'; try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (er) { /* ignore */ } selectTool(G.tool); });
   function setUG(on) { G.ug = !!on; G.autoUG = false; $('ugBtn').classList.toggle('on', G.ug); }
 
   // ---------- levels ----------
@@ -720,6 +760,7 @@
     else if (k === 'z' || k === 'Z') { undo(); e.preventDefault(); }
     else if (k === 'r' || k === 'R') $('runBtn').click();
     else if (k === 'u' || k === 'U') $('ugBtn').click();
+    else if (k === 'x' || k === 'X') $('houseBtn').click();
     else if (k === 'm' || k === 'M') $('muteBtn').click();
     else if (k === ' ') { if (G.phase === 'storm') { G.paused = !G.paused; $('speedBtn').textContent = G.paused ? '❚❚' : G.speed + '×'; } e.preventDefault(); }
     else if (k === '+' || k === '=') setZoom(G.zoom * 1.25);
@@ -736,6 +777,9 @@
   syncMute();
   $('zoomIn').addEventListener('click', function () { setZoom(G.zoom * 1.25); });
   $('zoomOut').addEventListener('click', function () { setZoom(G.zoom / 1.25); });
+  function setHouses(m) { G.houses = m; settings.houses = m; try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } $('houseBtn').classList.toggle('on', m !== 'show'); $('houseBtn').setAttribute('aria-pressed', m !== 'show' ? 'true' : 'false'); }
+  $('houseBtn').addEventListener('click', function () { setHouses(G.houses === 'show' ? 'auto' : 'show'); toast(G.houses === 'show' ? 'Houses: always shown' : 'Houses by the streets fade during the storm and with the inlet/pipe tools'); });
+  setHouses(settings.houses === 'show' ? 'show' : 'auto');
   $('ugBtn').addEventListener('click', function () { setUG(!G.ug); toast(G.ug ? 'Underground: pipes, structures, HGL (dashed)' : 'Surface view'); });
   $('flowView').addEventListener('click', function () { G.flowView = !G.flowView; this.classList.toggle('on', G.flowView); if (G.flowView) toast('Flow arrows: orange > 3 cfs, red > 10 cfs'); });
   $('speedBtn').addEventListener('click', function () { G.speed = G.speed === 1 ? 2 : G.speed === 2 ? 4 : 1; G.paused = false; this.textContent = G.speed + '×'; });
