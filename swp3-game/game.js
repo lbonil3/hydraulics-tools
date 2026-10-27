@@ -132,6 +132,60 @@
     if (c.type === 'fence') { var dir = G.simDir[i]; o.edge = edgeCorners(i, dir >= 0 ? dir : i + W); }
     A.drawControl(ctx, c.type, p, o);
   }
+  // ---------- site crew (visual only; capped sprite count) ----------
+  function initCrew() {
+    var L = G.L, pad = [], i; G.crew = []; G.mud = []; G.truck = null; G.truckNext = performance.now() + 2500;
+    for (i = 0; i < L.types.length; i++) if (L.types[i] === 'S') pad.push(i);
+    G.pad = pad; var r = S.rng(99 + L.id);
+    for (var k = 0; k < Math.min(3, pad.length); k++) { var c = tileCenter(pad[(r() * pad.length) | 0]); G.crew.push({ x: c.x, y: c.y, tx: c.x, ty: c.y, wait: r() * 2, f: 0, act: 'idle', face: 1, vest: ['#ff7a1a', '#d9ff3a', '#ff7a1a'][k] }); }
+    var a = G.accessTiles[0], park = -1;
+    if (a != null) { var W = L.W, cand = [a - W, a - 1, a + 1, a + W, a - 2 * W]; for (k = 0; k < cand.length; k++) if (cand[k] >= 0 && L.types[cand[k]] === 'S') { park = cand[k]; break; } }
+    if (park < 0 && pad.length) park = pad[(pad.length / 3) | 0];
+    G.exPark = park; G.crewRng = r;
+  }
+  function exitOk() { var a = G.accessTiles; return G.controls.some(function (c) { return c.type === 'exit' && a.indexOf(c.tile) >= 0; }); }
+  function drawCrew(ctx, t, dt) {
+    if (!G.crew) initCrew();
+    var k, w, r = G.crewRng;
+    G.accessTiles.forEach(function (a) { var pp = tileTop(a % G.L.W, (a / G.L.W) | 0), c1 = A.at(pp, 0.2, 0.2), c2 = A.at(pp, 0.8, 0.8); A.drawCone(ctx, c1.x, c1.y); A.drawCone(ctx, c2.x, c2.y); });
+    // excavator: parked near the access, digging idly; swings faster while building big items
+    var busy = false;
+    G.controls.forEach(function (c, j) { var b = G.born[j]; if (b != null && t - b < buildMs(c.type) && (c.type === 'basin' || c.type === 'dam' || c.type === 'exit')) busy = c; });
+    if (busy) { var bp = tileCenter(busy.tile); A.drawExcavator(ctx, bp.x - 30, bp.y + 4, t / 160); }
+    else if (G.exPark >= 0) { var ep = tileCenter(G.exPark); A.drawExcavator(ctx, ep.x, ep.y + 4, t / 900); }
+    // build crews: two workers hammering at each control under construction (max 3 builds shown)
+    var shown = 0;
+    for (var j = G.controls.length - 1; j >= 0 && shown < 3; j--) {
+      var b = G.born[j], c = G.controls[j]; if (b == null || t - b > buildMs(c.type)) continue; shown++;
+      var cp = tileCenter(c.tile), fr = Math.floor(t / 140);
+      A.drawWorker(ctx, cp.x - 20, cp.y + 2, fr, 'hammer', 1); A.drawWorker(ctx, cp.x + 20, cp.y - 2, fr + 1, 'hammer', -1, '#d9ff3a');
+      if (G.lastHammer !== fr && fr % 2 === 0 && G.phase === 'plan') { G.lastHammer = fr; if (window.SWP3Sound) SWP3Sound.play('hammer'); }
+    }
+    // idle crew wander the pad
+    for (k = 0; k < G.crew.length; k++) {
+      w = G.crew[k]; var dx = w.tx - w.x, dy = w.ty - w.y, d = Math.hypot(dx, dy);
+      if (d > 1) { var sp = Math.min(d, 18 * dt); w.x += dx / d * sp; w.y += dy / d * sp; w.act = 'walk'; w.face = dx >= 0 ? 1 : -1; }
+      else { w.act = w.wait > 1.2 && k === 1 ? 'hammer' : 'idle'; w.wait -= dt; if (w.wait <= 0 && G.pad.length) { var c2 = tileCenter(G.pad[(r() * G.pad.length) | 0]); var m = Math.min(1, 70 / Math.max(1, Math.hypot(c2.x - w.x, c2.y - w.y))); w.tx = w.x + (c2.x - w.x) * m; w.ty = w.y + (c2.y - w.y) * m; w.wait = 1 + r() * 3; } }
+      A.drawWorker(ctx, w.x, w.y, Math.floor(t / 180) + k, w.act, w.face, w.vest);
+    }
+    // dump truck tracks mud out when there is no stabilized exit (matches the sim's tracked-mud penalty)
+    var noExit = G.accessTiles.length && !exitOk();
+    if (!G.truck && noExit && G.phase !== 'storm' && t > G.truckNext) {
+      var a = G.accessTiles[0], ac = tileCenter(a), best = -1, bd = 1e9;
+      for (var i = 0; i < G.L.types.length; i++) if (G.L.types[i] === 'R') { var rc = tileCenter(i), dd = Math.hypot(rc.x - ac.x, rc.y - ac.y); if (dd < bd) { bd = dd; best = i; } }
+      if (best >= 0) { var rc2 = tileCenter(best); G.truck = { x0: ac.x, y0: ac.y, x1: ac.x + (rc2.x - ac.x) * 2.6, y1: ac.y + (rc2.y - ac.y) * 2.6, rx: rc2.x, ry: rc2.y, t0: t }; }
+    }
+    if (G.truck) {
+      var T = G.truck, f2 = (t - T.t0) / 4200;
+      if (f2 >= 1 || !noExit) { G.truck = null; G.truckNext = t + 6000; }
+      else { var tx = T.x0 + (T.x1 - T.x0) * f2, ty = T.y0 + (T.y1 - T.y0) * f2;
+        var pastRoad = Math.hypot(tx - T.x0, ty - T.y0) > Math.hypot(T.rx - T.x0, T.ry - T.y0) * 0.6;
+        if (pastRoad && G.mud.length < 60 && Math.floor(t / 90) !== T.lastDrop) { T.lastDrop = Math.floor(t / 90); G.mud.push({ x: tx + (r() - 0.5) * 8, y: ty + (r() - 0.5) * 3, t: t }); }
+        ctx.globalAlpha = f2 > 0.85 ? (1 - f2) / 0.15 : 1; A.drawTruck(ctx, tx, ty, T.x1 >= T.x0 ? 1 : -1, true); ctx.globalAlpha = 1; }
+    }
+    for (k = G.mud.length - 1; k >= 0; k--) { var m2 = G.mud[k], age = (t - m2.t) / 9000; if (age > 1 || !noExit) { G.mud.splice(k, 1); continue; }
+      ctx.fillStyle = 'rgba(106,68,34,' + (0.8 * (1 - age)).toFixed(2) + ')'; ctx.fillRect(Math.round(m2.x) - 2, Math.round(m2.y), 4, 2); ctx.fillRect(Math.round(m2.x) - 1, Math.round(m2.y) - 1, 2, 1); }
+  }
   function buildMs(type) { return type === 'basin' ? 2200 : type === 'exit' || type === 'dam' ? 1600 : 1100; }
 
 
@@ -151,6 +205,7 @@
     // controls in depth order
     var order = G.controls.map(function (c, k) { return k; }).sort(function (a, b) { return depth(G.controls[a].tile) - depth(G.controls[b].tile); });
     order.forEach(function (k) { drawControl(ctx, G.controls[k], k, t); });
+    drawCrew(ctx, t, dt);
     if (G.phase === 'report' && G.scoreRes) drawFailures(ctx, t);
     if (G.hoverTile >= 0 && G.hoverTile !== G.selTile && G.phase === 'plan') outlineTile(ctx, G.hoverTile, 'rgba(255,255,160,.85)');
     if (G.selTile >= 0 && G.phase === 'plan') outlineTile(ctx, G.selTile, '#fff');
@@ -375,7 +430,8 @@
     $('runBtn').disabled = G.phase !== 'plan';
     if (G.L.sandbox) saveSandbox();
   }
-  function terrainChanged() { // keep the view steady while geometry is rebuilt
+  function terrainChanged() {
+    G.crew = null; // keep the view steady while geometry is rebuilt
     var oldW = geo.w, oldH = geo.h; geo = buildGeometry(G.L); drawTerrain();
     void oldW; void oldH;
     G.sim = S.simulate(G.L, agedControls(), { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir; updateHud();
@@ -461,6 +517,7 @@
     if (G.L.tutorial && !progress.tutDone) showTutorial(0); else showForecast();
   }
   function setupLevel(L, n, controls) {
+    G.crew = null;
     G.level = n; G.L = L; geo = buildGeometry(G.L);
     G.controls = controls; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1; G.hoverTile = -1; G.round = 0;
     G.sim = S.simulate(G.L, controls, { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir;
