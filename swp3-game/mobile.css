@@ -2,7 +2,9 @@ html{-webkit-text-size-adjust:100%}
 @media (max-width:700px){
   .hud-title span{display:none}
   .hud-title b{font-size:14px}
-  .chip{padding:0 8px;font-size:13px}
+  .chip{padding:0 7px;font-size:13px}
+  #forecastLabel .lw{display:none}
+  #hud{gap:6px}
   #toolbar{flex-direction:column;gap:6px}
   .actions{justify-content:space-between}
   .run{flex:1}

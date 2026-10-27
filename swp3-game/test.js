@@ -237,4 +237,21 @@ t('pick: client<->buffer round trip with zoom, pan, dpr, page offset and CSS != 
   }
 });
 
+t('art.js draws exactly the block pick.js hit-tests (64x32 tiles, every pixel, several heights)', () => {
+  const ART = require('./art.js');
+  for (const zv of [0, 7, 30]) {
+    const g = { W: 1, H: 1, types: ['S'], z: [zv], ox: 40, oy: zv + 6, TW: ART.TW, TH: ART.TH, BASE: ART.BASE };
+    g.w = 80; g.h = zv + 6 + ART.TH + ART.BASE + 10;
+    let out = null;
+    const ctx = { createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }), putImageData: img => { out = img; } };
+    ART.drawTerrain(ctx, g);
+    let both = 0;
+    for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+      const drawn = out.data[(y * g.w + x) * 4 + 3] === 255, hit = !!PK.hitBlock(g, 0, 0, x + 0.5, y + 0.5);
+      assert.strictEqual(drawn, hit, `z=${zv} pixel ${x},${y} drawn=${drawn} hit=${hit}`); if (hit) both++;
+    }
+    assert.ok(both > ART.TW * ART.TH / 2);
+  }
+});
+
 console.log(n + ' tests passed');

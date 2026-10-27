@@ -65,3 +65,4 @@ button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 .lvl.sel{border-color:#ffd400;box-shadow:0 0 0 2px #ffd40066 inset}
 .chk{display:flex;align-items:center;gap:8px;margin:10px 0;min-height:44px}
 .chk input{width:22px;height:22px}
+#stormLabel{white-space:nowrap}

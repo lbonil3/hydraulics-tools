@@ -3,7 +3,7 @@
   'use strict';
   var S = window.SWP3;
   var P = window.SWP3Pick;
-  var TW = 32, TH = 16, BASE = 10; // iso tile size in low-res pixels, slab thickness
+  var A = window.SWP3Art, TW = A.TW, TH = A.TH, BASE = A.BASE, U = TW / 32; // iso tile size in art pixels (64x32), slab thickness; U = art scale vs v1
   var SAVE_KEY = 'swp3-game-v1';
   var $ = function (id) { return document.getElementById(id); };
 
@@ -86,7 +86,7 @@
   function buildGeometry(L) {
     var minH = Infinity, maxH = -Infinity, i;
     for (i = 0; i < L.heights.length; i++) { minH = Math.min(minH, L.heights[i]); maxH = Math.max(maxH, L.heights[i]); }
-    var zs = Math.min(4, 110 / Math.max(1, maxH - minH));
+    var zs = Math.min(4 * U, 110 * U / Math.max(1, maxH - minH));
     var z = L.heights.map(function (h) { return Math.round((h - minH) * zs); });
     var maxZ = Math.max.apply(null, z);
     var w = (L.W + L.H) * TW / 2 + 16, h = (L.W + L.H) * TH / 2 + maxZ + BASE + 24;
@@ -102,48 +102,20 @@
 
   function drawTerrain() {
     var L = G.L; terrain.width = geo.w; terrain.height = geo.h;
-    var ctx = tctx; ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, geo.w, geo.h);
-    var r = S.rng(77 + L.id), bottomY = function (x, y) { return geo.oy + (x + y) * TH / 2; };
-    for (var s = 0; s <= L.W + L.H - 2; s++) {
-      for (var y = 0; y < L.H; y++) {
-        var x = s - y; if (x < 0 || x >= L.W) continue;
-        var i = y * L.W + x, ty = L.types[i], p = tileTop(x, y), pal = PAL[ty];
-        var gz = geo.oy + BASE; // slab base (z = -BASE)
-        // side faces down to slab base
-        var lb = bottomY(x, y) + TH / 2 + BASE, depth = lb - (p.y + TH / 2);
-        poly(ctx, [p.x - TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x, p.y + TH + depth, p.x - TW / 2, p.y + TH / 2 + depth], ty === 'C' ? '#2e6194' : '#6b4a2c');
-        poly(ctx, [p.x + TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x, p.y + TH + depth, p.x + TW / 2, p.y + TH / 2 + depth], ty === 'C' ? '#244c75' : '#553a22');
-        // grass/soil lip on side faces
-        poly(ctx, [p.x - TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x, p.y + TH + 2, p.x - TW / 2, p.y + TH / 2 + 2], pal[1]);
-        poly(ctx, [p.x + TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x, p.y + TH + 2, p.x + TW / 2, p.y + TH / 2 + 2], pal[2]);
-        // strata lines on deep faces
-        ctx.fillStyle = 'rgba(0,0,0,.18)';
-        for (var d = 6; d < depth; d += 5) { ctx.fillRect(p.x - TW / 2 + 2, Math.round(p.y + TH / 2 + d), 1, 1); ctx.fillRect(p.x + TW / 2 - 3, Math.round(p.y + TH / 2 + d + 2), 1, 1); }
-        // top face
-        poly(ctx, [p.x, p.y, p.x + TW / 2, p.y + TH / 2, p.x, p.y + TH, p.x - TW / 2, p.y + TH / 2], pal[0]);
-        // texture specks inside diamond
-        var sp = SPECK[ty];
-        for (var k = 0; k < 14; k++) {
-          var u = r(), v = r(); var px = Math.round(p.x + (u - v) * TW / 2 * 0.9), py = Math.round(p.y + TH / 2 + (u + v - 1) * TH / 2 * 0.9);
-          ctx.fillStyle = sp[(r() * sp.length) | 0]; ctx.fillRect(px, py, 1, 1);
-        }
-        if (ty === 'G') { ctx.fillStyle = '#3d6230'; for (k = 0; k < 3; k++) { var gx = Math.round(p.x - 8 + r() * 16), gy = Math.round(p.y + 4 + r() * 8); ctx.fillRect(gx, gy, 1, 2); ctx.fillRect(gx + 2, gy + 1, 1, 1); } }
-        if (ty === 'S' || ty === 'A') { ctx.fillStyle = 'rgba(70,40,20,.35)'; for (k = -2; k <= 2; k++) ctx.fillRect(Math.round(p.x - 6 + k * 3), Math.round(p.y + 6 + k * 1.5), 6, 1); }
-        if (ty === 'R') { ctx.fillStyle = '#d9c35a'; if ((x + y) % 2 === 0 && L.id !== 3) ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y + TH / 2), 3, 1); }
-        if (ty === 'D') { ctx.fillStyle = '#5a7d36'; ctx.fillRect(Math.round(p.x - 10), Math.round(p.y + 7), 3, 1); ctx.fillRect(Math.round(p.x + 7), Math.round(p.y + 9), 3, 1); ctx.fillStyle = '#4a3a20'; ctx.fillRect(Math.round(p.x - 1), Math.round(p.y + 3), 2, 10); }
-        if (ty === 'C') { ctx.fillStyle = '#a8d0f0'; ctx.fillRect(Math.round(p.x - 6 + r() * 8), Math.round(p.y + 6 + r() * 4), 4, 1); }
-        if (ty === 'I') { ctx.fillStyle = '#222'; ctx.fillRect(Math.round(p.x - 5), Math.round(p.y + 6), 10, 4); ctx.fillStyle = '#666'; for (k = 0; k < 5; k++) ctx.fillRect(Math.round(p.x - 4 + k * 2), Math.round(p.y + 6), 1, 4); }
-        if (ty === 'A') { // orange access cones + tire tracks
-          ctx.fillStyle = '#5a3a1c'; ctx.fillRect(Math.round(p.x - 3), Math.round(p.y + 3), 1, 10); ctx.fillRect(Math.round(p.x + 3), Math.round(p.y + 3), 1, 10);
-          drawCone(ctx, p.x - 9, p.y + 8); drawCone(ctx, p.x + 9, p.y + 8);
-        }
-        // edge highlight (top-left light)
-        ctx.fillStyle = 'rgba(255,255,255,.12)';
-        for (k = 0; k < TW / 2; k += 2) ctx.fillRect(Math.round(p.x - TW / 2 + k), Math.round(p.y + TH / 2 - k / 2), 2, 1);
+    A.drawTerrain(tctx, { W: L.W, H: L.H, types: L.types, z: geo.z, ox: geo.ox, oy: geo.oy, w: geo.w, h: geo.h });
+    G.creekTiles = []; G.accessTiles = [];
+    for (var i = 0; i < L.types.length; i++) { if (L.types[i] === 'C') G.creekTiles.push(i); if (L.types[i] === 'A') G.accessTiles.push(i); }
+  }
+  function drawCreek(ctx, t) { // animated pixel ripples
+    for (var k = 0; k < G.creekTiles.length; k++) {
+      var i = G.creekTiles[k], p = tileTop(i % G.L.W, (i / G.L.W) | 0);
+      for (var q = 0; q < 3; q++) {
+        var ph = ((t / 1600 + A.hash(i, q, 51)) % 1), u = 0.15 + 0.7 * ph, v = 0.2 + 0.6 * A.hash(i, q, 52), w = A.at(p, u, v);
+        var a = Math.sin(ph * Math.PI); ctx.fillStyle = 'rgba(200,232,255,' + (0.55 * a).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 3, Math.round(w.y), 6, 1);
+        ctx.fillStyle = 'rgba(30,70,120,' + (0.35 * a).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 2, Math.round(w.y) + 1, 4, 1);
       }
     }
   }
-  function drawCone(ctx, x, y) { x = Math.round(x); y = Math.round(y); ctx.fillStyle = '#ff7a1a'; ctx.fillRect(x, y - 4, 1, 1); ctx.fillRect(x - 1, y - 3, 3, 2); ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - 2, 3, 1); ctx.fillStyle = '#ff7a1a'; ctx.fillRect(x - 2, y - 1, 5, 1); }
 
   // ---------- control sprites ----------
   function edgeCorners(i, j) {
@@ -154,36 +126,122 @@
     return [Lf, B];
   }
   function drawControl(ctx, c, k, t) {
-    var i = c.tile, cen = tileCenter(i), bornAt = G.born[k], lift = 0;
-    if (bornAt != null) { var a = (t - bornAt) / 260; if (a < 1) lift = Math.round(-8 * Math.sin(a * Math.PI) * (1 - a)); }
-    var x = Math.round(cen.x), y = Math.round(cen.y) + lift, n, q;
-    if (c.type === 'fence') {
-      var dir = G.simDir[i]; var e = edgeCorners(i, dir >= 0 ? dir : i + G.L.W);
-      var x0 = e[0][0], y0 = e[0][1] + lift, x1 = e[1][0], y1 = e[1][1] + lift;
-      // pull fence slightly inside the tile
-      var mx = cen.x - (x0 + x1) / 2, my = cen.y - (y0 + y1) / 2; x0 += mx * 0.2; x1 += mx * 0.2; y0 += my * 0.2; y1 += my * 0.2;
-      n = 10;
-      for (q = 0; q <= n; q++) { var fx = Math.round(x0 + (x1 - x0) * q / n), fy = Math.round(y0 + (y1 - y0) * q / n); ctx.fillStyle = '#1d1d1d'; ctx.fillRect(fx, fy - 4, 1, 4); ctx.fillStyle = '#333'; ctx.fillRect(fx, fy - 4, 1, 1); }
-      for (q = 0; q <= 2; q++) { var px = Math.round(x0 + (x1 - x0) * q / 2), py = Math.round(y0 + (y1 - y0) * q / 2); ctx.fillStyle = '#7a5428'; ctx.fillRect(px, py - 6, 1, 7); }
-    } else if (c.type === 'dam') {
-      var rocks = [[-7, 0], [-4, -2], [-1, -3], [2, -2], [5, -1], [-5, 1], [-1, 0], [3, 1], [7, 1], [-2, -5], [1, -5]];
-      rocks.forEach(function (rk, m) { ctx.fillStyle = m % 3 ? '#9a9a9a' : '#bdbdbd'; ctx.fillRect(x + rk[0] - 1, y + rk[1] - 1, 3, 2); ctx.fillStyle = '#5e5e5e'; ctx.fillRect(x + rk[0] - 1, y + rk[1] + 1, 3, 1); });
-    } else if (c.type === 'inlet') {
-      ctx.fillStyle = '#c99a4a'; ctx.fillRect(x - 9, y - 3, 18, 2); ctx.fillRect(x - 9, y + 2, 18, 2); ctx.fillStyle = '#8a6430'; ctx.fillRect(x - 9, y - 1, 18, 1); ctx.fillRect(x - 9, y + 4, 18, 1);
-    } else if (c.type === 'exit') {
-      for (q = 0; q < 26; q++) { var gx = x - 10 + ((q * 7) % 21), gy = y - 4 + ((q * 5) % 9); ctx.fillStyle = q % 2 ? '#cfcfcf' : '#8f8f8f'; ctx.fillRect(gx, gy, 2, 1); }
-    } else if (c.type === 'basin') {
-      ctx.fillStyle = '#5a3a1c'; for (q = -12; q <= 12; q++) { var hy = Math.round(5.5 * (1 - Math.abs(q) / 12)); ctx.fillRect(x + q, y - hy, 1, 1); ctx.fillRect(x + q, y + hy, 1, 1); }
-      ctx.fillStyle = '#4a7fa8'; for (q = -10; q <= 10; q++) { var hh = Math.round(4.5 * (1 - Math.abs(q) / 10)); ctx.fillRect(x + q, y - hh + 1, 1, Math.max(1, 2 * hh - 1)); }
-      ctx.fillStyle = '#a8d0f0'; ctx.fillRect(x - 3, y, 4, 1);
-    } else if (c.type === 'washout') {
-      ctx.fillStyle = '#222'; ctx.fillRect(x - 7, y - 6, 14, 9); ctx.fillStyle = '#bdbdbd'; ctx.fillRect(x - 6, y - 5, 12, 6); ctx.fillStyle = '#ffd400'; ctx.fillRect(x - 7, y - 7, 14, 1);
-    } else if (c.type === 'seed') {
-      var grown = Math.min(2, (G.round || 0) - (c.round || 0)), nSp = 12 + grown * 8;
-      if (grown > 0) { ctx.fillStyle = grown > 1 ? 'rgba(106,168,79,.75)' : 'rgba(106,168,79,.4)'; for (q = -12; q <= 12; q += 2) { var gh = Math.round(5 * (1 - Math.abs(q) / 13)); ctx.fillRect(x + q, y - gh, 2, 2 * gh); } }
-      for (q = 0; q < nSp; q++) { var sx = x - 9 + ((q * 5) % 19), sy = y - 4 + ((q * 3) % 9); ctx.fillStyle = q % 3 && !grown ? '#e6cf7a' : '#7fbf5f'; ctx.fillRect(sx, sy, q % 3 ? 2 : 1, 1); if (q % 3 === 0) ctx.fillRect(sx, sy - 1, 1, 1); }
+    var i = c.tile, W = G.L.W, p = tileTop(i % W, (i / W) | 0), bornAt = G.born[k], prog = 1;
+    if (bornAt != null) prog = Math.max(0, Math.min(1, (t - bornAt) / buildMs(c.type)));
+    var o = { prog: prog, t: t, age: (G.round || 0) - (c.round || 0) };
+    if (c.type === 'fence') { var dir = G.simDir[i]; o.edge = edgeCorners(i, dir >= 0 ? dir : i + W); }
+    A.drawControl(ctx, c.type, p, o);
+  }
+  // ---------- live storm water (visual; driven by the sim result) ----------
+  function wetness() {
+    if (G.phase === 'report') return 0.35;
+    var f = G.stormT / G.stormDur; return f < 0.3 ? f / 0.3 : f < 0.75 ? 1 : Math.max(0.35, 1 - (f - 0.75) * 2);
+  }
+  function prepWater() {
+    var sim = G.sim, n = sim.acc.length, conc = new Array(n), mx = 1e-9, i;
+    for (i = 0; i < n; i++) { conc[i] = sim.passed[i] / Math.max(0.2, sim.acc[i] * sim.intensity); if (G.L.types[i] !== 'C') mx = Math.max(mx, conc[i]); }
+    for (i = 0; i < n; i++) conc[i] = Math.min(1, conc[i] / mx * 1.4);
+    G.wConc = conc; G.wSim = sim;
+  }
+  function drawWater(ctx, t) {
+    if (G.wSim !== G.sim) prepWater();
+    var sim = G.sim, L = G.L, W = L.W, wet = wetness(), conc = G.wConc;
+    for (var i = 0; i < L.types.length; i++) {
+      var ty = L.types[i]; if (ty === 'C') continue;
+      var flow = sim.acc[i] * S.TILE_AC * sim.intensity, a = wet * Math.min(0.72, 0.3 + 0.24 * Math.log(1 + flow * 8));
+      if (ty === 'G') a *= 0.45; if (a < 0.03) continue;
+      var c = conc[i], rr = Math.round(70 + 100 * c), gg = Math.round(130 - 40 * c), bb = Math.round(200 - 140 * c), p = tileTop(i % W, (i / W) | 0);
+      A.diamond(ctx, p, 0.1, 'rgba(' + rr + ',' + gg + ',' + bb + ',' + a.toFixed(2) + ')');
+      // sheet-flow shimmer moving downslope
+      var j = sim.dir[i]; if (j < 0 || a < 0.12) continue;
+      var dx = (j % W) - (i % W), dy = ((j / W) | 0) - ((i / W) | 0);
+      for (var q = 0; q < 2; q++) { var ph = (t / 900 + A.hash(i, q, 61)) % 1, u = 0.5 + dx * (ph - 0.5) * 0.8 + (dy ? (A.hash(i, q, 62) - 0.5) * 0.6 : 0), v = 0.5 + dy * (ph - 0.5) * 0.8 + (dx ? (A.hash(i, q, 63) - 0.5) * 0.6 : 0), w = A.at(p, u, v);
+        ctx.fillStyle = 'rgba(230,245,255,' + (0.7 * Math.sin(ph * Math.PI) * wet).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 2, Math.round(w.y), 4, 1); }
+    }
+    // rain splashes on the ground
+    if (G.phase === 'storm' && G.stormT < G.stormDur * 0.75) {
+      var n = Math.round(40 * sim.intensity);
+      for (var k = 0; k < n; k++) { var seed = Math.floor(t / 120) * 131 + k, ti = (A.hash(seed, 1, 71) * L.types.length) | 0, pp = tileTop(ti % W, (ti / W) | 0), sp = A.at(pp, A.hash(seed, 2, 71), A.hash(seed, 3, 71)), fr = (t % 120) / 120;
+        ctx.fillStyle = 'rgba(220,240,255,' + (0.8 * (1 - fr)).toFixed(2) + ')'; var rad = 1 + Math.round(fr * 3); ctx.fillRect(Math.round(sp.x) - rad, Math.round(sp.y), 1, 1); ctx.fillRect(Math.round(sp.x) + rad, Math.round(sp.y), 1, 1); ctx.fillRect(Math.round(sp.x), Math.round(sp.y) - 1 - Math.round(fr * 2), 1, 1); }
     }
   }
+  // ponding behind controls + overtopping / blowout / undercut effects matching each control's sim status
+  function drawControlWater(ctx, t) {
+    var sim = G.sim, ev = sim.evals || {}, wet = wetness(), W = G.L.W;
+    G.controls.forEach(function (c, k) {
+      var e = ev[k]; if (!e || ['fence', 'dam', 'basin', 'inlet'].indexOf(c.type) < 0) return;
+      var p = tileTop(c.tile % W, (c.tile / W) | 0), cen = tileCenter(c.tile), lvl = Math.min(1, wet * (0.4 + Math.min(0.6, sim.acc[c.tile] * S.TILE_AC * sim.intensity / 3)));
+      if (e.status === 'wasted' || e.status === 'violation') return;
+      var mud = e.status === 'ok' ? 0.9 : 0.6;
+      if (c.type !== 'inlet') { A.diamond(ctx, p, 0.42 - 0.3 * lvl, 'rgba(' + Math.round(120 + 40 * mud) + ',' + Math.round(96 + 10 * mud) + ',' + Math.round(70) + ',' + (0.55 + 0.25 * lvl).toFixed(2) + ')');
+        for (var q = 0; q < 3; q++) { var ph = (t / 1100 + q / 3) % 1, w = A.at(p, 0.3 + 0.4 * A.hash(k, q, 81), 0.3 + 0.4 * ph); ctx.fillStyle = 'rgba(240,220,190,.6)'; ctx.fillRect(Math.round(w.x) - 2, Math.round(w.y), 4, 1); } }
+      var dir = sim.dir[c.tile], dn = dir >= 0 ? tileCenter(dir) : { x: cen.x - 10, y: cen.y + 10 }, ex = (cen.x + dn.x) / 2, ey = (cen.y + dn.y) / 2;
+      var bad = e.status === 'overtopped' || e.status === 'undersized' || e.status === 'blown out' || e.status === 'undercut' || e.status === 'spacing';
+      if (!bad || G.phase !== 'storm') return;
+      for (var f = 0; f < 14; f++) { // spill / jets over the downstream edge
+        var ph2 = ((t / 500) + A.hash(k, f, 91)) % 1, ox = (A.hash(k, f, 92) - 0.5) * 30, x = ex + ox + (dn.x - cen.x) * 0.4 * ph2, y = ey + (dn.y - cen.y) * 0.4 * ph2 - (e.status === 'undercut' ? -2 : 8 * (1 - ph2) * (1 - ph2));
+        ctx.fillStyle = f % 3 ? 'rgba(250,250,255,.85)' : 'rgba(170,120,70,.9)'; ctx.fillRect(Math.round(x), Math.round(y), 2, 1);
+      }
+      if (e.status === 'blown out') for (f = 0; f < 6; f++) { var ph3 = ((t / 900) + f / 6) % 1; ctx.fillStyle = '#a9a9a4'; ctx.fillRect(Math.round(cen.x + (dn.x - cen.x) * ph3 + (f - 3) * 4), Math.round(cen.y + (dn.y - cen.y) * ph3 - 3 * Math.sin(ph3 * Math.PI)), 3, 2); }
+    });
+  }
+
+  // ---------- site crew (visual only; capped sprite count) ----------
+  function initCrew() {
+    var L = G.L, pad = [], i; G.crew = []; G.mud = []; G.truck = null; G.truckNext = performance.now() + 2500;
+    for (i = 0; i < L.types.length; i++) if (L.types[i] === 'S') pad.push(i);
+    G.pad = pad; var r = S.rng(99 + L.id);
+    for (var k = 0; k < Math.min(3, pad.length); k++) { var c = tileCenter(pad[(r() * pad.length) | 0]); G.crew.push({ x: c.x, y: c.y, tx: c.x, ty: c.y, wait: r() * 2, f: 0, act: 'idle', face: 1, vest: ['#ff7a1a', '#d9ff3a', '#ff7a1a'][k] }); }
+    var a = G.accessTiles[0], park = -1;
+    if (a != null) { var W = L.W, cand = [a - W, a - 1, a + 1, a + W, a - 2 * W]; for (k = 0; k < cand.length; k++) if (cand[k] >= 0 && L.types[cand[k]] === 'S') { park = cand[k]; break; } }
+    if (park < 0 && pad.length) park = pad[(pad.length / 3) | 0];
+    G.exPark = park; G.crewRng = r;
+  }
+  function exitOk() { var a = G.accessTiles; return G.controls.some(function (c) { return c.type === 'exit' && a.indexOf(c.tile) >= 0; }); }
+  function drawCrew(ctx, t, dt) {
+    if (!G.crew) initCrew();
+    var k, w, r = G.crewRng;
+    G.accessTiles.forEach(function (a) { var pp = tileTop(a % G.L.W, (a / G.L.W) | 0), c1 = A.at(pp, 0.2, 0.2), c2 = A.at(pp, 0.8, 0.8); A.drawCone(ctx, c1.x, c1.y); A.drawCone(ctx, c2.x, c2.y); });
+    // excavator: parked near the access, digging idly; swings faster while building big items
+    var busy = false;
+    G.controls.forEach(function (c, j) { var b = G.born[j]; if (b != null && t - b < buildMs(c.type) && (c.type === 'basin' || c.type === 'dam' || c.type === 'exit')) busy = c; });
+    if (busy) { var bp = tileCenter(busy.tile); A.drawExcavator(ctx, bp.x - 30, bp.y + 4, t / 160); }
+    else if (G.exPark >= 0) { var ep = tileCenter(G.exPark); A.drawExcavator(ctx, ep.x, ep.y + 4, t / 900); }
+    // build crews: two workers hammering at each control under construction (max 3 builds shown)
+    var shown = 0;
+    for (var j = G.controls.length - 1; j >= 0 && shown < 3; j--) {
+      var b = G.born[j], c = G.controls[j]; if (b == null || t - b > buildMs(c.type)) continue; shown++;
+      var cp = tileCenter(c.tile), fr = Math.floor(t / 140);
+      A.drawWorker(ctx, cp.x - 20, cp.y + 2, fr, 'hammer', 1); A.drawWorker(ctx, cp.x + 20, cp.y - 2, fr + 1, 'hammer', -1, '#d9ff3a');
+      if (G.lastHammer !== fr && fr % 2 === 0 && G.phase === 'plan') { G.lastHammer = fr; if (window.SWP3Sound) SWP3Sound.play('hammer'); }
+    }
+    // idle crew wander the pad (they shelter during the storm)
+    for (k = 0; k < (G.phase === 'storm' ? 0 : G.crew.length); k++) {
+      w = G.crew[k]; var dx = w.tx - w.x, dy = w.ty - w.y, d = Math.hypot(dx, dy);
+      if (d > 1) { var sp = Math.min(d, 18 * dt); w.x += dx / d * sp; w.y += dy / d * sp; w.act = 'walk'; w.face = dx >= 0 ? 1 : -1; }
+      else { w.act = w.wait > 1.2 && k === 1 ? 'hammer' : 'idle'; w.wait -= dt; if (w.wait <= 0 && G.pad.length) { var c2 = tileCenter(G.pad[(r() * G.pad.length) | 0]); var m = Math.min(1, 70 / Math.max(1, Math.hypot(c2.x - w.x, c2.y - w.y))); w.tx = w.x + (c2.x - w.x) * m; w.ty = w.y + (c2.y - w.y) * m; w.wait = 1 + r() * 3; } }
+      A.drawWorker(ctx, w.x, w.y, Math.floor(t / 180) + k, w.act, w.face, w.vest);
+    }
+    // dump truck tracks mud out when there is no stabilized exit (matches the sim's tracked-mud penalty)
+    var noExit = G.accessTiles.length && !exitOk();
+    if (!G.truck && noExit && G.phase !== 'storm' && t > G.truckNext) {
+      var a = G.accessTiles[0], ac = tileCenter(a), best = -1, bd = 1e9;
+      for (var i = 0; i < G.L.types.length; i++) if (G.L.types[i] === 'R') { var rc = tileCenter(i), dd = Math.hypot(rc.x - ac.x, rc.y - ac.y); if (dd < bd) { bd = dd; best = i; } }
+      if (best >= 0) { var rc2 = tileCenter(best); G.truck = { x0: ac.x, y0: ac.y, x1: ac.x + (rc2.x - ac.x) * 2.6, y1: ac.y + (rc2.y - ac.y) * 2.6, rx: rc2.x, ry: rc2.y, t0: t }; }
+    }
+    if (G.truck) {
+      var T = G.truck, f2 = (t - T.t0) / 4200;
+      if (f2 >= 1 || !noExit) { G.truck = null; G.truckNext = t + 6000; }
+      else { var tx = T.x0 + (T.x1 - T.x0) * f2, ty = T.y0 + (T.y1 - T.y0) * f2;
+        var pastRoad = Math.hypot(tx - T.x0, ty - T.y0) > Math.hypot(T.rx - T.x0, T.ry - T.y0) * 0.6;
+        if (pastRoad && G.mud.length < 60 && Math.floor(t / 90) !== T.lastDrop) { T.lastDrop = Math.floor(t / 90); G.mud.push({ x: tx + (r() - 0.5) * 8, y: ty + (r() - 0.5) * 3, t: t }); }
+        ctx.globalAlpha = f2 > 0.85 ? (1 - f2) / 0.15 : 1; A.drawTruck(ctx, tx, ty, T.x1 >= T.x0 ? 1 : -1, true); ctx.globalAlpha = 1; }
+    }
+    for (k = G.mud.length - 1; k >= 0; k--) { var m2 = G.mud[k], age = (t - m2.t) / 9000; if (age > 1 || !noExit) { G.mud.splice(k, 1); continue; }
+      ctx.fillStyle = 'rgba(106,68,34,' + (0.8 * (1 - age)).toFixed(2) + ')'; ctx.fillRect(Math.round(m2.x) - 2, Math.round(m2.y), 4, 2); ctx.fillRect(Math.round(m2.x) - 1, Math.round(m2.y) - 1, 2, 1); }
+  }
+  function buildMs(type) { return type === 'basin' ? 2200 : type === 'exit' || type === 'dam' ? 1600 : 1100; }
+
 
   // ---------- frame ----------
   var lastT = 0;
@@ -195,11 +253,15 @@
     ctx.clearRect(0, 0, geo.w, geo.h);
     ctx.drawImage(terrain, 0, 0);
     // creek shimmer
-    if (Math.floor(t / 400) % 2 === 0) { ctx.fillStyle = 'rgba(200,230,255,.25)'; for (var i = 0; i < G.L.types.length; i++) if (G.L.types[i] === 'C' && (i * 7 + Math.floor(t / 800)) % 5 === 0) { var cc = tileCenter(i); ctx.fillRect(Math.round(cc.x) - 3, Math.round(cc.y) - 1, 5, 1); } }
+    if (Math.floor(t / 400) % 2 === 0) { ctx.fillStyle = 'rgba(200,230,255,.25)'; for (var i = 0; i < G.L.types.length; i++) if (G.L.types[i] === 'C' && (i * 7 + Math.floor(t / 800)) % 5 === 0) { var cc = tileCenter(i); ctx.fillRect(Math.round(cc.x) - 6, Math.round(cc.y) - 2, 10, 2); } }
+    drawCreek(ctx, t);
+    if (G.phase === 'storm' || G.phase === 'report') drawWater(ctx, t);
     if (G.flowView) drawFlowView(ctx);
     // controls in depth order
     var order = G.controls.map(function (c, k) { return k; }).sort(function (a, b) { return depth(G.controls[a].tile) - depth(G.controls[b].tile); });
     order.forEach(function (k) { drawControl(ctx, G.controls[k], k, t); });
+    if (G.phase === 'storm' || G.phase === 'report') drawControlWater(ctx, t);
+    drawCrew(ctx, t, dt);
     if (G.phase === 'report' && G.scoreRes) drawFailures(ctx, t);
     if (G.hoverTile >= 0 && G.hoverTile !== G.selTile && G.phase === 'plan') outlineTile(ctx, G.hoverTile, 'rgba(255,255,160,.85)');
     if (G.selTile >= 0 && G.phase === 'plan') outlineTile(ctx, G.selTile, '#fff');
@@ -208,20 +270,21 @@
     // blit
     vctx.setTransform(1, 0, 0, 1, 0, 0);
     vctx.fillStyle = G.phase === 'storm' ? '#5a6f80' : '#87b7d6'; vctx.fillRect(0, 0, view.width, view.height);
-    vctx.imageSmoothingEnabled = false;
     var sc = G.zoom * dpr;
+    vctx.imageSmoothingEnabled = sc < 0.999; // magnify: crisp nearest-neighbour; minify: smooth (avoids dropped pixels/shimmer)
+    if (vctx.imageSmoothingEnabled) vctx.imageSmoothingQuality = 'high';
     vctx.setTransform(sc, 0, 0, sc, Math.round(view.width / 2 + G.panX * dpr), Math.round(view.height / 2 + G.panY * dpr));
     vctx.drawImage(buf, -geo.w / 2, -geo.h / 2);
     vctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (G.phase === 'storm') drawRain(t);
+    if (G.phase === 'storm') { drawRain(t); drawLightning(t); }
     requestAnimationFrame(frame);
   }
   function depth(i) { var W = G.L.W; return (i % W) + ((i / W) | 0); }
   function outlineTile(ctx, i, col) {
     var p = tileTop(i % G.L.W, (i / G.L.W) | 0); ctx.fillStyle = col;
     for (var k = 0; k <= TW / 2; k += 1) {
-      ctx.fillRect(Math.round(p.x - k), Math.round(p.y + k / 2), 1, 1); ctx.fillRect(Math.round(p.x + k), Math.round(p.y + k / 2), 1, 1);
-      ctx.fillRect(Math.round(p.x - k), Math.round(p.y + TH - k / 2), 1, 1); ctx.fillRect(Math.round(p.x + k), Math.round(p.y + TH - k / 2), 1, 1);
+      ctx.fillRect(Math.round(p.x - k), Math.floor(p.y + k / 2), 1, 2); ctx.fillRect(Math.round(p.x + k), Math.floor(p.y + k / 2), 1, 2);
+      ctx.fillRect(Math.round(p.x - k), Math.floor(p.y + TH - k / 2) - 1, 1, 2); ctx.fillRect(Math.round(p.x + k), Math.floor(p.y + TH - k / 2) - 1, 1, 2);
     }
   }
   function drawFlowView(ctx) {
@@ -230,10 +293,10 @@
       var ac = sim.acc[i] * S.TILE_AC, c = tileCenter(i), col = ac > 5 ? '#e0533a' : ac > 2 ? '#ff9a3a' : '#cfe8ff';
       if (G.L.types[i] === 'C') continue;
       var j = sim.dir[i]; ctx.fillStyle = col;
-      if (j < 0) { ctx.fillRect(Math.round(c.x) - 1, Math.round(c.y) - 1, 3, 3); continue; }
+      if (j < 0) { ctx.fillRect(Math.round(c.x) - 2, Math.round(c.y) - 2, 5, 5); continue; }
       var d = tileCenter(j), dx = (d.x - c.x), dy = (d.y - c.y);
-      for (var q = 0; q < 5; q++) ctx.fillRect(Math.round(c.x + dx * q / 12), Math.round(c.y + dy * q / 12), 1, 1);
-      ctx.fillRect(Math.round(c.x + dx * 5 / 12) - 1, Math.round(c.y + dy * 5 / 12) - 1, 3, 3);
+      for (var q = 0; q < 10; q++) ctx.fillRect(Math.round(c.x + dx * q / 24), Math.round(c.y + dy * q / 24), 2, 2);
+      ctx.fillRect(Math.round(c.x + dx * 10 / 24) - 2, Math.round(c.y + dy * 10 / 24) - 2, 5, 5);
     }
   }
   function drawFailures(ctx, t) {
@@ -242,7 +305,7 @@
       var tile = f.control ? f.control.tile : G.L.types.indexOf('A');
       if (tile < 0) return;
       outlineTile(ctx, tile, on ? '#ff3b2f' : '#ffd23a');
-      var c = tileCenter(tile); ctx.fillStyle = '#ff3b2f'; ctx.fillRect(Math.round(c.x) - 1, Math.round(c.y) - 18, 3, 7); ctx.fillRect(Math.round(c.x) - 1, Math.round(c.y) - 9, 3, 2);
+      var c = tileCenter(tile), bx = Math.round(c.x), by = Math.round(c.y) - 30; ctx.fillStyle = '#5a0e08'; ctx.fillRect(bx - 4, by - 1, 9, 22); ctx.fillStyle = '#ff3b2f'; ctx.fillRect(bx - 3, by, 7, 13); ctx.fillRect(bx - 3, by + 15, 7, 5); ctx.fillStyle = '#ff9a8a'; ctx.fillRect(bx - 3, by, 2, 13);
     });
   }
 
@@ -260,10 +323,10 @@
     G.stormT += dt;
     var rate = G.stormT < G.stormDur * 0.7 ? 90 * G.sim.intensity : 0;
     G.spawnAcc += rate * dt;
-    while (G.spawnAcc > 1 && G.particles.length < 900) {
+    while (G.spawnAcc > 1 && G.particles.length < 500) {
       G.spawnAcc -= 1; var i = pickTile(), c = tileCenter(i);
-      G.particles.push({ i: i, t: G.prng(), x: c.x, y: c.y, ox: (G.prng() - 0.5) * 10, oy: (G.prng() - 0.5) * 5, sed: G.L.types[i] !== 'R' });
-      if (G.prng() < 0.5) { var w = (G.prng() * G.L.types.length) | 0; if (G.L.types[w] !== 'C') { var cw = tileCenter(w); G.particles.push({ i: w, t: 0, x: cw.x, y: cw.y, ox: (G.prng() - 0.5) * 10, oy: (G.prng() - 0.5) * 5, sed: false }); } }
+      G.particles.push({ i: i, t: G.prng(), x: c.x, y: c.y, ox: (G.prng() - 0.5) * 10 * U, oy: (G.prng() - 0.5) * 5 * U, sed: G.L.types[i] !== 'R' });
+      if (G.prng() < 0.5) { var w = (G.prng() * G.L.types.length) | 0; if (G.L.types[w] !== 'C') { var cw = tileCenter(w); G.particles.push({ i: w, t: 0, x: cw.x, y: cw.y, ox: (G.prng() - 0.5) * 10 * U, oy: (G.prng() - 0.5) * 5 * U, sed: false }); } }
     }
     var dir = G.sim.dir, keep = [];
     for (var k = 0; k < G.particles.length; k++) {
@@ -288,11 +351,25 @@
     if (G.stormT >= G.stormDur && G.particles.length === 0 || G.stormT >= G.stormDur * 1.6) endStorm();
   }
   function drawParticles(ctx) {
-    for (var d = 0; d < G.deposits.length; d++) { var q = G.deposits[d]; ctx.fillStyle = q.plume ? 'rgba(150,100,50,.85)' : (d % 2 ? '#4a2c10' : '#c08040'); ctx.fillRect(Math.round(q.x + (d % 7) - 3), Math.round(q.y + (d % 5) - 2 - 2), q.plume ? 2 : 1, 1); }
+    for (var d = 0; d < G.deposits.length; d++) { var q = G.deposits[d]; ctx.fillStyle = q.plume ? 'rgba(150,100,50,.85)' : (d % 2 ? '#4a2c10' : '#c08040'); ctx.fillRect(Math.round(q.x + (d % 13) - 6), Math.round(q.y + (d % 7) - 5), q.plume ? 3 : 2, 2); }
     for (var k = 0; k < G.particles.length; k++) {
       var p = G.particles[k], px = Math.round(p.x + p.ox * 0.6), py = Math.round(p.y + p.oy * 0.6) - 1;
-      if (p.sed) { ctx.fillStyle = '#3a2008'; ctx.fillRect(px, py, 2, 2); ctx.fillStyle = '#d08a3a'; ctx.fillRect(px, py, 1, 1); }
-      else { ctx.fillStyle = '#e8f6ff'; ctx.fillRect(px, py, 2, 1); ctx.fillStyle = '#3f7fbf'; ctx.fillRect(px, py + 1, 2, 1); }
+      if (p.sed) { ctx.fillStyle = '#3a2008'; ctx.fillRect(px, py, 3, 3); ctx.fillStyle = '#d08a3a'; ctx.fillRect(px, py, 2, 2); }
+      else { ctx.fillStyle = '#e8f6ff'; ctx.fillRect(px, py, 3, 1); ctx.fillStyle = '#3f7fbf'; ctx.fillRect(px, py + 1, 3, 1); }
+    }
+  }
+  function drawLightning(t) {
+    var surprise = G.L.actual.intensity > G.L.forecast.intensity || G.L.actual.intensity >= 1.5;
+    if (!surprise) return;
+    if (!G.boltAt || t > G.boltAt + 1400) { G.boltAt = t + 1500 + Math.random() * 2500; G.thunderDone = false; }
+    var d = t - G.boltAt; if (d < 0) return;
+    if (!G.thunderDone && d > 250) { G.thunderDone = true; if (window.SWP3Sound) SWP3Sound.play('thunder'); }
+    var a = d < 90 ? 0.55 : d < 150 ? 0.1 : d < 230 ? 0.4 : Math.max(0, 0.4 - (d - 230) / 500);
+    if (a <= 0) return;
+    vctx.fillStyle = 'rgba(235,240,255,' + a.toFixed(2) + ')'; vctx.fillRect(0, 0, view.width, view.height);
+    if (d < 230) { // bolt
+      var x = view.width * (0.2 + 0.6 * A.hash(Math.floor(G.boltAt), 1, 5)), y = 0; vctx.strokeStyle = '#fffbe0'; vctx.lineWidth = 3 * dpr; vctx.beginPath(); vctx.moveTo(x, y);
+      for (var k = 1; k < 9; k++) { x += (A.hash(Math.floor(G.boltAt), k, 6) - 0.5) * 60 * dpr; y += view.height * 0.06; vctx.lineTo(x, y); } vctx.stroke();
     }
   }
   function drawRain(t) {
@@ -345,11 +422,11 @@
   view.addEventListener('wheel', function (e) { e.preventDefault(); setZoom(G.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });
   document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
   function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-  function setZoom(z) { G.zoom = Math.max(0.8, Math.min(7, z)); clampPan(); }
+  function setZoom(z) { G.zoom = Math.max(0.4, Math.min(3.5, z)); clampPan(); }
   function clampPan() { if (!geo) return; var lim = geo.w * G.zoom / 2 + 50; G.panX = Math.max(-lim, Math.min(lim, G.panX)); G.panY = Math.max(-lim, Math.min(lim, G.panY)); }
   function fitView() {
     var r = view.getBoundingClientRect();
-    G.zoom = Math.max(0.8, Math.min(5, Math.min(r.width / geo.w, r.height / geo.h) * 0.98)); G.panX = 0; G.panY = 0;
+    G.zoom = Math.max(0.4, Math.min(2.5, Math.min(r.width / geo.w, r.height / geo.h) * 0.98)); G.panX = 0; G.panY = 0;
   }
 
   // Single pick function used by BOTH hover highlight and click/tap (see pick.js).
@@ -360,6 +437,7 @@
   }
   window.__swp3Load = function (n) { if (n === 0) loadSandbox(false); else loadLevel(n); $('overlay').classList.add('hidden'); selectTool('inspect'); };
   window.__swp3State = function () { return { sel: G.selTile, hover: G.hoverTile, n: G.L.W * G.L.H, controls: G.controls.length, zoom: G.zoom }; };
+  window.__swp3Center = function (i) { centerOn(i); };
   window.__swp3Pick = function (cx, cy) { return screenToTile(cx, cy); }; // debug/test hook
   window.__swp3TileClient = function (i) { // client coords of tile i top-face centre (test hook)
     var c = tileCenter(i); return P.bufferToClient(c.x, c.y, { rect: view.getBoundingClientRect(), viewW: view.width, viewH: view.height, zoom: G.zoom, panX: G.panX, panY: G.panY, dpr: dpr, geoW: geo.w, geoH: geo.h });
@@ -377,7 +455,7 @@
     if (st && (st.paint || tool === 'raise' || tool === 'lower')) {
       var oh = G.L.heights[i], ot = G.L.types[i];
       if (!S.editTile(G.L, i, st.paint ? 'paint' : tool, st.paint)) { toast(st.paint ? 'Already ' + TYPE_NAME[ot] : 'Height limit'); return; }
-      G.history.push({ op: 'terrain', i: i, h: oh, t: ot }); terrainChanged(); showTileInfo(i, true); return;
+      G.history.push({ op: 'terrain', i: i, h: oh, t: ot }); snd('click'); terrainChanged(); showTileInfo(i, true); return;
     }
     if (tool === 'demolish') {
       for (var k = G.controls.length - 1; k >= 0; k--) if (G.controls[k].tile === i) { var c = G.controls.splice(k, 1)[0]; G.history.push({ op: 'remove', c: c, k: k }); toast('Removed ' + S.CONTROLS[c.type].name + ' (+$' + S.CONTROLS[c.type].cost + ')'); rebornIndex(); updateHud(); return; }
@@ -388,8 +466,8 @@
     if (tool === 'fence' && G.sim.dir[i] < 0) { toast(ty === 'C' ? 'Keep fences out of the creek' : 'Water does not leave this tile to a neighbor; nowhere to put a fence'); return; }
     if ((tool === 'seed' || tool === 'exit' || tool === 'inlet' || tool === 'fence') && ty === 'C') { toast('Not in the creek'); return; }
     var cost = S.CONTROLS[tool].cost;
-    if (spent() + cost > G.L.budget) { toast('Over budget! $' + (G.L.budget - spent()) + ' left'); flashMoney(); return; }
-    G.controls.push({ type: tool, tile: i, round: G.round || 0 });
+    if (spent() + cost > G.L.budget) { toast('Over budget! $' + (G.L.budget - spent()) + ' left'); snd('buzz'); flashMoney(); return; }
+    G.controls.push({ type: tool, tile: i, round: G.round || 0 }); snd('thunk');
     G.born[G.controls.length - 1] = performance.now();
     G.history.push({ op: 'add' });
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ }
@@ -422,7 +500,8 @@
     $('runBtn').disabled = G.phase !== 'plan';
     if (G.L.sandbox) saveSandbox();
   }
-  function terrainChanged() { // keep the view steady while geometry is rebuilt
+  function terrainChanged() {
+    G.crew = null; // keep the view steady while geometry is rebuilt
     var oldW = geo.w, oldH = geo.h; geo = buildGeometry(G.L); drawTerrain();
     void oldW; void oldH;
     G.sim = S.simulate(G.L, agedControls(), { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir; updateHud();
@@ -508,12 +587,14 @@
     if (G.L.tutorial && !progress.tutDone) showTutorial(0); else showForecast();
   }
   function setupLevel(L, n, controls) {
+    if (window.SWP3Sound) SWP3Sound.rain(0);
+    G.crew = null;
     G.level = n; G.L = L; geo = buildGeometry(G.L);
     G.controls = controls; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1; G.hoverTile = -1; G.round = 0;
     G.sim = S.simulate(G.L, controls, { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir;
     drawTerrain(); resize(); fitView();
     $('lvlGoal').textContent = G.L.goal;
-    $('forecastLabel').textContent = G.L.forecast.label;
+    $('forecastLabel').innerHTML = G.L.forecast.label.replace(' storm', '<span class="lw"> storm</span>');
     $('stormHud').classList.add('hidden'); $('banner').classList.add('hidden');
     G.tool = 'inspect'; buildToolbar(); updateHud();
     G.reviseMode = false; $('runBtn').textContent = '🌧 Rain Check';
@@ -539,16 +620,18 @@
     if (!G.controls.length) toast('No controls placed — let\u2019s see what happens…');
     G.scoreRes = S.score(G.L, agedControls());
     G.sim = G.scoreRes.result; G.phase = 'storm'; G.speed = 1; $('speedBtn').textContent = '1×';
-    startStormParticles(); updateHud();
+    startStormParticles(); updateHud(); if (window.SWP3Sound) SWP3Sound.rain(G.L.actual.intensity);
     $('infoCard').classList.add('hidden'); $('tileInfo').classList.add('hidden');
     $('stormHud').classList.remove('hidden'); $('stormLabel').textContent = '🌧 ' + G.L.actual.label;
     if (G.L.actual.intensity !== G.L.forecast.intensity) banner('⚡ Surprise! ' + G.L.actual.label + '<br><small>Bigger than the ' + G.L.forecast.label + ' forecast</small>');
   }
+  function snd(n) { if (window.SWP3Sound) SWP3Sound.play(n); }
   function agedControls() { return G.controls.map(function (c) { return { type: c.type, tile: c.tile, age: (G.round || 0) - (c.round || 0) }; }); }
   function banner(html) { var b = $('banner'); b.innerHTML = html; b.classList.remove('hidden'); setTimeout(function () { b.classList.add('hidden'); }, 2600); }
   function endStorm() {
     if (G.phase !== 'storm') return;
-    G.phase = 'report'; $('stormHud').classList.add('hidden'); G.round = (G.round || 0) + 1; // each storm grows seeded tiles in
+    G.phase = 'report'; $('stormHud').classList.add('hidden'); if (window.SWP3Sound) SWP3Sound.rain(0);
+    setTimeout(function () { snd(G.scoreRes && G.scoreRes.stars >= 2 && !G.scoreRes.violations ? 'jingle' : 'buzz'); }, 250); G.round = (G.round || 0) + 1; // each storm grows seeded tiles in
     var r = G.scoreRes, L = G.L, prev = progress.stars[L.id] || 0;
     if (r.stars > prev && !L.sandbox) { progress.stars[L.id] = r.stars; saveProgress(); }
     var st = ''; for (var k = 1; k <= 3; k++) st += k <= r.stars ? '★' : '<span class="off">★</span>';
@@ -606,7 +689,7 @@
     else if (a === 'sbstorm') { backToPlan(); showStormPicker(); }
     else if (a === 'sandbox') { closePanel(); loadSandbox(false); }
     else if (a === 'sbreset') { if (confirm('Reset the sandbox site and controls?')) { closePanel(); loadSandbox(true); saveSandbox(); } }
-    else if (a && a.indexOf('storm:') === 0) { var st = S.stormByKey(a.slice(6)); G.L.stormKey = st.key; G.L.forecast = { label: st.label, intensity: st.intensity }; G.L.actual = { label: st.label, intensity: st.intensity }; $('forecastLabel').textContent = st.label; terrainChanged(); showStormPicker(); }
+    else if (a && a.indexOf('storm:') === 0) { var st = S.stormByKey(a.slice(6)); G.L.stormKey = st.key; G.L.forecast = { label: st.label, intensity: st.intensity }; G.L.actual = { label: st.label, intensity: st.intensity }; $('forecastLabel').innerHTML = st.label.replace(' storm', '<span class="lw"> storm</span>'); terrainChanged(); showStormPicker(); }
     else if (a === 'reset') { progress = { stars: {} }; saveProgress(); showLevels(); }
   });
   function showReviseBar() { $('runBtn').disabled = false; $('runBtn').textContent = '✎ Revise plan'; G.reviseMode = true; }
@@ -618,6 +701,10 @@
     runStorm();
   });
   $('undoBtn').addEventListener('click', undo);
+  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('button') && !e.target.closest('#runBtn')) snd('click'); });
+  function syncMute() { var m = window.SWP3Sound && SWP3Sound.isMuted(), b = $('muteBtn'); b.textContent = m ? '🔇' : '🔊'; b.setAttribute('aria-pressed', m ? 'true' : 'false'); b.setAttribute('aria-label', m ? 'Sound off' : 'Sound on'); }
+  $('muteBtn').addEventListener('click', function () { if (!window.SWP3Sound) return; SWP3Sound.setMuted(!SWP3Sound.isMuted()); syncMute(); });
+  syncMute();
   $('zoomIn').addEventListener('click', function () { setZoom(G.zoom * 1.25); });
   $('zoomOut').addEventListener('click', function () { setZoom(G.zoom / 1.25); });
   $('flowView').addEventListener('click', function () { G.flowView = !G.flowView; this.classList.toggle('on', G.flowView); if (G.flowView) toast('Flow view: arrows show runoff; orange > 2 ac, red > 5 ac'); });
