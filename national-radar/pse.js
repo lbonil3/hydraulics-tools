@@ -120,10 +120,13 @@
     if (sc.blocked && sc.level !== 'title') excl.push('non-civil-context');
     var hasScope = !!(sc.hh || ((sc.pse || DESIGN_WORD_RE.test(title) || /engineer/i.test(title)) && (sc.road || sc.sec.ids.length || sc.domains.length)) || sc.sec.level === 'title' || sc.sec.level === 'strong');
     if (!hasScope) excl.push('no-scope-match');
+    if (cand.nonDesign) excl.push('not-design-services');
     var best = null; fees.forEach(function (a) { var rk = M.AMOUNT_KINDS[a.kind].rank; if (!best || rk > M.AMOUNT_KINDS[best.kind].rank || (rk === M.AMOUNT_KINDS[best.kind].rank && a.v > best.v)) best = a; });
     var bestCost = null; costs.forEach(function (a) { if (!bestCost || a.v > bestCost.v) bestCost = a; });
     if (best && best.v < FEE_FLOOR) { var alt = fees.filter(function (a) { return a.v >= FEE_FLOOR; })[0]; if (alt) { best = alt; why.push('Fee figures differ between fields; the larger one is shown (' + alt.field + ')'); } }
     var hardNonFee = excl.length;
+    // advance notices (agency forecasts / projected advertisements) with no stated fee, or a stated value below the $5M data floor, go to their own lens. They never reach a fee filter.
+    if (cand.advance && !hardNonFee && (!best || best.v < FEE_FLOOR) && (stage === 'forecast' || stage === 'open')) return advanceResult(cand, sc, eng, stage, best, rules, why);
     if (!best) { if (bestCost && !hardNonFee && bestCost.v >= PIPE_FLOOR && sc.hh && (stage === 'open' || stage === 'forecast')) return pipelineResult(cand, sc, eng, stage, bestCost, rules); excl.push(bestCost ? 'project-cost-only' : 'no-stated-fee'); }
     else if (best.v < FEE_FLOOR) excl.push('fee-below-5m');
     if (excl.length) return { lens: null, excl: excl, stage: stage, flags: flags, scope: sc, eng: eng, amt: best || null };
@@ -147,6 +150,18 @@
     rules.push({ k: 'fee', t: M.AMOUNT_KINDS[best.kind].label + ' = ' + fmt(best.v) + ' (source field: ' + best.field + '); data floor $5,000,000 (>=), visible threshold applied separately' });
     return { lens: 'fee', excl: [], stage: stage, rules: rules, badges: badges, why: why, conf: conf, flags: flags, scope: sc, eng: eng, amt: best, projectCost: bestCost };
   }
+  function advanceResult(cand, sc, eng, stage, val, rules, why) {
+    var badges = ['Advance notice', val ? 'Stated value below $5M' : 'Fee not stated'], reasons = (why || []).slice();
+    if (sc.level !== 'title') { badges.push('Inferred sector'); reasons.push('Scope keywords appear only in the description (' + (sc.hh || sc.pse || 'sector words') + '), not the title'); }
+    if (eng.level === 'weak') { badges.push('Engineering unclear'); reasons.push('Engineering status is unclear: ' + eng.why); }
+    badges.push(stage === 'forecast' ? 'Forecast' : 'Upcoming / open');
+    rules = rules.concat([
+      { k: 'eng', t: 'Engineering services: ' + eng.why },
+      { k: 'scope', t: 'Scope: ' + [sc.pse ? 'PS&E / design wording "' + sc.pse + '"' : null, sc.hh ? 'H&H wording "' + sc.hh + '"' : null, sc.sec.ids.length ? 'sector ' + sc.sec.ids.join(', ') : null, sc.road ? 'roadway context' : null].filter(Boolean).join('; ') + ' (' + (sc.level === 'title' ? 'in the title' : 'description only') + '; keyword match, inferred)' },
+      { k: 'advance', t: 'Advance notice from an agency forecast or projected-advertisement list. ' + (val ? 'The source states ' + fmt(val.v) + ' (' + val.field + '), below the $5,000,000 fee floor, so it is shown here for information only and is never tested by a fee filter.' : 'The source states no fee, so no dollar figure is shown and no fee filter can include it.') + ' This is an early lead before the solicitation is issued.' }
+    ]);
+    return { lens: 'advance', excl: [], stage: stage, rules: rules, badges: badges, why: reasons, flags: { scope: sc.level }, scope: sc, eng: eng, amt: null, projectCost: null, statedValue: val || null };
+  }
   function pipelineResult(cand, sc, eng, stage, cost, rules) {
     var badges = ['Fee not published', 'Project cost (not fee)']; if (sc.level !== 'title') badges.push('Inferred sector'); badges.push(stage === 'forecast' ? 'Forecast' : 'Upcoming / open');
     rules = rules.concat([{ k: 'pipeline', t: 'No fee is stated. The source states a project cost of ' + fmt(cost.v) + ' (' + cost.field + '), the scope names "' + sc.hh + '", and the item is ' + (cand.projectList ? 'a design-phase project (' + (cand.fields && cand.fields['Project stage'] || 'PE / PS&E') + ')' : 'an engineering notice not yet awarded') + '. This is a research lead, not a fee.' }]);
@@ -166,6 +181,7 @@
       rec.amt = null; rec.projectCost = null; rec.dbValue = ev.dbValue; rec.designFee = ev.designFee; rec.stipend = ev.stipend; rec.dbType = ev.dbType; rec.dbRole = ev.dbRole.role; rec.dbRoleLabel = ev.dbRole.label; rec.dbRoleWhy = ev.dbRole.why;
       rec.amts = (cand.amounts || []).map(function (a) { return { v: a.v, kind: a.kind, field: a.field, ctx: a.ctx || null }; }).slice(0, 8);
     }
+    if (ev.lens === 'advance') { rec.amt = null; rec.projectCost = null; rec.statedValue = ev.statedValue ? { v: ev.statedValue.v, kind: ev.statedValue.kind, field: ev.statedValue.field, ctx: ev.statedValue.ctx || null } : null; }
     if (ev.lens === 'pipeline') { rec.amt = null; rec.projectCost = { v: ev.projectCost.v, field: ev.projectCost.field, ctx: ev.projectCost.ctx || null }; rec.illustrative = { low: Math.round(ev.projectCost.v * ILLUSTRATIVE.low), high: Math.round(ev.projectCost.v * ILLUSTRATIVE.high), label: ILLUSTRATIVE.label, pct: [ILLUSTRATIVE.low * 100, ILLUSTRATIVE.high * 100], cite: ILLUSTRATIVE.cite, url: ILLUSTRATIVE.url }; }
     return rec;
   }
@@ -185,6 +201,7 @@
     var thr = f.feeMin === undefined || f.feeMin === null ? DEFAULT_FEE : f.feeMin;
     return M.filterRecords(recs, base, watch).filter(function (r) {
       if (f.watchOnly) return true;
+      if (f.tab === 'advance') return r.lens === 'advance';
       if (f.tab === 'pipeline') return r.lens === 'pipeline' && r.projectCost && (f.costMin === undefined || f.costMin === null || r.projectCost.v > f.costMin);
       if (f.tab === 'db') {
         if (r.lens !== 'db') return false;
@@ -219,14 +236,14 @@
       return ((b.confRank || 0) - (a.confRank || 0)) || (val(b) - val(a));
     });
   }
-  var CSV_COLS = ['id', 'lens', 'confidence', 'badges', 'stage', 'title', 'agency', 'subagency', 'state', 'fee_value', 'fee_kind', 'fee_source_field', 'design_build_contract_value_NOT_A_FEE', 'db_value_field', 'db_type', 'db_role_INFERRED', 'design_fee_stated_in_text', 'stipend_NOT_A_FEE', 'project_cost_NOT_A_FEE', 'project_cost_field', 'illustrative_fee_low_ESTIMATE', 'illustrative_fee_high_ESTIMATE', 'illustrative_fee_source', 'posted', 'response_due', 'est_date', 'award_date', 'end_date', 'awardee', 'rules', 'reasons_unconfirmed', 'source', 'source_url', 'snapshot_as_of'];
+  var CSV_COLS = ['id', 'lens', 'confidence', 'badges', 'stage', 'title', 'agency', 'subagency', 'state', 'fee_value', 'fee_kind', 'fee_source_field', 'design_build_contract_value_NOT_A_FEE', 'db_value_field', 'db_type', 'db_role_INFERRED', 'design_fee_stated_in_text', 'stipend_NOT_A_FEE', 'project_cost_NOT_A_FEE', 'project_cost_field', 'advance_stated_value_NOT_IN_FEE_FILTERS', 'advance_value_field', 'illustrative_fee_low_ESTIMATE', 'illustrative_fee_high_ESTIMATE', 'illustrative_fee_source', 'posted', 'response_due', 'est_date', 'award_date', 'end_date', 'awardee', 'rules', 'reasons_unconfirmed', 'source', 'source_url', 'snapshot_as_of'];
   function cell(v) { v = v === null || v === undefined ? '' : String(v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function toCSVPse(recs, asOf) {
     var lines = [CSV_COLS.join(',')];
     recs.forEach(function (r) {
       var d = r.dates || {}, il = r.illustrative;
       lines.push([r.id, r.lens, r.conf || '', (r.badges || []).join('; '), r.stage, r.title, r.agency, r.subagency, r.state, r.amt ? r.amt.v : '', r.amt ? (r.amt.kind === 'design_fee' ? 'Design fee stated in notice text' : (M.AMOUNT_KINDS[r.amt.kind] || {}).label) : '', r.amt ? r.amt.field : '',
-        r.dbValue ? r.dbValue.v : '', r.dbValue ? r.dbValue.field : '', r.dbType || '', r.dbRoleLabel || '', r.designFee ? r.designFee.v : '', r.stipend ? r.stipend.v : '', r.projectCost ? r.projectCost.v : '', r.projectCost ? r.projectCost.field : '', il ? il.low : '', il ? il.high : '', il ? il.cite : '',
+        r.dbValue ? r.dbValue.v : '', r.dbValue ? r.dbValue.field : '', r.dbType || '', r.dbRoleLabel || '', r.designFee ? r.designFee.v : '', r.stipend ? r.stipend.v : '', r.projectCost ? r.projectCost.v : '', r.projectCost ? r.projectCost.field : '', r.statedValue ? r.statedValue.v : '', r.statedValue ? r.statedValue.field : '', il ? il.low : '', il ? il.high : '', il ? il.cite : '',
         d.posted, d.due, d.est, d.award, d.end, r.awardee, (r.rules || []).map(function (x) { return x.t; }).join(' | '), (r.reasons || []).join(' | '), r.src, r.url, asOf].map(cell).join(','));
     });
     return lines.join('\r\n') + '\r\n';

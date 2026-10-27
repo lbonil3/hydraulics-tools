@@ -15,6 +15,7 @@ const { xlsxRows, unzip } = require('./build-opportunities.js');
 const R = require('../national-radar/roadway.js');
 const CM = require('../national-radar/cost.js');
 const PS = require('../national-radar/pse.js');
+const ADV = require('../national-radar/advance.js');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'national-radar', 'data', 'national.json');
@@ -510,6 +511,51 @@ PSE_SOURCES.push({
   }
 });
 
+// ---------- ADVANCE-NOTICE sources (agency forecasts and projected-advertisement lists). Normalizers live in national-radar/advance.js (tested with fixtures).
+// Each was checked first: robots.txt allows the path, the data is in an HTML table / open-data API (no captcha, no login, no PDF), and the notes below say whether a dollar value is stated. Only WSSC states one.
+const advanceNote = (n, extra) => n.cands.length + ' rows read' + (extra || '');
+function runAdvance(id, cands, ctx, extraNote) {
+  let n = 0; cands.forEach((c) => { n++; pseRecord(c); }); ctx.asOf[id] = new Date().toISOString(); return n;
+}
+PSE_SOURCES.push({
+  id: 'wssc', name: 'WSSC Water (Maryland) projected solicitations: A&E and professional-services solicitations with a stated projected contract value', agency: 'WSSC Water', page: ADV.WSSC_PAGE, type: 'HTML table (robots.txt allows; page states "as of" date)',
+  async run(ctx) {
+    const r = ADV.normWssc(await get(ADV.WSSC_PAGE, { accept: 'text/html' })); const skipped = r.cands.filter((c) => c.skip); const keep = r.cands.filter((c) => !c.skip);
+    runAdvance('wssc', keep, ctx); ctx.asOf.wssc = r.asOf ? r.asOf + 'T12:00:00Z' : ctx.asOf.wssc;
+    return { fetched: r.rows, note: r.rows + ' rows in the projected-solicitation table (list dated ' + r.asOf + '); ' + skipped.length + ' skipped because the WSSC program code is not Architecture and Engineering Services or Professional Services (construction, goods, other). The Projected Contract Value column is a stated value; a value of $5M or more goes to the fee tabs, a smaller value is shown for information only in Advance notices.' };
+  }
+});
+PSE_SOURCES.push({
+  id: 'cdot-sched', name: 'Colorado DOT Tentative Advertisement Schedule (consultant solicitations; no fee column)', agency: 'Colorado DOT', page: ADV.CDOT_PAGE, type: 'HTML table (robots.txt allows)',
+  async run(ctx) {
+    const r = ADV.normCdot(await get(ADV.CDOT_PAGE, { accept: 'text/html' })); runAdvance('cdot-sched', r.cands, ctx);
+    return { fetched: r.rows, note: r.rows + ' rows. The schedule states regions, a first-advertisement date (a month or a day) and a proposal-due date; no fee. Records go to Advance notices, fee not stated.' };
+  }
+});
+PSE_SOURCES.push({
+  id: 'la-dotd', name: 'Louisiana DOTD Projected Advertisements (consultant contracts; no fee column)', agency: 'Louisiana DOTD', page: ADV.LA_PAGE, type: 'HTML table (no robots.txt published: the host answers "page not found")',
+  async run(ctx) {
+    const r = ADV.normLa(await get(ADV.LA_PAGE, { accept: 'text/html' })); runAdvance('la-dotd', r.cands, ctx);
+    return { fetched: r.rows, note: r.rows + ' rows. The list states a projected advertisement quarter and a brief scope; no fee. Rows whose scope is CE&I (construction engineering and inspection) are excluded as non-design.' };
+  }
+});
+PSE_SOURCES.push({
+  id: 'dc-pass', name: 'District of Columbia OCP PASS Forecast (open-data ArcGIS layer): engineering, architecture, survey and related commodity lines', agency: 'DC Office of Contracting and Procurement', page: ADV.DC_LAYER, type: 'ArcGIS REST, no key (robots.txt: none published)',
+  async run(ctx) {
+    const rows = []; for (let off = 0; off < 20000; off += 1000) { const j = await getJson(ADV.DC_LAYER + '/query?' + qs({ where: '1=1', outFields: '*', returnGeometry: 'false', orderByFields: 'OBJECTID', resultOffset: off, resultRecordCount: 1000, f: 'json' })); const f = (j.features || []).map((x) => x.attributes); f.forEach((a) => rows.push(a)); if (f.length < 1000) break; }
+    const cands = rows.map((a) => ADV.normDcPass(a)).filter(Boolean); runAdvance('dc-pass', cands, ctx);
+    return { fetched: rows.length, note: rows.length + ' forecast lines for all DC agencies; the engineering / architecture / survey commodity lines pass the rules. The amount fields of this layer are empty; the FUNDINGSOURCE column holds a value bucket that is not read as a fee. Records go to Advance notices, fee not stated.' };
+  }
+});
+PSE_SOURCES.push({
+  id: 'sd-forecast', name: 'County of San Diego Procurement Forecast (Socrata open data; no amount column)', agency: 'County of San Diego', page: ADV.SD_PAGE, type: 'Socrata API, no key (robots.txt allows /resource/)',
+  async run(ctx) {
+    const rows = await getJson('https://data.sandiegocounty.gov/resource/rrhp-9sw9.json?$limit=5000', { timeout: 60000 });
+    const cands = rows.map((r) => ADV.normSdForecast(r, null)).filter(Boolean); runAdvance('sd-forecast', cands, ctx);
+    return { fetched: rows.length, note: rows.length + ' forecast rows for all County departments; only those whose description names engineering / design / survey work pass. The feed has no dollar column. Records go to Advance notices, fee not stated.' };
+  }
+});
+
 // ---------- enrichment: city centroids for pins (Census Gazetteer; only for records whose source names a city AND state) ----------
 async function cityCentroids(recs) {
   const want = recs.filter((r) => r.city && r.state && !r.lat);
@@ -540,6 +586,15 @@ const PSE_TESTED = [
   { name: 'NYC Capital Projects forecast (City Record / DDC)', result: 'tested, not used: forecast rows carry no dollar amounts.' },
   { name: 'NYC GOSR / NY Rising contracts', result: 'tested, not used: contract rows date from 2014 to 2022, nothing current.' },
   { name: 'San Francisco, Seattle, Washington DC, Maryland, Houston / Harris County open-data contract catalogs', result: 'quick API probes found no dataset that pairs an engineering-services category with a contract amount and can be queried without a key. Not used; more careful probing could still find one.' },
+  { name: 'Advance-notice sources added in this version (WSSC Water, Colorado DOT, Louisiana DOTD, DC OCP PASS Forecast, County of San Diego)', result: 'USED, in the Advance notices tab only. Only WSSC states a dollar value (projected contract value); the others state none, so nothing from them can enter a fee filter.' },
+  { name: 'Virginia DOT consultant procurement schedule', result: 'tested, not used: robots.txt for the host disallows all crawling ("User-agent: *" with "Disallow: /").' },
+  { name: 'MnDOT potential consultant projects workbook', result: 'tested, not used: the robots.txt of the host that serves the file would not load (timed out), so permission could not be confirmed.' },
+  { name: 'New Jersey DOT, US Army Corps of Engineers, Arizona DOT, Tennessee DOT forecast / consultant pages', result: 'tested, not used: the sites answer HTTP 403 to scripted requests, so they cannot be read without bypassing their block.' },
+  { name: 'Toho Water Authority (FL) upcoming solicitations', result: 'tested, not used: its table has only a project budget column, which is not a consultant fee.' },
+  { name: 'PDF-only forecasts (Missouri DOT, DC Water, Metropolitan Council MN, Maryland SHA, Kentucky Transportation Cabinet, Georgia DOT, Colorado DOT RFP packages)', result: 'tested, not used: PDF documents are not machine-readable in this build.' },
+  { name: 'Maryland state procurement forecast grid', result: 'tested, not used: an interactive grid page with no open download or documented API.' },
+  { name: 'City of Philadelphia procurement forecast CSV', result: 'tested, not used: the file URL changes with each release and has no stable index page, and its engineering rows are all below $5M.' },
+  { name: 'Commercial bid aggregators (BidNet, GovSpend, Onvia and similar)', result: 'not used: commercial aggregators, not agency sources; this tool uses agency sources only.' },
   { name: 'Texas LBB contracts database', result: 'NOT integrated in this version (not tested). Listed as a gap.' },
   { name: 'USACE / FEMA / TWDB / state flood programs with stated project costs', result: 'NOT integrated as a separate feed. Federal awards and IDIQ ceilings come through USAspending and SAM; state flood-program project lists are a gap.' },
   { name: 'TxDOT PEPS selected-consultant announcements', result: 'NOT integrated in this version (not tested for fee amounts). Listed as a gap.' }
@@ -625,16 +680,17 @@ async function main() {
     const mainPse = statuses.filter((x) => x.id !== 'sam-api').map((x) => { const sd = SOURCES.find((y) => y.id === x.id); const ids = sd.statIds || [sd.id]; return { id: x.id, name: x.name, agency: x.agency, page: x.page, type: x.type, status: x.status, error: x.error, fetched: x.fetched, fetchedAt: x.fetchedAt, asOf: x.asOf, stats: mergePse(ids.map((i) => pseStats[i]).filter(Boolean)), kept: pseKept.filter((r) => ids.indexOf(r.src) >= 0).length }; });
     const rwPse = rwStatuses.map((x) => ({ id: x.id, name: x.name, agency: x.agency, page: x.page, type: x.type, status: x.status, error: x.error, fetched: x.fetched, fetchedAt: x.fetchedAt, asOf: x.asOf, stats: mergePse([pseStats[x.id]].filter(Boolean)), kept: pseKept.filter((r) => r.src === x.id).length }));
     // dedupe within each lens (a design-build notice and its separately stated design fee share ids but are different lenses)
-    const byLens = { fee: [], db: [], pipeline: [] }; pseKept.forEach((r) => { (byLens[r.lens] = byLens[r.lens] || []).push(r); });
+    const byLens = { fee: [], db: [], pipeline: [], advance: [] }; pseKept.forEach((r) => { (byLens[r.lens] = byLens[r.lens] || []).push(r); });
     let pMerged = 0; const dedup = []; Object.keys(byLens).forEach((l) => { const d = M.dedupe(byLens[l]); pMerged += d._merged; d.forEach((r) => dedup.push(r)); });
     const val = (r) => (r.amt ? r.amt.v : r.dbValue ? r.dbValue.v : r.projectCost ? r.projectCost.v : 0);
     const pOrdered = dedup.sort((a, b) => ((b.confRank || 0) - (a.confRank || 0)) || (val(b) - val(a)));
     try { await cityCentroids(pOrdered); } catch (e) { console.warn('pse city centroids skipped:', e.message); }
-    const feeR = pOrdered.filter((r) => r.lens === 'fee'), dbR = pOrdered.filter((r) => r.lens === 'db'), plR = pOrdered.filter((r) => r.lens === 'pipeline');
+    const advR = pOrdered.filter((r) => r.lens === 'advance'); const feeR = pOrdered.filter((r) => r.lens === 'fee'), dbR = pOrdered.filter((r) => r.lens === 'db'), plR = pOrdered.filter((r) => r.lens === 'pipeline');
     const pc = { total: pOrdered.length, beforeDedupe: pseKept.length, mergedDuplicates: pMerged, byLens: PS_count(pOrdered, (r) => r.lens),
       fee: { total: feeR.length, byStage: PS_count(feeR, (r) => r.stage), byConf: PS_count(feeR, (r) => r.conf), byState: PS_count(feeR, (r) => r.state || '??'), bySrc: PS_count(feeR, (r) => r.src), byDomain: PS_count(feeR, (r) => (r.domains[0] || 'none')), strictGt5: feeR.filter((r) => r.amt.v > 5000000).length, exact5: feeR.filter((r) => r.amt.v === 5000000).length, textParsed: feeR.filter((r) => r.textParsed).length, confirmedGt5: feeR.filter((r) => r.conf === 'confirmed' && r.amt.v > 5000000).length, gt20: feeR.filter((r) => r.amt.v > 20000000).length },
       db: { total: dbR.length, byStage: PS_count(dbR, (r) => r.stage), byRole: PS_count(dbR, (r) => r.dbRole), byType: PS_count(dbR, (r) => r.dbType), byState: PS_count(dbR, (r) => r.state || '??'), bySrc: PS_count(dbR, (r) => r.src), withValue: dbR.filter((r) => r.dbValue).length, withDesignFee: dbR.filter((r) => r.designFee).length },
       pipeline: { total: plR.length, byState: PS_count(plR, (r) => r.state || '??'), bySrc: PS_count(plR, (r) => r.src), gt50: plR.filter((r) => r.projectCost.v > 50000000).length, gt100: plR.filter((r) => r.projectCost.v > 100000000).length },
+      advance: { total: advR.length, bySrc: PS_count(advR, (r) => r.src), byState: PS_count(advR, (r) => r.state || '??'), withStatedValue: advR.filter((r) => r.statedValue).length, byDomain: PS_count(advR, (r) => (r.domains[0] || 'none')) },
       excludedConstruction: Object.keys(pseStats).reduce((n, k) => n + ((pseStats[k].excl || {}).construction || 0), 0), excludedByReason: Object.keys(pseStats).reduce((o, k) => { Object.keys(pseStats[k].excl || {}).forEach((c) => { o[c] = (o[c] || 0) + pseStats[k].excl[c]; }); return o; }, {}) };
     const pseOut = { generatedAt: new Date().toISOString(), asOfDate: AS_OF, generator: 'scripts/build-national.js', thresholds: { feeFloor: PS.FEE_FLOOR, feeDefault: PS.DEFAULT_FEE, pipeFloor: PS.PIPE_FLOOR, pipeDefault: PS.PIPE_DEFAULT, illustrative: PS.ILLUSTRATIVE }, counts: pc, sources: mainPse.concat(rwPse, pseStatuses), tested: PSE_TESTED, records: pOrdered };
     const pSlim = JSON.stringify(pseOut, (k, v) => (v === null || v === undefined || (Array.isArray(v) && !v.length) ? undefined : v));
