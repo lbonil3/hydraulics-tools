@@ -1,0 +1,20 @@
+html{-webkit-text-size-adjust:100%}
+@media (max-width:700px){
+  .hud-title span{display:none}
+  .hud-title b{font-size:14px}
+  .chip{padding:0 8px;font-size:13px}
+  #toolbar{flex-direction:column;gap:6px}
+  .actions{justify-content:space-between}
+  .run{flex:1}
+  .tool{min-width:58px}
+  .foot{font-size:10px}
+  .infocard{font-size:12.5px;max-height:20vh}
+}
+@media (hover:none),(pointer:coarse){
+  button,.tool,.act{min-height:48px}
+}
+@media (max-height:500px) and (orientation:landscape){
+  #toolbar{flex-direction:row}
+  .infocard{max-height:22vh}
+  .foot{display:none}
+}

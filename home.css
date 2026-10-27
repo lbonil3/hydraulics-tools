@@ -412,6 +412,7 @@ a.tool .local {
 .tool-radar .icon { background: linear-gradient(155deg, #0f766e 0%, #115e59 58%, #134e4a 100%); }
 .tool-national .icon { background: linear-gradient(155deg, #2563b8 0%, #1e4f95 58%, #173d75 100%); }
 .tool-swp3 .icon { background: linear-gradient(155deg, #1f7a56 0%, #1b5e45 55%, #134532 100%); }
+.tool-swp3-game .icon { background: linear-gradient(155deg, #2f8f6a 0%, #1f6f86 55%, #17506a 100%); }
 
 footer {
   position: relative;

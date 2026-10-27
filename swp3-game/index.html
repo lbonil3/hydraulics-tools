@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#3b2f22">
+  <title>SWP3 Designer – erosion &amp; sediment control game</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="mobile.css">
+</head>
+<body>
+<header id="hud">
+  <a class="hbtn" href="../" aria-label="Back to Hydraulics Tools home">⌂</a>
+  <button type="button" class="hbtn" id="btnLevels" aria-label="Level select">☰</button>
+  <div class="hud-title"><b id="lvlName">SWP3 Designer</b><span id="lvlGoal"></span></div>
+  <button type="button" class="chip" id="forecastChip" aria-label="Storm forecast">☁ <span id="forecastLabel">2-yr</span></button>
+  <div class="chip money" aria-live="polite">$<span id="budgetLeft">0</span></div>
+</header>
+
+<main id="stage">
+  <canvas id="view" aria-label="Isometric construction site. Tap a tile to place the selected control. Drag to pan."></canvas>
+  <div class="zoom">
+    <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+    <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+    <button type="button" id="flowView" aria-label="Toggle flow view" title="Flow view">≋</button>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="banner" class="banner hidden"></div>
+  <div id="tileInfo" class="tileinfo hidden"></div>
+  <div id="stormHud" class="stormhud hidden">
+    <span id="stormLabel">Storm</span>
+    <button type="button" id="speedBtn">1×</button>
+    <button type="button" id="skipBtn">Skip ▶▶</button>
+  </div>
+</main>
+
+<section id="infoCard" class="infocard hidden" aria-live="polite"></section>
+
+<nav id="toolbar" aria-label="Build tools">
+  <div class="tools" id="tools"></div>
+  <div class="actions">
+    <button type="button" id="undoBtn" class="act" aria-label="Undo">↶<small>Undo</small></button>
+    <button type="button" id="runBtn" class="run">🌧 Rain Check</button>
+  </div>
+</nav>
+
+<div id="overlay" class="overlay hidden" role="dialog" aria-modal="true"><div class="panel" id="panel"></div></div>
+
+<footer class="foot">Game rules are simplified for play; follow TxDOT/TCEQ requirements for real plans. Sources: <a href="rules-sources.md">rules-sources.md</a></footer>
+
+<script src="sim.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
