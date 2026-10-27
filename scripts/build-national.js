@@ -14,10 +14,12 @@ const RM = require('../opportunity-radar/model.js');
 const { xlsxRows, unzip } = require('./build-opportunities.js');
 const R = require('../national-radar/roadway.js');
 const CM = require('../national-radar/cost.js');
+const PS = require('../national-radar/pse.js');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'national-radar', 'data', 'national.json');
 const OUT_RW = path.join(ROOT, 'national-radar', 'data', 'roadway.json');
+const OUT_PSE = path.join(ROOT, 'national-radar', 'data', 'pse.json');
 const OUT_PRICES = path.join(ROOT, 'national-radar', 'data', 'cost-prices.json');
 const CACHE = path.join(__dirname, '.cache-national');
 const SKIP = new Set((process.env.NR_SKIP || '').split(',').filter(Boolean)); // developer switch: skip slow sources; the main national.json is then NOT written
@@ -101,8 +103,26 @@ function record(cand, ev) {
 const rwStats = {}; const rwKept = [];
 function rst(id) { return (rwStats[id] = rwStats[id] || { fetched: 0, evaluated: 0, byBucket: {}, excl: {}, rw: {}, eng: {}, road: {}, exact5: 0, drainSpecific: 0, near: [] }); }
 let PRICES = {};
+// ---------- PS&E / H&H lens + design-build + pipeline (national-radar/pse.js) ----------
+const pseStats = {}; const pseKept = [];
+function pst(id) { return (pseStats[id] = pseStats[id] || { evaluated: 0, byLens: {}, excl: {}, stage: {}, conf: {}, exact5: 0, textParsed: 0, near: [], constrNear: [] }); }
+function pseRecord(cand) {
+  const ev = PS.evaluatePse(cand, { asOf: AS_OF }); const s = pst(cand.src); s.evaluated++;
+  if (!ev.lens) {
+    ev.excl.forEach((c) => { s.excl[c] = (s.excl[c] || 0) + 1; }); s.byLens.excluded = (s.byLens.excluded || 0) + 1;
+    const v = ev.amt ? ev.amt.v : null;
+    if (ev.excl.indexOf('fee-below-5m') >= 0 && v >= 1000000 && ev.excl.length === 1) { s.near.push({ title: cand.title.slice(0, 120), v, why: 'fee-below-5m', url: cand.url }); s.near.sort((a, b) => b.v - a.v); if (s.near.length > 6) s.near.length = 6; }
+    if (ev.excl.indexOf('construction') >= 0) { const cv = (cand.amounts || []).reduce((m, a) => Math.max(m, a.v || 0), 0); if (cv >= PS.FEE_FLOOR && ev.scope && (ev.scope.hh || ev.scope.sec.ids.length)) { s.constrNear.push({ title: cand.title.slice(0, 120), v: cv, why: 'construction', url: cand.url }); s.constrNear.sort((a, b) => b.v - a.v); if (s.constrNear.length > 6) s.constrNear.length = 6; } }
+    return null;
+  }
+  s.byLens[ev.lens] = (s.byLens[ev.lens] || 0) + 1; s.stage[ev.stage] = (s.stage[ev.stage] || 0) + 1; if (ev.conf) s.conf[ev.conf] = (s.conf[ev.conf] || 0) + 1; if (ev.flags && ev.flags.exact5) s.exact5++; if (ev.flags && ev.flags.textParsed) s.textParsed++;
+  const rec = PS.toRecordPse(cand, ev, AS_OF); pseKept.push(rec);
+  if (ev.lens === 'db') { const fr = PS.designFeeRecord(cand, ev, AS_OF); if (fr) { pseKept.push(fr); s.byLens.fee = (s.byLens.fee || 0) + 1; } }
+  return rec;
+}
 function rwRecord(cand) {
   R.decorateRw(cand);
+  pseRecord(cand);
   const ev = R.evaluateRoadway(cand, { asOf: AS_OF }); const s = rst(cand.src);
   s.evaluated++; s.byBucket[ev.bucket] = (s.byBucket[ev.bucket] || 0) + 1; s.eng[ev.flags.eng] = (s.eng[ev.flags.eng] || 0) + 1; s.road[ev.flags.road || 'n/a'] = (s.road[ev.flags.road || 'n/a'] || 0) + 1;
   ev.excl.forEach((c) => { s.excl[c] = (s.excl[c] || 0) + 1; });
@@ -386,6 +406,110 @@ const RW_TESTED = [
   { name: 'More state DOT consultant pages (NYSDOT, NCDOT, GDOT, PennDOT, Louisiana DOTD, FDOT advertisements)', url: '', works: false, integrated: false, fields: '', finding: 'Tested earlier for the water lane; none exposes a consultant fee in a machine-readable list. See "Sources tested, not used" in the main Data tab.' }
 ];
 
+// ---------- PS&E / H&H lens: extra sources (not used by the older lanes) ----------
+const PSE_SOURCES = [];
+const PSE_KW = ['PS&E', 'plans and specifications', 'final design', 'detailed design', 'design services', 'drainage', 'hydrology', 'hydrologic', 'hydraulic', 'hydraulics', 'stormwater', 'storm water', 'storm drain', 'culvert', 'flood', 'floodplain', 'coastal', 'resilience', 'levee', 'watershed'];
+PSE_SOURCES.push({
+  id: 'pse-usaspending', name: 'USAspending.gov API: prime awards and IDIQ ceilings (engineering PSC/NAICS, PS&E / H&H wording, obligated ≥ $1M, then base-and-all-options from the award detail); design-build awards', agency: 'Federal (all agencies)', page: 'https://api.usaspending.gov/docs/endpoints',
+  type: 'REST API, no key (snapshot only)',
+  async run(ctx) {
+    const fields = ['Award ID', 'Recipient Name', 'Award Amount', 'Total Outlays', 'Description', 'Start Date', 'Awarding Agency', 'Awarding Sub Agency', 'NAICS', 'PSC', 'Place of Performance State Code', 'Place of Performance Country Code', 'generated_internal_id', 'Contract Award Type', 'Base Obligation Date'];
+    const groups = { contracts: ['A', 'B', 'C', 'D'], idv: ['IDV_A', 'IDV_B', 'IDV_B_A', 'IDV_B_B', 'IDV_B_C', 'IDV_C', 'IDV_D', 'IDV_E'] };
+    const sets = [['PSC family C', { psc_codes: { require: [['Service', 'C']] } }], ['NAICS 541330/541370/541620/541690', { naics_codes: { require: ['541330', '541370', '541620', '541690'] } }]];
+    const all = new Map(); const s = pst('pse-usaspending'); const start = M.addMonths(AS_OF, -36);
+    for (const [g, codes] of Object.entries(groups)) for (const [label, extra] of sets) {
+      const filters = Object.assign({ award_type_codes: codes, time_period: [{ start_date: start, end_date: AS_OF }], award_amounts: [{ lower_bound: 1000000 }], keywords: PSE_KW }, extra);
+      for (let page = 1; page <= 8; page++) {
+        const j = await getJson('https://api.usaspending.gov/api/v2/search/spending_by_award/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filters, fields: fields.concat(g === 'idv' ? ['Last Date to Order'] : ['End Date']), limit: 100, page, sort: 'Award Amount', order: 'desc' }) });
+        (j.results || []).forEach((r) => all.set(r.generated_internal_id, r));
+        if (!j.page_metadata || !j.page_metadata.hasNext) break;
+      }
+    }
+    // design-build awards (competitor intel for the Design-build lens): construction NAICS, DB wording, ≥ $10M
+    const dbAll = new Map();
+    for (const page of [1, 2, 3]) {
+      const j = await getJson('https://api.usaspending.gov/api/v2/search/spending_by_award/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filters: { award_type_codes: ['A', 'B', 'C', 'D'], time_period: [{ start_date: start, end_date: AS_OF }], award_amounts: [{ lower_bound: 10000000 }], keywords: ['design-build', 'design build', 'progressive design-build'], naics_codes: { require: ['237110', '237310', '237990', '237120', '541330'] } }, fields: fields.concat(['End Date']), limit: 100, page, sort: 'Award Amount', order: 'desc' }) });
+      (j.results || []).forEach((r) => dbAll.set(r.generated_internal_id, r)); if (!j.page_metadata || !j.page_metadata.hasNext) break;
+    }
+    s.fetched = all.size + dbAll.size; let details = 0, detailFail = 0;
+    const order = [...all.values()].sort((a, b) => (b['Award Amount'] || 0) - (a['Award Amount'] || 0));
+    for (const r of order) {
+      let c = M.normUsa(r, null); let ev = PS.evaluatePse(c, { asOf: AS_OF });
+      const plausible = ev.scope && (ev.scope.hh || ev.scope.sec.ids.length || ev.scope.pse) && ev.flags.eng !== 'none' && ev.flags.eng !== 'construction';
+      if (plausible && details < 450) {
+        details++;
+        try { const d = await getJson('https://api.usaspending.gov/api/v2/awards/' + encodeURIComponent(c.srcId) + '/'); const lt = d.latest_transaction_contract_data || {}; const c2 = M.normUsa(r, { base_and_all_options: d.base_and_all_options, office: d.awarding_agency && d.awarding_agency.office_agency_name, solicitation: lt.solicitation_identifier }); c2.fields['Total obligation (detail)'] = d.total_obligation; c = c2; } catch (e) { detailFail++; c.fields['Detail fetch'] = 'failed: ' + String(e.message).slice(0, 80); }
+      }
+      pseRecord(c);
+    }
+    for (const r of dbAll.values()) { const c = M.normUsa(r, null); c.src = 'pse-usaspending'; pseRecord(c); }
+    ctx.asOf['pse-usaspending'] = new Date().toISOString();
+    return { fetched: s.fetched, note: all.size + ' prime awards / IDVs (obligated ≥ $1M, last 36 months, PSC family C or NAICS 541330/541370/541620/541690, description keyword for PS&E / design / H&H) plus ' + dbAll.size + ' design-build awards (construction NAICS, ≥ $10M). Award detail (base_and_all_options = ceiling incl. options) fetched for ' + details + ' plausible rows' + (detailFail ? ' (' + detailFail + ' failed)' : '') + '; the rest use the obligated amount only, which understates IDIQ ceilings.' };
+  }
+});
+PSE_SOURCES.push({
+  id: 'pse-nyc', name: 'NYC City Record Online: Construction Related Services award notices ≥ $5M', agency: 'City of New York', page: 'https://data.cityofnewyork.us/City-Government/City-Record-Online/dg92-zbpx', type: 'Socrata API, no key (snapshot only)',
+  async run(ctx) {
+    const s = pst('nyc'); const since = M.addMonths(AS_OF, -24);
+    const rows = await getJson('https://data.cityofnewyork.us/resource/dg92-zbpx.json?' + qs({ $where: "section_name='Procurement' AND type_of_notice_description='Award' AND category_description='Construction Related Services' AND contract_amount>5000000 AND start_date>'" + since + "'", $limit: 5000, $order: 'start_date DESC' }));
+    rows.forEach((r) => { const c = M.normNyc(r); c.src = 'nyc'; pseRecord(c); });
+    ctx.asOf['pse-nyc'] = new Date().toISOString();
+    return { fetched: rows.length, note: 'Same dataset as the water lane but with a $5M floor (awards since ' + since + '). Duplicates of the water-lane rows are merged by award PIN.' };
+  }
+});
+PSE_SOURCES.push({
+  id: 'pse-chicago', name: 'City of Chicago contracts ≥ $5M (architect / engineering / professional services types)', agency: 'City of Chicago', page: 'https://data.cityofchicago.org/Administration-Finance/Contracts/rsxa-ify5', type: 'Socrata API, no key (snapshot only)',
+  async run(ctx) {
+    const rows = await getJson('https://data.cityofchicago.org/resource/rsxa-ify5.json?' + qs({ $where: "award_amount>5000000 AND (end_date>'" + AS_OF + "' OR approval_date>'" + M.addMonths(AS_OF, -24) + "')", $limit: 5000, $order: 'award_amount DESC' }));
+    const best = {}; rows.forEach((r) => { const k = r.purchase_order_contract_number; if (!best[k] || +(r.revision_number || 0) > +(best[k].revision_number || 0)) best[k] = r; });
+    Object.values(best).forEach((r) => { const c = M.normChicago(r); c.src = 'chicago'; pseRecord(c); });
+    ctx.asOf['pse-chicago'] = new Date().toISOString();
+    return { fetched: rows.length, note: 'award_amount > $5M, end date in the future or approved in the last 24 months; highest revision per contract.' };
+  }
+});
+PSE_SOURCES.push({
+  id: 'austin', name: 'City of Austin contracts (master agreements, Professional Services, purchase limit ≥ $5M)', agency: 'City of Austin', page: 'https://datahub.austintexas.gov/d/84ih-p28j', type: 'Socrata API, no key (snapshot only)',
+  async run(ctx) {
+    const rows = await getJson('https://datahub.austintexas.gov/resource/84ih-p28j.json?' + qs({ $where: "ma_prch_lmt_am>5000000 AND cat_dscr='Professional Services'", $select: 'doc_id,doc_dscr,ma_prch_lmt_am,lgl_nm,efbgn_dt,efend_dt,cat_dscr,doc_dept_cd', $limit: 5000, $order: 'ma_prch_lmt_am DESC' }));
+    const by = new Map(); rows.forEach((r) => { const o = by.get(r.doc_id) || { r, vendors: [] }; o.vendors.push(M.clean(r.lgl_nm)); by.set(r.doc_id, o); });
+    for (const { r, vendors } of by.values()) {
+      const t = M.clean(r.doc_dscr), eng = /engineer|design|architect|survey|hydro|drain|flood|storm|study|planning/i.test(t);
+      const c = { src: 'austin', srcId: r.doc_id, url: 'https://datahub.austintexas.gov/resource/84ih-p28j.json?doc_id=' + encodeURIComponent(r.doc_id), title: t, desc: t + ' (vendors: ' + vendors.join('; ') + ')', agency: 'City of Austin', subagency: null, office: null, state: 'TX', city: 'Austin', naics: '', psc: '',
+        engOverride: eng ? { level: 'strong', why: 'Austin category "Professional Services" and the title has engineering / design wording (inferred from words; Austin gives no NAICS)' } : { level: 'weak', why: 'Austin category "Professional Services" but the title has no engineering wording' },
+        status: 'awarded', noticeType: 'Master agreement', noticeLabel: 'Awarded master agreement (rotation list / on-call)', amounts: [{ v: parseFloat(r.ma_prch_lmt_am), kind: 'maxvalue', field: 'ma_prch_lmt_am (Austin master agreement purchase limit; shared by the listed vendors)' }],
+        dates: { start: M.isoDate(r.efbgn_dt), end: M.isoDate(r.efend_dt), award: M.isoDate(r.efbgn_dt) }, awardee: vendors.slice(0, 6).join('; ') + (vendors.length > 6 ? ' +' + (vendors.length - 6) : ''), awardNum: r.doc_id,
+        fields: { 'doc_id': r.doc_id, 'Category': r.cat_dscr, 'Purchase limit': r.ma_prch_lmt_am, 'Effective': r.efbgn_dt, 'Ends': r.efend_dt, 'Vendors listed': vendors.length } };
+      pseRecord(c);
+    }
+    ctx.asOf.austin = new Date().toISOString();
+    return { fetched: by.size, note: by.size + ' Professional Services master agreements with a purchase limit over $5M. The limit is the agreement ceiling and is shared by all vendors on a rotation list, so it is not one firm\'s fee.' };
+  }
+});
+PSE_SOURCES.push({
+  id: 'txdot-pi', name: 'TxDOT Project Information (data.texas.gov, hourly): design-phase projects with a stated construction cost, and Design Build / Alternative Delivery projects', agency: 'TxDOT', page: 'https://data.texas.gov/dataset/Project-Information/drau-zphx', type: 'Socrata API, no key (snapshot only here)',
+  async run(ctx) {
+    const sel = 'project_id,project_stage,project_status,project_type,project_sub_type_description,let_type_description,type_of_work,short_description,project_description,project_name,project_classification,highway,county,district_division,city,project_estimate_low_bid,project_estimated_let_date,project_limits_from,project_limits_to';
+    const base = 'https://data.texas.gov/resource/drau-zphx.json?';
+    const pipe = await getJson(base + qs({ $select: sel, $where: "project_stage in ('PE','PS&E') AND project_estimate_low_bid>" + PS.PIPE_FLOOR, $limit: 50000 }), { timeout: 120000 });
+    const dbq = await getJson(base + qs({ $select: sel, $where: "(let_type_description='Design Build' OR project_sub_type_description like '%Design Build%' OR project_type='Alternative Delivery') AND project_stage not in ('Closed')", $limit: 5000 }), { timeout: 120000 });
+    const seen = new Set(); let n = 0;
+    const mk = (r, db) => {
+      const cost = parseFloat(r.project_estimate_low_bid); const from = M.clean(r.project_limits_from), to = M.clean(r.project_limits_to);
+      const title = [M.clean(r.highway), M.clean(r.project_name) || M.clean(r.short_description) || M.clean(r.type_of_work)].filter(Boolean).join(' · ') + (from ? ' (' + from + (to && to !== from ? ' to ' + to : '') + ')' : '');
+      const desc = [r.type_of_work, r.short_description, r.project_classification, r.project_description, r.project_name].map(M.clean).filter(Boolean).join('. ');
+      const stage = M.clean(r.project_stage);
+      return { src: 'txdot-pi', srcId: r.project_id + (db ? '#db' : ''), url: 'https://data.texas.gov/resource/drau-zphx.json?project_id=' + encodeURIComponent(r.project_id), title: title || r.project_id, desc: db ? 'Design Build. ' + desc : desc, agency: 'TxDOT', subagency: M.clean(r.district_division) || null, office: null, state: 'TX', city: null, naics: '', psc: '',
+        projectList: true, roadAgency: 'TxDOT Project Information (state highway agency project list)', dbSource: db, status: stage === 'Construction' ? 'awarded' : 'upcoming', noticeType: 'TxDOT project (' + stage + ')', noticeLabel: 'TxDOT project, stage ' + stage + (db ? ', Design Build' : ''),
+        amounts: isFinite(cost) && cost > 0 ? [{ v: cost, kind: 'project_cost', field: 'project_estimate_low_bid (TxDOT Project Information: estimated construction cost, NOT a fee)' }] : [], dates: { est: M.isoDate(r.project_estimated_let_date), estLabel: 'Est. letting (TxDOT)' },
+        fields: { 'Project ID': r.project_id, 'Project stage': stage, 'Project type': r.project_type, 'Sub type': r.project_sub_type_description, 'Let type': r.let_type_description, 'County': r.county, 'Type of work': r.type_of_work, 'project_estimate_low_bid': r.project_estimate_low_bid } };
+    };
+    dbq.forEach((r) => { if (!seen.has(r.project_id)) { seen.add(r.project_id); n++; pseRecord(mk(r, true)); } });
+    pipe.forEach((r) => { n++; pseRecord(mk(r, false)); });
+    ctx.asOf['txdot-pi'] = new Date().toISOString();
+    return { fetched: pipe.length + dbq.length, note: pipe.length + ' projects in stage PE or PS&E with a stated estimate over $25M (pipeline lens keeps only those whose text names drainage / H&H words) and ' + dbq.length + ' Design Build / Alternative Delivery projects (design-build lens). The only dollar field is project_estimate_low_bid, an estimated construction cost.' };
+  }
+});
+
 // ---------- enrichment: city centroids for pins (Census Gazetteer; only for records whose source names a city AND state) ----------
 async function cityCentroids(recs) {
   const want = recs.filter((r) => r.city && r.state && !r.lat);
@@ -406,8 +530,23 @@ function mergeStats(list) {
   list.forEach((s) => { ['fetched', 'evaluated', 'exact20'].forEach((k) => { out[k] += s[k] || 0; }); ['byBucket', 'excl', 'eng', 'sector', 'fee', 'primary'].forEach((k) => Object.keys(s[k] || {}).forEach((x) => { out[k][x] = (out[k][x] || 0) + s[k][x]; })); Object.keys(s.samples || {}).forEach((x) => { out.samples[x] = (out.samples[x] || []).concat(s.samples[x]).slice(0, 6); }); });
   return out;
 }
+const PS_count = (list, f) => list.reduce((o, r) => { const k = f(r); o[k] = (o[k] || 0) + 1; return o; }, {});
+function mergePse(list) {
+  const o = { evaluated: 0, exact5: 0, textParsed: 0, byLens: {}, excl: {}, stage: {}, conf: {}, near: [], constrNear: [] };
+  list.forEach((p) => { o.evaluated += p.evaluated; o.exact5 += p.exact5; o.textParsed += p.textParsed; ['byLens', 'excl', 'stage', 'conf'].forEach((k) => Object.keys(p[k]).forEach((z) => { o[k][z] = (o[k][z] || 0) + p[k][z]; })); o.near = o.near.concat(p.near); o.constrNear = o.constrNear.concat(p.constrNear); });
+  o.near.sort((a, b) => b.v - a.v); o.near.length = Math.min(o.near.length, 6); o.constrNear.sort((a, b) => b.v - a.v); o.constrNear.length = Math.min(o.constrNear.length, 6); return o;
+}
+const PSE_TESTED = [
+  { name: 'NYC Capital Projects forecast (City Record / DDC)', result: 'tested, not used: forecast rows carry no dollar amounts.' },
+  { name: 'NYC GOSR / NY Rising contracts', result: 'tested, not used: contract rows date from 2014 to 2022, nothing current.' },
+  { name: 'San Francisco, Seattle, Washington DC, Maryland, Houston / Harris County open-data contract catalogs', result: 'quick API probes found no dataset that pairs an engineering-services category with a contract amount and can be queried without a key. Not used; more careful probing could still find one.' },
+  { name: 'Texas LBB contracts database', result: 'NOT integrated in this version (not tested). Listed as a gap.' },
+  { name: 'USACE / FEMA / TWDB / state flood programs with stated project costs', result: 'NOT integrated as a separate feed. Federal awards and IDIQ ceilings come through USAspending and SAM; state flood-program project lists are a gap.' },
+  { name: 'TxDOT PEPS selected-consultant announcements', result: 'NOT integrated in this version (not tested for fee amounts). Listed as a gap.' }
+];
 async function main() {
   const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : null;
+  const prevPse = fs.existsSync(OUT_PSE) ? JSON.parse(fs.readFileSync(OUT_PSE, 'utf8')) : null;
   const prevRw = fs.existsSync(OUT_RW) ? JSON.parse(fs.readFileSync(OUT_RW, 'utf8')) : null;
   // unit prices for the roadway cost base: a subset of bid-cost/prices.json (TxDOT low-bid averages), the items cost.js uses
   const bid = JSON.parse(fs.readFileSync(path.join(ROOT, 'bid-cost', 'prices.json'), 'utf8')); PRICES = {};
@@ -464,6 +603,44 @@ async function main() {
   const rwSlim = JSON.stringify(rwOut, (k, v) => (v === null || v === undefined || (Array.isArray(v) && !v.length) ? undefined : v));
   if (!rwOut.sources.some((x) => x.status === 'ok')) { console.error('Roadway: nothing usable fetched; keeping the existing file.'); }
   else { fs.writeFileSync(OUT_RW, rwSlim); console.log('wrote', OUT_RW, rwOrdered.length, 'roadway records', (rwSlim.length / 1024).toFixed(0) + ' KB', JSON.stringify(rwCounts.byType), 'cost', JSON.stringify(rwCounts.byCost)); }
+  // ---- PS&E / H&H lens: extra sources, then assemble national-radar/data/pse.json (the new default view)
+  const pseStatuses = [];
+  for (const s of PSE_SOURCES) {
+    if (SKIP.has(s.id)) { pseStatuses.push({ id: s.id, name: s.name, agency: s.agency, page: s.page, type: s.type, status: 'skipped', note: 'NR_SKIP developer switch', fetched: 0 }); continue; }
+    const t0 = Date.now(); const status = { id: s.id, name: s.name, agency: s.agency, page: s.page, type: s.type, status: 'ok', error: null, fetchedAt: new Date().toISOString() };
+    try { const r = await s.run(ctx); status.fetched = r.fetched; status.note = r.note; }
+    catch (e) {
+      status.status = prevPse && prevPse.records.some((x) => x.src === s.id) ? 'stale' : 'failed'; status.error = String(e.message).slice(0, 300);
+      if (prevPse) { prevPse.records.filter((x) => x.src === s.id).forEach((x) => pseKept.push(x)); const o = (prevPse.sources || []).find((x) => x.id === s.id); status.stats = o && o.stats; status.fetchedAt = o ? o.fetchedAt : null; status.fetched = o ? o.fetched : 0; }
+      status.note = 'Last fetch failed: ' + status.error + (status.status === 'stale' ? ' Showing records from the previous successful run.' : '');
+    }
+    if (status.status === 'ok') status.stats = (s.id === 'pse-nyc' || s.id === 'pse-chicago') ? undefined : pseStats[s.id];
+    const keepSrc = s.id === 'pse-nyc' ? 'nyc' : s.id === 'pse-chicago' ? 'chicago' : s.id; status.kept = pseKept.filter((x) => x.src === keepSrc).length; status.asOf = ctx.asOf[s.id] || status.fetchedAt; if (keepSrc !== s.id) status.note += ' Kept counts include rows from the water-lane query of the same dataset.';
+    console.log('pse ' + status.status.padEnd(6), s.id.padEnd(16), 'fetched', String(status.fetched || 0).padStart(6), 'kept', String(status.kept).padStart(4), ((Date.now() - t0) / 1000).toFixed(1) + 's', status.error ? ' ERR ' + status.error : '');
+    pseStatuses.push(status);
+  }
+  statuses.forEach((st0) => { const sd = SOURCES.find((x) => x.id === st0.id); if (!sd || !prevPse || (st0.status !== 'stale' && st0.status !== 'failed')) return; const ids = sd.statIds || [sd.id]; prevPse.records.filter((x) => ids.indexOf(x.src) >= 0).forEach((x) => pseKept.push(x)); });
+  RW_SOURCES.forEach((sd) => { const ss = rwStatuses.find((x) => x.id === sd.id); if (!ss || !prevPse || (ss.status !== 'stale' && ss.status !== 'failed')) return; prevPse.records.filter((x) => x.src === sd.id).forEach((x) => pseKept.push(x)); });
+  if (!SKIP.size || process.env.NR_WRITE_PSE) {
+    const mainPse = statuses.filter((x) => x.id !== 'sam-api').map((x) => { const sd = SOURCES.find((y) => y.id === x.id); const ids = sd.statIds || [sd.id]; return { id: x.id, name: x.name, agency: x.agency, page: x.page, type: x.type, status: x.status, error: x.error, fetched: x.fetched, fetchedAt: x.fetchedAt, asOf: x.asOf, stats: mergePse(ids.map((i) => pseStats[i]).filter(Boolean)), kept: pseKept.filter((r) => ids.indexOf(r.src) >= 0).length }; });
+    const rwPse = rwStatuses.map((x) => ({ id: x.id, name: x.name, agency: x.agency, page: x.page, type: x.type, status: x.status, error: x.error, fetched: x.fetched, fetchedAt: x.fetchedAt, asOf: x.asOf, stats: mergePse([pseStats[x.id]].filter(Boolean)), kept: pseKept.filter((r) => r.src === x.id).length }));
+    // dedupe within each lens (a design-build notice and its separately stated design fee share ids but are different lenses)
+    const byLens = { fee: [], db: [], pipeline: [] }; pseKept.forEach((r) => { (byLens[r.lens] = byLens[r.lens] || []).push(r); });
+    let pMerged = 0; const dedup = []; Object.keys(byLens).forEach((l) => { const d = M.dedupe(byLens[l]); pMerged += d._merged; d.forEach((r) => dedup.push(r)); });
+    const val = (r) => (r.amt ? r.amt.v : r.dbValue ? r.dbValue.v : r.projectCost ? r.projectCost.v : 0);
+    const pOrdered = dedup.sort((a, b) => ((b.confRank || 0) - (a.confRank || 0)) || (val(b) - val(a)));
+    try { await cityCentroids(pOrdered); } catch (e) { console.warn('pse city centroids skipped:', e.message); }
+    const feeR = pOrdered.filter((r) => r.lens === 'fee'), dbR = pOrdered.filter((r) => r.lens === 'db'), plR = pOrdered.filter((r) => r.lens === 'pipeline');
+    const pc = { total: pOrdered.length, beforeDedupe: pseKept.length, mergedDuplicates: pMerged, byLens: PS_count(pOrdered, (r) => r.lens),
+      fee: { total: feeR.length, byStage: PS_count(feeR, (r) => r.stage), byConf: PS_count(feeR, (r) => r.conf), byState: PS_count(feeR, (r) => r.state || '??'), bySrc: PS_count(feeR, (r) => r.src), byDomain: PS_count(feeR, (r) => (r.domains[0] || 'none')), strictGt5: feeR.filter((r) => r.amt.v > 5000000).length, exact5: feeR.filter((r) => r.amt.v === 5000000).length, textParsed: feeR.filter((r) => r.textParsed).length, confirmedGt5: feeR.filter((r) => r.conf === 'confirmed' && r.amt.v > 5000000).length, gt20: feeR.filter((r) => r.amt.v > 20000000).length },
+      db: { total: dbR.length, byStage: PS_count(dbR, (r) => r.stage), byRole: PS_count(dbR, (r) => r.dbRole), byType: PS_count(dbR, (r) => r.dbType), byState: PS_count(dbR, (r) => r.state || '??'), bySrc: PS_count(dbR, (r) => r.src), withValue: dbR.filter((r) => r.dbValue).length, withDesignFee: dbR.filter((r) => r.designFee).length },
+      pipeline: { total: plR.length, byState: PS_count(plR, (r) => r.state || '??'), bySrc: PS_count(plR, (r) => r.src), gt50: plR.filter((r) => r.projectCost.v > 50000000).length, gt100: plR.filter((r) => r.projectCost.v > 100000000).length },
+      excludedConstruction: Object.keys(pseStats).reduce((n, k) => n + ((pseStats[k].excl || {}).construction || 0), 0), excludedByReason: Object.keys(pseStats).reduce((o, k) => { Object.keys(pseStats[k].excl || {}).forEach((c) => { o[c] = (o[c] || 0) + pseStats[k].excl[c]; }); return o; }, {}) };
+    const pseOut = { generatedAt: new Date().toISOString(), asOfDate: AS_OF, generator: 'scripts/build-national.js', thresholds: { feeFloor: PS.FEE_FLOOR, feeDefault: PS.DEFAULT_FEE, pipeFloor: PS.PIPE_FLOOR, pipeDefault: PS.PIPE_DEFAULT, illustrative: PS.ILLUSTRATIVE }, counts: pc, sources: mainPse.concat(rwPse, pseStatuses), tested: PSE_TESTED, records: pOrdered };
+    const pSlim = JSON.stringify(pseOut, (k, v) => (v === null || v === undefined || (Array.isArray(v) && !v.length) ? undefined : v));
+    if (!pseOut.sources.some((x) => x.status === 'ok') || !pOrdered.length) console.error('PS&E: nothing usable fetched; keeping the existing file.');
+    else { fs.writeFileSync(OUT_PSE, pSlim); console.log('wrote', OUT_PSE, pOrdered.length, 'records', (pSlim.length / 1024).toFixed(0) + ' KB', JSON.stringify(pc.byLens), 'fee>5M strict', pc.fee.strictGt5, 'exact5', pc.fee.exact5); }
+  }
   if (SKIP.size) { console.log('NR_SKIP set: national.json NOT written.'); return; }
   // sector for forced TxDOT hydraulics discipline is already in the keyword rules via the title; nothing to add here.
   // dedupe across sources (award number, solicitation number, or identical title+agency+amount)
