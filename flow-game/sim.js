@@ -332,10 +332,41 @@
     var p = L.pre, tc = TC ? TC.kerby(p.Lov, p.N, TC.lowSlope(p.S)) + TC.kirpich(p.Lch, TC.lowSlope(p.S)) : 30;
     return { tc: tc, i: intensity(yr, tc), Q: p.C * intensity(yr, tc) * p.A };
   }
+  // ---------- pond bodies ----------
+  // Edge-adjacent pond blocks form ONE pond body: one basin, one water surface, one outlet.
+  // Level-pool storage of a body: V(h) = N_cells * 2500 sf * h (vertical-sided game basin, 0 <= h <= RULES.pondDepth),
+  // so its stage is h = V / (N_cells * 2500). Only the body that holds the trunk outfall tile (L.pondSite) is routed
+  // through the outlet; a separate body is a closed basin that holds its own rain.
+  function pondGroups(L, tiles) {
+    var set = {}, seen = {}, out = []; (Array.isArray(tiles) ? tiles : Object.keys(tiles)).forEach(function (i) { set[+i] = 1; });
+    Object.keys(set).map(Number).sort(function (a, b) { return a - b; }).forEach(function (i0) { if (seen[i0]) return;
+      var g = [], st = [i0]; seen[i0] = 1;
+      while (st.length) { var i = st.pop(); g.push(i); nb(L, i).forEach(function (j) { if (set[j] && !seen[j]) { seen[j] = 1; st.push(j); } }); }
+      g.sort(function (a, b) { return a - b; }); var gs = {}; g.forEach(function (i) { gs[i] = 1; }); out.push({ tiles: g, set: gs, area: g.length * TILE_FT * TILE_FT }); });
+    return out;
+  }
+  function pondBody(L, tiles) { var gs = pondGroups(L, tiles); for (var k = 0; k < gs.length; k++) if (gs[k].set[L.pondSite]) return gs[k]; return null; }
+  // Where the single outlet structure of a body sits: a perimeter edge, preferring one that faces the creek,
+  // then the lowest ground outside; ties go to the edge nearest the tile the player tapped (hint).
+  // edge: 'u0' (x-1), 'u1' (x+1), 'v0' (y-1), 'v1' (y+1).
+  function outletSpot(L, body, hint) {
+    if (!body) return null; var W = L.W, best = null, hx = hint != null ? hint % W : 0, hy = hint != null ? (hint / W) | 0 : 0;
+    body.tiles.forEach(function (i) { var x = i % W, y = (i / W) | 0;
+      [['u1', 1, 0], ['v1', 0, 1], ['u0', -1, 0], ['v0', 0, -1]].forEach(function (e) { var xx = x + e[1], yy = y + e[2], off = xx < 0 || yy < 0 || xx >= W || yy >= L.H, j = off ? -1 : yy * W + xx;
+        if (!off && body.set[j]) return;
+        var water = !off && isWater(L.types[j]), lvl = off ? 1e3 : water ? -1e3 : L.heights[j], d = hint != null ? Math.abs(x - hx) + Math.abs(y - hy) : 0;
+        var key = [water ? 0 : 1, water ? 0 : Math.round(lvl * 10), d, e[0] === 'u1' || e[0] === 'v1' ? 0 : 1];
+        if (!best || cmp(key, best.key) < 0) best = { key: key, tile: i, edge: e[0], out: j, water: water }; }); });
+    function cmp(a, b) { for (var k = 0; k < a.length; k++) if (a[k] !== b[k]) return a[k] - b[k]; return 0; }
+    return best && { tile: best.tile, edge: best.edge, out: best.out, water: best.water };
+  }
   function detention(L, ix, CA, kind, net, yr, evals) {
     if (!L.pre) return null;
     if (L.preOptional && !Object.keys(ix.pond).length) return null;
-    var pre = preDev(L, yr), pondTiles = Object.keys(ix.pond).map(Number), site = L.pondSite;
+    var pre = preDev(L, yr), allPond = Object.keys(ix.pond).map(Number), site = L.pondSite, groups = pondGroups(L, allPond), body = null;
+    groups.forEach(function (g) { if (g.set[site]) body = g; });
+    var pondTiles = body ? body.tiles : allPond;
+    groups.forEach(function (g) { if (g !== body && body) evals.push({ el: 'pond', k: ix.pond[g.tiles[0]].k, tile: g.tiles[0], status: 'separate', warn: true, reason: 'These ' + g.tiles.length + ' pond block' + (g.tiles.length > 1 ? 's do' : ' does') + ' not touch the outfall pond, so it is a separate basin with no outlet: it only holds its own rain. Join it edge-to-edge to add its storage.', basis: 'game rule (only blocks connected to the outfall pond store the detained runoff)' }); });
     var CAp = 0, CAd = 0, n = CA.length;
     // runoff reaching the pond: surface flow into pond tiles + pipes ending at the pond site
     pondTiles.forEach(function (i) { CAp += CA[i]; });
@@ -363,7 +394,7 @@
       }
       if (peak > best.Qpeak) best = { Qpeak: peak, Td: Td, hmax: hmax, ser: ser };
     });
-    var r = { pre: pre, post: best.Qpeak, Td: best.Td, hmax: best.hmax || 0, ser: best.ser, hasPond: hasPond, area: area, orif: oc.orif, weir: oc.weir, CAin: CAin, CAd: CAd };
+    var r = { pre: pre, post: best.Qpeak, Td: best.Td, hmax: best.hmax || 0, ser: best.ser, hasPond: hasPond, area: area, cells: pondTiles.length, groups: groups.length, spot: hasPond ? outletSpot(L, body, ix.outlet ? ix.outlet.tile : site) : null, orif: oc.orif, weir: oc.weir, CAin: CAin, CAd: CAd };
     var tileP = site;
     if (!hasPond) {
       if (pondTiles.length && !ix.pond[site]) evals.push({ el: 'pond', tile: pondTiles[0], status: 'missed', reason: 'The pond must include the outfall tile where the storm sewer ends (marked on the map).', basis: 'game rule' });
@@ -537,7 +568,7 @@
     L.goal = 'The new subdivision raises the 25-yr peak. Build a detention pond at the trunk outfall and pick its outlet so the peak leaving the site is no higher than before development.';
     L.lesson = 'Detention does not reduce the runoff volume, it slows the release (TxDOT HDM Ch. 10). Store the extra water, then let it out through a small orifice; a weir passes big storms safely. Too big an orifice and the peak goes straight through; too small and the pond overtops.';
     L.tip = 'The pre-development peak uses a long Tc (Kerby-Kirpich on grass), so it is much lower than the paved post-development peak.';
-    L.hints = ['Pond blocks go on the open area at the bottom right; one block must be on the trunk outfall tile (marked).', 'The client says the two lots next to the creek (striped) cannot be used.', 'About 8 pond blocks with a 12-in orifice and a 4-ft weir works. A bigger pond allows a bigger orifice.'];
+    L.hints = ['Pond blocks go on the open area at the bottom right; one block must be on the trunk outfall tile (marked), and the blocks must touch edge-to-edge to make one pond.', 'The client says the two lots next to the creek (striped) cannot be used.', 'About 8 pond blocks with a 12-in orifice and a 4-ft weir works. A bigger pond allows a bigger orifice.'];
     L.hintTiles = [L.pondSite];
     return L;
   };
@@ -618,6 +649,6 @@
 
   var api = { TILE_FT: TILE_FT, TILE_AC: TILE_AC, HARRIS: HARRIS, STORMS: STORMS, LAND: LAND, RULES: RULES, LININGS: LININGS, PIPE_IN: PIPE_IN, RCP: RCP, COST: COST, INLET_LEN: INLET_LEN,
     intensity: intensity, route: route, simulate: simulate, score: score, suggest: suggest, controlCost: controlCost, inletCost: inletCost, pipeCost: pipeCost, culvertCost: culvertCost, ditchCost: ditchCost, preDev: preDev,
-    makeLevel: makeLevel, presetControls: presetControls, LEVEL_COUNT: LEVEL_COUNT, makeSandbox: makeSandbox, sandboxData: sandboxData, editTile: editTile, rng: rng, nb: nb, isWater: isWater };
+    makeLevel: makeLevel, presetControls: presetControls, LEVEL_COUNT: LEVEL_COUNT, makeSandbox: makeSandbox, sandboxData: sandboxData, editTile: editTile, rng: rng, nb: nb, isWater: isWater, pondGroups: pondGroups, pondBody: pondBody, outletSpot: outletSpot };
   if (isNode) module.exports = api; else root.FlowSim = api;
 })(typeof window !== 'undefined' ? window : globalThis);

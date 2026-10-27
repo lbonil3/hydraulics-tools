@@ -75,6 +75,9 @@ The math is the repo's own tool code, loaded at runtime (not copied): `drainage/
 | Orifice C 0.6, weir C 3.0 | | FHWA | HEC-22 Ch.10 typical coefficients |
 | Pond 4 ft deep, weir crest at 3 ft, block = 50×50 ft | | Game rule | |
 | Pond must include the marked outfall tile | | Game rule | |
+| Pond blocks that touch edge-to-edge are ONE pond: storage V(h) = N blocks × 2,500 sf × h, one water level, one outlet | | Game rule (level-pool routing) | sim.js `pondGroups` / `detention` |
+| Only the pond holding the outfall tile is routed through the outlet; a separate pond holds its own rain (warning) | | Game rule | |
+| One outlet structure per pond, on the rim facing the creek (else the lowest ground), nearest the block the player tapped | | Game rule | |
 
 ## Costs (bid items)
 

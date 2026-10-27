@@ -19,9 +19,9 @@
       basis: HDM + ' Ch.7 Sec.3 (Eq 7-2, permissible shear table: grass retardance D 0.60, synthetic mat 2.00, rock D50 6 in 2.50 lb/sf); FHWA HEC-15.', game: 'Game: 2-ft bottom, 3:1 sides, 1.5 ft deep; concrete permissible shear is a game value.' },
     { id: 'culvert', icon: '◯', label: 'Culvert', rule: 'Place on the road-over-creek tile. Pick barrel size and count: the design-storm headwater must stay below the road edge, or the road overtops.',
       basis: HDM + ' Ch.8 Sec.2 (allowable headwater below the roadway), Table 4-2 design frequency; FHWA HDS-5 inlet/outlet control via culvert/calc.js.', game: 'Game: 80-ft RCP barrels, square edge with headwall.' },
-    { id: 'pond', icon: '▢', label: 'Pond', rule: 'Detention pond blocks (50x50 ft, 4 ft deep) on open lawn. Must include the flagged outfall tile. Then add the outlet structure.',
+    { id: 'pond', icon: '▢', label: 'Pond', rule: 'Detention pond blocks (50x50 ft, 4 ft deep) on open lawn. Blocks that touch edge-to-edge make ONE pond (one basin, one water level). It must include the flagged outfall tile. Then add its one outlet structure.',
       basis: HDM + ' Ch.10 Sec.3 Detention: detention changes the rate, not the volume; consider it to avoid damage to adjacent properties.', game: 'Game: post-development peak must not exceed pre-development (common local rule); modified-rational routing.' },
-    { id: 'outlet', icon: '▮', label: 'Outlet', rule: 'Outlet riser on the pond outfall tile: an orifice controls small releases; a weir (crest 3 ft) passes big storms.',
+    { id: 'outlet', icon: '▮', label: 'Outlet', rule: 'One outlet riser per pond: tap any block of the outfall pond. It sits on the rim facing the creek (nearest the block you tap) and pipes to the outfall. An orifice controls small releases; a weir (crest 3 ft) passes big storms; above 4 ft the pond spills over the rim there.',
       basis: 'Orifice Q = 0.6 A √(2gh), weir Q = 3.0 L H^1.5 (standard hydraulics; FHWA HEC-22 detention chapter).', game: 'Game: outlet cost $8,000.' },
     { id: 'demolish', icon: '✖', label: 'Remove' }
   ];
@@ -225,15 +225,31 @@
   function hasUtil() { return G.L.util && Object.keys(G.L.util).length > 0; }
   function evalFor(k, el) { var r = G.phase === 'plan' ? G.live : G.scoreRes; if (!r) return null; var e = r.evals.filter(function (x) { return x.k === k && (!el || x.el === el); }); return e.filter(function (x) { return x.status !== 'ok'; })[0] || e[0] || null; }
   function prog(k, t, ms) { var b = G.born[k]; return b == null ? 1 : Math.max(0, Math.min(1, (t - b) / (ms || 900))); }
+  // ---------- ponds: edge-adjacent blocks are one body with one water surface and one outlet ----------
+  function pondTiles(cs) { return (cs || G.controls).filter(function (c) { return c.type === 'pond'; }).map(function (c) { return c.tile; }); }
+  function pondCells(g) { var W = G.L.W; return g.tiles.map(function (i) { var x = i % W; return { p: tp(i), n: { u0: x > 0 && !!g.set[i - 1], u1: x < W - 1 && !!g.set[i + 1], v0: !!g.set[i - W], v1: !!g.set[i + W] } }; }); }
+  function pondState(f) { // bodies, the outfall body, its outlet control and where the outlet structure sits; level 0..1.2 of 4 ft
+    var L = G.L, tiles = pondTiles(), key = tiles.join(','), ps = G._ponds;
+    if (!ps || ps.key !== key || ps.L !== L) { var gs = S.pondGroups(L, tiles), body = null; gs.forEach(function (g) { if (L.pondSite != null && g.set[L.pondSite]) body = g; }); ps = G._ponds = { key: key, L: L, groups: gs, body: body }; }
+    var oc = null; G.controls.forEach(function (c) { if (c.type === 'outlet') oc = c; });
+    var r = res(), pd = r && r.pond, lv = 0, storm = G.phase !== 'plan'; if (pd && pd.hasPond && storm) lv = pondLevel(pd, f);
+    var spot = ps.body && oc ? S.outletSpot(L, ps.body, oc.tile) : null;
+    return { groups: ps.groups, body: ps.body, oc: oc, spot: spot, level: lv, local: storm ? Math.min(0.3, 0.3 * qf(f)) : 0 };
+  }
+  function drawPonds(ctx, t, f) {
+    var st = pondState(f); if (!st.groups.length) return;
+    st.groups.forEach(function (g, k) { FA.drawPondBody(ctx, pondCells(g), { level: g === st.body ? st.level : st.local, t: t, seed: k + 1 }); });
+    if (st.spot) FA.drawOutletFlat(ctx, tp(st.spot.tile), st.spot.edge, { t: t, water: st.spot.water, flow: G.phase === 'storm' ? Math.min(1, st.level * 1.6) : 0, over: G.phase !== 'plan' && st.level > 1.0 });
+  }
   function drawFlatControls(ctx, t, f) {
     var r = res(), L = G.L, W = L.W, q = qf(f);
+    drawPonds(ctx, t, f);
     G.controls.forEach(function (c, k) {
       if (c.type === 'ditch') { var d = r ? r.dir[c.tile] : -1, alongV = d >= 0 ? Math.abs(d - c.tile) === W : true; FA.drawDitch(ctx, tp(c.tile), { lining: c.lining, alongV: alongV, prog: prog(k, t) });
         var dr = r && r.ditches[c.tile]; if (dr && G.phase !== 'plan') { var dd = Math.min(1.6, dr.d) * q, cen = tileCenter(c.tile); ctx.fillStyle = 'rgba(80,150,220,' + Math.min(0.85, 0.3 + dd * 0.5).toFixed(2) + ')';
           var ww = Math.max(1, Math.round(dd * 6)); for (var s2 = 0; s2 < 30; s2++) { var l = s2 / 30; for (var w = -ww; w <= ww; w++) { var pt = alongV ? A.at(tp(c.tile), 0.5 + w / 26, l) : A.at(tp(c.tile), l, 0.5 + w / 26); ctx.fillRect(Math.round(pt.x), Math.round(pt.y + 1), 2, 1); } }
           var e = evalFor(k, 'ditch'); if (e && e.status !== 'ok' && q > 0.5) { spray(ctx, cen.x, cen.y, t, k, e.status === 'scoured' ? '#a87444' : '#dff2ff');
             if (e.status === 'overtopped' || e.status === 'dead end') { A.diamond(ctx, tp(c.tile), 0.0, 'rgba(70,130,210,.5)'); [-1, 1].forEach(function (sd) { var nb = alongV ? c.tile + sd : c.tile + sd * W; if (nb >= 0 && nb < L.types.length && L.types[nb] !== 'C') A.diamond(ctx, tp(nb), 0.15, 'rgba(70,130,210,' + (0.25 + 0.1 * Math.sin(t / 250 + sd)).toFixed(2) + ')'); }); } } } }
-      if (c.type === 'pond') { var pd = r && r.pond, lv = 0; if (pd && pd.hasPond && G.phase !== 'plan') lv = pondLevel(pd, f); FA.drawPond(ctx, tp(c.tile), { level: lv, t: t, seed: k }); }
       if (c.type === 'inlet') { var g = r && r.gut[c.tile]; FA.drawInlet(ctx, tp(c.tile), { len: c.len, alongY: alongY(c.tile), t: t, prog: prog(k, t), flow: G.phase === 'storm' && g ? Math.min(1, (g.Qi || 0) / 3) * q : 0, box: true });
         var e2 = evalFor(k, 'inlet'); if (e2 && G.phase === 'storm' && e2.Qb > 0.05 && q > 0.3) { var cc = tileCenter(c.tile), dn = r.dir[c.tile] >= 0 ? tileCenter(r.dir[c.tile]) : cc, ph = (t / 600) % 1; ctx.fillStyle = e2.Qb > 0.5 ? '#ff9a3a' : '#bfe6ff'; ctx.fillRect(Math.round(cc.x + (dn.x - cc.x) * ph) - 2, Math.round(cc.y + (dn.y - cc.y) * ph) - 4, 4, 2); } }
     });
@@ -290,8 +306,8 @@
       if (c.type === 'culvert') { hasCulv = true; var p = tp(c.tile), cen = tileCenter(c.tile); Q(cen.y + 2, function () { var o = culvertOpts(c, k, t, f), g = culvertGeo(c.tile); FA.drawCulvert(ctx, p, o);
         if (g.near >= 0 && S.isWater(G.L.types[g.near]) && G.phase !== 'plan') { var w = culvertWater(g, f); drawSlotWater(ctx, g.near, g.upNear ? w.up : w.dn, t, 5); }
         var e = evalFor(k, 'culvert'); if (e && e.status === 'overtopped' && G.phase !== 'plan' && q > 0.4) overtop(ctx, c.tile, t, k); }); }
-      if (c.type === 'outlet') { var p2 = tp(c.tile); Q(tileCenter(c.tile).y + 3, function () { FA.drawOutlet(ctx, p2, { t: t, flow: G.phase === 'storm' ? q : 0 }); }); }
     });
+    var ps = pondState(f); if (ps.spot) { var sp = ps.spot, p3 = tp(sp.tile), og = FA.outletGeo(p3, sp.edge); Q(og.base.y + 2, function () { FA.drawOutlet(ctx, p3, { edge: sp.edge, t: t, level: ps.level, orif: ps.oc.orif, weir: ps.oc.weir }); }); }
     if (G.L.culvert && !hasCulv && G.phase !== 'plan' && q > 0.3) Q(tileCenter(G.L.culvert.tile).y + 3, function () { overtop(ctx, G.L.culvert.tile, t, 99); });
   }
   // ---------- underground view: pipes, structures, HGL ----------
@@ -504,7 +520,7 @@
     if (tool === 'ditch' && !/[GT]/.test(ty) && !(L.sandbox && ty === 'H')) return 'Ditches go on open ground (lawn or trees) beside the road';
     if (tool === 'pond' && (L.sandbox ? /[RQXC]/.test(ty) : ty !== 'G')) return 'Pond blocks go on open lawn';
     if (tool === 'culvert' && (!L.culvert || i !== L.culvert.tile)) return 'Culverts go on the road-over-creek tile';
-    if (tool === 'outlet') { if (i !== L.pondSite) return 'The outlet goes on the pond outfall tile (green flag)'; if (!G.controls.some(function (c) { return c.type === 'pond' && c.tile === i; })) return 'Build a pond block on the outfall tile first'; }
+    if (tool === 'outlet') { var bd = S.pondBody(L, pondTiles()); if (!bd) return 'Build a pond block on the outfall tile (green flag) first'; if (!bd.set[i]) return 'Tap a block of the pond that holds the outfall (green flag): its one outlet sits on that pond\u2019s rim'; }
     return null;
   }
   function makeCtl(tool, i) {
@@ -519,7 +535,7 @@
   function placeAt(i, quiet) {
     var tool = G.tool, why = placeBlock(tool, i); if (why) { if (!quiet) { toast(why); snd('buzz'); } return false; }
     var c = makeCtl(tool, i); if (!c) return false;
-    var same = -1; G.controls.forEach(function (x, k) { if (x.type === tool && x.tile === i) same = k; });
+    var same = -1; G.controls.forEach(function (x, k) { if (x.type === tool && (x.tile === i || tool === 'outlet')) same = k; }); // one outlet per pond: placing again moves/edits it
     if (same >= 0) { var prev = G.controls[same]; if (JSON.stringify(plain1(prev)) === JSON.stringify(c)) { if (!quiet) { G.editTile = i; toast('Selected this ' + tool + ': option changes now edit it'); } return false; } G.history.push({ op: 'set', k: same, c: prev }); G.controls[same] = Object.assign({ round: G.round }, c); if (!quiet) toast('Changed ' + tool); }
     else { if (!quiet) G.editTile = -1; G.controls.push(Object.assign({ round: G.round }, c)); G.history.push({ op: 'add' }); G.born[G.controls.length - 1] = performance.now(); }
     snd({ inlet: 'grate', ditch: 'dirt', pond: 'dirt', culvert: 'concrete', outlet: 'concrete' }[tool] || 'thunk');
@@ -571,13 +587,14 @@
     var p = tp(c.tile);
     if (c.type === 'inlet') FA.drawInlet(ctx, p, { len: c.len, alongY: alongY(c.tile), t: t });
     else if (c.type === 'ditch') FA.drawDitch(ctx, p, { lining: c.lining, alongV: true });
-    else if (c.type === 'pond') FA.drawPond(ctx, p, {});
+    else if (c.type === 'pond') { var gs = S.pondGroups(G.L, pondTiles().concat([c.tile])); gs.forEach(function (g) { if (g.set[c.tile]) FA.drawPondBody(ctx, pondCells(g), {}); }); }
     else if (c.type === 'culvert') FA.drawCulvert(ctx, p, culvertOpts(c, null, t, 0));
-    else if (c.type === 'outlet') FA.drawOutlet(ctx, p, {});
+    else if (c.type === 'outlet') { var bd = S.pondBody(G.L, pondTiles()), sp = bd && S.outletSpot(G.L, bd, c.tile); if (sp) { var p4 = tp(sp.tile); FA.drawOutletFlat(ctx, p4, sp.edge, { water: sp.water }); FA.drawOutlet(ctx, p4, { edge: sp.edge, orif: c.orif, weir: c.weir }); } else FA.drawOutlet(ctx, p, {}); }
   }
   function drawSolGhost(ctx, t) {
-    var pulse = 0.35 + 0.25 * Math.sin(t / 300);
-    G.solGhost.forEach(function (c, k) { if (c.type !== 'pipe') A.diamond(ctx, tp(c.tile), 0.04, 'rgba(80,200,255,' + pulse.toFixed(2) + ')'); ctx.globalAlpha = 0.7; drawGhostCtl(ctx, c, t); ctx.globalAlpha = 1;
+    var pulse = 0.35 + 0.25 * Math.sin(t / 300), gp = G.solGhost.filter(function (c) { return c.type === 'pond'; }).map(function (c) { return c.tile; });
+    if (gp.length) { ctx.globalAlpha = 0.7; S.pondGroups(G.L, pondTiles().concat(gp)).forEach(function (g) { if (gp.some(function (i) { return g.set[i]; })) FA.drawPondBody(ctx, pondCells(g), {}); }); ctx.globalAlpha = 1; } // ghost blocks shown as the merged pond
+    G.solGhost.forEach(function (c, k) { if (c.type !== 'pipe') A.diamond(ctx, tp(c.tile), 0.04, 'rgba(80,200,255,' + pulse.toFixed(2) + ')'); ctx.globalAlpha = 0.7; if (c.type !== 'pond') drawGhostCtl(ctx, c, t); ctx.globalAlpha = 1;
       var n = G.solNum && G.solNum[k]; if (n) { var cc = c.type === 'pipe' ? tileCenter(c.a) : tileCenter(c.tile); ctx.fillStyle = '#0c3a5a'; ctx.fillRect(Math.round(cc.x) - 6, Math.round(cc.y) - 18, 12, 11); ctx.fillStyle = '#fff'; ctx.font = 'bold 9px system-ui'; ctx.fillText(String(n), Math.round(cc.x) - 3, Math.round(cc.y) - 9); } });
   }
   // ---------- info ----------

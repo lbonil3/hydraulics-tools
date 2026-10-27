@@ -234,4 +234,37 @@ t('culvert sprite: barrels sit in the near embankment face under the road, count
   assert.ok(r(36) < r(48) && r(48) < r(72), 'bore grows with diameter');
 });
 
+t('pond bodies: edge-adjacent blocks merge into one pond (L shape), diagonal blocks do not, adding/removing re-merges/splits', () => {
+  const L = S.makeLevel(7), W = L.W, s0 = L.pondSite;
+  const g1 = S.pondGroups(L, [s0, s0 + 1, s0 + W, s0 + 2 * W, s0 + 2 * W + 1]); assert.strictEqual(g1.length, 1, 'L shape is one pond'); assert.strictEqual(g1[0].area, 5 * 2500);
+  const g2 = S.pondGroups(L, [s0, s0 + W + 1]); assert.strictEqual(g2.length, 2, 'diagonal touch is not a connection');
+  assert.strictEqual(S.pondGroups(L, [s0, s0 + W + 1, s0 + 1]).length, 1, 'adding the bridging block merges them');
+  const split = S.pondGroups(L, [s0, s0 + W, s0 + 2 * W].filter(i => i !== s0 + W)); assert.strictEqual(split.length, 2, 'removing the middle block splits the pond');
+  assert.ok(S.pondBody(L, [s0, s0 + 1]).set[s0] && !S.pondBody(L, [s0 + 1 + W]), 'the outfall body is the one holding the flagged tile');
+});
+t('pond storage: only the outfall body is routed (V = N x 2500 sf x h); a separate pond is a warning, not storage', () => {
+  const L = S.makeLevel(7), W = L.W, s0 = L.pondSite, base = S.presetControls(L), ol = { type: 'outlet', tile: s0, orif: 12, weir: 4 };
+  const body = [s0, s0 + 1, s0 + W, s0 + W + 1].map(i => ({ type: 'pond', tile: i })), lone = { type: 'pond', tile: s0 + 3 * W };
+  const a = S.score(L, base.concat(body, [ol])).result.pond, b = S.score(L, base.concat(body, [lone, ol]));
+  assert.strictEqual(a.area, 4 * 2500); assert.strictEqual(b.result.pond.area, 4 * 2500, 'separate block adds no storage'); assert.strictEqual(b.result.pond.groups, 2);
+  assert.ok(b.evals.some(e => e.el === 'pond' && e.status === 'separate' && e.warn), 'separate pond flagged as a warning');
+  // the stage series drawn on the map is the routed stage h = V / area
+  const pk = a.ser.reduce((m, r) => Math.max(m, r[3]), 0); assert.ok(pk <= a.hmax + 1e-9 && a.hmax - pk < 0.02, "sampled stage matches the routed peak");
+});
+t('pond routing equals the old per-block model for every stored (contiguous) plan', () => {
+  const golden = { '7sol': [3, 5.2042, 2.3938], '7alt': [3, 4.2224, 3.1476], '7naive': [2, 12.9914, 3.6494], '8sol': [3, 4.0675, 1.6568], '8alt': [3, 3.0855, 0.8179] };
+  Object.keys(golden).forEach(key => { const n = +key[0], k = key.slice(1), L = S.makeLevel(n), plan = k === 'sol' ? SOL.solutionPlan(n) : SOL.SOL[n][k], r = run(L, plan), p = r.result.pond;
+    assert.strictEqual(p.groups, 1, key + ' is one pond'); assert.strictEqual(p.cells, plan.filter(x => x.type === 'pond').length);
+    assert.strictEqual(r.stars, golden[key][0], key + ' stars'); near(p.post, golden[key][1], 1e-3, key + ' post'); near(p.hmax, golden[key][2], 1e-3, key + ' hmax'); });
+});
+t('one outlet per pond: sits on the rim facing the creek, nearest the tapped block; falls back to the lowest ground', () => {
+  const L = S.makeLevel(7), W = L.W, s0 = L.pondSite, plan = run(L, SOL.solutionPlan(7)).result.pond.spot;
+  assert.ok(plan.water && L.types[plan.out] === 'C', 'L7 outlet discharges to the creek'); assert.strictEqual(plan.edge, 'u1');
+  const tiles = SOL.build(L, SOL.solutionPlan(7)).filter(c => c.type === 'pond').map(c => c.tile), body = S.pondBody(L, tiles);
+  const low = S.outletSpot(L, body, s0 + 3 * W); assert.ok(low.water && Math.abs(((low.tile / W) | 0) - (((s0 + 3 * W) / W) | 0)) <= 0, 'tapping a lower block moves the outlet along the creek side');
+  const Lb = S.makeSandbox(null), sb = Lb.pondSite, bb = S.pondBody(Lb, [sb, sb - 1, sb - Lb.W]), sp = S.outletSpot(Lb, bb, sb);
+  assert.ok(bb.set[sp.tile] && !bb.set[sp.out], 'outlet on a perimeter edge'); const outs = [];
+  bb.tiles.forEach(i => S.nb(Lb, i).forEach(j => { if (!bb.set[j] && !S.isWater(Lb.types[j])) outs.push(Lb.heights[j]); }));
+  assert.ok(sp.water || Lb.heights[sp.out] <= Math.min.apply(null, outs) + 1e-9, 'no creek next to it: lowest ground outside');
+});
 console.log('\n' + n + ' tests passed');

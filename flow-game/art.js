@@ -191,20 +191,73 @@
   function drawCreekWater(ctx, p, depth, t, seed, col) { if (depth <= 0.3) return; var q = { x: p.x, y: p.y - depth };
     B.diamond(ctx, q, 0.0, col || 'rgba(78,128,178,.78)'); for (var k = 0; k < 3; k++) { var ph = ((t || 0) / 900 + hash(k, seed || 0, 9)) % 1, w = at(q, 0.2 + 0.6 * ph, 0.2 + 0.6 * hash(k, 3, seed || 0)); ctx.fillStyle = 'rgba(225,242,255,' + (0.6 * Math.sin(ph * 3.14)).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 3, Math.round(w.y), 6, 1); }
   }
-  function drawPond(ctx, p, o) { // excavated basin; o.level 0..1 water depth fraction
-    B.diamond(ctx, p, 0.04, '#7d5733'); B.diamond(ctx, p, 0.1, '#5a9a48'); B.diamond(ctx, p, 0.2, '#6a8a4a');
-    var lv = o.level || 0; if (lv > 0.01) { B.diamond(ctx, p, 0.2 - 0.14 * Math.min(1, lv), 'rgba(70,130,190,' + (0.6 + 0.3 * lv).toFixed(2) + ')');
-      var t = o.t || 0; for (var k = 0; k < 3; k++) { var ph = (t / 1400 + hash(k, o.seed || 0, 3)) % 1, w = at(p, 0.3 + 0.4 * hash(k, 2, o.seed || 0), 0.3 + 0.4 * ph); ctx.fillStyle = 'rgba(220,240,255,' + (0.6 * Math.sin(ph * 3.14)).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 3, Math.round(w.y), 6, 1); } }
+  // ---- detention pond body: edge-adjacent blocks are one basin with one water surface ----
+  // cells: [{ p: tile top point, n: { u0, u1, v0, v1 } true where the neighbour on that side is part of the same pond }]
+  // Side slopes/berm only on the outer perimeter; every colour is filled as ONE path so shared edges have no seams.
+  var PIN = { u0: 0.24, v0: 0.24, u1: 0.12, v1: 0.12 }, PSLOPE = { v0: '#93904e', u0: '#7b7842', u1: '#4b4829', v1: '#56522e' };
+  function pondBox(c, s) { var n = c.n; return { u0: n.u0 ? 0 : PIN.u0 * s, v0: n.v0 ? 0 : PIN.v0 * s, u1: n.u1 ? 1 : 1 - PIN.u1 * s, v1: n.v1 ? 1 : 1 - PIN.v1 * s }; }
+  function pathQuad(ctx, p, b, dy) { var a = [at(p, b.u0, b.v0), at(p, b.u1, b.v0), at(p, b.u1, b.v1), at(p, b.u0, b.v1)]; dy = dy || 0; ctx.moveTo(a[0].x, a[0].y + dy); for (var k = 1; k < 4; k++) ctx.lineTo(a[k].x, a[k].y + dy); ctx.closePath(); }
+  function edgePts(p, e, b) { // outer edge (2 pts) + inner edge (2 pts) of the slope on side e
+    if (e === 'v0') return [at(p, 0, 0), at(p, 1, 0), at(p, b.u1, b.v0), at(p, b.u0, b.v0)];
+    if (e === 'u1') return [at(p, 1, 0), at(p, 1, 1), at(p, b.u1, b.v1), at(p, b.u1, b.v0)];
+    if (e === 'v1') return [at(p, 1, 1), at(p, 0, 1), at(p, b.u0, b.v1), at(p, b.u1, b.v1)];
+    return [at(p, 0, 1), at(p, 0, 0), at(p, b.u0, b.v0), at(p, b.u0, b.v1)]; }
+  function drawPondBody(ctx, cells, o) {
+    o = o || {}; var lv = o.level || 0, t = o.t || 0;
+    ['v0', 'u0', 'u1', 'v1'].forEach(function (e) { ctx.beginPath(); var any = false;
+      cells.forEach(function (c) { if (c.n[e]) return; any = true; var q = edgePts(c.p, e, pondBox(c, 1)); ctx.moveTo(q[0].x, q[0].y); for (var k = 1; k < 4; k++) ctx.lineTo(q[k].x, q[k].y); ctx.closePath(); });
+      if (any) { ctx.fillStyle = PSLOPE[e]; ctx.fill(); } });
+    ctx.beginPath(); cells.forEach(function (c) { pathQuad(ctx, c.p, pondBox(c, 1)); }); ctx.fillStyle = '#5f7a3c'; ctx.fill(); // floor (wet grass / silt)
+    ctx.beginPath(); cells.forEach(function (c) { pathQuad(ctx, c.p, pondBox(c, 0.55)); }); ctx.fillStyle = '#587238'; ctx.fill();
+    // berm crest: a light line along the outer rim only
+    ctx.strokeStyle = 'rgba(190,230,140,.75)'; ctx.lineWidth = 1; ctx.beginPath();
+    cells.forEach(function (c) { ['v0', 'u1', 'v1', 'u0'].forEach(function (e) { if (c.n[e]) return; var q = edgePts(c.p, e, pondBox(c, 1)); ctx.moveTo(q[0].x, q[0].y + 0.5); ctx.lineTo(q[1].x, q[1].y + 0.5); }); }); ctx.stroke();
+    if (lv > 0.01) { var s = Math.max(0, 1 - Math.min(1, lv) * 0.9);
+      ctx.beginPath(); cells.forEach(function (c) { pathQuad(ctx, c.p, pondBox(c, s)); }); var mx = Math.min(1, lv * 1.5); ctx.fillStyle = lv > 1 ? '#5c96cd' : 'rgb(' + Math.round(80 - 18 * mx) + ',' + Math.round(128 - 6 * mx) + ',' + Math.round(130 + 54 * mx) + ')'; ctx.fill(); // opaque: one flat surface, nothing shows through
+      ctx.strokeStyle = 'rgba(215,238,255,.55)'; ctx.beginPath(); // shoreline only on the perimeter
+      cells.forEach(function (c) { var b = pondBox(c, s); ['v0', 'u1', 'v1', 'u0'].forEach(function (e) { if (c.n[e]) return; var q = edgePts(c.p, e, b); ctx.moveTo(q[2].x, q[2].y); ctx.lineTo(q[3].x, q[3].y); }); }); ctx.stroke();
+      cells.forEach(function (c, ci) { var b = pondBox(c, s); for (var k = 0; k < 2; k++) { var ph = (t / 1500 + hash(k, ci, o.seed || 3)) % 1, w = at(c.p, b.u0 + (b.u1 - b.u0) * (0.2 + 0.6 * hash(k, ci, 7)), b.v0 + (b.v1 - b.v0) * (0.2 + 0.6 * ph));
+        ctx.fillStyle = 'rgba(225,242,255,' + (0.55 * Math.sin(ph * 3.14)).toFixed(2) + ')'; ctx.fillRect(Math.round(w.x) - 3, Math.round(w.y), 6, 1); } }); }
   }
-  function drawOutlet(ctx, p, o) { // concrete riser with orifice + weir notch
-    var c = at(p, 0.5, 0.5), x = Math.round(c.x), y = Math.round(c.y); B.shadow(ctx, x, y, 8, 3, 0.3);
-    r(ctx, x - 5, y - 14, 10, 14, '#c8c8c2'); r(ctx, x - 5, y - 14, 10, 2, '#e8e8e2'); r(ctx, x + 2, y - 14, 3, 14, '#a8a8a2');
-    r(ctx, x - 2, y - 12, 4, 2, '#2a2e34'); ctx.fillStyle = '#1a1e24'; ctx.beginPath(); ctx.arc(x - 1, y - 4, 2, 0, 6.283); ctx.fill();
-    if (o.flow > 0.05) { var t = o.t || 0; for (var k = 0; k < 5; k++) { var ph = (t / 300 + k / 5) % 1; ctx.fillStyle = 'rgba(200,235,255,.8)'; ctx.fillRect(Math.round(x + 6 + ph * 10), Math.round(y - 3 + ph * ph * 6), 2, 1); } }
+  function drawPond(ctx, p, o) { drawPondBody(ctx, [{ p: p, n: {} }], o); } // single block (legacy callers)
+  // outlet geometry on side e of the tile at p: base point on the slope, unit outward vector
+  var OUTV = { u1: [1, 0], v1: [0, 1], u0: [-1, 0], v0: [0, -1] };
+  function outletGeo(p, e) { var d = OUTV[e], mu = e === 'u1' ? 1 : e === 'u0' ? 0 : 0.5, mv = e === 'v1' ? 1 : e === 'v0' ? 0 : 0.5, ins = e === 'u1' || e === 'v1' ? 0.16 : 0.22;
+    var edge = at(p, mu, mv), base = at(p, mu - d[0] * ins, mv - d[1] * ins), far = at(p, mu + d[0] * 0.55, mv + d[1] * 0.55); return { edge: edge, base: base, far: far, d: d, mu: mu, mv: mv }; }
+  // flat part: outfall pipe stub from the riser through the berm to the creek / a riprap pad, discharge splash, emergency spill
+  function drawOutletFlat(ctx, p, e, o) {
+    o = o || {}; var g = outletGeo(p, e), t = o.t || 0, a = g.base, b = g.far;
+    if (!o.water) { for (var k = 0; k < 9; k++) { var rp = at(p, g.mu + g.d[0] * (0.42 + 0.14 * hash(k, 1, 4)) + (g.d[0] ? 0 : 0.18 * (hash(k, 2, 4) - 0.5)), g.mv + g.d[1] * (0.42 + 0.14 * hash(k, 3, 4)) + (g.d[1] ? 0 : 0.18 * (hash(k, 2, 4) - 0.5)));
+      r(ctx, Math.round(rp.x) - 1, Math.round(rp.y), 3, 2, k % 2 ? '#8d8a82' : '#a8a59c'); } }
+    var end = at(p, g.mu + g.d[0] * 0.4, g.mv + g.d[1] * 0.4);
+    ctx.lineCap = 'round'; ctx.strokeStyle = '#55595e'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(a.x, a.y + 1); ctx.lineTo(end.x, end.y + 1); ctx.stroke();
+    ctx.strokeStyle = '#9da1a6'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(end.x, end.y); ctx.stroke(); ctx.lineCap = 'butt';
+    r(ctx, Math.round(end.x) - 4, Math.round(end.y) - 2, 8, 4, '#c9c9c2'); r(ctx, Math.round(end.x) - 2, Math.round(end.y) - 1, 4, 3, '#22272d'); // headwall at the outfall with the pipe mouth
+    var fl = o.flow || 0;
+    if (fl > 0.03) { for (var j = 0; j < 4; j++) { var ph = (t / 380 + j / 4) % 1; ctx.fillStyle = 'rgba(205,235,255,' + (0.85 * (1 - ph)).toFixed(2) + ')'; ctx.fillRect(Math.round(a.x + (end.x - a.x) * ph) - 1, Math.round(a.y + (end.y - a.y) * ph) - 1, 2, 1); }
+      var sp = Math.min(1, fl); for (var m = 0; m < 6; m++) { var ph2 = (t / 300 + m / 6) % 1, ang = (m / 6) * 3.14 - 1.57, rr = ph2 * 7 * sp; ctx.fillStyle = 'rgba(230,245,255,' + (0.9 * (1 - ph2)).toFixed(2) + ')'; ctx.fillRect(Math.round(end.x + (b.x - end.x) * 0.4 + Math.cos(ang) * rr), Math.round(end.y + (b.y - end.y) * 0.4 - Math.abs(Math.sin(ang)) * rr * 0.6), 2, 1); } }
+    if (o.over) { var w0 = at(p, g.mu - (g.d[1] ? 0.3 : 0), g.mv - (g.d[0] ? 0.3 : 0)), w1 = at(p, g.mu + (g.d[1] ? 0.3 : 0), g.mv + (g.d[0] ? 0.3 : 0)),
+        w2 = at(p, g.mu + g.d[0] * 0.75 + (g.d[1] ? 0.45 : 0), g.mv + g.d[1] * 0.75 + (g.d[0] ? 0.45 : 0)), w3 = at(p, g.mu + g.d[0] * 0.75 - (g.d[1] ? 0.45 : 0), g.mv + g.d[1] * 0.75 - (g.d[0] ? 0.45 : 0)); // spill sheet over the emergency weir
+      ctx.fillStyle = 'rgba(110,176,236,.92)'; ctx.beginPath(); ctx.moveTo(w0.x, w0.y); ctx.lineTo(w1.x, w1.y); ctx.lineTo(w2.x, w2.y); ctx.lineTo(w3.x, w3.y); ctx.closePath(); ctx.fill();
+      for (var n2 = 0; n2 < 12; n2++) { var ph3 = (t / 420 + n2 / 12) % 1, s0 = hash(n2, 5, 9), st = at(p, g.mu + g.d[0] * 0.7 * ph3 + (g.d[1] ? (s0 - 0.5) * 0.6 : 0), g.mv + g.d[1] * 0.7 * ph3 + (g.d[0] ? (s0 - 0.5) * 0.6 : 0)); ctx.fillStyle = 'rgba(245,252,255,' + (0.95 * (1 - ph3)).toFixed(2) + ')'; ctx.fillRect(Math.round(st.x) - 3, Math.round(st.y), 6, 1); }
+      ctx.strokeStyle = 'rgba(245,252,255,.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(w0.x, w0.y); ctx.lineTo(w1.x, w1.y); ctx.stroke(); } // white water where it pours over the berm
+  }
+  // tall part: concrete riser box on the pond side of the berm: orifice at the bottom, weir notch at the crest (3 of 4 ft),
+  // water line on its face at the pond stage. o.level 0..1.2 (fraction of the 4-ft depth), o.orif in, o.weir ft
+  function drawOutlet(ctx, p, o) {
+    o = o || {}; var e = o.edge || 'u1', g = outletGeo(p, e), x = Math.round(g.base.x), y = Math.round(g.base.y) + 2, H = 18, w = 12, t = o.t || 0;
+    B.shadow(ctx, x + 2, y, 9, 3, 0.3);
+    r(ctx, x - w / 2, y - H, w, H, '#cfcfc8'); r(ctx, x + w / 2 - 4, y - H, 4, H, '#a9a9a2'); r(ctx, x - w / 2 - 1, y - H - 2, w + 2, 2, '#ecece6'); r(ctx, x - w / 2, y - 1, w, 1, '#8e8e88');
+    var wn = Math.max(2, Math.min(w - 4, Math.round((o.weir || 4) * 1.1))), crest = y - Math.round(H * 0.75); r(ctx, x - Math.round(wn / 2) - 1, y - H - 2, wn, crest - (y - H - 2), '#2a2f36'); // weir notch down to the crest
+    var od = Math.max(2, Math.min(7, Math.round((o.orif || 12) / 3))); ctx.fillStyle = '#14181d'; ctx.beginPath(); ctx.arc(x - 1, y - od / 2 - 2, od / 2, 0, 6.283); ctx.fill(); // orifice
+    var lv = o.level || 0;
+    if (lv > 0.01) { var wl = Math.round(Math.min(H + 2, lv * H)); ctx.fillStyle = 'rgba(62,122,184,.72)'; ctx.fillRect(x - w / 2 - 2, y - wl, w + 4, wl); ctx.fillStyle = 'rgba(220,240,255,.85)'; ctx.fillRect(x - w / 2 - 3, y - wl, w + 6, 1);
+      if (lv > 0.75) { for (var k = 0; k < 3; k++) { var ph = (t / 260 + k / 3) % 1; ctx.fillStyle = 'rgba(230,245,255,' + (0.9 * (1 - ph)).toFixed(2) + ')'; ctx.fillRect(x - Math.round(wn / 2) + k, crest + Math.round(ph * (H * 0.5)), 1, 2); } } }
+    for (var m = 1; m < 4; m++) r(ctx, x - w / 2 - 2, y - Math.round(m * H / 4), 2, 1, m === 3 ? '#ffd23a' : '#6b6b66'); // stage marks (ft), crest mark yellow
   }
   function drawUtility(ctx, p, t) { var c = at(p, 0.5, 0.5), x = Math.round(c.x), y = Math.round(c.y); r(ctx, x, y - 12, 1, 12, '#ddd'); r(ctx, x + 1, y - 12, 6, 4, Math.floor((t || 0) / 400) % 2 ? '#ffd400' : '#ffb000'); r(ctx, x - 8, y - 1, 16, 1, 'rgba(255,212,0,.8)'); }
   function drawNoBuild(ctx, p) { for (var k = 0; k < 8; k++) { var a = at(p, 0.1 + k * 0.1, 0.1), b = at(p, 0.1, 0.1 + k * 0.1); ctx.strokeStyle = 'rgba(230,60,40,.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); } }
   function drawFlag(ctx, x, y, col) { x = Math.round(x); y = Math.round(y); r(ctx, x, y - 26, 1, 26, '#5a0e08'); r(ctx, x + 1, y - 26, 8, 6, col || '#ff3b2f'); }
   root.FlowArt = { drawTerrain: drawTerrain, drawHouse: drawHouse, drawTree: drawTree, drawCar: drawCar, drawInlet: drawInlet, drawLid: drawLid, drawDitch: drawDitch,
-    drawCulvert: drawCulvert, drawCulvertFar: drawCulvertFar, culvertFace: culvertFace, culvertBarrels: culvertBarrels, drawCreekWater: drawCreekWater, drawPond: drawPond, drawOutlet: drawOutlet, drawUtility: drawUtility, drawNoBuild: drawNoBuild, drawFlag: drawFlag, LIN: LIN, R: R };
+    drawCulvert: drawCulvert, drawCulvertFar: drawCulvertFar, culvertFace: culvertFace, culvertBarrels: culvertBarrels, drawCreekWater: drawCreekWater, drawPond: drawPond, drawPondBody: drawPondBody, drawOutlet: drawOutlet, drawOutletFlat: drawOutletFlat, outletGeo: outletGeo, drawUtility: drawUtility, drawNoBuild: drawNoBuild, drawFlag: drawFlag, LIN: LIN, R: R };
 })(this);
