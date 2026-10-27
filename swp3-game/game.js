@@ -31,9 +31,15 @@
     { id: 'exit', label: 'Exit', rule: 'Place on the orange SITE ACCESS tile where trucks leave. Without it, mud is tracked onto the road.',
       basis: 'TxDOT 2024 Spec Item 506.4.4: construction exits at least 14 ft wide one-way / 20 ft two-way; Type 1 at least 8 in. deep crushed aggregate. TxDOT EC(3)-16: Type 1 length not less than 50 ft, graded to drain to a sediment trapping device.',
       game: 'Game rule: a missing exit adds a fixed tracked-mud load.' },
-    { id: 'seed', label: 'Seed', rule: 'Temporary seeding + straw mulch on bare soil. Cheap; cuts erosion on that tile.',
+    { id: 'seed', label: 'Seed', rule: 'Temporary seeding + straw mulch on bare soil. Cheap, but it GROWS IN: mulch only at first, full grass cover after 2 storms. Seed early, then revise around it.',
       basis: 'TxDOT 2024 Spec Item 506.4.3.2: initiate stabilization of disturbed areas no more than 14 days after work there stops (per TPDES CGP TXR150000). Prices from TxDOT bid tabs (Items 164 / 162).',
-      game: 'Game rule: seeded+mulched tile erodes at 40% of bare soil, effective immediately.' },
+      game: 'Game rule: erosion is 80% of bare soil on the first storm, 60% on the second, 40% once grown in (each Rain Check counts as a storm).' },
+    { id: 'basin', label: 'Basin', rule: 'Dig at a LOW POINT where flow collects (at least 0.75 ac). Handles big concentrated flows the fences cannot, but it is expensive. Size: 3,600 cf per acre drained; one basin holds 10,800 cf (3 ac). Bigger drainage area (or a bigger storm) = undersized and overtopped.',
+      basis: 'TxDOT 2024 Spec Item 506.4.4.5.1: sediment basins provide 3,600 cf of storage per acre drained (required where 10 or more acres are disturbed at one time). Cost from TxDOT bid tabs (Item 506 earthwork for erosion & sediment control).',
+      game: 'Game rule: one basin block = 10,800 cf; traps 85% when sized OK, 20% when undersized; needs at least 0.75 ac draining to it; in the creek = violation.' },
+    { id: 'washout', label: 'Washout', rule: 'Concrete truck washout pit. Needed on sites with concrete work. Keep it at least 50 ft (1 tile, diagonals too) away from storm inlets, ditches and the creek.',
+      basis: 'No TxDOT number verified for this. EPA Stormwater BMP fact sheet "Concrete Washout" (epa.gov): washout facilities should not be placed within 50 ft of storm drains, open ditches, or waterbodies.',
+      game: 'Game rule: a missing or too-close washout adds a fixed washwater load; cost $650 is a game value.' },
     { id: 'demolish', icon: '✖', label: 'Remove' }
   ];
 
@@ -153,8 +159,16 @@
       ctx.fillStyle = '#c99a4a'; ctx.fillRect(x - 9, y - 3, 18, 2); ctx.fillRect(x - 9, y + 2, 18, 2); ctx.fillStyle = '#8a6430'; ctx.fillRect(x - 9, y - 1, 18, 1); ctx.fillRect(x - 9, y + 4, 18, 1);
     } else if (c.type === 'exit') {
       for (q = 0; q < 26; q++) { var gx = x - 10 + ((q * 7) % 21), gy = y - 4 + ((q * 5) % 9); ctx.fillStyle = q % 2 ? '#cfcfcf' : '#8f8f8f'; ctx.fillRect(gx, gy, 2, 1); }
+    } else if (c.type === 'basin') {
+      ctx.fillStyle = '#5a3a1c'; for (q = -12; q <= 12; q++) { var hy = Math.round(5.5 * (1 - Math.abs(q) / 12)); ctx.fillRect(x + q, y - hy, 1, 1); ctx.fillRect(x + q, y + hy, 1, 1); }
+      ctx.fillStyle = '#4a7fa8'; for (q = -10; q <= 10; q++) { var hh = Math.round(4.5 * (1 - Math.abs(q) / 10)); ctx.fillRect(x + q, y - hh + 1, 1, Math.max(1, 2 * hh - 1)); }
+      ctx.fillStyle = '#a8d0f0'; ctx.fillRect(x - 3, y, 4, 1);
+    } else if (c.type === 'washout') {
+      ctx.fillStyle = '#222'; ctx.fillRect(x - 7, y - 6, 14, 9); ctx.fillStyle = '#bdbdbd'; ctx.fillRect(x - 6, y - 5, 12, 6); ctx.fillStyle = '#ffd400'; ctx.fillRect(x - 7, y - 7, 14, 1);
     } else if (c.type === 'seed') {
-      for (q = 0; q < 12; q++) { var sx = x - 9 + ((q * 5) % 19), sy = y - 4 + ((q * 3) % 9); ctx.fillStyle = q % 3 ? '#e6cf7a' : '#7fbf5f'; ctx.fillRect(sx, sy, q % 3 ? 2 : 1, 1); if (q % 3 === 0) ctx.fillRect(sx, sy - 1, 1, 1); }
+      var grown = Math.min(2, (G.round || 0) - (c.round || 0)), nSp = 12 + grown * 8;
+      if (grown > 0) { ctx.fillStyle = grown > 1 ? 'rgba(106,168,79,.75)' : 'rgba(106,168,79,.4)'; for (q = -12; q <= 12; q += 2) { var gh = Math.round(5 * (1 - Math.abs(q) / 13)); ctx.fillRect(x + q, y - gh, 2, 2 * gh); } }
+      for (q = 0; q < nSp; q++) { var sx = x - 9 + ((q * 5) % 19), sy = y - 4 + ((q * 3) % 9); ctx.fillStyle = q % 3 && !grown ? '#e6cf7a' : '#7fbf5f'; ctx.fillRect(sx, sy, q % 3 ? 2 : 1, 1); if (q % 3 === 0) ctx.fillRect(sx, sy - 1, 1, 1); }
     }
   }
 
@@ -356,7 +370,7 @@
     if ((tool === 'seed' || tool === 'exit' || tool === 'inlet' || tool === 'fence') && ty === 'C') { toast('Not in the creek'); return; }
     var cost = S.CONTROLS[tool].cost;
     if (spent() + cost > G.L.budget) { toast('Over budget! $' + (G.L.budget - spent()) + ' left'); flashMoney(); return; }
-    G.controls.push({ type: tool, tile: i });
+    G.controls.push({ type: tool, tile: i, round: G.round || 0 });
     G.born[G.controls.length - 1] = performance.now();
     G.history.push({ op: 'add' });
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ }
@@ -398,12 +412,15 @@
     if (id === 'dam') { x.fillStyle = '#bdbdbd'; [[9, 10], [13, 8], [17, 8], [21, 10], [11, 12], [15, 11], [19, 12]].forEach(function (r) { x.fillRect(r[0], r[1], 3, 2); }); }
     if (id === 'inlet') { x.fillStyle = '#222'; x.fillRect(12, 11, 8, 3); x.fillStyle = '#c99a4a'; x.fillRect(8, 9, 16, 2); x.fillRect(8, 14, 16, 2); }
     if (id === 'exit') { x.fillStyle = '#cfcfcf'; for (var q = 0; q < 16; q++) x.fillRect(8 + (q * 5) % 16, 9 + (q * 3) % 7, 2, 1); }
+    if (id === 'basin') { poly(x, [16, 9, 25, 13, 16, 17, 7, 13], '#4a7fa8'); x.fillStyle = '#5a3a1c'; x.fillRect(7, 13, 18, 1); }
+    if (id === 'washout') { x.fillStyle = '#222'; x.fillRect(9, 8, 14, 8); x.fillStyle = '#bdbdbd'; x.fillRect(10, 9, 12, 5); x.fillStyle = '#ffd400'; x.fillRect(9, 7, 14, 1); }
     if (id === 'seed') { for (q = 0; q < 12; q++) { x.fillStyle = q % 3 ? '#e6cf7a' : '#7fbf5f'; x.fillRect(8 + (q * 5) % 16, 9 + (q * 3) % 7, 2, 1); } }
     void save; return c;
   }
   function buildToolbar() {
     var wrap = $('tools'); wrap.innerHTML = '';
     TOOLS.forEach(function (t) {
+      if (t.id === 'washout' && !G.L.concrete) return;
       var b = document.createElement('button'); b.type = 'button'; b.className = 'tool'; b.dataset.tool = t.id;
       b.setAttribute('aria-label', t.label);
       if (t.icon) { var s = document.createElement('span'); s.textContent = t.icon; b.appendChild(s); }
@@ -423,7 +440,7 @@
     } else {
       var C = S.CONTROLS[id];
       card.innerHTML = '<h3>' + C.name + ' — $' + C.cost + ' <small>(' + C.qty + ')</small></h3><div>' + t.rule + '</div>' +
-        '<div class="basis"><b>TxDOT basis:</b> ' + t.basis + '<br><span class="game">' + t.game + '</span><br><small>Cost: ' + C.unitNote + ' (TxDOT bid tabs, statewide low-bid avg).</small></div>';
+        '<div class="basis"><b>' + (t.id === 'washout' ? 'Basis (EPA; no TxDOT number verified)' : 'TxDOT basis') + ':</b> ' + t.basis + '<br><span class="game">' + t.game + '</span><br><small>Cost: ' + C.unitNote + ' ' + (/^game/.test(C.unitNote) ? '' : ' (TxDOT bid tabs, statewide low-bid avg)') + '.</small></div>';
     }
     card.classList.remove('hidden');
   }
@@ -431,7 +448,7 @@
   // ---------- levels / flow ----------
   function loadLevel(n) {
     G.level = n; G.L = S.makeLevel(n); geo = buildGeometry(G.L);
-    G.controls = []; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1; G.hoverTile = -1;
+    G.controls = []; G.history = []; G.born = {}; G.phase = 'plan'; G.scoreRes = null; G.particles = []; G.deposits = []; G.selTile = -1; G.hoverTile = -1; G.round = 0;
     G.sim = S.simulate(G.L, [], { intensity: G.L.forecast.intensity }); G.simDir = G.sim.dir;
     drawTerrain(); resize(); fitView();
     $('lvlName').textContent = 'Level ' + n + ': ' + G.L.name; $('lvlGoal').textContent = G.L.goal;
@@ -460,17 +477,18 @@
   function runStorm() {
     if (G.phase !== 'plan') return;
     if (!G.controls.length) toast('No controls placed — let\u2019s see what happens…');
-    G.scoreRes = S.score(G.L, G.controls);
+    G.scoreRes = S.score(G.L, agedControls());
     G.sim = G.scoreRes.result; G.phase = 'storm'; G.speed = 1; $('speedBtn').textContent = '1×';
     startStormParticles(); updateHud();
     $('infoCard').classList.add('hidden'); $('tileInfo').classList.add('hidden');
     $('stormHud').classList.remove('hidden'); $('stormLabel').textContent = '🌧 ' + G.L.actual.label;
     if (G.L.actual.intensity !== G.L.forecast.intensity) banner('⚡ Surprise! ' + G.L.actual.label + '<br><small>Bigger than the ' + G.L.forecast.label + ' forecast</small>');
   }
+  function agedControls() { return G.controls.map(function (c) { return { type: c.type, tile: c.tile, age: (G.round || 0) - (c.round || 0) }; }); }
   function banner(html) { var b = $('banner'); b.innerHTML = html; b.classList.remove('hidden'); setTimeout(function () { b.classList.add('hidden'); }, 2600); }
   function endStorm() {
     if (G.phase !== 'storm') return;
-    G.phase = 'report'; $('stormHud').classList.add('hidden');
+    G.phase = 'report'; $('stormHud').classList.add('hidden'); G.round = (G.round || 0) + 1; // each storm grows seeded tiles in
     var r = G.scoreRes, L = G.L, prev = progress.stars[L.id] || 0;
     if (r.stars > prev) { progress.stars[L.id] = r.stars; saveProgress(); }
     var st = ''; for (var k = 1; k <= 3; k++) st += k <= r.stars ? '★' : '<span class="off">★</span>';
@@ -483,6 +501,7 @@
       '<div class="stat"><span>Sediment leaving site</span><b>' + res.discharge.toFixed(0) + ' (no plan: ' + base.discharge.toFixed(0) + ')</b>' +
       '<span>· to creek / inlet / off-site</span><b>' + res.out.creek.toFixed(0) + ' / ' + res.out.inlet.toFixed(0) + ' / ' + res.out.offsite.toFixed(0) + '</b>' +
       '<span>· tracked onto road</span><b>' + res.out.tracked.toFixed(0) + '</b>' +
+      (L.concrete ? '<span>· concrete washwater</span><b>' + res.out.washout.toFixed(0) + '</b>' : '') +
       '<span>Trapped by your controls</span><b>' + res.out.trapped.toFixed(0) + '</b>' +
       '<span>Cost</span><b>$' + res.cost.toLocaleString() + ' / $' + L.budget.toLocaleString() + '</b>' +
       '<span>Storm</span><b>' + L.actual.label + '</b></div><small>Sediment in game units.</small>' +
@@ -494,7 +513,7 @@
   }
   function backToPlan() {
     G.phase = 'plan'; G.particles = []; G.deposits = []; G.scoreRes = null;
-    G.sim = S.simulate(G.L, G.controls, { intensity: G.L.forecast.intensity }); updateHud(); selectTool(G.tool);
+    G.sim = S.simulate(G.L, agedControls(), { intensity: G.L.forecast.intensity }); updateHud(); selectTool(G.tool);
   }
   function showLevels() {
     var html = '<h2>SWP3 Designer</h2><p>You are the engineer designing the erosion &amp; sediment control plan. Place controls, then run the storm.</p>';

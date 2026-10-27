@@ -1,6 +1,6 @@
 # SWP3 Designer — rules and sources
 
-Priority: TxDOT first, then EPA/FHWA (none used yet), then clearly labeled **game rule**.
+Priority: TxDOT first, then EPA/FHWA (EPA used for the concrete washout only), then clearly labeled **game rule**.
 Game rules are simplified for play; follow TxDOT/TCEQ requirements for real plans.
 
 Verified sources (read 2026-10-26):
@@ -9,6 +9,7 @@ Verified sources (read 2026-10-26):
 - **EC(2)-16** Rock Filter Dams — .../standard/roadway/ec216.pdf
 - **EC(3)-16** Construction Exits — .../standard/roadway/ec316.pdf
 - **EC(9)-16** Erosion Control Log — .../standard/roadway/ec916.pdf
+- **EPA Stormwater BMP fact sheet "Concrete Washout"** — epa.gov/sites/default/files/2020-02/documents/concretewashout.pdf (read 2026-10-26): washout facilities "should not be placed within 50 feet of storm drains, open ditches, or waterbodies".
 - **TxDOT Bid Tabulations** (data.texas.gov dataset de7b-7dna), statewide low-bid averages, lets 2024-09 to 2026-10, as compiled in `../bid-cost/prices.json`.
 
 Not used (not verified here): TxDOT Hydraulic Design Manual and the Storm Water Management Guidelines for Construction Activities — no numbers taken from them.
@@ -39,8 +40,14 @@ Not used (not verified here): TxDOT Hydraulic Design Manual and the Storm Water 
 | Construction exit length | not less than 50 ft | TxDOT EC(3)-16 Type 1 note 1 |
 | Missing exit tracked mud | 15 units × storm factor | game rule |
 | Stabilization timing | initiate within 14 days after work stops (card only) | TxDOT Item 506.4.3.2 (TPDES CGP TXR150000) |
-| Seed + mulch erosion factor | 40% of bare soil, immediate | game rule |
-| Sediment basin | 3,600 cf per acre drained for ≥ 10 disturbed acres (not in game yet) | TxDOT Item 506.4.4.5.1 |
+| Seed + mulch erosion factor | grows in: 80% of bare soil on 1st storm, 60% on 2nd, 40% after (each Rain Check = 1 storm) | game rule |
+| Sediment basin storage | 3,600 cf per acre drained (required volume shown and checked) | TxDOT Item 506.4.4.5.1 (required where ≥ 10 ac disturbed at one time) |
+| Basin block capacity | 10,800 cf (= 3 ac at 3,600 cf/ac); undersized above that (storm-adjusted) | game rule |
+| Basin placement | low point collecting ≥ 0.75 ac, not creek (violation), not road/inlet | game rule |
+| Basin trap | 85% ok / 20% undersized | game rule |
+| Basin cost | $15,990 = 400 CY × ~$39.98/CY | TxDOT bid tabs "EARTHWORK (EROSN & SEDMT CONT, IN VEH)" unit price; quantity is game rule |
+| Concrete washout distance | ≥ 50 ft from storm drains, open ditches, waterbodies (game: no inlet/ditch/creek tile within 1 tile, diagonals included) | EPA Concrete Washout BMP fact sheet (no TxDOT number verified) |
+| Concrete washout load / cost | missing or too-close washout adds 12 × storm factor; $650 | game rule |
 | Storm scaling | drainage area × storm factor (10-yr = 1.5) for thresholds | game rule |
 | Erosion per tile | bare soil 1, grass 0.03, ditch 0.6, road 0; × storm × (0.5 + slope%/4) | game rule |
 | Score | 90 × min(1, reduction/90%) + 10 × budget left − penalties | game rule |

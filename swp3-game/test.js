@@ -94,7 +94,42 @@ t('construction exit stops tracking; seeding reduces erosion', () => {
   assert.strictEqual(S.simulate(L, [{ type: 'exit', tile: a }]).out.tracked, 0);
   assert.strictEqual(S.simulate(L, [{ type: 'exit', tile: id(5, 5) }]).evals[0].status, 'wasted');
   const r0 = S.simulate(L, []), r1 = S.simulate(L, [{ type: 'seed', tile: id(6, 6) }]);
-  assert.ok(Math.abs(r1.gen[id(6, 6)] - r0.gen[id(6, 6)] * S.RULES.seedFactor) < 1e-9);
+  assert.ok(r1.gen[id(6, 6)] < r0.gen[id(6, 6)]);
+});
+
+t('seeding grows in over storms: weaker when new, full 40% after 2 storms', () => {
+  const L = S.makeLevel(1), i = id(6, 6), r0 = S.simulate(L, []);
+  const g = age => S.simulate(L, [{ type: 'seed', tile: i, age }]).gen[i] / r0.gen[i];
+  assert.ok(Math.abs(g(0) - 0.80) < 1e-9 && Math.abs(g(1) - 0.60) < 1e-9 && Math.abs(g(2) - 0.40) < 1e-9 && Math.abs(g(9) - 0.40) < 1e-9);
+  assert.ok(Math.abs(S.simulate(L, [{ type: 'seed', tile: i }]).gen[i] / r0.gen[i] - 0.80) < 1e-9); // no age = just placed
+});
+
+t('sediment basin: 3,600 cf/ac sizing, low point only, undersized overtops, creek = violation', () => {
+  const L = S.makeLevel(2), f = S.flowDirections(L), acc = S.flowAccumulation(L, f.dir);
+  const ac = i => acc[i] * S.TILE_AC;
+  let small = -1, big = -1, mid = -1;
+  for (let i = 0; i < acc.length; i++) { if (L.types[i] === 'C' || L.types[i] === 'R' || L.types[i] === 'I') continue;
+    if (ac(i) < 0.5 && small < 0) small = i; if (ac(i) > 3.2 && big < 0) big = i; if (ac(i) >= 1 && ac(i) <= 2.8 && mid < 0) mid = i; }
+  assert.ok(small >= 0 && big >= 0 && mid >= 0);
+  const ev = t => S.simulate(L, [{ type: 'basin', tile: t }], { intensity: 1 }).evals[0];
+  assert.strictEqual(ev(small).status, 'wasted');
+  assert.strictEqual(ev(mid).status, 'ok'); assert.ok(Math.abs(ev(mid).requiredCf - 3600 * ac(mid)) < 1e-6);
+  assert.strictEqual(ev(big).status, 'undersized'); assert.ok(ev(big).requiredCf > S.RULES.basinCapCf);
+  assert.ok(S.simulate(L, [{ type: 'basin', tile: mid }], { intensity: 1 }).discharge < S.simulate(L, [], { intensity: 1 }).discharge);
+  const L3 = S.makeLevel(3); assert.strictEqual(S.simulate(L3, [{ type: 'basin', tile: L3.types.indexOf('C') }]).evals[0].status, 'violation');
+});
+
+t('concrete washout: needed only with concrete work, 50 ft (1 tile) from inlet/ditch/creek', () => {
+  const L = plane(8, 8, 0, 1); L.types[id(2, 7, 8)] = 'C'; L.types[id(6, 3, 8)] = 'I';
+  assert.strictEqual(S.simulate(L, []).out.washout, 0);
+  L.concrete = true;
+  assert.ok(S.simulate(L, []).out.washout > 0);
+  assert.strictEqual(S.simulate(L, [{ type: 'washout', tile: id(1, 1, 8) }]).out.washout, 0);
+  assert.strictEqual(S.simulate(L, [{ type: 'washout', tile: id(5, 4, 8) }]).evals[0].status, 'too close'); // diagonal to inlet
+  assert.strictEqual(S.simulate(L, [{ type: 'washout', tile: id(2, 6, 8) }]).evals[0].status, 'too close'); // next to creek
+  assert.ok(S.simulate(L, [{ type: 'washout', tile: id(2, 6, 8) }]).out.washout > 0);
+  assert.strictEqual(S.simulate(L, [{ type: 'washout', tile: id(4, 4, 8) }]).evals[0].status, 'ok');
+  assert.ok(S.score(L, []).failed.some(f => f.index === -2));
 });
 
 t('scoring: no controls is poor, a good plan earns 3 stars, violations hurt', () => {

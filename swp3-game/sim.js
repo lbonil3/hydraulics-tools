@@ -21,7 +21,15 @@
     inletMaxAc: 5,          // TxDOT EC(9)-16 log trap guideline: drainage area should not exceed 5 ac
     inletTrap: 0.60,        // game rule
     inletOverTrap: 0.15,    // game rule
-    seedFactor: 0.40,       // game rule: seeded + mulched soil erodes at 40% of bare soil
+    seedFactor: 0.40,       // game rule: fully grown-in seed + mulch erodes at 40% of bare soil
+    seedGrowIn: [0.80, 0.60, 0.40], // game rule: erosion factor after 0, 1, 2+ storms (mulch only at first, grass grows in)
+    basinCfPerAc: 3600,     // TxDOT Item 506.4.4.5.1: 3,600 cf storage per acre drained (10+ disturbed acres)
+    basinCapCf: 10800,      // game rule: one basin block = 10,800 cf (sized for 3 ac)
+    basinTrap: 0.85,        // game rule
+    basinOverTrap: 0.20,    // game rule (undersized basin overtops)
+    basinMinAc: 0.75,       // game rule: a basin must sit at a low point that collects at least 0.75 ac
+    washoutBufferFt: 50,    // EPA Concrete Washout BMP fact sheet: not within 50 ft of storm drains, open ditches, waterbodies
+    washoutLoad: 12,        // game rule: concrete washwater dumped on site with no (or misplaced) washout
     trackLoad: 15,          // game rule: mud tracked onto the road with no construction exit
     designStorm: '2-yr', goodReduction: 0.90, // game rule: 85% sediment reduction = full marks    // TxDOT EC(1)/EC(2): a 2-year storm may be used to calculate the flow rate
     tilePerAc: 1 / TILE_AC
@@ -34,6 +42,8 @@
     dam: { name: 'Rock filter dam', short: 'Rock dam', cost: 985, qty: '20 LF', unitNote: '506 Rock Filter Dams Ty 2 ~$49.27/LF x 20 LF (game ditch width)' },
     inlet: { name: 'Inlet protection', short: 'Inlet', cost: 150, qty: '20 LF', unitNote: '506 Biodeg Erosn Cont Logs 12in ~$7.29/LF x 20 LF' },
     exit: { name: 'Construction exit', short: 'Exit', cost: 3430, qty: '111 SY', unitNote: '506 Construction Exits Ty 1 ~$30.87/SY x 50 ft x 20 ft' },
+    basin: { name: 'Sediment basin', short: 'Basin', cost: 15990, qty: '10,800 cf (400 CY)', unitNote: '506 Earthwork (Erosn & Sedmt Cont, in veh) ~$39.98/CY x 400 CY' },
+    washout: { name: 'Concrete washout', short: 'Washout', cost: 650, qty: '1 lined pit', unitNote: 'game cost (no TxDOT bid item verified)' },
     seed: { name: 'Temp seeding + mulch', short: 'Seed', cost: 280, qty: '278 SY', unitNote: '164 temp seed ~$0.35/SY + 162 straw mulch ~$0.66/SY' }
   };
 
@@ -156,7 +166,7 @@
     var k = ty === 'S' || ty === 'A' ? 1 : ty === 'G' ? 0.03 : ty === 'D' ? 0.6 : 0; // game rule: freshly graded, unlined ditch
     if (!k) return 0;
     var e = k * intensity * (0.5 + s / 4);
-    if (seeded && (ty === 'S' || ty === 'A')) e *= RULES.seedFactor;
+    if (seeded && (ty === 'S' || ty === 'A')) e *= (seeded === true ? RULES.seedFactor : seeded);
     return e;
   }
 
@@ -198,11 +208,36 @@
         else r.reason = 'Trucks leave clean; no mud tracked onto the road.';
       } else if (c.type === 'seed') {
         if (ty !== 'S' && ty !== 'A') { r.status = 'wasted'; r.reason = 'Only bare disturbed soil needs temporary seeding.'; }
-        else r.reason = 'Seed + mulch cut erosion on this tile.';
+        else { r.factor = seedFactorFor(c.age); r.reason = 'Seed + mulch: erosion at ' + Math.round(r.factor * 100) + '% of bare soil' + (r.factor > RULES.seedFactor ? ' (still growing in; full cover after 2 storms).' : ' (grown in).'); }
+      } else if (c.type === 'basin') {
+        var need = RULES.basinCfPerAc * effAc;
+        r.requiredCf = need; r.capacityCf = RULES.basinCapCf;
+        if (ty === 'C') { r.status = 'violation'; r.reason = 'A basin cannot be dug in the creek (game rule; in-stream work needs a permit).'; }
+        else if (ty === 'R' || ty === 'I') { r.status = 'wasted'; r.reason = 'A basin cannot go on the road or inlet.'; }
+        else if (effAc < RULES.basinMinAc) { r.status = 'wasted'; r.trap = RULES.basinTrap; r.reason = 'Not a low point: only ' + effAc.toFixed(2) + ' ac drains here. Put basins where flow collects (game rule: at least ' + RULES.basinMinAc + ' ac).'; }
+        else if (need > RULES.basinCapCf) { r.status = 'undersized'; r.trap = RULES.basinOverTrap; r.reason = effAc.toFixed(1) + ' ac' + (intensity > 1 ? ' (storm-adjusted)' : '') + ' x 3,600 cf/ac = ' + Math.round(need).toLocaleString() + ' cf needed; this basin holds ' + RULES.basinCapCf.toLocaleString() + ' cf and overtopped (TxDOT Item 506 sizing).'; }
+        else { r.trap = RULES.basinTrap; r.reason = 'Basin sized OK: ' + Math.round(need).toLocaleString() + ' cf needed of ' + RULES.basinCapCf.toLocaleString() + ' cf (3,600 cf/ac, TxDOT Item 506).'; }
+      } else if (c.type === 'washout') {
+        var near = nearSensitive(L, i);
+        if (!L.concrete) { r.status = 'wasted'; r.reason = 'No concrete work on this site.'; }
+        else if (ty === 'C' || ty === 'D' || ty === 'I' || ty === 'R') { r.status = 'violation'; r.reason = 'A washout cannot go in the creek, ditch, inlet or road.'; }
+        else if (near) { r.status = 'too close'; r.reason = 'Within 50 ft of the ' + near + '. EPA concrete washout BMP: keep washouts at least 50 ft from storm drains, open ditches and waterbodies; washwater reached it.'; }
+        else r.reason = 'Washout at least 50 ft from inlets, ditches and the creek.';
       }
       ev[k] = r;
     });
     return ev;
+  }
+
+  function seedFactorFor(age) { var a = RULES.seedGrowIn; return a[Math.max(0, Math.min(a.length - 1, age | 0))]; }
+  // EPA: >= 50 ft from storm drains, open ditches, waterbodies. Tiles are 50 ft, so any tile touching one (incl. diagonal) is too close.
+  function nearSensitive(L, i) {
+    var x = i % L.W, y = (i / L.W) | 0, names = { C: 'creek', D: 'ditch', I: 'storm inlet' };
+    for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+      var xx = x + dx, yy = y + dy; if ((!dx && !dy) || xx < 0 || yy < 0 || xx >= L.W || yy >= L.H) continue;
+      var t = L.types[yy * L.W + xx]; if (names[t]) return names[t];
+    }
+    return null;
   }
 
   function simulate(L, controls, opts) {
@@ -211,15 +246,16 @@
     var intensity = opts.intensity != null ? opts.intensity : L.actual.intensity;
     var n = L.W * L.H, f = flowDirections(L), dir = f.dir, acc = flowAccumulation(L, dir);
     var ev = evalControls(L, f, acc, controls, intensity);
-    var seeded = {}, tileCtl = {}, fenceCtl = {}, exitOK = false;
+    var seeded = {}, tileCtl = {}, fenceCtl = {}, exitOK = false, washOK = false;
     controls.forEach(function (c, k) {
-      if (c.type === 'seed') seeded[c.tile] = true;
+      if (c.type === 'seed') seeded[c.tile] = Math.min(seeded[c.tile] || 1, seedFactorFor(c.age));
+      else if (c.type === 'washout') { if (ev[k].status === 'ok') washOK = true; }
       else if (c.type === 'fence') (fenceCtl[c.tile] = fenceCtl[c.tile] || []).push(k);
       else if (c.type === 'exit') { if (ev[k].status === 'ok') exitOK = true; }
       else (tileCtl[c.tile] = tileCtl[c.tile] || []).push(k);
     });
     var load = new Array(n).fill(0), passed = new Array(n).fill(0), gen = new Array(n).fill(0);
-    var out = { creek: 0, inlet: 0, offsite: 0, pond: 0, trapped: 0, tracked: 0 };
+    var out = { creek: 0, inlet: 0, offsite: 0, pond: 0, trapped: 0, tracked: 0, washout: 0 };
     var trappedBy = {};
     var ord = topoOrder(L);
     for (var q = 0; q < ord.length; q++) {
@@ -234,8 +270,9 @@
     }
     var hasAccess = L.types.indexOf('A') >= 0;
     if (hasAccess && !exitOK) out.tracked = RULES.trackLoad * intensity;
+    if (L.concrete && !washOK) out.washout = RULES.washoutLoad * intensity;
     for (var k in trappedBy) out.trapped += trappedBy[k];
-    var discharge = out.creek + out.inlet + out.offsite + out.tracked;
+    var discharge = out.creek + out.inlet + out.offsite + out.tracked + out.washout;
     var cost = controls.reduce(function (a, c) { return a + CONTROLS[c.type].cost; }, 0);
     return { dir: dir, sink: f.sink, acc: acc, gen: gen, passed: passed, out: out, discharge: discharge,
       evals: ev, trappedBy: trappedBy, cost: cost, intensity: intensity };
@@ -253,8 +290,9 @@
       if (e.status === 'wasted') wasted++;
       if (e.status !== 'ok') failed.push({ index: +k, control: controls[k], status: e.status, reason: e.reason });
     }
+    if (res.out.washout > 0) failed.push({ index: -2, control: null, status: 'missing', reason: 'No working concrete washout: washwater ran off the site (EPA concrete washout BMP; game load).' });
     if (res.out.tracked > 0) failed.push({ index: -1, control: null, status: 'missing', reason: 'No construction exit: trucks tracked mud onto the road (TxDOT Item 506 4.4.4 construction exits).' });
-    var sc = Math.round(90 * Math.min(1, R / RULES.goodReduction) + 10 * budgetLeft) - 25 * violations - 3 * wasted - 4 * (failed.length - violations - wasted - (res.out.tracked > 0 ? 1 : 0)) - (res.out.tracked > 0 ? 8 : 0);
+    var sc = Math.round(90 * Math.min(1, R / RULES.goodReduction) + 10 * budgetLeft) - 25 * violations - 3 * wasted - 4 * (failed.length - violations - wasted - (res.out.tracked > 0 ? 1 : 0) - (res.out.washout > 0 ? 1 : 0)) - (res.out.tracked > 0 ? 8 : 0) - (res.out.washout > 0 ? 8 : 0);
     if (res.cost > L.budget) sc -= 20;
     sc = Math.max(0, Math.min(100, sc));
     var stars = sc >= 85 && failed.length === 0 ? 3 : sc >= 85 ? 2 : sc >= 65 ? 2 : sc >= 40 ? 1 : 0;
@@ -263,6 +301,6 @@
 
   var api = { TILE_FT: TILE_FT, TILE_AC: TILE_AC, RULES: RULES, CONTROLS: CONTROLS, rng: rng, makeLevel: makeLevel,
     flowDirections: flowDirections, flowAccumulation: flowAccumulation, slopeOf: slopeOf, erosion: erosion,
-    evalControls: evalControls, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 3 };
+    evalControls: evalControls, seedFactorFor: seedFactorFor, nearSensitive: nearSensitive, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 3 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SWP3 = api;
 })(this);
