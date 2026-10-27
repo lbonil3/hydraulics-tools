@@ -364,35 +364,62 @@
   /* On-screen summary. Same saved keys as the official sheet, grouped into a few plain sections. */
   var EDIT_GROUPS = [
     { id: 'hold', title: 'Hold mud on the site', items: [
-      { id: 'fence', label: 'Silt fence', keys: ['sc.fence'] },
-      { id: 'ecl', label: 'Erosion control log', keys: ['sc.ecl', 'ec.ecl'] },
-      { id: 'inlet', label: 'Inlet protection', keys: ['sc.inlet'] },
-      { id: 'vbz', label: 'Vegetated buffer', keys: ['ec.vbz', 'sc.vbz', 'sc.vfs'] }
+      { id: 'fence', label: 'Silt fence', keys: ['sc.fence'], guide: 'silt-fence' },
+      { id: 'ecl', label: 'Erosion control log', keys: ['sc.ecl', 'ec.ecl'], guide: 'erosion-log' },
+      { id: 'sandbag', label: 'Sandbag berm', keys: ['sc.sandbag'], guide: 'sandbag-berm' },
+      { id: 'inlet', label: 'Inlet protection', keys: ['sc.inlet'], guide: 'inlet-protection' },
+      { id: 'vbz', label: 'Vegetated buffer', keys: ['ec.vbz', 'sc.vbz', 'sc.vfs'], guide: 'vegetated-buffer' }
     ] },
     { id: 'ditch', title: 'Ditches and basins', items: [
-      { id: 'rfd', label: 'Rock filter dam', keys: ['sc.rfd', 'ec.rfd'] },
-      { id: 'trap', label: 'Sediment trap', keys: ['trap'] },
-      { id: 'basin', label: 'Sediment basin', keys: ['basin'] }
+      { id: 'rfd', label: 'Rock filter dam', keys: ['sc.rfd', 'ec.rfd'], guide: 'rock-filter-dam' },
+      { id: 'trap', label: 'Sediment trap', keys: ['trap'], guide: 'sediment-trap' },
+      { id: 'basin', label: 'Sediment basin', keys: ['basin'], guide: 'sediment-basin' }
     ] },
     { id: 'cover', title: 'Cover the soil', items: [
-      { id: 'mulch', label: 'Mulch', keys: ['ec.mulch'] },
-      { id: 'tseed', label: 'Temporary seeding', keys: ['ec.tseed'] },
-      { id: 'pplant', label: 'Permanent seeding or sod', keys: ['ec.pplant'] },
-      { id: 'srb', label: 'Erosion control blanket', keys: ['ec.srb'] },
-      { id: 'vtrack', label: 'Vertical tracking', keys: ['ec.vtrack'] },
-      { id: 'pev', label: 'Keep existing vegetation', keys: ['ec.pev'] }
+      { id: 'mulch', label: 'Mulch', keys: ['ec.mulch'], guide: 'seeding-mulch' },
+      { id: 'tseed', label: 'Temporary seeding', keys: ['ec.tseed'], guide: 'seeding-mulch' },
+      { id: 'pplant', label: 'Permanent seeding or sod', keys: ['ec.pplant'], guide: 'seeding-mulch' },
+      { id: 'srb', label: 'Soil retention blanket', keys: ['ec.srb'], guide: 'blanket' },
+      { id: 'vtrack', label: 'Vertical tracking', keys: ['ec.vtrack'], guide: 'vertical-tracking' },
+      { id: 'pev', label: 'Keep existing vegetation', keys: ['ec.pev'], guide: 'keep-vegetation' }
     ] },
     { id: 'move', title: 'Move water without a washout', items: [
-      { id: 'dike', label: 'Diversion dike', keys: ['ec.dike'] },
-      { id: 'swale', label: 'Interceptor swale', keys: ['ec.swale'] },
-      { id: 'tpsd', label: 'Pipe slope drain', keys: ['ec.tpsd'] },
-      { id: 'riprap', label: 'Riprap at outlets', keys: ['ec.riprap'] },
-      { id: 'dewater', label: 'Dewatering controls', keys: ['sc.dewater'] }
+      { id: 'dike', label: 'Diversion dike', keys: ['ec.dike'], guide: 'diversion' },
+      { id: 'swale', label: 'Interceptor swale', keys: ['ec.swale'], guide: 'diversion' },
+      { id: 'tpsd', label: 'Pipe slope drain', keys: ['ec.tpsd'], guide: 'slope-drain' },
+      { id: 'riprap', label: 'Riprap at outlets', keys: ['ec.riprap'], guide: 'outlet-protection' },
+      { id: 'dewater', label: 'Dewatering controls', keys: ['sc.dewater'], guide: 'dewatering' }
+    ] },
+    { id: 'water', title: 'Work in the water', items: [
+      { id: 'turb', label: 'Turbidity barrier', keys: ['sc.turb'], guide: 'floating-turbidity' }
     ] },
     { id: 'road', title: 'Mud on the road', items: [
-      { id: 'exit', label: 'Construction exit', keys: ['sc.exit'], link: ['veh.exit'] },
-      { id: 'sweep', label: 'Street sweeping', mode: 'on', on: ['veh.sweep'] }
+      { id: 'exit', label: 'Construction exit', keys: ['sc.exit'], link: ['veh.exit'], guide: 'construction-exit' },
+      { id: 'sweep', label: 'Street sweeping', mode: 'on', on: ['veh.sweep'], guide: 'street-sweeping' },
+      { id: 'concrete', label: 'Concrete washout', mode: 'on', on: ['pp.concrete'], guide: 'concrete-washout' }
     ] }
+  ];
+  /* Same keys the sheet already stores. The on-screen list edits these; it does not add new sheet rows. */
+  var SCREEN_FIELDS = [
+    { id: 'csj', label: 'CSJ' },
+    { id: 't.dist', label: 'District' },
+    { id: 'limFrom', label: 'From' },
+    { id: 'limTo', label: 'To' },
+    { id: 'totalArea', label: 'Total project acres', decimal: true },
+    { id: 'nature', label: 'What is being built', area: true },
+    { id: 'soils', label: 'Soils', area: true },
+    { id: 'recv.0.0', label: 'Receiving water' },
+    { id: 'recv.0.1', label: 'Classified segment' },
+    { id: 'ms4', label: 'MS4 operator', area: true, variant: 'B' },
+    { id: 'buf.why', label: 'Buffer', area: true },
+    { id: 'x.preparer', label: 'Prepared by' },
+    { id: 'x.prepared', label: 'Date prepared' },
+    { id: 'x.contact', label: 'Contacts', area: true },
+    { id: 'bLat', label: 'Begin latitude', decimal: true },
+    { id: 'bLon', label: 'Begin longitude', decimal: true },
+    { id: 'eLat', label: 'End latitude', decimal: true },
+    { id: 'eLon', label: 'End longitude', decimal: true },
+    { id: 't.proj', label: 'Project number' }
   ];
   var EXTRA_TP = [['ec.geo', 'Geotextile'], ['ec.sst', 'Soil surface treatment'], ['ec.embank', 'Embankment for erosion control'], ['ec.flume', 'Paved flume'], ['sc.sandbag', 'Sandbag berm'], ['sc.turb', 'Turbidity barrier']];
   var EXTRA_ON = [['veh.mud', 'Mud removed from the road daily'], ['veh.haul', 'Haul roads dampened'], ['veh.tarp', 'Haul trucks covered'], ['veh.sweep', 'Street sweeping'], ['veh.exit', 'Construction exit']];
@@ -443,6 +470,32 @@
     if (vals['basin.notreq'] === true) return { state: 'not-required', text: 'A sediment basin is marked not required. That fits when less than 10 acres are disturbed at one time in one drainage area.' };
     return { state: 'blank', text: 'Sediment basin is not marked. It is required where it will fit when 10 or more acres are disturbed at one time in one drainage area.' };
   }
+  function fieldValue(vals, id) {
+    if (id === 'soils') return tableLines(vals, 'soils', 2).join('\n');
+    if (id === 'ms4') return tableLines(vals, 'ms4', 1).join('\n');
+    return textOf(vals, id);
+  }
+  function screenFields(vals, variant) {
+    return SCREEN_FIELDS.filter(function (f) { return !f.variant || f.variant === variant; }).map(function (f) {
+      var value = fieldValue(vals, f.id);
+      return { id: f.id, label: f.label, value: value, empty: !value, area: !!f.area, decimal: !!f.decimal };
+    });
+  }
+  function glanceStatus(project, vals, basin) {
+    var form = project.form || {}, pf = {}, perm;
+    Object.keys(form).forEach(function (k) { pf[k] = form[k]; });
+    if (!pf.type) pf.type = form.type || 'txdot';
+    var shown = textOf(vals, 'distArea');
+    if (shown) { pf.acres = shown; pf.supportAcres = ''; }
+    try { perm = M.permitDetermination(pf); }
+    catch (e) { perm = { tier: 'unknown', label: 'Enter disturbed acres', noi: false, notes: [] }; }
+    var line = perm.label || 'Enter disturbed acres';
+    if (perm.tier === 'none' && perm.txdotSwp3) line += '. TxDOT still wants the under-1-acre sheet.';
+    if (perm.notes && perm.notes.some(function (n) { return n && /common plan/i.test(n[1] || ''); })) line += ' Counted with the larger common plan.';
+    var basinBit = { required: 'Sediment basin marked as used.', infeasible: 'Sediment basin required but marked not feasible.', 'not-required': 'Sediment basin marked not required.', blank: 'Sediment basin not marked yet.' }[basin.state] || '';
+    if (basinBit && perm.tier !== 'unknown') line += (/[.!?]$/.test(line) ? ' ' : '. ') + basinBit;
+    return { tier: perm.tier, noi: !!perm.noi, label: perm.label || line, line: line };
+  }
   function peopleStory(vals) {
     var acres = M.num(textOf(vals, 'distArea'));
     var noi = vals['rt.noi'] === true || vals['rc.noi'] === true;
@@ -470,6 +523,8 @@
     var V = values(safe), vals = V.val, variant = variantFor(safe);
     var chosen = safe.summary.variant === 'A' || safe.summary.variant === 'B';
     var buffer = vals['buf.text'] === true ? textOf(vals, 'buf.why') : tableLines(vals, 'buf', 3).join('\n');
+    var basin = basinStory(vals, variant);
+    var fields = screenFields(vals, variant);
     return {
       name: safe.name || 'Untitled project',
       variant: variant,
@@ -488,22 +543,57 @@
         soils: tableLines(vals, 'soils', 2), receiving: textOf(vals, 'recv.0.0'), segment: textOf(vals, 'recv.0.1'),
         ms4: tableLines(vals, 'ms4', 1), buffer: buffer
       },
+      fields: fields,
+      blanks: fields.filter(function (f) { return f.empty; }).map(function (f) { return f.label; }),
       controls: controlMarks(vals),
-      basin: basinStory(vals, variant),
+      basin: basin,
+      status: glanceStatus(safe, vals, basin),
       housekeeping: HK.filter(function (h) { return vals[h[0]] === true; }).map(function (h) { return h[1]; }),
       people: peopleStory(vals),
       warnings: checks(safe).filter(function (c) { return c.level === 'warn'; }).map(function (c) { return c.msg; }),
       reminders: [
-        { title: 'Inspections', text: 'The TxDOT sheet says to inspect at least every 7 days. The permit also allows every 14 days when you inspect within 24 hours after a storm of one-half inch or more. This app does not change the words printed on the sheet.' },
-        { title: 'Maintenance', text: 'Fix a control when it is run over, undercut, or full of dirt. The permit says to take sediment out of a fence before it reaches about half the fence height, and out of a basin or trap when about half the storage is sediment.' },
-        { title: 'Pumping', text: 'If the job pumps water from a trench or hole, look at that discharge every day it runs. Do not pump muddy water into an inlet or a creek. Show where the water goes.' }
+        { title: 'Inspections', short: 'Inspect at least every 7 days. The permit also allows every 14 days if you inspect within 24 hours after a half-inch storm.', text: 'The TxDOT sheet says to inspect at least every 7 days. The permit also allows every 14 days when you inspect within 24 hours after a storm of one-half inch or more. This app does not change the words printed on the sheet. Inspections are written up on TxDOT Form 2118.' },
+        { title: 'Maintenance', short: 'Fix a control that is run over, undercut, or full of dirt. Take sediment out before it reaches about half the fence height, or about half the basin or trap storage.', text: 'Fix a control when it is run over, undercut, or full of dirt. The permit says to take sediment out of a fence before it reaches about half the fence height, and out of a basin or trap when about half the storage is sediment. The sheet text for this comes from Item 506, and this app does not rewrite it.' },
+        { title: 'Pumping', short: 'If the job pumps from a trench or a hole, look at that discharge every day it runs. Do not pump muddy water into an inlet or a creek.', text: 'If the job pumps water from a trench or hole, look at that discharge every day it runs. Do not pump muddy water into an inlet or a creek. Show where the water goes. When dewatering is expected, the contractor role on the sheet includes a daily inspection of that discharge.' }
       ]
     };
+  }
+  function plainSummary(project) {
+    var s = screenView(project), p = s.project, site = s.site, out = [];
+    function add(label, value) { value = String(value || '').replace(/\s+/g, ' ').trim(); if (value) out.push(label + ': ' + value); }
+    out.push(s.name);
+    var place = [p.county, p.highway].filter(Boolean).join(' · ');
+    if (place) out.push(place);
+    out.push('Acres disturbed: ' + (site.disturbed || '(not entered)'));
+    out.push(s.status.line);
+    out.push('');
+    add('CSJ', p.csj); add('Highway', p.highway); add('County', p.county); add('District', p.district);
+    add('From', p.from); add('To', p.to); add('Begin', p.begin); add('End', p.end); add('Project number', p.projectNo);
+    add('Total project acres', site.total); add('Work', site.nature);
+    if (site.soils.length) add('Soils', site.soils.join('; '));
+    add('Receiving water', site.receiving); add('Classified segment', site.segment);
+    if (s.variant === 'B' && site.ms4.length) add('MS4', site.ms4.join('; '));
+    add('Buffer', site.buffer);
+    add('Prepared by', s.people.preparer); add('Date', s.people.prepared); add('Contacts', s.people.contacts);
+    if (s.blanks.length) { out.push(''); out.push('Still to fill in: ' + s.blanks.join(', ') + '.'); }
+    out.push('');
+    out.push('Controls');
+    if (!s.controls.length) out.push('None marked.');
+    else s.controls.forEach(function (c) { out.push('- ' + c.label + ' — ' + c.use); });
+    out.push(s.basin.text);
+    if (s.housekeeping.length) out.push('Housekeeping: ' + s.housekeeping.join(', ') + '.');
+    out.push('');
+    s.people.lines.forEach(function (l) { out.push(l); });
+    out.push('');
+    s.reminders.forEach(function (r) { out.push(r.title + ': ' + (r.short || r.text)); });
+    out.push('');
+    out.push(s.disclaimer || 'Draft for engineer review. Not a substitute for the TCEQ permit or the TxDOT sheet.');
+    return out.join('\n').replace(/\n{3,}/g, '\n\n');
   }
 
   var api = { BUNDLED: BUNDLED, SHEETS: SHEETS, PAGE_URL: PAGE_URL, LAYOUT: LAYOUT, sections: sections, prefill: prefill, values: values, variantFor: variantFor, plan: plan, checks: checks,
     fitLines: fitLines, wrapWords: wrapWords, approxMeasure: approxMeasure, parseLimits: parseLimits, parseLatLon: parseLatLon, parseCsj: parseCsj, exportModel: exportModel, toMarkdown: toMarkdown, toJson: toJson,
-    textOf: textOf, checkValue: checkValue, BMP_MAP: BMP_MAP, screenView: screenView, EDIT_GROUPS: EDIT_GROUPS };
+    textOf: textOf, checkValue: checkValue, BMP_MAP: BMP_MAP, screenView: screenView, plainSummary: plainSummary, EDIT_GROUPS: EDIT_GROUPS, SCREEN_FIELDS: SCREEN_FIELDS };
   if (isNode) module.exports = api;
   root.SwpSummary = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

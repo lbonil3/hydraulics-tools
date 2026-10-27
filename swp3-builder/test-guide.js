@@ -26,9 +26,14 @@ G.CATS.forEach(function (c) {
   assert.ok(G.inCat(c.id).length >= 2, 'empty cat ' + c.id);
   assert.ok(c.title && c.blurb, 'cat text ' + c.id);
 });
-['silt-fence', 'rock-filter-dam', 'check-dam', 'inlet-protection', 'construction-exit', 'seeding-mulch', 'blanket', 'sediment-basin'].forEach(function (id) {
+['silt-fence', 'rock-filter-dam', 'check-dam', 'inlet-protection', 'construction-exit', 'seeding-mulch', 'blanket', 'sediment-basin', 'sandbag-berm', 'rock-berm', 'floating-turbidity', 'stream-crossing', 'concrete-washout'].forEach(function (id) {
   assert.ok(G.byId(id), 'missing ' + id);
 });
+assert.ok(/floating silt curtain|turbidity curtain/i.test(G.byId('floating-turbidity').what));
+assert.ok(/>Section</.test(G.byId('silt-fence').svg) && />Plan</.test(G.byId('silt-fence').svg));
+assert.ok(/Floats/.test(G.byId('floating-turbidity').svg));
+assert.ok(/Drive up and down the slope/.test(G.byId('vertical-tracking').install.join(' ')));
+assert.ok(!/Drive along the contour so the grooves/.test(G.byId('vertical-tracking').install.join(' ')));
 assert.strictEqual(G.byId('nope'), null);
 
 var html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
@@ -46,6 +51,7 @@ assert.ok(css.indexOf('prefers-color-scheme: dark') > 0);
 assert.ok(css.indexOf('prefers-reduced-motion: reduce') > 0);
 assert.ok(css.indexOf('safe-area-inset') > 0);
 assert.ok(css.indexOf('min-height:44px') > 0);
+assert.ok(css.indexOf('min-width:1024px') > 0);
 
 var home = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 assert.ok(home.indexOf('Summary sheet and erosion control guide') > 0);
@@ -55,6 +61,19 @@ assert.ok(!fs.existsSync(path.join(__dirname, 'design.js')));
 assert.ok(!fs.existsSync(path.join(__dirname, 'recommend.js')));
 assert.ok(!fs.existsSync(path.join(__dirname, 'lsdata.js')));
 assert.ok(!fs.existsSync(path.join(__dirname, 'test-design.js')));
+
+S.EDIT_GROUPS.forEach(function (g) {
+  assert.ok(g.items.length >= 1, 'group ' + g.id);
+  g.items.forEach(function (it) {
+    assert.ok(it.guide && G.byId(it.guide), 'guide link ' + it.id + ' -> ' + it.guide);
+  });
+});
+var summaryUi = fs.readFileSync(path.join(__dirname, 'summary-ui.js'), 'utf8');
+assert.ok(summaryUi.indexOf('Edit this summary') < 0);
+assert.ok(summaryUi.indexOf('data-copy') > 0 && summaryUi.indexOf('Still to fill in') > 0);
+assert.ok(summaryUi.indexOf('https://websoilsurvey.nrcs.usda.gov') > 0);
+assert.ok(summaryUi.indexOf('https://www.tceq.texas.gov/permitting/stormwater/construction') > 0);
+assert.ok(summaryUi.indexOf('https://www3.tceq.texas.gov/steers/') > 0);
 
 var junk = M.sanitizeProject({ id: 'old', name: 'Old job', form: { acres: '3', type: 'txdot', inspMode: 'nope' }, design: { ro: { C: '0.5' }, bad: undefined }, summary: { variant: 'B', v: { csj: '0001-02-003' } }, sel: null, inspLog: 'x' });
 assert.strictEqual(junk.form.inspMode, 'd7');

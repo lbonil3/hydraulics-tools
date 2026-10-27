@@ -2,708 +2,811 @@
    Sketches are schematic. Numbers that depend on a standard say to check the current sheet. */
 (function (root) {
   'use strict';
-  function fig(label, body) {
-    return '<svg viewBox="0 0 320 168" role="img" aria-label="' + label + '">' + body + '</svg>';
-  }
   var CATS = [
-    { id: 'hold', title: 'Hold mud before it leaves', blurb: 'Sheet flow at the downhill edge, at inlets, and beside creeks.' },
-    { id: 'ditch', title: 'Slow water in a ditch', blurb: 'Rock checks, traps, and basins for concentrated flow.' },
-    { id: 'cover', title: 'Cover bare soil', blurb: 'Seed, mulch, blankets, and tracking so rain does not pick soil up.' },
-    { id: 'move', title: 'Move water without a washout', blurb: 'Dikes, pipes, and rock at the pipe end.' },
-    { id: 'road', title: 'Keep mud off the pavement', blurb: 'The exit and the street in front of it.' }
+    {
+      "id": "hold",
+      "title": "Hold mud before it leaves",
+      "blurb": "Sheet flow at the downhill edge, at inlets, and beside creeks."
+    },
+    {
+      "id": "ditch",
+      "title": "Slow water in a ditch",
+      "blurb": "Rock checks, traps, and basins for concentrated flow."
+    },
+    {
+      "id": "cover",
+      "title": "Cover bare soil",
+      "blurb": "Seed, mulch, blankets, and tracking so rain does not pick soil up."
+    },
+    {
+      "id": "move",
+      "title": "Move water without a washout",
+      "blurb": "Dikes, pipes, and rock at the pipe end."
+    },
+    {
+      "id": "water",
+      "title": "Work in the water",
+      "blurb": "Curtains and crossings where the ground is already wet."
+    },
+    {
+      "id": "road",
+      "title": "Keep mud off the pavement",
+      "blurb": "The exit, the street in front of it, and the washout."
+    }
   ];
   var MEASURES = [
     {
-      id: 'silt-fence', cat: 'hold', name: 'Silt fence', sheet: 'EC(1)-16',
-      one: 'Fabric fence that drops mud out of sheet flow.',
-      what: 'A temporary fence of woven fabric on posts. Water ponds for a moment on the uphill side and soil settles. It is a filter and a small dam for spread-out flow, not a dam for a ditch.',
-      where: [
-        'Along the downhill edge of disturbed ground, below the toe of a slope, and around a stockpile.',
-        'Run it along the contour, so water meets the fence instead of running down beside it.',
-        'The permit expects a perimeter control such as silt fence or a vegetated buffer on downhill edges of the work.',
-        'Do not place it across a ditch, swale, or stream. Use a rock filter dam or another concentrated-flow control there.'
+      "id": "silt-fence",
+      "cat": "hold",
+      "name": "Silt fence",
+      "sheet": "EC(1)-16",
+      "one": "Fabric fence that drops mud out of sheet flow.",
+      "what": "A temporary fence of woven fabric on posts. Water ponds for a moment on the uphill side and soil settles. It is a filter and a small dam for spread-out flow, not a dam for a ditch.",
+      "where": [
+        "Along the downhill edge of disturbed ground, below the toe of a slope, and around a stockpile.",
+        "Run it along the contour, so water meets the fence instead of running down beside it.",
+        "The permit expects a perimeter control such as silt fence or a vegetated buffer on downhill edges of the work.",
+        "Do not place it across a ditch, swale, or stream. Use a rock filter dam or another concentrated-flow control there."
       ],
-      install: [
-        'The bottom has to be buried on the uphill side and tamped so water cannot run under the fabric.',
-        'Turn the ends uphill so water cannot go around them.',
-        'Join sections at a post, with an overlap, and not in a low spot.',
-        'Item 506, as read for this tool, describes post spacing, embedment, and the trench. Use the current Item 506 and EC(1)-16 for those dimensions, and pick fabric from the TxDOT approved list.'
+      "install": [
+        "The trench is on the uphill side. Bury the bottom of the fabric in it and tamp the soil so water cannot run under.",
+        "Posts stand on the downhill side of the fabric, so the load of the ponded water pulls the fabric against the posts.",
+        "Turn the ends uphill (a J-hook) so water cannot go around them.",
+        "Join sections at a post, with an overlap, and not in a low spot.",
+        "Item 506, as read for this tool, describes post spacing, embedment, and the trench. Use the current Item 506 and EC(1)-16 for those dimensions, and pick fabric from the TxDOT approved list."
       ],
-      maintain: [
-        'Take out trapped soil before it reaches about half the height of the fence. That half-height rule is in the construction general permit.',
-        'Fix tears, fallen posts, and places where water has cut under or around the fence. Replace a run that has been driven over.'
+      "maintain": [
+        "Take out trapped soil before it reaches about half the height of the fence. That half-height rule is in the construction general permit.",
+        "Fix tears, fallen posts, and places where water has cut under or around the fence. Replace a run that has been driven over."
       ],
-      mistakes: [
-        'Setting the fence in a channel, where the flow knocks it flat.',
-        'Leaving the bottom on top of the ground so water pipes underneath.',
-        'Running the fence up and down the hill instead of across the slope.',
-        'Letting one run serve a large drainage area. The TxDOT fact sheet used here does not recommend silt fence when more than about 2 acres drains to one run. Confirm that limit on the current fact sheet and add another control.',
-        'Treating a full fence as finished. A fence buried in mud is no longer a fence.'
+      "mistakes": [
+        "Setting the fence in a channel, where the flow knocks it flat.",
+        "Leaving the bottom on top of the ground so water pipes underneath.",
+        "Running the fence up and down the hill instead of across the slope.",
+        "Letting one run serve a large drainage area. The TxDOT fact sheet used here does not recommend silt fence when more than about 2 acres drains to one run. Confirm that limit on the current fact sheet and add another control.",
+        "Treating a full fence as finished. A fence buried in mud is no longer a fence."
       ],
-      confirm: 'Post spacing, trench size, and approved fabric are on the current EC(1)-16 sheet and Item 506. Check those before you put a dimension on a plan.',
-      svg: fig('Cross section of a slope with a silt fence ponding muddy water on the uphill side',
-        '<path d="M12 36 L230 118 L308 118 L308 150 L12 150 Z" fill="currentColor" opacity=".08"/>' +
-        '<path d="M12 36 L230 118" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M132 96 L196 112 L186 124 L140 116 Z" fill="currentColor" opacity=".28"/>' +
-        '<line x1="186" y1="124" x2="186" y2="58" stroke="currentColor" stroke-width="3"/>' +
-        '<path d="M186 68 q10 8 0 16 q-10 8 0 16 q10 8 0 16" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<line x1="168" y1="78" x2="168" y2="120" stroke="currentColor" stroke-width="2"/>' +
-        '<line x1="206" y1="86" x2="206" y2="124" stroke="currentColor" stroke-width="2"/>' +
-        '<text x="16" y="28" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Sheet flow</text>' +
-        '<text x="214" y="64" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Fence</text>' +
-        '<text x="214" y="142" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Downhill side</text>')
+      "confirm": "Post spacing, trench size, and approved fabric are on the current EC(1)-16 sheet and Item 506. Check those before you put a dimension on a plan.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Silt fence. Level ground, trench and backfill on the upslope side, fabric toe in an L, slim post on the downslope side, sediment ponded against the fabric. Plan shows the fence on the contour with posts and J-hook returns.\"><defs><pattern id=\"soil-sf\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-sf\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 236 H124 L132 262 H156 L164 236 H278 V312 H22 Z\" fill=\"url(#soil-sf)\"/><path d=\"M22 236 H124 L132 262 H156 L164 236 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 236 H124 L132 262 H156 L164 236 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M28 176 H164 V236 H28 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M40 214 H164 V236 H78 Z\" fill=\"currentColor\" fill-opacity=\".16\"/><path d=\"M28 176 H164\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\"/><path d=\"M128 244 H150 V256 H136 Z\" fill=\"url(#soil-sf)\"/><path d=\"M126 256 H152 V236 H164 V128\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"164\" y=\"124\" width=\"7\" height=\"156\" fill=\"currentColor\" fill-opacity=\".42\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M32 128 L141.5 165.1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M150 168 L140.1 169.1 L142.8 161.1 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Sediment</text><path d=\"M88 52 L90 220\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"90\" cy=\"220\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"86\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Buried toe</text><path d=\"M96 80 L140 254\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"140\" cy=\"254\" r=\"2.1\" fill=\"currentColor\"/><text x=\"196\" y=\"118\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Post</text><path d=\"M192 130 L171 160\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"171\" cy=\"160\" r=\"2.1\" fill=\"currentColor\"/><text x=\"196\" y=\"150\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Fabric</text><path d=\"M192 162 L160 190\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"160\" cy=\"190\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M78 478 H222 V518 H78 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M48 520 V468 H76\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M252 520 V468 H224\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M48 520 H252\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><rect x=\"104\" y=\"526\" width=\"8\" height=\"8\" fill=\"currentColor\" fill-opacity=\".42\" stroke=\"currentColor\" stroke-width=\"1.2\"/><rect x=\"136\" y=\"526\" width=\"8\" height=\"8\" fill=\"currentColor\" fill-opacity=\".42\" stroke=\"currentColor\" stroke-width=\"1.2\"/><rect x=\"168\" y=\"526\" width=\"8\" height=\"8\" fill=\"currentColor\" fill-opacity=\".42\" stroke=\"currentColor\" stroke-width=\"1.2\"/><rect x=\"200\" y=\"526\" width=\"8\" height=\"8\" fill=\"currentColor\" fill-opacity=\".42\" stroke=\"currentColor\" stroke-width=\"1.2\"/><path d=\"M120 400 L120 451\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M120 460 L115.8 451 L124.2 451 Z\" fill=\"currentColor\"/><path d=\"M180 400 L180 451\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M180 460 L175.8 451 L184.2 451 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"430\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">J-hook</text><path d=\"M68 418 L56 490\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"56\" cy=\"490\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"600\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Posts downhill</text><path d=\"M120 594 L176 528\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"176\" cy=\"528\" r=\"2.1\" fill=\"currentColor\"/><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'erosion-log', cat: 'hold', name: 'Erosion control log', sheet: 'EC(9)-16',
-      one: 'A fiber log staked on the ground where fabric will not work.',
-      what: 'A tube of straw, wood fiber, or similar material in a net, held down with stakes. It slows sheet flow the way a short silt fence does. On pavement, at a curb inlet, or on a slope, it is often the control that fits when you cannot trench in a fabric fence.',
-      where: [
-        'Perimeter of a stockpile, toe of a short slope, and along a curb.',
-        'In front of a curb inlet or around a drop inlet, if it will not send water into traffic.',
-        'As a small check in a ditch. On TxDOT sheets, logs used as ditch checks are spaced along the ditch. The spacing is on EC(9)-16, not a single distance for every slope.'
+      "id": "erosion-log",
+      "cat": "hold",
+      "name": "Erosion control log",
+      "sheet": "EC(9)-16",
+      "one": "A fiber log staked on the ground where fabric will not work.",
+      "what": "A tube of straw, wood fiber, or similar material in a net, held down with stakes. It slows sheet flow the way a short silt fence does. On pavement, at a curb inlet, or on a slope, it is often the control that fits when you cannot trench in a fabric fence.",
+      "where": [
+        "Perimeter of a stockpile, toe of a short slope, and along a curb.",
+        "In front of a curb inlet or around a drop inlet, if it will not send water into traffic.",
+        "As a small check in a ditch. On TxDOT sheets, logs used as ditch checks are spaced along the ditch. The spacing is on EC(9)-16, not a single distance for every slope."
       ],
-      install: [
-        'Stake the log so water cannot get under it. Seams face downstream or up, as the sheet shows.',
-        'On a slope, lay logs along the contour.',
-        'At an inlet, leave a path for water so the street can still drain in a big storm.',
-        'A log used as a small sediment trap has drainage-area and volume limits on the TxDOT fact sheet. Check the current sheet before you rely on a log for a large area.'
+      "install": [
+        "Set the log in a shallow trench so water cannot get under it. Stakes go on the downhill side. Seams face the way the sheet shows.",
+        "On a slope, lay the log on the contour and turn the ends upslope.",
+        "At an inlet, leave a path for water so the street can still drain in a big storm.",
+        "A log used as a small sediment trap has drainage-area and volume limits on the TxDOT fact sheet. Check the current sheet before you rely on a log for a large area."
       ],
-      maintain: [
-        'Remove sediment before it buries the log. The TxDOT job aid used for this tool looks at about half the log diameter. Confirm that on the current job aid.',
-        'Reset stakes after a storm and replace a log that has split or rolled.'
+      "maintain": [
+        "Remove sediment before it buries the log. The TxDOT job aid used for this tool looks at about half the log diameter. Confirm that on the current job aid.",
+        "Reset stakes after a storm and replace a log that has split or rolled."
       ],
-      mistakes: [
-        'Using a log as the only control in a ditch that needs rock.',
-        'Blocking a curb inlet solid, so the lane floods.',
-        'Forgetting stakes, so the log floats to the fence line.',
-        'Leaving the log in place after the area is paved and stable, where it becomes a trip hazard or a dam.'
+      "mistakes": [
+        "Using a log as the only control in a ditch that needs rock.",
+        "Blocking a curb inlet solid, so the lane floods.",
+        "Forgetting stakes, so the log floats to the fence line.",
+        "Leaving the log in place after the area is paved and stable, where it becomes a trip hazard or a dam."
       ],
-      confirm: 'Log diameter, stake pattern, and ditch spacing are on the current EC(9)-16 sheet. Check that sheet rather than a catalog photo.',
-      svg: fig('Fiber log staked along the contour of a slope, with water ponding above it',
-        '<path d="M16 40 L300 130 L300 150 L16 150 Z" fill="currentColor" opacity=".08"/>' +
-        '<path d="M16 40 L300 130" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<ellipse cx="168" cy="108" rx="54" ry="16" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M120 108 q12 -10 24 0 q12 10 24 0 q12 -10 24 0" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
-        '<line x1="140" y1="96" x2="132" y2="124" stroke="currentColor" stroke-width="2"/>' +
-        '<line x1="196" y1="100" x2="188" y2="128" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M70 86 L130 104 L120 116 L78 100 Z" fill="currentColor" opacity=".25"/>' +
-        '<text x="16" y="28" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Along the contour</text>' +
-        '<text x="200" y="96" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Log</text>')
+      "confirm": "Log diameter, stake pattern, and ditch spacing are on the current EC(9)-16 sheet. Check that sheet rather than a catalog photo.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Erosion control log seated in a shallow trench, staked on the downhill side, with the ends turned upslope.\"><defs><pattern id=\"soil-log\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-log\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 240 H118 L130 256 H186 L198 240 H278 V312 H22 Z\" fill=\"url(#soil-log)\"/><path d=\"M22 240 H118 L130 256 H186 L198 240 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 240 H118 L130 256 H186 L198 240 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M28 188 H128 V240 H28 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><ellipse cx=\"156\" cy=\"232\" rx=\"36\" ry=\"16\" fill=\"currentColor\" fill-opacity=\".14\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M128 232 q14 -7 28 0 q14 7 28 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-opacity=\".5\"/><path d=\"M176 206 L184 286 M196 210 L204 280\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"/><path d=\"M36 140 L112.1 181.7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M120 186 L110.1 185.4 L114.1 178 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Shallow trench</text><path d=\"M122 58 L150 252\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"150\" cy=\"252\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"92\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Log</text><path d=\"M50 104 L130 224\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"130\" cy=\"224\" r=\"2.1\" fill=\"currentColor\"/><text x=\"210\" y=\"200\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Stakes</text><path d=\"M206 210 L200 236\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"200\" cy=\"236\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M86 476 H214 V514 H86 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M52 518 V470 H80 Q150 498 220 470 H248 V518\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-opacity=\".18\"/><path d=\"M52 518 V470 H80 Q150 498 220 470 H248 V518\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><rect x=\"112\" y=\"520\" width=\"6\" height=\"6\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><rect x=\"156\" y=\"520\" width=\"6\" height=\"6\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><rect x=\"200\" y=\"520\" width=\"6\" height=\"6\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><path d=\"M130 400 L130 449\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M130 458 L125.8 449 L134.2 449 Z\" fill=\"currentColor\"/><path d=\"M190 400 L190 449\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M190 458 L185.8 449 L194.2 449 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"600\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Ends turn upslope</text><path d=\"M146 594 L60 490\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"60\" cy=\"490\" r=\"2.1\" fill=\"currentColor\"/><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'inlet-protection', cat: 'hold', name: 'Inlet protection', sheet: 'EC(9)-16 and EC(2)-16',
-      one: 'Keeps mud out of a storm-drain inlet without flooding the road.',
-      what: 'A temporary filter or small trap at a curb inlet, grate, or drop inlet. TxDOT uses erosion-control logs, rock, or a small sediment trap depending on the inlet. The point is to catch soil while the ground around the inlet is bare, and still let the street drain.',
-      where: [
-        'Inlets inside the work and inlets just outside it that will receive muddy water.',
-        'Best where the inlet is in a low point and a little ponding is safe.',
-        'On a slope, a curb inlet often will not hold a pond. Protection that blocks it just sends water farther down the gutter. Those inlets need a device that filters and still overflows.'
+      "id": "sandbag-berm",
+      "cat": "hold",
+      "name": "Sandbag berm",
+      "sheet": "EC sheets for sandbags",
+      "one": "A low wall of bags where you cannot trench a silt fence.",
+      "what": "Sandbags stacked into a short berm. They pond sheet flow the way a silt fence does, and they sit on pavement, rock, or frozen ground where you cannot dig a trench. They are also a curb-inlet tool and a short temporary diversion. They are not a rock filter dam, and they are not a dam for a fast ditch.",
+      "where": [
+        "Along the downhill edge of a stockpile or a paved work area, on the contour.",
+        "In front of a curb inlet, with a gap or a low point so the street can still drain.",
+        "As a short diversion of sheet flow toward a trap. Not across a channel that will concentrate a storm."
       ],
-      install: [
-        'Do not seal the opening. Leave an overflow so a storm can enter the inlet.',
-        'Keep the device out of the wheel path when you can, and do not build something tall enough to hit a car or send water into the lane.',
-        'The TxDOT fact sheets limit how much area one inlet trap should serve, and they give a storage volume. Those limits are on the current sheet. Check EC(9)-16 or EC(2)-16 for the inlet you actually have.',
-        'Show the inlets on the SWP3 layout. The permit asks for inlets on and near the site to be on the map.'
+      "install": [
+        "Butt the bags tight, and stagger the joints if you stack more than one course. Water finds a crack between bags.",
+        "Turn the ends upslope so the pond cannot walk around the berm.",
+        "Keep the berm low. A tall stack in the clear zone or in a gutter becomes a hazard and a dam.",
+        "The current TxDOT sheet for the sandbag detail you are using has the bag size, the stack, and where bags are allowed. Check that sheet. Do not copy a count from another job."
       ],
-      maintain: [
-        'After rain, clear anything that has plugged the opening.',
-        'Take out sediment before the device is about half full. Curb devices fill faster than they look.',
-        'Remove the protection when the street is paved and the area no longer sheds mud, so it does not flood a finished road.'
+      "maintain": [
+        "Replace a bag that has split or gone soft, and restack any that a tire has kicked out.",
+        "Remove trapped soil before the berm is buried. A buried bag is just a lump of sand in the mud.",
+        "Take the bags out when the area is stable. Abandoned bags in a gutter hold water on a finished road."
       ],
-      mistakes: [
-        'Sandbags or boards that close the inlet with no way for water to get in.',
-        'A gravel bag in the gutter on a grade, which only moves the mud to the next inlet.',
-        'Forgetting inlets downstream of the exit, where tracking still reaches them.',
-        'Leaving the device in place into the mowing season.'
+      "mistakes": [
+        "One loose row with gaps, so the water never ponds.",
+        "A sandbag berm used as a check dam in a roadside ditch that needs rock.",
+        "Bags sealing a curb inlet with no overflow.",
+        "Ends left running downhill, so the water flanks the berm and cuts a rut."
       ],
-      confirm: 'Which detail to use, and any height or volume limit, is on the current EC sheet for that inlet. Do not copy a detail from a different inlet type.',
-      svg: fig('Curb inlet with a filter log in front and an overflow gap so the street can still drain',
-        '<rect x="16" y="28" width="288" height="112" rx="8" fill="currentColor" opacity=".06" stroke="currentColor"/>' +
-        '<rect x="188" y="70" width="70" height="46" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M198 78 h50 M198 90 h50 M198 102 h50" stroke="currentColor" stroke-width="1.5"/>' +
-        '<ellipse cx="150" cy="100" rx="28" ry="12" fill="currentColor" opacity=".25" stroke="currentColor"/>' +
-        '<path d="M40 96 h70" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M104 90 l8 6 l-8 6" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<text x="28" y="52" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Gutter flow</text>' +
-        '<text x="196" y="60" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Inlet</text>' +
-        '<text x="96" y="132" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Filter, with a gap</text>')
+      "confirm": "Bag material, stack, and where a sandbag berm is the right tool are on the current TxDOT sheet. Check it before you call out a height.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Sandbag berm stacked tight to the ground with staggered joints. Ends turn upslope.\"><defs><pattern id=\"soil-bag\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-bag\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 250 H278 V312 H22 Z\" fill=\"url(#soil-bag)\"/><path d=\"M22 250 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 250 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M24 196 H112 V250 H24 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><rect x=\"112\" y=\"216\" width=\"44\" height=\"34\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M115 230.3 H153\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"156\" y=\"216\" width=\"44\" height=\"34\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M159 230.3 H197\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"200\" y=\"216\" width=\"44\" height=\"34\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M203 230.3 H241\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"134\" y=\"182\" width=\"44\" height=\"34\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M137 196.3 H175\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"178\" y=\"182\" width=\"44\" height=\"34\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M181 196.3 H219\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><path d=\"M32 150 L92.4 189.1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M100 194 L90.2 192.6 L94.7 185.6 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Staggered joints</text><path d=\"M134 58 L156 190\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"156\" cy=\"190\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"92\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Tight to ground</text><path d=\"M128 104 L130 248\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"130\" cy=\"248\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M64 522 V464 H88 M236 522 V464 H212\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"86\" y=\"512\" width=\"30\" height=\"20\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M89 520.4 H113\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"118\" y=\"512\" width=\"30\" height=\"20\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M121 520.4 H145\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"150\" y=\"512\" width=\"30\" height=\"20\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M153 520.4 H177\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"182\" y=\"512\" width=\"30\" height=\"20\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M185 520.4 H209\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"102\" y=\"490\" width=\"30\" height=\"20\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M105 498.4 H129\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"134\" y=\"490\" width=\"30\" height=\"20\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M137 498.4 H161\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"166\" y=\"490\" width=\"30\" height=\"20\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M169 498.4 H193\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><path d=\"M140 400 L140 441\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M140 450 L135.8 441 L144.2 441 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"600\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Ends turn upslope</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'vegetated-buffer', cat: 'hold', name: 'Vegetated buffer', sheet: 'Summary sheet 2.6',
-      one: 'A strip of existing grass between the work and the water.',
-      what: 'A band of plants left in place so sheet flow crosses grass before it reaches a creek, pond, or wetland. The grass slows the water and catches soil. It is not a ditch liner and it is not a place to store spoil.',
-      where: [
-        'Where a stream, pond, or wetland is on or next to the right of way and you can leave a strip of cover.',
-        'The permit asks you to keep a natural buffer around surface water and to send stormwater across vegetation, unless that is not feasible.',
-        'If you cannot keep the buffer, write why, and show the controls you will use instead, with stationing. On a TxDOT summary sheet that finding can be one of the items that needs a seal.',
-        'As a primary sediment control, the TxDOT fact sheet limits the area, the slope, and how long the flow path can be, and it wants a thick stand of plants. Check the current fact sheet. A thin or steep strip is not a buffer.'
+      "id": "rock-berm",
+      "cat": "hold",
+      "name": "Rock berm",
+      "sheet": "EC sheet for rock berms",
+      "one": "A low rock wedge for sheet flow, not a dam in a ditch.",
+      "what": "A wedge of rock along the contour that slows sheet flow and drops sediment. It is the sheet-flow cousin of a rock filter dam. A rock filter dam crosses a ditch and has a low center so the ditch flow goes over the middle. A rock berm does not. Do not put this berm across a channel.",
+      "where": [
+        "At the toe of a slope and along the downhill edge of disturbed ground, where the flow is still spread out.",
+        "Where rock will stay put and a silt fence is a poor fit, such as on rock or where equipment will work close to the line.",
+        "Not in a roadside ditch, a stream, or any place the water has already gathered into a channel. Use a rock filter dam or a trap there."
       ],
-      install: [
-        'Mark the strip before clearing and keep trucks out of it.',
-        'Send sheet flow into the grass. Do not cut a channel through it.',
-        'If there is no surface water on or next to the site, the summary sheet says so in plain words. That is a normal answer, not a blank to avoid.'
+      "install": [
+        "Lay the berm on the contour and turn the ends upslope.",
+        "Key the rock into the ground or seat it on fabric if the current sheet shows bedding, so water does not pipe underneath.",
+        "The upstream face ponds the water. The downstream face is the side that must not unravel. The sheet gives the rock and the slopes. Check it.",
+        "Do not leave a low gap at one end. That gap becomes the channel you were trying not to build."
       ],
-      maintain: [
-        'Pick up sediment that has buried the grass, and repair rills.',
-        'Do not park, fuel, or stockpile on the strip.'
+      "maintain": [
+        "Replace rock that has rolled out, and shovel sediment out of the upstream pool before the berm is buried.",
+        "If a rill is cutting around an end, the berm is no longer on the contour. Rebuild the return upslope."
       ],
-      mistakes: [
-        'Calling a bare or freshly seeded strip a buffer.',
-        'Letting a concentrated discharge cross the grass in one rut.',
-        'Clearing to the top of the bank and adding fence later, with no note that the buffer would not fit.',
-        'Counting a roadside ditch or a sediment trap as the "surface water" the buffer is for. The permit treats constructed stormwater features differently. Check the current permit wording.'
+      "mistakes": [
+        "Using a rock berm as a check dam in a ditch, with no weir and no tie into the banks.",
+        "Rock so small that sheet flow carries it away.",
+        "A berm running downhill, which collects water and then releases it at the low end.",
+        "Calling a rock berm a rock filter dam on the summary sheet. They are different details."
       ],
-      confirm: 'Buffer width is site-specific. Check the current TxDOT fact sheet and summary-sheet guidance, and the permit, before you label a width on the layout.',
-      svg: fig('Bare work area, a grass strip, and a creek, with sheet flow crossing the grass',
-        '<rect x="16" y="36" width="120" height="100" fill="currentColor" opacity=".08" stroke="currentColor"/>' +
-        '<rect x="136" y="36" width="80" height="100" fill="currentColor" opacity=".18" stroke="currentColor"/>' +
-        '<path d="M216 36 h88 v100 h-88 z" fill="currentColor" opacity=".28"/>' +
-        '<path d="M40 86 h90" stroke="currentColor" stroke-width="2"/>' +
-        '<text x="28" y="28" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Bare work</text>' +
-        '<text x="148" y="28" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Grass</text>' +
-        '<text x="232" y="28" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Creek</text>' +
-        '<text x="28" y="156" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Keep equipment off the grass</text>')
+      "confirm": "Rock size, height, and whether fabric goes under the berm are on the current TxDOT rock-berm sheet. Check that sheet. This page does not pick a gradation.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Rock berm for sheet flow. A wedge of irregular rock on level ground, ponding on the upstream face, ends turned upslope.\"><defs><pattern id=\"soil-rb\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-rb\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 246 H278 V312 H22 Z\" fill=\"url(#soil-rb)\"/><path d=\"M22 246 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 246 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M24 190 H130 V246 H24 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M128 246 L162 168 H184 L258 246 Z\" fill=\"currentColor\" fill-opacity=\".05\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linejoin=\"round\"/><polygon points=\"153.3,226.6 143.9,226.4 138.5,220.4 142.9,213.7 152.2,213.5 157.7,219.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"165.7,203.7 160.1,196.8 163.8,188.8 173.9,189 180.9,195.2 175.1,201.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"183.7,214.9 185.8,207.7 194.9,208.2 201.9,212.9 197.1,219.2 188.3,221.3\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"208.1,184 216.5,183.7 222.7,188.5 219.2,195.4 211.2,197.2 205.7,191.4\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"230.6,210 237.2,214.4 234.5,220.8 225.4,222.1 218.5,217.6 222.1,211.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"182,166.5 180.9,172.1 174.6,172.9 169.3,169.7 172,164.7 177.7,162.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M32 148 L109.8 184.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M118 188 L108.1 188 L111.6 180.4 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Sheet flow</text><text x=\"20\" y=\"92\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Upstream face</text><path d=\"M122 104 L150 200\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"150\" cy=\"200\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M70 470 H230 V524 H70 Z\" fill=\"currentColor\" fill-opacity=\".05\"/><path d=\"M58 516 V462 H82 M242 516 V462 H218\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><polygon points=\"92.8,505.2 88.8,500.5 91.5,495.2 98.8,495.4 103.9,499.4 99.7,503.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"107.3,500.7 109.1,495.3 116.3,495.6 121.9,499.2 118.1,503.9 111.1,505.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"126.8,495.5 134.2,495.2 139.7,498.9 136.7,504 129.5,505.4 124.6,501.1\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"152,494.8 157.4,498.7 155.2,504.1 147.9,505.2 142.4,501.4 145.3,496.3\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"174.9,498.5 173.7,504.1 166.4,504.9 160.3,501.7 163.4,496.7 169.9,494.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"192,503.9 184.8,504.6 178.4,501.9 181,496.7 187.5,494.2 192.7,498.3\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"203,505 196.7,502.2 198.4,496.7 205.1,494.4 211,497.9 209.7,503.4\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"100.2,518.6 101.7,514.1 108,514.4 112.9,517.3 109.6,521.3 103.4,522.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"119.4,514.2 125.9,514 130.8,517.1 128.1,521.4 121.8,522.5 117.6,518.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"143.8,513.7 148.4,516.9 146.5,521.4 140.2,522.3 135.4,519.1 137.9,514.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"166,516.7 164.9,521.4 158.6,522.1 153.3,519.4 156,515.3 161.7,513.1\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"183.3,521.3 176.9,521.8 171.4,519.6 173.6,515.3 179.3,513.2 183.9,516.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"195.1,522.2 189.6,519.8 191.1,515.2 197,513.3 202.1,516.3 201,520.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M130 400 L130 447\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M130 456 L125.8 447 L134.2 447 Z\" fill=\"currentColor\"/><path d=\"M190 400 L190 447\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M190 456 L185.8 447 L194.2 447 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"600\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">On the contour</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'rock-filter-dam', cat: 'ditch', name: 'Rock filter dam', sheet: 'EC(2)-16',
-      one: 'A low rock berm across a ditch. This is the usual TxDOT check dam.',
-      what: 'A mound of rock across a ditch, swale, or the toe of a slope. It slows concentrated flow so some soil drops out, and it keeps a ditch from cutting a deep rut. On the TxDOT summary sheet this is "rock filter dam / rock check dam." Types differ: some are lower and have no wire, some are wrapped in mesh, and a taller type is used where the flow calls for it. Sack gabions are another type.',
-      where: [
-        'Across a roadside ditch or a temporary swale, perpendicular to the flow.',
-        'At the outlet of a diversion, and sometimes around an inlet (the lower type).',
-        'Not as a substitute for a sediment basin when 10 or more acres are open in one drainage area and a basin will fit.',
-        'Do not put an undersized rock berm in a live stream. In-stream work needs the type the sheet allows and whatever water permit the crossing requires.'
+      "id": "inlet-protection",
+      "cat": "hold",
+      "name": "Inlet protection",
+      "sheet": "EC(9)-16 and EC(2)-16",
+      "one": "Keeps mud out of a storm-drain inlet without flooding the road.",
+      "what": "A temporary filter or small trap at a curb inlet, grate, or drop inlet. TxDOT uses erosion-control logs, rock, or a small sediment trap depending on the inlet. The point is to catch soil while the ground around the inlet is bare, and still let the street drain.",
+      "where": [
+        "Inlets inside the work and inlets just outside it that will receive muddy water.",
+        "Best where the inlet is in a low point and a little ponding is safe.",
+        "On a slope, a curb inlet often will not hold a pond. Protection that blocks it just sends water farther down the gutter. Those inlets need a device that filters and still overflows."
       ],
-      install: [
-        'Key the ends into the banks so water cannot cut around the dam.',
-        'Use the rock size and height for the type. Item 506 and EC(2)-16, as read for this tool, describe types on the order of 18 inches and a taller meshed type on the order of 36 inches. Match the type to the ditch on the current sheet. Do not pick a height from memory.',
-        'Side slopes are flat enough that rock stays put and, inside the clear zone, flat enough for a vehicle. The sheet gives the slopes.',
-        'The TxDOT fact sheet sizes the dam from the 2-year flow. This guide does not do that math. If the velocity is high, a plain rock pile will wash out. Step up the type or the design.',
-        'Space dams so water ponds between them: the top of the downstream dam lines up about with the toe of the next one up the ditch. Spacing depends on height and ditch slope. See the check-dam page and EC(2)-16.'
+      "install": [
+        "Do not seal the opening. Leave an overflow so a storm can enter the inlet.",
+        "Keep the device out of the wheel path when you can, and do not build something tall enough to hit a car or send water into the lane.",
+        "The TxDOT fact sheets limit how much area one inlet trap should serve, and they give a storage volume. Those limits are on the current sheet. Check EC(9)-16 or EC(2)-16 for the inlet you actually have.",
+        "Show the inlets on the SWP3 layout. The permit asks for inlets on and near the site to be on the map."
       ],
-      maintain: [
-        'Replace rock that has washed out, and repair torn mesh.',
-        'Remove sediment that has filled the pond so the next storm still has room to slow down.',
-        'Look harder after a fast storm. That is when the ends wash out.'
+      "maintain": [
+        "After rain, clear anything that has plugged the opening.",
+        "Take out sediment before the device is about half full. Curb devices fill faster than they look.",
+        "Remove the protection when the street is paved and the area no longer sheds mud, so it does not flood a finished road."
       ],
-      mistakes: [
-        'Rock too small for the speed of the water, so the dam becomes the sediment.',
-        'A gap at the bank, which becomes the new channel.',
-        'Dams so far apart that water is fast again before the next one.',
-        'A dam tall enough to push water out of the ditch and onto the road.',
-        'Driving through the dam because it was built in the haul path.'
+      "mistakes": [
+        "Sandbags or boards that close the inlet with no way for water to get in.",
+        "A gravel bag in the gutter on a grade, which only moves the mud to the next inlet.",
+        "Forgetting inlets downstream of the exit, where tracking still reaches them.",
+        "Leaving the device in place into the mowing season."
       ],
-      confirm: 'Type, rock size, height, and wire are on the current EC(2)-16 sheet and Item 506. Check those. This page does not assign a type for you.',
-      svg: fig('Ditch seen from the side, with a rock berm holding a pool of water',
-        '<path d="M16 120 L70 120 L110 78 L210 78 L250 120 L304 120" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M110 78 l14 28 h72 l14 -28" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="2"/>' +
-        '<circle cx="132" cy="98" r="6" fill="none" stroke="currentColor"/><circle cx="150" cy="96" r="7" fill="none" stroke="currentColor"/><circle cx="170" cy="100" r="6" fill="none" stroke="currentColor"/><circle cx="188" cy="96" r="7" fill="none" stroke="currentColor"/>' +
-        '<path d="M40 108 H124 Q150 96 124 108" fill="currentColor" opacity=".25"/>' +
-        '<text x="16" y="36" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Flow</text>' +
-        '<path d="M16 48 h48" stroke="currentColor" stroke-width="2"/>' +
-        '<text x="168" y="64" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Rock</text>' +
-        '<text x="36" y="148" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Pool on the upstream side</text>')
+      "confirm": "Which detail to use, and any height or volume limit, is on the current EC sheet for that inlet. Do not copy a detail from a different inlet type.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Curb inlet protection. Road slopes to a gutter, a gravel bag sits in front of a rectangular throat, and overflow can still enter above the bag. Plan shows the bag line with ends curved upslope.\"><defs><pattern id=\"soil-in\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-in\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 162 L132 214 H278 V312 H22 Z\" fill=\"url(#soil-in)\"/><path d=\"M22 162 L132 214 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 162 L132 214\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linecap=\"round\"/><rect x=\"132\" y=\"214\" width=\"80\" height=\"18\" rx=\"0\" fill=\"currentColor\" fill-opacity=\".26\" stroke=\"currentColor\" stroke-width=\"1.8\"/><rect x=\"198\" y=\"108\" width=\"28\" height=\"50\" rx=\"0\" fill=\"currentColor\" fill-opacity=\".26\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M210 108 H278 V138 H226 V122 H210 Z\" fill=\"currentColor\" fill-opacity=\".16\" stroke=\"currentColor\" stroke-width=\"1.6\"/><rect x=\"198\" y=\"158\" width=\"28\" height=\"56\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.7\"/><rect x=\"140\" y=\"180\" width=\"54\" height=\"34\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M143 194.3 H191\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><polygon points=\"156.6,201.3 151.9,201.2 149.3,198.2 151.5,194.8 156.1,194.8 158.9,197.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"166,205.4 163.5,202.3 165.2,198.8 169.8,198.9 173,201.6 170.3,204.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"176.7,196.4 177.5,193.6 181.2,193.8 184,195.6 182.1,198 178.5,198.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"159.4,187.7 163.1,187.6 165.9,189.4 164.3,192 160.7,192.7 158.3,190.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M36 198 L132 214 H64 Z\" fill=\"currentColor\" fill-opacity=\".14\"/><path d=\"M36 146 L195.1 163\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M204 164 L194.6 167.2 L195.5 158.9 Z\" fill=\"currentColor\"/><path d=\"M48 188 L127 195.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M136 196 L126.7 199.4 L127.4 191 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Overflow</text><text x=\"20\" y=\"86\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Filtered</text><text x=\"20\" y=\"114\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Gravel bag</text><path d=\"M98 126 L164 196\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"164\" cy=\"196\" r=\"2.1\" fill=\"currentColor\"/><text x=\"232\" y=\"78\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Curb</text><text x=\"232\" y=\"176\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Opening</text><path d=\"M228 188 L212 180\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"212\" cy=\"180\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M24 400 H198 V630 H24 Z\" fill=\"currentColor\" fill-opacity=\".05\"/><path d=\"M198 400 H226 V630 H198 Z\" fill=\"currentColor\" fill-opacity=\".08\"/><rect x=\"226\" y=\"400\" width=\"48\" height=\"230\" rx=\"0\" fill=\"currentColor\" fill-opacity=\".26\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M198 400 V470 M198 540 V630\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\"/><rect x=\"198\" y=\"470\" width=\"28\" height=\"70\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M156 500 Q176 468 198 478\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M156 560 Q176 592 198 578\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><rect x=\"166\" y=\"492\" width=\"30\" height=\"22\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M169 501.2 H193\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"166\" y=\"516\" width=\"30\" height=\"22\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M169 525.2 H193\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"166\" y=\"540\" width=\"30\" height=\"22\" rx=\"3\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M169 549.2 H193\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><path d=\"M80 420 L80 491\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M80 500 L75.8 491 L84.2 491 Z\" fill=\"currentColor\"/><text x=\"28\" y=\"460\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Street</text><text x=\"28\" y=\"600\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Ends curve upslope</text><path d=\"M162 594 L168 500\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"168\" cy=\"500\" r=\"2.1\" fill=\"currentColor\"/><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'check-dam', cat: 'ditch', name: 'Check dam', sheet: 'EC(2)-16 or EC(9)-16',
-      one: 'A small dam across a ditch so water steps down instead of cutting.',
-      what: 'Any low dam whose job is to slow water in a channel. On a TxDOT job the usual one is a rock filter dam, also called a rock check dam. An erosion-control log is used as a check where rock is a poor fit, such as a shallow swale or a place that will be mowed soon. The idea is the same: pond a little water, drop the soil, and keep the ditch from eroding.',
-      where: [
-        'Temporary ditches and swales that are carrying muddy water while the job is open.',
-        'Not in a stream unless the sheet and the water permit allow it.',
-        'The center of the dam should be lower than the ends, so if it overtops it overtops in the middle and not around the bank.'
+      "id": "vegetated-buffer",
+      "cat": "hold",
+      "name": "Vegetated buffer",
+      "sheet": "Summary sheet 2.6",
+      "one": "A vegetated filter strip of existing grass between the work and the water.",
+      "what": "A band of plants left in place, also called a vegetated filter strip, so sheet flow crosses grass before it reaches a creek, pond, or wetland. The grass slows the water and catches soil. It is not a ditch liner, and a rill cut through it is no longer a buffer.",
+      "where": [
+        "Where a stream, pond, or wetland is on or next to the right of way and you can leave a strip of cover.",
+        "The permit asks you to keep a natural buffer around surface water and to send stormwater across vegetation, unless that is not feasible.",
+        "If you cannot keep the buffer, write why, and show the controls you will use instead, with stationing. On a TxDOT summary sheet that finding can be one of the items that needs a seal.",
+        "As a primary sediment control, the TxDOT fact sheet limits the area, the slope, and how long the flow path can be, and it wants a thick stand of plants. Check the current fact sheet. A thin or steep strip is not a buffer."
       ],
-      install: [
-        'Spacing follows the ditch slope and the dam height. A practical picture: standing water should reach from one dam back to the toe of the next dam upstream. A steep ditch needs them closer. EC(2)-16 and EC(9)-16 show the spacing rule for the device you chose.',
-        'Tie the ends into the ground. A check that water can walk around is a new bank failure.',
-        'Do not build the dam so high that it backs water onto the pavement.'
+      "install": [
+        "Mark the strip before clearing and keep trucks out of it.",
+        "Send sheet flow into the grass. Do not cut a channel through it.",
+        "If there is no surface water on or next to the site, the summary sheet says so in plain words. That is a normal answer, not a blank to avoid."
       ],
-      maintain: [
-        'After storms, put rock or the log back where water moved it, and shovel out the pond when it is full of dirt.',
-        'Take the checks out when the ditch is lined or vegetated and they are no longer doing work. A forgotten check can hold water in a finished ditch.'
+      "maintain": [
+        "Pick up sediment that has buried the grass, and repair rills.",
+        "Do not park, fuel, or stockpile on the strip."
       ],
-      mistakes: [
-        'Even spacing copied from the last job, on a ditch that is steeper.',
-        'Straw bales used as checks. They rot, they float, and they are not the TxDOT rock or log detail.',
-        'A check in the travel lane or in a driveway.',
-        'No protection at the downstream end, so the last jump of water digs a hole.'
+      "mistakes": [
+        "Calling a bare or freshly seeded strip a buffer.",
+        "Letting a concentrated discharge cross the grass in one rut.",
+        "Clearing to the top of the bank and adding fence later, with no note that the buffer would not fit.",
+        "Counting a roadside ditch or a sediment trap as the \"surface water\" the buffer is for. The permit treats constructed stormwater features differently. Check the current permit wording."
       ],
-      confirm: 'There is no single spacing in feet that fits every ditch. Use the current EC sheet for rock filter dams or erosion-control logs, with the dam height and the ditch slope you have.',
-      svg: fig('Three check dams in a ditch, with water ponding between them',
-        '<path d="M16 40 L304 128" fill="none" stroke="currentColor" stroke-width="2" opacity=".45"/>' +
-        '<path d="M70 56 l0 22 l18 -8 l18 8 l0 -22" fill="currentColor" opacity=".3" stroke="currentColor"/>' +
-        '<path d="M150 84 l0 22 l18 -8 l18 8 l0 -22" fill="currentColor" opacity=".3" stroke="currentColor"/>' +
-        '<path d="M230 112 l0 22 l18 -8 l18 8 l0 -22" fill="currentColor" opacity=".3" stroke="currentColor"/>' +
-        '<path d="M20 64 H88" stroke="currentColor" stroke-width="3" opacity=".55"/>' +
-        '<path d="M106 92 H168" stroke="currentColor" stroke-width="3" opacity=".55"/>' +
-        '<path d="M186 120 H248" stroke="currentColor" stroke-width="3" opacity=".55"/>' +
-        '<text x="16" y="28" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Steep ditch, dams closer together</text>' +
-        '<text x="16" y="158" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Pond reaches the next dam</text>')
+      "confirm": "Buffer width is site-specific. Check the current TxDOT fact sheet and summary-sheet guidance, and the permit, before you label a width on the layout.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Vegetated filter strip. Sheet flow crosses grass. A rill is the wrong pattern.\"><defs><pattern id=\"soil-vb\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-vb\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 168 L278 250 V312 H22 Z\" fill=\"url(#soil-vb)\"/><path d=\"M22 168 L278 250 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 168 L188 228 L206 248 L222 226 L278 250\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M206 248 L216 262 L198 258 Z\" fill=\"currentColor\" fill-opacity=\".12\" stroke=\"currentColor\" stroke-width=\"1.2\"/><path d=\"M36 176 l-2.2 -8 M36 176 v-10 M36 176 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M52 176 l-2.2 -8 M52 176 v-10 M52 176 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M68 176 l-2.2 -8 M68 176 v-10 M68 176 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M84 176 l-2.2 -8 M84 176 v-10 M84 176 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M108 204 l-2.2 -8 M108 204 v-10 M108 204 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M124 204 l-2.2 -8 M124 204 v-10 M124 204 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M140 204 l-2.2 -8 M140 204 v-10 M140 204 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M156 204 l-2.2 -8 M156 204 v-10 M156 204 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M168 224 l-2.2 -8 M168 224 v-10 M168 224 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M182 224 l-2.2 -8 M182 224 v-10 M182 224 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M246 244 l-2.2 -8 M246 244 v-10 M246 244 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M260 244 l-2.2 -8 M260 244 v-10 M260 244 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M30 130 L88 159.9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M96 164 L86.1 163.6 L89.9 156.1 Z\" fill=\"currentColor\"/><path d=\"M110 156 L160.6 190.9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M168 196 L158.2 194.3 L163 187.4 Z\" fill=\"currentColor\"/><circle cx=\"214\" cy=\"236\" r=\"9\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M210 232 l8.1 8.1 M218.1 232 l-8.1 8.1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Sheet flow</text><text x=\"20\" y=\"96\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Grass</text><path d=\"M58 100 L52 168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"52\" cy=\"168\" r=\"2.1\" fill=\"currentColor\"/><text x=\"168\" y=\"292\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Rill</text><path d=\"M190 270 L210 250\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"210\" cy=\"250\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M36 430 l-2 -8 M36 430 v-9 M36 430 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M64 430 l-2 -8 M64 430 v-9 M64 430 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M92 430 l-2 -8 M92 430 v-9 M92 430 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M120 430 l-2 -8 M120 430 v-9 M120 430 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M148 430 l-2 -8 M148 430 v-9 M148 430 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M176 430 l-2 -8 M176 430 v-9 M176 430 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M36 462 l-2 -8 M36 462 v-9 M36 462 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M64 462 l-2 -8 M64 462 v-9 M64 462 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M92 462 l-2 -8 M92 462 v-9 M92 462 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M120 462 l-2 -8 M120 462 v-9 M120 462 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M148 462 l-2 -8 M148 462 v-9 M148 462 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M176 462 l-2 -8 M176 462 v-9 M176 462 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M36 494 l-2 -8 M36 494 v-9 M36 494 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M64 494 l-2 -8 M64 494 v-9 M64 494 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M92 494 l-2 -8 M92 494 v-9 M92 494 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M120 494 l-2 -8 M120 494 v-9 M120 494 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M148 494 l-2 -8 M148 494 v-9 M148 494 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M176 494 l-2 -8 M176 494 v-9 M176 494 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M36 526 l-2 -8 M36 526 v-9 M36 526 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M64 526 l-2 -8 M64 526 v-9 M64 526 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M92 526 l-2 -8 M92 526 v-9 M92 526 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M120 526 l-2 -8 M120 526 v-9 M120 526 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M148 526 l-2 -8 M148 526 v-9 M148 526 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M176 526 l-2 -8 M176 526 v-9 M176 526 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M36 558 l-2 -8 M36 558 v-9 M36 558 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M64 558 l-2 -8 M64 558 v-9 M64 558 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M92 558 l-2 -8 M92 558 v-9 M92 558 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M120 558 l-2 -8 M120 558 v-9 M120 558 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M148 558 l-2 -8 M148 558 v-9 M148 558 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M176 558 l-2 -8 M176 558 v-9 M176 558 l2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><path d=\"M52 400 L52 551\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M52 560 L47.8 551 L56.2 551 Z\" fill=\"currentColor\"/><path d=\"M100 400 L100 551\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M100 560 L95.8 551 L104.2 551 Z\" fill=\"currentColor\"/><path d=\"M148 400 L148 551\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M148 560 L143.8 551 L152.2 551 Z\" fill=\"currentColor\"/><path d=\"M230 410 V500\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\"/><circle cx=\"230\" cy=\"524\" r=\"11\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M225.1 519.1 l9.9 9.9 M235 519.1 l-9.9 9.9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><text x=\"20\" y=\"600\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Rill is the wrong cut</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'sediment-trap', cat: 'ditch', name: 'Sediment trap', sheet: 'EC(6)-16',
-      one: 'A small hole and a rock berm that settle mud from a ditch.',
-      what: 'A shallow excavated pool with a rock embankment. Water from a ditch or an inlet slows down, soil drops, and water leaves over or through the rock. It is for a small drainage area. It is not a sediment basin and it does not replace a basin that the permit requires, unless the basin truly will not fit and the trap is part of the replacement you have written down.',
-      where: [
-        'In a ditch, just upstream of a ditch inlet, and before water leaves the right of way or enters a creek.',
-        'The TxDOT summary guidance and EC(6)-16 limit how many acres one trap should drain, and they give a storage volume per acre. Check the current sheet. If the area is larger, use more than one trap or a basin.',
-        'TxDOT also shows traps spaced along a long ditch. The spacing is on the current guidance, not a fixed number to reuse from an old plan.'
+      "id": "rock-filter-dam",
+      "cat": "ditch",
+      "name": "Rock filter dam",
+      "sheet": "EC(2)-16",
+      "one": "A low rock berm across a ditch. This is the usual TxDOT check dam.",
+      "what": "A mound of rock across a ditch, swale, or the toe of a slope. It slows concentrated flow so some soil drops out, and it keeps a ditch from cutting a deep rut. On the TxDOT summary sheet this is \"rock filter dam / rock check dam.\" Types differ: some are lower and have no wire, some are wrapped in mesh, and a taller type is used where the flow calls for it. Sack gabions are another type.",
+      "where": [
+        "Across a roadside ditch or a temporary swale, perpendicular to the flow.",
+        "At the outlet of a diversion, and sometimes around an inlet (the lower type).",
+        "Not as a substitute for a sediment basin when 10 or more acres are open in one drainage area and a basin will fit.",
+        "Do not put an undersized rock berm in a live stream. In-stream work needs the type the sheet allows and whatever water permit the crossing requires."
       ],
-      install: [
-        'The embankment is rock, with a protected overflow so a big storm does not flank the trap.',
-        'Height, top width, and side slopes are on EC(6)-16. The fact sheet used here keeps the embankment low. Confirm the current limits before you draw one.',
-        'Give the pool enough surface area. A deep narrow hole does not settle soil as well as a shallow wide one. The sheet has an area rule.',
-        'Put the outlet where it will not erode the next ditch. A little rock on the downstream side is part of the detail.'
+      "install": [
+        "Key the ends into the banks so water cannot cut around the dam.",
+        "Use the rock size and height for the type. Item 506 and EC(2)-16, as read for this tool, describe types on the order of 18 inches and a taller meshed type on the order of 36 inches. Match the type to the ditch on the current sheet. Do not pick a height from memory.",
+        "Side slopes are flat enough that rock stays put and, inside the clear zone, flat enough for a vehicle. The sheet gives the slopes.",
+        "The TxDOT fact sheet sizes the dam from the 2-year flow. This guide does not do that math. If the velocity is high, a plain rock pile will wash out. Step up the type or the design.",
+        "Make the center lower than the ends, a weir, so overflow goes over the middle and not around a bank. Key the rock into the bed as well as the banks.",
+        "Space dams so the toe of an upstream dam sits at about the same elevation as the crest of the next dam downstream. Spacing depends on height and ditch slope. See the check-dam page and EC(2)-16."
       ],
-      maintain: [
-        'Clean the trap when about half the storage is sediment. That is the permit rule. The TxDOT job aid also watches sediment depth. Use whichever comes first, and check the current job aid.',
-        'Replace rock that has clogged with fines so water can still leave slowly instead of overtopping in a sheet.'
+      "maintain": [
+        "Replace rock that has washed out, and repair torn mesh.",
+        "Remove sediment that has filled the pond so the next storm still has room to slow down.",
+        "Look harder after a fast storm. That is when the ends wash out."
       ],
-      mistakes: [
-        'Calling a basin-sized problem a trap so you can skip the basin note.',
-        'An earth berm with no rock outlet, which fails the first hard rain.',
-        'Building the trap in the clear zone taller than the sheet allows.',
-        'Never cleaning it, so it is full before the season that matters.'
+      "mistakes": [
+        "Rock too small for the speed of the water, so the dam becomes the sediment.",
+        "A gap at the bank, which becomes the new channel.",
+        "Dams so far apart that water is fast again before the next one.",
+        "A dam tall enough to push water out of the ditch and onto the road.",
+        "Driving through the dam because it was built in the haul path."
       ],
-      confirm: 'Drainage area, volume per acre, and embankment limits are on the current EC(6)-16 sheet and the TxDOT SWP3 summary guidance. Check both. This guide does not size the trap.',
-      svg: fig('Small excavated trap with a rock berm and water leaving over the rock',
-        '<path d="M16 70 H90 L120 120 H200 L230 70 H304" fill="currentColor" opacity=".08" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M200 120 L230 70 L270 70 L250 120 Z" fill="currentColor" opacity=".22" stroke="currentColor"/>' +
-        '<path d="M100 100 H210" stroke="currentColor" stroke-width="3" opacity=".45"/>' +
-        '<text x="16" y="40" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Ditch in</text>' +
-        '<text x="214" y="56" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Rock out</text>' +
-        '<text x="120" y="152" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Shallow pool</text>')
+      "confirm": "Type, rock size, height, and wire are on the current EC(2)-16 sheet and Item 506. Check those. This page does not assign a type for you.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Rock filter dam. Upstream pool, rock keyed into the bed, longer downstream face, and a low center. Plan shows the ends keyed into the banks.\"><defs><pattern id=\"soil-rfd\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-rfd\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 228 H118 V272 H196 V228 H278 V312 H22 Z\" fill=\"url(#soil-rfd)\"/><path d=\"M22 228 H118 V272 H196 V228 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 228 H118 V272 H196 V228 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M28 176 H140 L118 228 H28 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M36 176 Q43 172.8 50 176 Q57 179.2 64 176 Q71 172.8 78 176 Q85 179.2 92 176 Q99 172.8 106 176 Q113 179.2 120 176\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\"/><path d=\"M118 228 L150 150 H172 L268 228 Z\" fill=\"currentColor\" fill-opacity=\".05\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><polygon points=\"144.8,205.8 136.3,205.6 131.5,200.3 135.4,194.5 143.8,194.3 148.8,199.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"158.1,182.9 153,176.7 156.3,169.6 165.5,169.8 171.9,175.2 166.6,181.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"178.5,198.9 180.5,191.7 188.6,192.2 194.9,196.9 190.6,203.2 182.7,205.3\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"203.5,178 212.8,177.7 219.6,182.5 215.8,189.4 206.9,191.2 200.8,185.4\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"236.3,202 242.3,206.4 239.8,212.8 231.7,214.1 225.5,209.6 228.7,203.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"174,212.5 172.9,218.1 166.6,218.9 161.3,215.7 164,210.7 169.7,208.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M36 130 L102 163.9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M110 168 L100.1 167.6 L103.9 160.2 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Upstream pool</text><text x=\"20\" y=\"86\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Low crest</text><path d=\"M90 78 L172 78 L160 148\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"160\" cy=\"148\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"114\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Keyed into the bed</text><path d=\"M148 126 L156 260\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"156\" cy=\"260\" r=\"2.1\" fill=\"currentColor\"/><text x=\"188\" y=\"150\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Long face</text><path d=\"M252 154 L230 190\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"230\" cy=\"190\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M46 400 L78 470 V580 L46 630\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M254 400 L222 470 V580 L254 630\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M46 500 H78 L112 528 L150 488 L188 528 L222 500 H254 L236 556 H64 Z\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><polygon points=\"103.2,524.1 97.5,524 94.3,520.2 97,516 102.5,516 105.8,519.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"127.6,512.3 124.6,508.4 126.6,504 132.1,504.1 135.9,507.5 132.8,511.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"155,520.6 156.3,516.1 161.8,516.4 165.9,519.3 163.1,523.3 157.8,524.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"186.1,504.2 191.7,504 195.8,507.1 193.5,511.4 188.1,512.5 184.5,508.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M108 392 L108 437\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M108 446 L103.8 437 L112.2 437 Z\" fill=\"currentColor\"/><text x=\"128\" y=\"432\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Low center</text><path d=\"M160 444 L150 492\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"150\" cy=\"492\" r=\"2.1\" fill=\"currentColor\"/><text x=\"78\" y=\"650\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Ends keyed into banks</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'sediment-basin', cat: 'ditch', name: 'Sediment basin', sheet: 'EC(6)-16',
-      one: 'A pond that holds muddy water long enough for soil to settle.',
-      what: 'A larger pool with a controlled outlet. Stormwater sits, soil falls to the bottom, and clearer water leaves slowly. Where it is feasible, the construction general permit requires one when 10 or more acres are disturbed at one time in the same drainage area.',
-      where: [
-        'The low point of a drainage area that will have 10 or more acres bare at once.',
-        'You can leave off-site and already-stable water out of the volume if you divert that water around the bare ground.',
-        'TxDOT guidance says a basin should not drain more than a large upper limit of acres. Check the current summary-sheet guidance for that cap.',
-        'An existing detention pond is usually a bad place to store construction mud unless it was designed for that and you can clean it.',
-        'If a basin will not fit, write the reason and show equivalent controls, such as several smaller basins, traps, fence, or buffers. On the TxDOT sheet, "not feasible" is one of the notes that can require a seal.'
+      "id": "check-dam",
+      "cat": "ditch",
+      "name": "Check dam",
+      "sheet": "EC(2)-16 or EC(9)-16",
+      "one": "A small dam across a ditch so water steps down instead of cutting.",
+      "what": "Any low dam whose job is to slow water in a channel. On a TxDOT job the usual one is a rock filter dam, also called a rock check dam. An erosion-control log is used as a check where rock is a poor fit, such as a shallow swale or a place that will be mowed soon. The idea is the same: pond a little water, drop the soil, and keep the ditch from eroding.",
+      "where": [
+        "Temporary ditches and swales that are carrying muddy water while the job is open.",
+        "Not in a stream unless the sheet and the water permit allow it.",
+        "The center of the dam should be lower than the ends, so if it overtops it overtops in the middle and not around the bank."
       ],
-      install: [
-        'Size it for the 2-year, 24-hour runoff from each disturbed acre. If you cannot calculate that storm, the permit uses 3,600 cubic feet per acre drained. Put the math in the SWP3.',
-        'TxDOT notes sometimes quote a smaller volume for traps and for smaller basins. If this basin is how you meet the permit, use the permit volume, not the smaller number.',
-        'The permit wants an outlet that draws water from the surface when that is feasible, so the mud at the bottom stays in the basin.',
-        'Include a way for a big storm to leave without washing out the embankment. TxDOT sheets talk about drawdown time and an emergency spillway. Those details are on the current EC(6)-16 and the SWP3 guidance. This guide does not calculate them.',
-        'A long flow path through the pool works better than a square hole. The guidance describes a length-to-width preference. Check the current note.'
+      "install": [
+        "Spacing follows the ditch slope and the dam height. Set them so the toe of the upstream dam is at about the same elevation as the crest of the downstream dam. Standing water then reaches from one crest back to the next dam. A steep ditch needs them closer. EC(2)-16 and EC(9)-16 show the rule for the device you chose.",
+        "Tie the ends into the ground. A check that water can walk around is a new bank failure.",
+        "Do not build the dam so high that it backs water onto the pavement."
       ],
-      maintain: [
-        'Remove sediment when about half the design volume is full of soil. That is the permit rule. Do not wait until the outlet is buried.',
-        'Watch the discharge. If it is obviously muddy, the basin or the outlet is not doing its job.',
-        'Keep the embankment free of trees and animal holes, and keep the spillway clear.'
+      "maintain": [
+        "After storms, put rock or the log back where water moved it, and shovel out the pond when it is full of dirt.",
+        "Take the checks out when the ditch is lined or vegetated and they are no longer doing work. A forgotten check can hold water in a finished ditch."
       ],
-      mistakes: [
-        'No basin, and no written reason, on a site with 10 acres open in one watershed.',
-        'A hole with a pipe at the bottom that releases the muddiest water first.',
-        'Volume copied from a trap note (the smaller per-acre number) and called a permit basin.',
-        'No math in the SWP3.',
-        'Building it after the clearing instead of before the dirt starts to move.'
+      "mistakes": [
+        "Even spacing copied from the last job, on a ditch that is steeper.",
+        "Straw bales used as checks. They rot, they float, and they are not the TxDOT rock or log detail.",
+        "A check in the travel lane or in a driveway.",
+        "No protection at the downstream end, so the last jump of water digs a hole."
       ],
-      confirm: 'Outlet, drawdown, spillway, and embankment rules are on the current EC(6)-16 sheet and TxDOT SWP3 guidance. Volume for a permit basin comes from the current TCEQ construction general permit. Check both. Do not size it from this page.',
-      svg: fig('Sediment basin with inflow, a surface outlet, and an emergency spillway',
-        '<path d="M24 64 H70 L110 130 H230 L270 64 H300" fill="currentColor" opacity=".1" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M90 110 H240" stroke="currentColor" stroke-width="3" opacity=".4"/>' +
-        '<rect x="168" y="78" width="10" height="52" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<line x1="160" y1="86" x2="186" y2="86" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M270 64 q20 8 16 28" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<text x="16" y="40" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Muddy in</text>' +
-        '<text x="140" y="56" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Surface outlet</text>' +
-        '<text x="214" y="48" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Spillway</text>' +
-        '<text x="100" y="156" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Soil settles on the bottom</text>')
+      "confirm": "There is no single spacing in feet that fits every ditch. Use the current EC sheet for rock filter dams or erosion-control logs, with the dam height and the ditch slope you have.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Check dams. A horizontal dashed line joins the toe of the upper dam to the crest of the next dam. The cross-section shows the center lower than the banks. The plan is symmetric.\"><defs><pattern id=\"soil-cd\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-cd\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Profile</text><path d=\"M30 150 L270 298.8 V312 H30 Z\" fill=\"url(#soil-cd)\"/><path d=\"M30 150 L270 298.8 V312 H30 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M30 150 L270 298.8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M118 204.6 H160 L140 218.2 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M210 261.6 H236 L222 269 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M46 159.9 L64 118 H80 L118 204.6 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M140 218.2 L160 204.6 H176 L210 261.6 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M222 269 L236 261.6 H250 L268 297.6 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><polygon points=\"73.2,152.1 67.5,152 64.3,148.2 67,144 72.5,144 75.8,147.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"85.6,170.3 82.6,166.4 84.6,162 90.1,162.1 93.9,165.5 90.8,169.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"97.8,184.5 98.9,180.9 103.5,181.1 106.9,183.4 104.6,186.6 100.2,187.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"162.1,218.2 167.7,218 171.8,221.1 169.5,225.4 164.1,226.5 160.5,222.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"185.5,233.7 189.5,236.9 187.9,241.4 182.5,242.3 178.3,239.1 180.5,234.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"200.3,247 199.5,250.7 195,251.3 191.2,249.1 193.1,245.8 197.2,244.1\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"244.5,279.3 239.1,279.8 234.3,277.6 236.2,273.3 241.1,271.2 245,274.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"251.4,287.3 247.4,285.4 248.5,281.8 252.7,280.2 256.4,282.6 255.6,286.3\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M118 204.6 H160 M210 261.6 H236\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-dasharray=\"5 3\"/><path d=\"M196 56 L214 96 L250 56\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><path d=\"M208 84 L232 96 L226 78 Z\" fill=\"currentColor\" fill-opacity=\".16\" stroke=\"currentColor\" stroke-width=\"1.2\"/><text x=\"196\" y=\"50\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Low center</text><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Toe matches next crest</text><path d=\"M178 76 L148 204\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"148\" cy=\"204\" r=\"2.1\" fill=\"currentColor\"/><path d=\"M36 100 L81.8 120.3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M90 124 L80.1 124.2 L83.5 116.5 Z\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M78 410 L58 600\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M222 410 L242 600\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M86 470 L150 530 L214 470 L200 560 L100 560 Z\" fill=\"currentColor\" fill-opacity=\".12\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><polygon points=\"123.2,504.1 117.5,504 114.3,500.2 117,496 122.5,496 125.8,499.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"147.6,516.3 144.6,512.4 146.6,508 152.1,508.1 155.9,511.5 152.8,515.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"175,500.6 176.3,496.1 181.8,496.4 185.9,499.3 183.1,503.3 177.8,504.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M150 400 L150 441\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M150 450 L145.8 441 L154.2 441 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"620\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Overflow stays in the ditch</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'seeding-mulch', cat: 'cover', name: 'Seeding, mulch, and sod', sheet: 'Items 162, 164, and 169 notes',
-      one: 'Cover bare soil with plants, and mulch to hold it until the plants take.',
-      what: 'Temporary seeding and mulch protect ground that will sit still during the job. Permanent seeding or sod is the final cover on areas that will not be paved. Mulch, including hydromulch, holds seed and soil against rain. Mulch by itself is not final stabilization.',
-      where: [
-        'Every disturbed area that will not be under pavement or a structure, once you are done grading that piece.',
-        'Start as soon as work in an area stops. The permit says to begin stabilization by the end of the next work day when work has stopped and will not resume for more than 14 days, and to finish within 14 days after you start. TxDOT Item 506 wording is looser. Use the permit timing.',
-        'Final stabilization means a uniform perennial cover on the unpaved areas, about 70 percent of the native background cover, or something equivalent such as riprap. That definition is in the permit.'
+      "id": "sediment-trap",
+      "cat": "ditch",
+      "name": "Sediment trap",
+      "sheet": "EC(6)-16",
+      "one": "A small hole and a rock berm that settle mud from a ditch.",
+      "what": "A shallow excavated pool with a rock embankment. Water from a ditch or an inlet slows down, soil drops, and water leaves over or through the rock. It is for a small drainage area. It is not a sediment basin and it does not replace a basin that the permit requires, unless the basin truly will not fit and the trap is part of the replacement you have written down.",
+      "where": [
+        "In a ditch, just upstream of a ditch inlet, and before water leaves the right of way or enters a creek.",
+        "The TxDOT summary guidance and EC(6)-16 limit how many acres one trap should drain, and they give a storage volume per acre. Check the current sheet. If the area is larger, use more than one trap or a basin.",
+        "TxDOT also shows traps spaced along a long ditch. The spacing is on the current guidance, not a fixed number to reuse from an old plan."
       ],
-      install: [
-        'Seed mix, rate, season, and fertilizer belong in the plans under the current TxDOT items for seeding and sodding, often with topsoil or compost. Do not invent a rate here. Check Items 162 and 164 and the district seed list.',
-        'Mulch steep or sandy spots the same day you seed. Seed without cover washes off the first rain.',
-        'Keep a record of when grading stopped and when stabilization started. TxDOT inspection forms ask for that.',
-        'Sod where you need cover now, such as a ditch that will see flow before seed could grow.'
+      "install": [
+        "The embankment is rock, with a protected overflow so a big storm does not flank the trap.",
+        "Height, top width, and side slopes are on EC(6)-16. The fact sheet used here keeps the embankment low. Confirm the current limits before you draw one.",
+        "Give the pool enough surface area. A deep narrow hole does not settle soil as well as a shallow wide one. The sheet has an area rule.",
+        "Put the outlet where it will not erode the next ditch. A little rock on the downstream side is part of the detail."
       ],
-      maintain: [
-        'Re-seed bare spots and keep traffic off the area while it establishes.',
-        'Water if the specification says to. Do not assume rain will finish the job.',
-        'The permit is not over when the contractor is accepted if the cover is not actually there. Keep inspecting until final stabilization, and until the notice of termination on a large site.'
+      "maintain": [
+        "Clean the trap when about half the storage is sediment. That is the permit rule. The TxDOT job aid also watches sediment depth. Use whichever comes first, and check the current job aid.",
+        "Replace rock that has clogged with fines so water can still leave slowly instead of overtopping in a sheet."
       ],
-      mistakes: [
-        'Waiting weeks after grading because the schedule says "seed at the end."',
-        'Calling a job finished on a stand that is still mostly bare soil.',
-        'Hydromulch on a ditch that needs a blanket, so the mulch ends up downstream.',
-        'Using a temporary annual grass and never coming back with permanent cover.',
-        'Driving haul trucks across the new seed.'
+      "mistakes": [
+        "Calling a basin-sized problem a trap so you can skip the basin note.",
+        "An earth berm with no rock outlet, which fails the first hard rain.",
+        "Building the trap in the clear zone taller than the sheet allows.",
+        "Never cleaning it, so it is full before the season that matters."
       ],
-      confirm: 'Seed mixes and rates change by district and season. Use the current TxDOT specifications and the plan set. Timing and the 70 percent cover rule are in the current TCEQ construction general permit. Check that permit if you are writing a note.',
-      svg: fig('Bare slope next to a slope with seed and mulch cover',
-        '<path d="M16 120 L150 40 L150 140 L16 140 Z" fill="currentColor" opacity=".08" stroke="currentColor"/>' +
-        '<path d="M170 140 L170 40 L304 120 L304 140 Z" fill="currentColor" opacity=".16" stroke="currentColor"/>' +
-        '<path d="M190 110 l8 -16 l8 16 M220 100 l8 -18 l8 18 M250 112 l8 -14 l8 14" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
-        '<text x="28" y="132" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Bare</text>' +
-        '<text x="196" y="132" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Seed and mulch</text>')
+      "confirm": "Drainage area, volume per acre, and embankment limits are on the current EC(6)-16 sheet and the TxDOT SWP3 summary guidance. Check both. This guide does not size the trap.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Sediment trap. A shallow wide pool with a rock weir. The ditch enters the pool and water leaves over the rock.\"><defs><pattern id=\"soil-tr\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-tr\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 170 H78 L112 236 H196 L232 168 H278 V312 H22 Z\" fill=\"url(#soil-tr)\"/><path d=\"M22 170 H78 L112 236 H196 L232 168 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 170 H78 L112 236 H196 L232 168 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M100 198 H206 L196 236 H112 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M120 198 Q127 194.8 134 198 Q141 201.2 148 198 Q155 194.8 162 198 Q169 201.2 176 198 Q183 194.8 190 198\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\"/><path d=\"M196 236 L248 156 H278 L240 196 Z\" fill=\"currentColor\" fill-opacity=\".06\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><polygon points=\"228.2,200.9 220.7,200.8 216.4,196.3 219.9,191.3 227.3,191.2 231.8,195.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"240.8,184 236.8,178.6 239.5,172.4 246.8,172.6 251.9,177.3 247.7,182.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"254.2,198.7 255.7,193.3 262,193.6 266.9,197.2 263.6,201.9 257.4,203.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M28 124 L63.3 156\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M70 162 L60.5 159.1 L66.1 152.8 Z\" fill=\"currentColor\"/><path d=\"M250 140 L265.3 153.9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M272 160 L262.5 157.1 L268.2 150.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Ditch in</text><text x=\"20\" y=\"90\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Wide pool</text><text x=\"200\" y=\"112\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Rock weir</text><path d=\"M250 116 L248 176\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"248\" cy=\"176\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M22 500 H78 L100 450 H140\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M22 540 H78 L100 590 H140\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M120 420 H200 Q256 500 200 590 H120 Q78 500 120 420 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M196 440 L252 500 L196 560 L214 500 Z\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><polygon points=\"223.2,490.1 217.5,490 214.3,486.2 217,482 222.5,482 225.8,485.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"231.6,508.3 228.6,504.4 230.6,500 236.1,500.1 239.9,503.5 236.8,507.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"213.8,520.5 214.9,516.9 219.5,517.1 222.9,519.4 220.6,522.6 216.2,523.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M30 520 L69 520\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M78 520 L69 524.2 L69 515.8 Z\" fill=\"currentColor\"/><path d=\"M240 500 L267 500\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M276 500 L267 504.2 L267 495.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"400\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">In</text><text x=\"130\" y=\"510\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Pool</text><text x=\"20\" y=\"630\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Rock at the outlet</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'blanket', cat: 'cover', name: 'Erosion control blanket', sheet: 'Item 169',
-      one: 'A mat pinned over soil or seed on a slope or in a ditch.',
-      what: 'A blanket or mat, often called a soil retention blanket on TxDOT jobs, pinned over bare soil or fresh seed. It holds the soil until plants grow. Slope products and channel products are not the same. A ditch that will carry water needs a blanket rated for that flow.',
-      where: [
-        'Slopes, fill transitions, ditch bottoms, and ground next to a creek.',
-        'Steep or easily eroded soil needs a blanket sooner than flat ground. Whether a given slope gets one is a design choice on the plans, not a single slope ratio from this app.',
-        'Pick the product from the current TxDOT approved list for soil retention blankets.'
+      "id": "sediment-basin",
+      "cat": "ditch",
+      "name": "Sediment basin",
+      "sheet": "EC(6)-16",
+      "one": "A pond that holds muddy water long enough for soil to settle.",
+      "what": "A larger pool with a controlled outlet. Stormwater sits, soil falls to the bottom, and clearer water leaves slowly. Where it is feasible, the construction general permit requires one when 10 or more acres are disturbed at one time in the same drainage area.",
+      "where": [
+        "The low point of a drainage area that will have 10 or more acres bare at once.",
+        "You can leave off-site and already-stable water out of the volume if you divert that water around the bare ground.",
+        "TxDOT guidance says a basin should not drain more than a large upper limit of acres. Check the current summary-sheet guidance for that cap.",
+        "An existing detention pond is usually a bad place to store construction mud unless it was designed for that and you can clean it.",
+        "If a basin will not fit, write the reason and show equivalent controls, such as several smaller basins, traps, fence, or buffers. On the TxDOT sheet, \"not feasible\" is one of the notes that can require a seal."
       ],
-      install: [
-        'Follow the manufacturer and Item 169. Anchor the top in a trench so water cannot get under the mat, overlap in the direction of flow, and pin on the pattern the product requires.',
-        'Put seed down before the blanket if the blanket is there to establish vegetation.',
-        'Use a wildlife-friendly product where the plans or the area call for it.',
-        'The permit still expects you to start stabilization on the permit schedule. A blanket is one way to do that. It does not add extra days.'
+      "install": [
+        "Size it for the 2-year, 24-hour runoff from each disturbed acre. If you cannot calculate that storm, the permit uses 3,600 cubic feet per acre drained. Put the math in the SWP3.",
+        "TxDOT notes sometimes quote a smaller volume for traps and for smaller basins. If this basin is how you meet the permit, use the permit volume, not the smaller number.",
+        "The permit wants an outlet that draws water from the surface when that is feasible, so the mud at the bottom stays in the basin. A skimmer or a riser with the openings near the surface does that. A pipe at the bottom does not.",
+        "Baffles across the short direction make the water travel the long way. Without them, inflow short-circuits to the outlet and the rest of the pool is dead storage.",
+        "Include a way for a big storm to leave without washing out the embankment. TxDOT sheets talk about drawdown time and an emergency spillway. Those details are on the current EC(6)-16 and the SWP3 guidance. This guide does not calculate them.",
+        "A long flow path through the pool works better than a square hole. The guidance describes a length-to-width preference. Check the current note."
       ],
-      maintain: [
-        'Pin back any edge that has lifted, and patch spots where soil is exposed.',
-        'Keep vehicles off it. Tires tear the mat and make a rut that water will follow.'
+      "maintain": [
+        "Remove sediment when about half the design volume is full of soil. That is the permit rule. Do not wait until the outlet is buried.",
+        "Watch the discharge. If it is obviously muddy, the basin or the outlet is not doing its job.",
+        "Keep the embankment free of trees and animal holes, and keep the spillway clear."
       ],
-      mistakes: [
-        'No trench at the top, so the first rain peels the whole blanket downhill.',
-        'Overlaps facing the wrong way, so each joint is a scoop.',
-        'A light slope blanket in a ditch that needs a channel mat.',
-        'Staking so far apart that the mat balloons and fails.',
-        'Covering a rut instead of filling it. The blanket then hides the problem until it opens up.'
+      "mistakes": [
+        "No basin, and no written reason, on a site with 10 acres open in one watershed.",
+        "A hole with a pipe at the bottom that releases the muddiest water first.",
+        "Volume copied from a trap note (the smaller per-acre number) and called a permit basin.",
+        "No math in the SWP3.",
+        "Building it after the clearing instead of before the dirt starts to move."
       ],
-      confirm: 'Product type, staple pattern, and where blankets are required are on the plans and the current Item 169 approved list. Check those. Do not assume every 3:1 slope gets the same mat.',
-      svg: fig('Blanket on a slope, trenched at the top and overlapped downhill',
-        '<path d="M40 28 L260 140 L40 140 Z" fill="currentColor" opacity=".08" stroke="currentColor"/>' +
-        '<path d="M70 48 h40 v16 h-40 z" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M78 64 L200 130" stroke="currentColor" stroke-width="6" opacity=".35"/>' +
-        '<path d="M96 70 L220 136" stroke="currentColor" stroke-width="6" opacity=".35"/>' +
-        '<circle cx="120" cy="86" r="3" fill="currentColor"/><circle cx="150" cy="104" r="3" fill="currentColor"/><circle cx="180" cy="122" r="3" fill="currentColor"/>' +
-        '<text x="118" y="44" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Top trench</text>' +
-        '<text x="150" y="78" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Overlap</text>')
+      "confirm": "Outlet, drawdown, spillway, and embankment rules are on the current EC(6)-16 sheet and TxDOT SWP3 guidance. Volume for a permit basin comes from the current TCEQ construction general permit. Check both. Do not size it from this page.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Sediment basin. Surface skimmer, sediment on the bottom, emergency spillway in the embankment. Plan shows inflow opposite the outlet and baffles on a long path.\"><defs><pattern id=\"soil-sb\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-sb\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 168 H70 L100 252 H198 L228 124 H250 L268 148 H278 V312 H22 Z\" fill=\"url(#soil-sb)\"/><path d=\"M22 168 H70 L100 252 H198 L228 124 H250 L268 148 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 168 H70 L100 252 H198 L228 124 H250 L268 148 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M92 196 H210 L200 252 H104 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M112 230 H184 L176 252 H120 Z\" fill=\"currentColor\" fill-opacity=\".22\"/><path d=\"M110 196 Q117 192.8 124 196 Q131 199.2 138 196 Q145 192.8 152 196 Q159 199.2 166 196 Q173 192.8 180 196 Q185 199.2 190 196\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\"/><rect x=\"168\" y=\"188\" width=\"28\" height=\"12\" rx=\"6\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M182 194 V210 M182 198 H214\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M246 124 H272 L276 150 H250 Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M28 124 L57.6 153.6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M64 160 L54.7 156.6 L60.6 150.7 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Skimmer</text><path d=\"M86 48 L186 48 L176 192\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"176\" cy=\"192\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"90\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Soil on the bottom</text><path d=\"M148 102 L150 236\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"150\" cy=\"236\" r=\"2.1\" fill=\"currentColor\"/><text x=\"200\" y=\"78\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Spillway</text><path d=\"M258 90 L260 136\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"260\" cy=\"136\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M36 470 L64 400 H210 Q268 400 268 490 Q268 590 200 598 H78 Q36 560 36 490 Z\" fill=\"currentColor\" fill-opacity=\".07\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M100 412 V490 M168 520 V598\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><circle cx=\"230\" cy=\"490\" r=\"7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M236 414 H266 L272 436 H242 Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M16 490 L31 490\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M40 490 L31 494.2 L31 485.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"390\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Inflow</text><text x=\"108\" y=\"470\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Baffle</text><text x=\"120\" y=\"560\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Baffle</text><text x=\"200\" y=\"390\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Spillway</text><text x=\"20\" y=\"640\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Outlet opposite inflow</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'vertical-tracking', cat: 'cover', name: 'Vertical tracking', sheet: 'EC(1)-16',
-      one: 'Grooves across a slope so water does not run straight down.',
-      what: 'The tracks of a machine pressed across the slope, not up and down it. Each groove holds a little water and seed. TxDOT Item 506 calls for this on slopes where soil is being disturbed, unless the engineer approves something else. It is temporary. It is not a substitute for seed, fence, or a blanket on a slope that needs them.',
-      where: [
-        'The face of a slope you just graded and have not covered yet.',
-        'Show on the plans where it is required. It is hard to enforce if it is only a general note.'
+      "id": "seeding-mulch",
+      "cat": "cover",
+      "name": "Seeding, mulch, and sod",
+      "sheet": "Items 162, 164, and 169 notes",
+      "one": "Cover bare soil with seed and mulch, or with sod where the cover has to be there now.",
+      "what": "Temporary seeding and mulch protect ground that will sit still during the job. Permanent seeding or sod is the final cover on areas that will not be paved. Mulch, including hydromulch, holds seed and soil against rain. Mulch by itself is not final stabilization.",
+      "where": [
+        "Every disturbed area that will not be under pavement or a structure, once you are done grading that piece.",
+        "Start as soon as work in an area stops. The permit says to begin stabilization by the end of the next work day when work has stopped and will not resume for more than 14 days, and to finish within 14 days after you start. TxDOT Item 506 wording is looser. Use the permit timing.",
+        "Final stabilization means a uniform perennial cover on the unpaved areas, about 70 percent of the native background cover, or something equivalent such as riprap. That definition is in the permit."
       ],
-      install: [
-        'Drive along the contour so the grooves run across the slope. Up-and-down tracks become rills.',
-        'Item 506 describes the length, width, depth, and spacing of the grooves. Check the current item for those numbers. Do not compact the slope into a hard crust. A few passes are enough.',
-        'Track as you go. Tracking a slope weeks later, after it has already rilled, does not put the soil back.'
+      "install": [
+        "Seed mix, rate, season, and fertilizer belong in the plans under the current TxDOT items for seeding and sodding, often with topsoil or compost. Do not invent a rate here. Check Items 162 and 164 and the district seed list.",
+        "Mulch steep or sandy spots the same day you seed. Seed without cover washes off the first rain.",
+        "Keep a record of when grading stopped and when stabilization started. TxDOT inspection forms ask for that.",
+        "Sod where you need cover now, such as a ditch that will see flow before seed could grow."
       ],
-      maintain: [
-        'Re-track after a hard rain if the grooves have washed out, and get seed or a blanket on the slope if tracking will not hold it.',
-        'Do not use tracking alone next to a creek if the slope is already failing.'
+      "maintain": [
+        "Re-seed bare spots and keep traffic off the area while it establishes.",
+        "Water if the specification says to. Do not assume rain will finish the job.",
+        "The permit is not over when the contractor is accepted if the cover is not actually there. Keep inspecting until final stabilization, and until the notice of termination on a large site."
       ],
-      mistakes: [
-        'Tracking up and down the hill, which builds a set of ditches.',
-        'So many passes that the soil is glazed and seed cannot take.',
-        'Skipping it on a short slope because it "does not look steep." The specification is about disturbed slopes, not a picture in your head.',
-        'Leaving tracked soil bare through a whole rainy month.'
+      "mistakes": [
+        "Waiting weeks after grading because the schedule says \"seed at the end.\"",
+        "Calling a job finished on a stand that is still mostly bare soil.",
+        "Hydromulch on a ditch that needs a blanket, so the mulch ends up downstream.",
+        "Using a temporary annual grass and never coming back with permanent cover.",
+        "Driving haul trucks across the new seed."
       ],
-      confirm: 'Groove size and where tracking is mandatory are in the current Item 506 and on EC(1)-16. Check those before you change the note.',
-      svg: fig('Slope with grooves running across it, and an arrow showing the wrong up-and-down direction crossed out',
-        '<path d="M36 36 L250 140 L36 140 Z" fill="currentColor" opacity=".08" stroke="currentColor"/>' +
-        '<path d="M60 70 h150 M70 90 h150 M80 110 h140" stroke="currentColor" stroke-width="3" opacity=".7"/>' +
-        '<text x="70" y="58" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Grooves across the slope</text>' +
-        '<text x="40" y="158" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Not up and down the hill</text>')
+      "confirm": "Seed mixes and rates change by district and season. Use the current TxDOT specifications and the plan set. Timing and the 70 percent cover rule are in the current TCEQ construction general permit. Check that permit if you are writing a note.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Seeding and sod. Mulch covers seed beside bare soil. Sod strips run across the slope with staggered joints.\"><defs><pattern id=\"soil-sm\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-sm\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 150 L278 246 V312 H22 Z\" fill=\"url(#soil-sm)\"/><path d=\"M22 150 L278 246 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 150 L140 198\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M140 198 L278 246\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"5\" stroke-opacity=\".28\" stroke-linecap=\"round\"/><path d=\"M140 198 L278 246\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><circle cx=\"158\" cy=\"196.3\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><circle cx=\"170\" cy=\"200.4\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><circle cx=\"182\" cy=\"204.6\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><circle cx=\"194\" cy=\"208.8\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><circle cx=\"206\" cy=\"213\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><circle cx=\"218\" cy=\"217.1\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><circle cx=\"230\" cy=\"221.3\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><circle cx=\"242\" cy=\"225.5\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><circle cx=\"254\" cy=\"229.7\" r=\"1.5\" fill=\"currentColor\" fill-opacity=\".7\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Bare soil</text><path d=\"M70 68 L80 150\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"80\" cy=\"150\" r=\"2.1\" fill=\"currentColor\"/><text x=\"150\" y=\"96\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Mulch over seed</text><path d=\"M210 104 L210 190\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"210\" cy=\"190\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><rect x=\"78\" y=\"400\" width=\"150\" height=\"26\" fill=\"currentColor\" fill-opacity=\".07\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M128 400 V426 M178 400 V426\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"100\" y=\"434\" width=\"150\" height=\"26\" fill=\"currentColor\" fill-opacity=\".07\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M150 434 V460 M200 434 V460\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"78\" y=\"468\" width=\"150\" height=\"26\" fill=\"currentColor\" fill-opacity=\".07\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M128 468 V494 M178 468 V494\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"100\" y=\"502\" width=\"150\" height=\"26\" fill=\"currentColor\" fill-opacity=\".07\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M150 502 V528 M200 502 V528\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><rect x=\"78\" y=\"536\" width=\"150\" height=\"26\" fill=\"currentColor\" fill-opacity=\".07\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M128 536 V562 M178 536 V562\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><path d=\"M48 400 L48 551\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M48 560 L43.8 551 L52.2 551 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"600\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Strips across the slope</text><text x=\"20\" y=\"628\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Joints staggered</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'keep-vegetation', cat: 'cover', name: 'Keep existing vegetation', sheet: 'Perimeter fence, Item 506',
-      one: 'The best erosion control is ground you never cleared.',
-      what: 'Mark trees, grass, and creek banks that stay, and keep machines out. A construction perimeter fence is the usual TxDOT way to show the line. Once the root zone is compacted or the bank is cleared, you are in the business of replacing cover, which is slower and weaker.',
-      where: [
-        'Trees, steep woods, and the banks of creeks and wetlands.',
-        'Put the fence up before clearing, not after the first dozer pass.',
-        'The permit says to preserve existing vegetation where you can.'
+      "id": "blanket",
+      "cat": "cover",
+      "name": "Soil retention blanket",
+      "sheet": "Item 169",
+      "one": "An erosion control blanket pinned over soil or seed on a slope or in a ditch.",
+      "what": "A blanket or mat, often called a soil retention blanket on TxDOT jobs, pinned over bare soil or fresh seed. It holds the soil until plants grow. Slope products and channel products are not the same. A ditch that will carry water needs a blanket rated for that flow.",
+      "where": [
+        "Slopes, fill transitions, ditch bottoms, and ground next to a creek.",
+        "Steep or easily eroded soil needs a blanket sooner than flat ground. Whether a given slope gets one is a design choice on the plans, not a single slope ratio from this app.",
+        "Pick the product from the current TxDOT approved list for soil retention blankets."
       ],
-      install: [
-        'Fence the area so a driver can see it. Item 506 describes post depth and fence height for construction perimeter fence. Check the current item for the dimensions.',
-        'Keep the fence outside the trunks, not tied to them.',
-        'Decide the haul route first so you are not fencing across the only way in.'
+      "install": [
+        "Follow the manufacturer and Item 169. Anchor the top in a trench so water cannot get under the mat, overlap in the direction of flow, and pin on the pattern the product requires.",
+        "Put seed down before the blanket if the blanket is there to establish vegetation.",
+        "Use a wildlife-friendly product where the plans or the area call for it.",
+        "The permit still expects you to start stabilization on the permit schedule. A blanket is one way to do that. It does not add extra days."
       ],
-      maintain: [
-        'Stand the fence back up when it is hit. A fence on the ground is permission.',
-        'Do not store soil, fuel, or equipment inside the marked area.'
+      "maintain": [
+        "Pin back any edge that has lifted, and patch spots where soil is exposed.",
+        "Keep vehicles off it. Tires tear the mat and make a rut that water will follow."
       ],
-      mistakes: [
-        'Ribbon on a few trees and no fence, which disappears the first week.',
-        'Trenching through the root zone you meant to save.',
-        'Using silt fence as the "do not enter" fence. It gets buried and people drive over it.',
-        'Clearing a wider strip than the slope actually needs.'
+      "mistakes": [
+        "No trench at the top, so the first rain peels the whole blanket downhill.",
+        "Overlaps facing the wrong way, so each joint is a scoop.",
+        "A light slope blanket in a ditch that needs a channel mat.",
+        "Staking so far apart that the mat balloons and fails.",
+        "Covering a rut instead of filling it. The blanket then hides the problem until it opens up."
       ],
-      confirm: 'Fence materials and post spacing are in the current Item 506. Check it. What to save is a plan decision, agreed before clearing.',
-      svg: fig('Trees inside a high-visibility fence, with equipment kept outside',
-        '<rect x="70" y="40" width="160" height="100" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="6 4"/>' +
-        '<circle cx="130" cy="78" r="16" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<line x1="130" y1="94" x2="130" y2="124" stroke="currentColor" stroke-width="2"/>' +
-        '<circle cx="176" cy="70" r="18" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<line x1="176" y1="88" x2="176" y2="124" stroke="currentColor" stroke-width="2"/>' +
-        '<rect x="16" y="100" width="36" height="22" fill="currentColor" opacity=".25" stroke="currentColor"/>' +
-        '<text x="16" y="32" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Fence before you clear</text>' +
-        '<text x="16" y="156" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Equipment stays outside</text>')
+      "confirm": "Product type, staple pattern, and where blankets are required are on the plans and the current Item 169 approved list. Check those. Do not assume every 3:1 slope gets the same mat.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Soil retention blanket. The top is buried, the upper sheet laps the lower sheet, and staples hold it.\"><defs><pattern id=\"soil-bl\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-bl\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M36 132 H56 L72 156 H96 L108 140 L268 236 V312 H36 Z\" fill=\"url(#soil-bl)\"/><path d=\"M36 132 H56 L72 156 H96 L108 140 L268 236 V312 H36 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M36 132 H56 L72 156 H96 L108 140 L268 236\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M108 140 L176 186\" fill=\"url(#fab-bl)\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/><path d=\"M160 178 L250 230\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/><path d=\"M130 158 v10 M168 180 v10 M210 206 v10 M240 224 v10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M124 158 h12 M162 180 h12 M204 206 h12 M234 224 h12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Buried at the top</text><path d=\"M136 50 L156 50 L156 118 L64 146\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"64\" cy=\"146\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"90\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Upper laps lower</text><path d=\"M138 96 L168 182\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"168\" cy=\"182\" r=\"2.1\" fill=\"currentColor\"/><text x=\"180\" y=\"90\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Staples</text><path d=\"M176 102 L136 168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"136\" cy=\"168\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><rect x=\"78\" y=\"400\" width=\"160\" height=\"90\" fill=\"url(#fab-bl)\" stroke=\"currentColor\" stroke-width=\"1.4\"/><rect x=\"78\" y=\"470\" width=\"160\" height=\"100\" fill=\"currentColor\" fill-opacity=\".06\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M78 470 H238\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M48 410 L48 531\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M48 540 L43.8 531 L52.2 531 Z\" fill=\"currentColor\"/><text x=\"100\" y=\"448\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Upper sheet</text><text x=\"100\" y=\"530\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Lower sheet</text><text x=\"20\" y=\"620\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Upper laps the lower</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'stockpile', cat: 'cover', name: 'Stockpile protection', sheet: 'Stockpile fact sheet',
-      one: 'A pile of soil is bare ground. Treat it like the rest of the site.',
-      what: 'Topsoil, spoil, aggregate, and similar piles shed mud and dust. Give each pile a place on the layout, keep it out of ditches and away from inlets, and cover it or ring it with silt fence or logs. A pile you will not use within 14 days is inactive. The TxDOT fact sheet treats inactive piles as something you stabilize or cover.',
-      where: [
-        'A marked spot away from concentrated flow, inlets, and creeks.',
-        'Not at the low point of the job, and not on the vegetated buffer.'
+      "id": "vertical-tracking",
+      "cat": "cover",
+      "name": "Vertical tracking",
+      "sheet": "EC(1)-16",
+      "one": "Grooves across a slope, made by driving up and down, so water does not run straight down.",
+      "what": "Grooves pressed across the slope, parallel to the contour. A tracked machine makes those grooves by driving up and down the hill, because the cleats run across the direction of travel. Grooves that run downhill become rills. TxDOT Item 506 calls for vertical tracking on slopes where soil is being disturbed, unless the engineer approves something else. It is temporary. It is not a substitute for seed, fence, or a blanket.",
+      "where": [
+        "The face of a slope you just graded and have not covered yet.",
+        "Show on the plans where it is required. It is hard to enforce if it is only a general note."
       ],
-      install: [
-        'Downhill side gets a sediment control. If the pile will sit, cover it or seed it.',
-        'The job aid used here says to remove sediment when it reaches about one-third of the control height, and to cover the pile at the end of the day. Confirm that on the current job aid.',
-        'Say in the plans how long a pile may sit before it has to be covered.'
+      "install": [
+        "Drive up and down the slope so the grooves run across it. Driving along the contour leaves grooves that point downhill.",
+        "Item 506 describes the length, width, depth, and spacing of the grooves. Check the current item for those numbers. Do not compact the slope into a hard crust. A few passes are enough.",
+        "Track as you go. Tracking a slope weeks later, after it has already rilled, does not put the soil back."
       ],
-      maintain: [
-        'Fix torn covers before rain, not after.',
-        'If a pile is in use, keep the downhill control cleaned out. Active piles still erode.'
+      "maintain": [
+        "Re-track after a hard rain if the grooves have washed out, and get seed or a blanket on the slope if tracking will not hold it.",
+        "Do not use tracking alone next to a creek if the slope is already failing."
       ],
-      mistakes: [
-        'Spoil pushed to the right-of-way line with no fence, because it is "temporary."',
-        'A stockpile in the ditch, which becomes the new sediment source for every inlet downstream.',
-        'A cover that does not reach the ground, so wind takes the fines off the bottom.',
-        'Topsoil piled for months, then found full of weeds and rills when you need it.'
+      "mistakes": [
+        "Driving along the contour, or any pattern that leaves downhill grooves. Those grooves become ditches.",
+        "So many passes that the soil is glazed and seed cannot take.",
+        "Skipping it on a short slope because it \"does not look steep.\" The specification is about disturbed slopes, not a picture in your head.",
+        "Leaving tracked soil bare through a whole rainy month."
       ],
-      confirm: 'Cover timing and how you pay for stockpile controls follow the current TxDOT fact sheet and the plans. Check those. Fourteen days is the fact-sheet idea of an inactive pile as read for this tool. Confirm it before you write the note.',
-      svg: fig('Soil stockpile with a cover and a silt fence on the downhill side',
-        '<path d="M70 120 L150 48 L230 120 Z" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M96 96 L150 56 L204 96" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5 3"/>' +
-        '<line x1="210" y1="120" x2="210" y2="78" stroke="currentColor" stroke-width="3"/>' +
-        '<path d="M210 86 q8 6 0 12 q-8 6 0 12" fill="none" stroke="currentColor"/>' +
-        '<text x="16" y="36" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Cover</text>' +
-        '<text x="222" y="100" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Fence</text>' +
-        '<text x="90" y="148" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Out of the ditch</text>')
+      "confirm": "Groove size and where tracking is mandatory are in the current Item 506 and on EC(1)-16. Check those before you change the note.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Vertical tracking. Grooves run across the slope. The machine drives up and down. Grooves that run downhill are wrong.\"><defs><pattern id=\"soil-vt\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-vt\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M28 150 L78 168 L90 156 L100 179 L112 167 L122 190 L134 178 L144 201 L156 189 L166 212 L178 200 L188 223 L200 211 L210 234 L222 222 L232 245 L244 233 L278 252 V312 H28 Z\" fill=\"url(#soil-vt)\"/><path d=\"M28 150 L78 168 L90 156 L100 179 L112 167 L122 190 L134 178 L144 201 L156 189 L166 212 L178 200 L188 223 L200 211 L210 234 L222 222 L232 245 L244 233 L278 252 V312 H28 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M28 150 L78 168 L90 156 L100 179 L112 167 L122 190 L134 178 L144 201 L156 189 L166 212 L178 200 L188 223 L200 211 L210 234 L222 222 L232 245 L244 233\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M48 176 l26 -14 h18 l8 10 h-14 l-16 12 z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><circle cx=\"58\" cy=\"182\" r=\"4.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><circle cx=\"86\" cy=\"170\" r=\"4.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M36 128 L62.2 143.4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M70 148 L60.1 147.1 L64.4 139.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Grooves across</text><text x=\"130\" y=\"96\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Drive up and down</text><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><rect x=\"22\" y=\"396\" width=\"154\" height=\"180\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".35\"/><path d=\"M28 410 H168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\" stroke-opacity=\".8\"/><path d=\"M28 432 H168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\" stroke-opacity=\".8\"/><path d=\"M28 454 H168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\" stroke-opacity=\".8\"/><path d=\"M28 476 H168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\" stroke-opacity=\".8\"/><path d=\"M28 498 H168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\" stroke-opacity=\".8\"/><path d=\"M28 520 H168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\" stroke-opacity=\".8\"/><path d=\"M28 542 H168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\" stroke-opacity=\".8\"/><path d=\"M28 564 H168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\" stroke-opacity=\".8\"/><path d=\"M52 560 L52 429\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M52 420 L56.2 429 L47.8 429 Z\" fill=\"currentColor\"/><rect x=\"196\" y=\"410\" width=\"80\" height=\"110\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-dasharray=\"4 3\"/><path d=\"M214 426 V500 M236 426 V500 M258 426 V500\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><circle cx=\"236\" cy=\"548\" r=\"11\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M231.1 543.1 l9.9 9.9 M241 543.1 l-9.9 9.9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><text x=\"196\" y=\"400\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Wrong</text><text x=\"20\" y=\"620\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Grooves run across</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'diversion', cat: 'move', name: 'Diversion dike or swale', sheet: 'EC(4)-16, EC(5)-16, EC(8)-16',
-      one: 'Sends clean water around the bare ground, or muddy water to a trap.',
-      what: 'A low ridge of compacted soil, a shallow swale, or a paved flume that intercepts water. Use it to keep uphill clean water off the work, or to carry muddy water to a trap or basin instead of down a raw slope. A dike without a stable place for the water to go just moves the washout.',
-      where: [
-        'Along the top of a slope, at the edge of pavement, and anywhere run-on would cross bare soil.',
-        'The TxDOT fact sheet limits how much area one swale or dike should collect. Check the current sheet. If the area is bigger, split it.',
-        'Inside the clear zone, side slopes have to be flat enough for a vehicle. The sheet gives that slope. Check it.',
-        'Outlet onto rock, a trap, a basin, or a vegetated area that can take the flow. Not onto a raw fill.'
+      "id": "keep-vegetation",
+      "cat": "cover",
+      "name": "Keep existing vegetation",
+      "sheet": "Perimeter fence, Item 506",
+      "one": "The best erosion control is ground you never cleared.",
+      "what": "Mark trees, grass, and creek banks that stay, and keep machines out. A construction perimeter fence is the usual TxDOT way to show the line. Once the root zone is compacted or the bank is cleared, you are in the business of replacing cover, which is slower and weaker.",
+      "where": [
+        "Trees, steep woods, and the banks of creeks and wetlands.",
+        "Put the fence up before clearing, not after the first dozer pass.",
+        "The permit says to preserve existing vegetation where you can."
       ],
-      install: [
-        'Compact an earth dike. A loose windrow washes out and adds to the sediment.',
-        'Grade the swale so it does not pond against the road or a neighbor.',
-        'A paved flume is for a steep drop. Size it for the storm the fact sheet names, and put rock at the bottom. Check EC(8)-16 and Item 506 for the current design storm and dimensions.',
-        'Build diversions before you strip the ground below them.'
+      "install": [
+        "Fence the area so a driver can see it. Item 506 describes post depth and fence height for construction perimeter fence. Check the current item for the dimensions.",
+        "Keep the fence outside the trunks, not tied to them.",
+        "Decide the haul route first so you are not fencing across the only way in."
       ],
-      maintain: [
-        'Repair low spots and animal paths the same week they appear.',
-        'Clean silt out of the swale so it still has capacity.',
-        'Keep the outlet rock in place. The outlet is where these fail.'
+      "maintain": [
+        "Stand the fence back up when it is hit. A fence on the ground is permission.",
+        "Do not store soil, fuel, or equipment inside the marked area."
       ],
-      mistakes: [
-        'A dike that ends in the middle of a fill slope.',
-        'Clean water and muddy water mixed in the same swale, so you treat water you could have kept clean.',
-        'A dike used as a haul road until it is a rut.',
-        'No freeboard, so a modest storm overtops and cuts a new channel.'
+      "mistakes": [
+        "Ribbon on a few trees and no fence, which disappears the first week.",
+        "Trenching through the root zone you meant to save.",
+        "Using silt fence as the \"do not enter\" fence. It gets buried and people drive over it.",
+        "Clearing a wider strip than the slope actually needs."
       ],
-      confirm: 'Height, side slopes, drainage area, and the design storm for a paved flume are on the current EC sheets and Item 506. Check those. This page does not size a channel.',
-      svg: fig('Ridge at the top of a slope turning water sideways to a rock outlet',
-        '<path d="M16 50 H250 L300 130" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M40 50 q20 -16 40 0 q20 16 40 0 q20 -16 40 0" fill="currentColor" opacity=".2" stroke="currentColor"/>' +
-        '<path d="M24 70 h150" stroke="currentColor" stroke-width="2" opacity=".7"/>' +
-        '<circle cx="286" cy="138" r="10" fill="none" stroke="currentColor"/><circle cx="274" cy="146" r="7" fill="none" stroke="currentColor"/>' +
-        '<text x="16" y="32" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Dike</text>' +
-        '<text x="200" y="150" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">To a stable outlet</text>')
+      "confirm": "Fence materials and post spacing are in the current Item 506. Check it. What to save is a plan decision, agreed before clearing.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Keep existing vegetation. The fence is outside the dripline, roots stay intact, and equipment stays outside the fence.\"><defs><pattern id=\"soil-kv\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-kv\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 214 H278 V312 H22 Z\" fill=\"url(#soil-kv)\"/><path d=\"M22 214 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 214 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><ellipse cx=\"112\" cy=\"112\" rx=\"48\" ry=\"26\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M104 136 H122 V214\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3.2\" stroke-linecap=\"round\"/><path d=\"M112 214 C86 234 68 256 58 278 M112 214 C138 238 164 252 190 266\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><rect x=\"214\" y=\"176\" width=\"7\" height=\"58\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1.3\"/><path d=\"M214 190 H248 M214 208 H248\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Dripline</text><path d=\"M78 58 L80 100\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"80\" cy=\"100\" r=\"2.1\" fill=\"currentColor\"/><text x=\"168\" y=\"78\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Roots left intact</text><path d=\"M164 90 L100 250\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"100\" cy=\"250\" r=\"2.1\" fill=\"currentColor\"/><text x=\"196\" y=\"160\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Fence</text><path d=\"M214 172 L218 190\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"218\" cy=\"190\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><circle cx=\"118\" cy=\"500\" r=\"58\" fill=\"currentColor\" fill-opacity=\".07\" stroke=\"currentColor\" stroke-width=\"1.6\"/><circle cx=\"118\" cy=\"500\" r=\"7\" fill=\"currentColor\" fill-opacity=\".25\" stroke=\"currentColor\" stroke-width=\"1.3\"/><rect x=\"40\" y=\"420\" width=\"160\" height=\"164\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M230 450 h36 v22 h-14 v12 h-26 v-14 h-8 z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><circle cx=\"244\" cy=\"490\" r=\"6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><circle cx=\"266\" cy=\"490\" r=\"6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><text x=\"140\" y=\"400\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Dripline</text><path d=\"M156 412 L140 448\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"140\" cy=\"448\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"400\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Fence outside</text><text x=\"214\" y=\"560\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Equipment</text><text x=\"20\" y=\"630\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Stay outside the fence</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'slope-drain', cat: 'move', name: 'Pipe slope drain', sheet: 'EC(7)-16',
-      one: 'A pipe that carries water down a raw slope so the slope does not rill.',
-      what: 'A temporary pipe from the top of a slope to the bottom. Water is collected at the top, rides the pipe, and comes out at a stable pad or a trap. The pipe does not clean the water. It only keeps the slope from eroding. Something at the outlet has to deal with the sediment and the speed.',
-      where: [
-        'Long raw embankments, berms, and steep grades where water would otherwise run down the face.',
-        'The TxDOT fact sheet limits the area one drain should serve. Check the current sheet. More area means another pipe or a different plan.',
-        'Not as a permanent storm-sewer substitute, and not dumped at the top of another bare slope.'
+      "id": "stockpile",
+      "cat": "cover",
+      "name": "Stockpile protection",
+      "sheet": "Stockpile fact sheet",
+      "one": "A pile of soil is bare ground. Treat it like the rest of the site.",
+      "what": "Topsoil, spoil, aggregate, and similar piles shed mud and dust. Give each pile a place on the layout, keep it out of ditches and away from inlets, and cover it or ring it with silt fence or logs. A pile you will not use within 14 days is inactive. The TxDOT fact sheet treats inactive piles as something you stabilize or cover.",
+      "where": [
+        "A marked spot away from concentrated flow, inlets, and creeks.",
+        "Not at the low point of the job, and not on the vegetated buffer."
       ],
-      install: [
-        'The inlet needs a berm so water enters the pipe instead of going around it. The fact sheet used here calls for the berm to stand above the pipe. Check EC(7)-16 for how far, and for anchor spacing.',
-        'Hold the pipe down the slope so it cannot roll or separate at the joints.',
-        'The outlet needs rock or a trap. A bare splash pad will dig a hole.',
-        'The fact sheet allows a stated design storm for sizing. Check the current sheet. This guide does not pick a diameter.'
+      "install": [
+        "Downhill side gets a sediment control. If the pile will sit, cover it or seed it.",
+        "The job aid used here says to remove sediment when it reaches about one-third of the control height, and to cover the pile at the end of the day. Confirm that on the current job aid.",
+        "Say in the plans how long a pile may sit before it has to be covered."
       ],
-      maintain: [
-        'Clear trash at the inlet. A clogged pipe sends the water down the slope you were protecting.',
-        'Repair separated joints and a berm that has settled.',
-        'Re-anchor the pipe if it has shifted. A loose pipe is a hose.'
+      "maintain": [
+        "Fix torn covers before rain, not after.",
+        "If a pile is in use, keep the downhill control cleaned out. Active piles still erode."
       ],
-      mistakes: [
-        'No berm at the top, so water misses the pipe.',
-        'Outlet on bare soil.',
-        'Pipe too small, with water jumping the inlet in an ordinary storm.',
-        'Using the pipe after the slope is vegetated and forgetting to remove it, or removing it and leaving a rut down the face.'
+      "mistakes": [
+        "Spoil pushed to the right-of-way line with no fence, because it is \"temporary.\"",
+        "A stockpile in the ditch, which becomes the new sediment source for every inlet downstream.",
+        "A cover that does not reach the ground, so wind takes the fines off the bottom.",
+        "Topsoil piled for months, then found full of weeds and rills when you need it."
       ],
-      confirm: 'Pipe size, inlet berm height, and anchor spacing are on the current EC(7)-16 sheet and Item 506. Check those before you call out a diameter.',
-      svg: fig('Berm and pipe inlet at the top of a slope, pipe down the face, rock at the outlet',
-        '<path d="M24 40 H120 L280 140 H24 Z" fill="currentColor" opacity=".08" stroke="currentColor"/>' +
-        '<path d="M40 48 q16 -14 32 0" fill="currentColor" opacity=".25" stroke="currentColor"/>' +
-        '<path d="M78 52 C120 70 180 100 250 132" fill="none" stroke="currentColor" stroke-width="4"/>' +
-        '<circle cx="262" cy="142" r="8" fill="none" stroke="currentColor"/><circle cx="278" cy="148" r="6" fill="none" stroke="currentColor"/>' +
-        '<text x="24" y="28" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Berm and inlet</text>' +
-        '<text x="180" y="40" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Pipe</text>' +
-        '<text x="16" y="162" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Rock at the bottom</text>')
+      "confirm": "Cover timing and how you pay for stockpile controls follow the current TxDOT fact sheet and the plans. Check those. Fourteen days is the fact-sheet idea of an inactive pile as read for this tool. Confirm it before you write the note.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Stockpile. The cover reaches the ground. Silt fence is trenched on the downhill side. The ditch is on the opposite side of the pile.\"><defs><pattern id=\"soil-sp\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-sp\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 240 H196 L204 262 H224 L232 240 H278 V312 H22 Z\" fill=\"url(#soil-sp)\"/><path d=\"M22 240 H196 L204 262 H224 L232 240 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 240 H196 L204 262 H224 L232 240 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M78 240 Q140 132 196 240\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M52 240 Q140 108 220 240\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-dasharray=\"5 3\"/><path d=\"M208 256 H222 V240 H232 V156\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><rect x=\"232\" y=\"152\" width=\"6\" height=\"112\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1.2\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Cover to the ground</text><path d=\"M158 58 L120 160\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"120\" cy=\"160\" r=\"2.1\" fill=\"currentColor\"/><text x=\"168\" y=\"100\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Fence downhill</text><path d=\"M230 108 L234 190\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"234\" cy=\"190\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M24 400 H150 M24 418 H156\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\"/><ellipse cx=\"150\" cy=\"510\" rx=\"58\" ry=\"42\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.4\"/><ellipse cx=\"150\" cy=\"510\" rx=\"74\" ry=\"56\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-dasharray=\"5 3\"/><path d=\"M86 572 H214\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M86 572 V546 H104 M214 572 V546 H196\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"120\" y=\"573\" width=\"6\" height=\"6\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><rect x=\"160\" y=\"573\" width=\"6\" height=\"6\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><text x=\"20\" y=\"392\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Ditch</text><text x=\"132\" y=\"514\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Pile</text><text x=\"20\" y=\"630\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Fence on the downhill side</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'outlet-protection', cat: 'move', name: 'Outlet protection', sheet: 'EC(8)-16',
-      one: 'Rock at a pipe end so the discharge does not dig a hole.',
-      what: 'Riprap or another dissipator at a culvert, flume, or ditch outlet. Fast water leaves the pipe, hits the rock, and slows down before it reaches erodible soil or a natural channel. The permit requires velocity dissipation at discharge points and along outfall channels so the flow is not erosive.',
-      where: [
-        'Culvert and storm-drain outlets, paved flumes, and the end of a diversion.',
-        'The TxDOT fact sheet used here says to protect outlets where the design velocity is high and the receiving channel is unlined. Check the current fact sheet for the velocity that triggers it.',
-        'Install the permanent dissipator early if you can, so it protects the site during construction and not only after acceptance.'
+      "id": "diversion",
+      "cat": "move",
+      "name": "Diversion dike or swale",
+      "sheet": "EC(4)-16, EC(5)-16, EC(8)-16",
+      "one": "Sends clean water around the bare ground, or muddy water to a trap.",
+      "what": "A low ridge of compacted soil, a shallow swale, or a paved flume that intercepts water. Use it to keep uphill clean water off the work, or to carry muddy water to a trap or basin instead of down a raw slope. A dike without a stable place for the water to go just moves the washout.",
+      "where": [
+        "Along the top of a slope, at the edge of pavement, and anywhere run-on would cross bare soil.",
+        "The TxDOT fact sheet limits how much area one swale or dike should collect. Check the current sheet. If the area is bigger, split it.",
+        "Inside the clear zone, side slopes have to be flat enough for a vehicle. The sheet gives that slope. Check it.",
+        "Outlet onto rock, a trap, a basin, or a vegetated area that can take the flow. Not onto a raw fill."
       ],
-      install: [
-        'The apron is aligned with the flow, not dumped in a pile beside the pipe.',
-        'Length, width, and rock size depend on the pipe and the velocity. The fact sheet describes an apron in terms of pipe diameters and points at Item 432 for riprap. Check the current fact sheet and Item 432. Do not reuse a thickness from another culvert.',
-        'Where the outlet is much higher than the channel, rock on a flat apron is the wrong tool. You need a drop or a stilling arrangement the hydraulic design actually calls for.',
-        'Put filter fabric or bedding under the rock if the sheet shows it, so soil does not pipe up through the voids.'
+      "install": [
+        "Compact an earth dike. A loose windrow washes out and adds to the sediment.",
+        "Grade the swale so it does not pond against the road or a neighbor.",
+        "A paved flume is for a steep drop. Size it for the storm the fact sheet names, and put rock at the bottom. Check EC(8)-16 and Item 506 for the current design storm and dimensions.",
+        "Build diversions before you strip the ground below them."
       ],
-      maintain: [
-        'Put displaced rock back and fill scour at the edges.',
-        'Clear sediment that has choked the apron. A buried apron is just a ramp for the next storm.',
-        'Look at outlets on every inspection. The permit calls out discharge points specifically.'
+      "maintain": [
+        "Repair low spots and animal paths the same week they appear.",
+        "Clean silt out of the swale so it still has capacity.",
+        "Keep the outlet rock in place. The outlet is where these fail."
       ],
-      mistakes: [
-        'A few square yards of rock that do not match the pipe size, so the plunge pool forms just past the rock.',
-        'Rock dumped above the pipe invert, which blocks the pipe.',
-        'No rock because the permanent channel "will be lined later," while the culvert is already flowing.',
-        'Geotextile exposed and flapping because the rock layer is too thin.'
+      "mistakes": [
+        "A dike that ends in the middle of a fill slope.",
+        "Clean water and muddy water mixed in the same swale, so you treat water you could have kept clean.",
+        "A dike used as a haul road until it is a rut.",
+        "No freeboard, so a modest storm overtops and cuts a new channel."
       ],
-      confirm: 'Apron size and stone class are a hydraulic decision. Use the current EC(8)-16 sheet, Item 432, and the culvert design. This page does not pick a rock gradation.',
-      svg: fig('Pipe outlet with a fan of riprap where the water hits the ground',
-        '<rect x="16" y="70" width="90" height="28" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M106 70 L220 40 L220 128 L106 98 Z" fill="currentColor" opacity=".12" stroke="currentColor"/>' +
-        '<circle cx="140" cy="84" r="7" fill="none" stroke="currentColor"/><circle cx="160" cy="74" r="6" fill="none" stroke="currentColor"/><circle cx="168" cy="96" r="8" fill="none" stroke="currentColor"/><circle cx="190" cy="84" r="7" fill="none" stroke="currentColor"/>' +
-        '<text x="16" y="56" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Pipe</text>' +
-        '<text x="16" y="152" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Rock apron, in line with the flow</text>')
+      "confirm": "Height, side slopes, drainage area, and the design storm for a paved flume are on the current EC sheets and Item 506. Check those. This page does not size a channel.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Diversion. A compacted dike with the swale on the uphill side, graded to a rock outlet rather than off a raw fill.\"><defs><pattern id=\"soil-dv\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-dv\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 196 H72 L100 246 H150 L168 196 L206 142 H246 L278 186 V312 H22 Z\" fill=\"url(#soil-dv)\"/><path d=\"M22 196 H72 L100 246 H150 L168 196 L206 142 H246 L278 186 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 196 H72 L100 246 H150 L168 196 L206 142 H246 L278 186\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M80 214 H142 V246 H104 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M176 176 l8 10 M190 162 l10 12 M206 152 l10 12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><path d=\"M28 156 L61.1 184.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M68 190 L58.4 187.4 L63.9 181 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"64\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Swale</text><path d=\"M56 68 L116 230\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"116\" cy=\"230\" r=\"2.1\" fill=\"currentColor\"/><text x=\"196\" y=\"112\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Dike</text><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M24 450 H150 Q196 450 216 512\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"8\" stroke-opacity=\".12\" stroke-linecap=\"round\"/><path d=\"M24 444 H150 Q200 444 222 500\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M24 468 H148 Q184 468 208 522\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><polygon points=\"233.2,512.1 227.5,512 224.3,508.2 227,504 232.5,504 235.8,507.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"243.6,500.3 240.6,496.4 242.6,492 248.1,492.1 251.9,495.5 248.8,499.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"243.8,518.5 244.9,514.9 249.5,515.1 252.9,517.4 250.6,520.6 246.2,521.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"228.7,525 233.4,524.8 236.8,527.3 234.9,530.7 230.4,531.6 227.4,528.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M250 430 L284 470 L250 530\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-dasharray=\"4 3\"/><circle cx=\"268\" cy=\"478\" r=\"10\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M263.5 473.5 l9 9 M272.5 473.5 l-9 9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><text x=\"20\" y=\"420\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Swale</text><text x=\"150\" y=\"580\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Rock outlet</text><path d=\"M230 574 L240 512\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"240\" cy=\"512\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"630\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Not off the raw fill</text><path d=\"M270 376 L270 367\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M270 358 L274.2 367 L265.8 367 Z\" fill=\"currentColor\"/><text x=\"248\" y=\"374\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Up</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'dewatering', cat: 'move', name: 'Dewatering', sheet: 'Special specification for bags, where used',
-      one: 'Pump muddy trench water through a filter, not into the inlet.',
-      what: 'Water pumped from a trench, excavation, or pit. The permit does not allow that discharge unless you control the sediment and keep the outlet from eroding. A filter bag, a tank, a vegetated strip, or a trap can do it. The hose by itself is not a control.',
-      where: [
-        'Anywhere you will pump: utility trenches, culvert excavations, low piers.',
-        'Show the planned locations on the layout, including where the water finally goes.',
-        'The bag or tank sits on the ground where a leak will not run straight into a creek. A vegetated area or a trap is the usual last step.'
+      "id": "slope-drain",
+      "cat": "move",
+      "name": "Pipe slope drain",
+      "sheet": "EC(7)-16",
+      "one": "A pipe that carries water down a raw slope so the slope does not rill.",
+      "what": "A temporary pipe from the top of a slope to the bottom. Water is collected at the top, rides the pipe, and comes out at a stable pad or a trap. The pipe does not clean the water. It only keeps the slope from eroding. Something at the outlet has to deal with the sediment and the speed.",
+      "where": [
+        "Long raw embankments, berms, and steep grades where water would otherwise run down the face.",
+        "The TxDOT fact sheet limits the area one drain should serve. Check the current sheet. More area means another pipe or a different plan.",
+        "Not as a permanent storm-sewer substitute, and not dumped at the top of another bare slope."
       ],
-      install: [
-        'Match the filter to the pump. The TxDOT dewatering-bag specification used for this tool says the bag should pass at least twice the pump\'s peak flow. Confirm that on the current special specification before you order a bag.',
-        'A sediment tank should hold the discharge long enough for soil to drop. The fact sheet describes a detention time. Check it.',
-        'Stake the bag and aim the discharge at the ground, not at a slope that will rill.',
-        'If the water is not just mud (sheen, sewage, concrete wash), a sediment bag is the wrong tool. Stop and deal with the pollutant.'
+      "install": [
+        "The inlet needs a berm so water enters the pipe instead of going around it. The fact sheet used here calls for the berm to stand above the pipe. Check EC(7)-16 for how far, and for anchor spacing.",
+        "Hold the pipe down the slope so it cannot roll or separate at the joints.",
+        "The outlet needs rock or a trap. A bare splash pad will dig a hole.",
+        "The fact sheet allows a stated design storm for sizing. Check the current sheet. This guide does not pick a diameter."
       ],
-      maintain: [
-        'Replace a bag when it is about half full of sediment. That is the job-aid rule used here. Confirm it on the current job aid.',
-        'On days you are pumping, look at the discharge that day. The permit requires a daily look and a report. TxDOT has a dewatering inspection form for the contractor.',
-        'The job aid also asks whether the local MS4 was told about the dewatering. Check the current form and the project\'s MS4 requirements.'
+      "maintain": [
+        "Clear trash at the inlet. A clogged pipe sends the water down the slope you were protecting.",
+        "Repair separated joints and a berm that has settled.",
+        "Re-anchor the pipe if it has shifted. A loose pipe is a hose."
       ],
-      mistakes: [
-        'The intake hose in the trench and the outlet hose in the inlet, with nothing in between.',
-        'A bag sitting in the ditch, so "filtered" water immediately picks up more mud.',
-        'A bag too small for the pump, which bursts or is bypassed by the crew.',
-        'Pumping concrete saw-cut water or sludge through a sediment bag.',
-        'No one assigned to look at it because "it is only for an hour."'
+      "mistakes": [
+        "No berm at the top, so water misses the pipe.",
+        "Outlet on bare soil.",
+        "Pipe too small, with water jumping the inlet in an ordinary storm.",
+        "Using the pipe after the slope is vegetated and forgetting to remove it, or removing it and leaving a rut down the face."
       ],
-      confirm: 'Bag size, tank time, and the daily form are in the current TxDOT dewatering specification and the permit\'s dewatering section. Check those. Do not copy a bag size from this page.',
-      svg: fig('Trench, pump, and a filter bag discharging onto grass rather than into an inlet',
-        '<rect x="16" y="70" width="70" height="50" fill="currentColor" opacity=".12" stroke="currentColor"/>' +
-        '<rect x="36" y="48" width="28" height="22" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M64 58 H120" stroke="currentColor" stroke-width="2"/>' +
-        '<ellipse cx="168" cy="70" rx="40" ry="18" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M200 78 H250" stroke="currentColor" stroke-width="2"/>' +
-        '<rect x="250" y="60" width="54" height="70" fill="currentColor" opacity=".14" stroke="currentColor"/>' +
-        '<text x="16" y="40" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Trench</text>' +
-        '<text x="140" y="48" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Bag</text>' +
-        '<text x="248" y="48" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Grass</text>')
+      "confirm": "Pipe size, inlet berm height, and anchor spacing are on the current EC(7)-16 sheet and Item 506. Check those before you call out a diameter.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Pipe slope drain. The berm is higher than the pipe. The pipe is anchored down the face and ends in a flare on rock.\"><defs><pattern id=\"soil-sd\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-sd\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M28 118 L276 261.8 V312 H28 Z\" fill=\"url(#soil-sd)\"/><path d=\"M28 118 L276 261.8 V312 H28 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M28 118 L276 261.8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M40 125 L74 62 L116 169 Z\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M48 119.6 H90 V142.4 H52 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M97 159 L207 222.8 M103 148.6 L213 212.4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M146 168.4 V200.4 M182 189.3 V221.3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"/><path d=\"M210 211.6 L246 228.4 V258.4 L210 223.6 Z\" fill=\"currentColor\" fill-opacity=\".06\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><polygon points=\"239.2,240.8 233.5,240.6 230.3,236.9 233,232.7 238.5,232.6 241.8,236.4\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"251.2,253.4 247.7,249.5 250,245.1 256.5,245.2 260.9,248.6 257.2,252.3\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"261.8,258.5 262.9,254.9 267.5,255.1 270.9,257.5 268.6,260.7 264.2,261.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><text x=\"20\" y=\"56\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Berm above the pipe</text><path d=\"M164 68 L120 68 L90 80\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"90\" cy=\"80\" r=\"2.1\" fill=\"currentColor\"/><text x=\"168\" y=\"88\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Pipe</text><path d=\"M164 100 L150 153.8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"150\" cy=\"153.8\" r=\"2.1\" fill=\"currentColor\"/><text x=\"168\" y=\"120\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Flare and rock</text><path d=\"M252 132 L248 150 L236 220\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"236\" cy=\"220\" r=\"2.1\" fill=\"currentColor\"/><text x=\"168\" y=\"156\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Anchors</text><path d=\"M164 168 L148 187.6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"148\" cy=\"187.6\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M40 430 Q120 456 160 430\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M78 449 L230 449 M78 439 L230 439\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M230 434 L264 418 V470 L230 454 Z\" fill=\"currentColor\" fill-opacity=\".06\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><path d=\"M120 434 V454 M170 434 V454 M210 434 V454\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\"/><polygon points=\"253.2,504.1 247.5,504 244.3,500.2 247,496 252.5,496 255.8,499.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"263.6,490.3 260.6,486.4 262.6,482 268.1,482.1 271.9,485.5 268.8,489.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"253.8,516.5 254.9,512.9 259.5,513.1 262.9,515.4 260.6,518.6 256.2,519.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M90 500 L191 500\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M200 500 L191 504.2 L191 495.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"410\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Berm</text><text x=\"20\" y=\"560\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Anchors over the pipe</text><text x=\"20\" y=\"620\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Flare onto rock</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'construction-exit', cat: 'road', name: 'Construction exit', sheet: 'EC(3)-16',
-      one: 'A rock pad where trucks leave the dirt and enter the paved road.',
-      what: 'A stabilized exit, usually rock, sometimes with timbers or a cattle guard, that knocks mud off tires. It is the control for tracking. It does not vacuum the road. You still sweep. The permit requires you to minimize mud and dust carried off the site, and to show the exits on the map.',
-      where: [
-        'Every place vehicles leave onto pavement.',
-        'The TxDOT fact sheet used here says a stabilized exit is required when the project disturbs one acre or more, and is recommended on smaller jobs where tracking is likely. Confirm that on the current fact sheet.',
-        'One exit is better than three gaps in the fence. Put the exit where the haul road actually is.'
+      "id": "outlet-protection",
+      "cat": "move",
+      "name": "Outlet protection",
+      "sheet": "EC(8)-16",
+      "one": "Rock at a pipe end so the discharge does not dig a hole.",
+      "what": "Riprap or another dissipator at a culvert, flume, or ditch outlet. Fast water leaves the pipe, hits the rock, and slows down before it reaches erodible soil or a natural channel. The permit requires velocity dissipation at discharge points and along outfall channels so the flow is not erosive.",
+      "where": [
+        "Culvert and storm-drain outlets, paved flumes, and the end of a diversion.",
+        "The TxDOT fact sheet used here says to protect outlets where the design velocity is high and the receiving channel is unlined. Check the current fact sheet for the velocity that triggers it.",
+        "Install the permanent dissipator early if you can, so it protects the site during construction and not only after acceptance."
       ],
-      install: [
-        'Item 506 and the fact sheet, as read for this tool, describe a rock exit on the order of 8 inches of coarse rock, wide enough for the trucks, and long enough that tires turn several times. Widths on the order of 14 feet for one-way and 20 feet for two-way, and a length on the order of 50 feet for the longer types, are what that text describes. Use the current EC(3)-16 and Item 506. A short thin pad does not work, and the sheet may have been revised.',
-        'The approach should not be so steep that trucks drag mud over the rock. The fact sheet gives a slope limit. Check it.',
-        'Drain the pad to a trap or another sediment control, not into the gutter.',
-        'Do not wash tires into the street. Washing is how mud gets into the storm drain with extra water behind it.'
+      "install": [
+        "The apron is aligned with the flow, not dumped in a pile beside the pipe.",
+        "Length, width, and rock size depend on the pipe and the velocity. The fact sheet describes an apron in terms of pipe diameters and points at Item 432 for riprap. Check the current fact sheet and Item 432. Do not reuse a thickness from another culvert.",
+        "Where the outlet is much higher than the channel, rock on a flat apron is the wrong tool. You need a drop or a stilling arrangement the hydraulic design actually calls for.",
+        "Put filter fabric or bedding under the rock if the sheet shows it, so soil does not pipe up through the voids."
       ],
-      maintain: [
-        'Add rock when the pad is full of mud and the tires are riding on dirt again.',
-        'Sweep the public road. The exit and the broom are a pair. See street sweeping.',
-        'Close unofficial exits. A perfect pad does nothing if trucks leave through the ditch.'
+      "maintain": [
+        "Put displaced rock back and fill scour at the edges.",
+        "Clear sediment that has choked the apron. A buried apron is just a ramp for the next storm.",
+        "Look at outlets on every inspection. The permit calls out discharge points specifically."
       ],
-      mistakes: [
-        'A pad shorter than the truck, so the trailer tires never touch it.',
-        'Rock so small it packs into a mud slab.',
-        'The pad at the wrong station, with the real exit a hundred feet away.',
-        'Washing the exit with a hose toward the inlet.',
-        'No sweeping, and a claim that the rock "should have been enough."'
+      "mistakes": [
+        "A few square yards of rock that do not match the pipe size, so the plunge pool forms just past the rock.",
+        "Rock dumped above the pipe invert, which blocks the pipe.",
+        "No rock because the permanent channel \"will be lined later,\" while the culvert is already flowing.",
+        "Geotextile exposed and flapping because the rock layer is too thin."
       ],
-      confirm: 'Thickness, rock size, width, and length are on the current EC(3)-16 sheet and Item 506. Check those before you put a dimension in the general notes. The one-acre expectation is from the TxDOT fact sheet this tool was written against. Confirm it.',
-      svg: fig('Rock exit pad between a bare haul road and a paved street',
-        '<rect x="16" y="36" width="130" height="100" fill="currentColor" opacity=".08" stroke="currentColor"/>' +
-        '<rect x="146" y="56" width="70" height="60" fill="currentColor" opacity=".22" stroke="currentColor"/>' +
-        '<rect x="216" y="36" width="88" height="100" fill="currentColor" opacity=".05" stroke="currentColor"/>' +
-        '<circle cx="164" cy="78" r="5" fill="none" stroke="currentColor"/><circle cx="180" cy="90" r="5" fill="none" stroke="currentColor"/><circle cx="196" cy="74" r="5" fill="none" stroke="currentColor"/>' +
-        '<text x="28" y="28" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Haul road</text>' +
-        '<text x="152" y="48" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Rock</text>' +
-        '<text x="224" y="28" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Pavement</text>' +
-        '<text x="28" y="156" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Long enough for the tires</text>')
+      "confirm": "Apron size and stone class are a hydraulic decision. Use the current EC(8)-16 sheet, Item 432, and the culvert design. This page does not pick a rock gradation.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Outlet protection. Rock is at or below the pipe invert, with bedding under it. The apron lines up with the flow and widens downstream.\"><defs><pattern id=\"soil-op\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-op\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 220 H278 V312 H22 Z\" fill=\"url(#soil-op)\"/><path d=\"M22 220 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 220 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M22 150 H96 V196 H22 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M22 176 H250\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-dasharray=\"5 3\"/><path d=\"M100 178 H246 L232 236 H114 Z\" fill=\"currentColor\" fill-opacity=\".05\" stroke=\"currentColor\" stroke-width=\"1.3\"/><polygon points=\"132.2,206.9 124.7,206.8 120.4,202.3 123.9,197.3 131.3,197.2 135.8,201.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"150.5,200 145.9,194.6 148.9,188.4 157.2,188.6 162.9,193.3 158.1,198.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"173.3,206.7 175.1,201.3 182.3,201.6 187.9,205.2 184.1,209.9 177.1,211.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"200.1,190.7 208.5,190.4 214.7,194.7 211.2,200.7 203.2,202.3 197.7,197.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"229.8,208.8 234.4,212.7 232.5,218.1 226.2,219.2 221.4,215.4 223.9,210.3\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"128.4,234.6 126.4,232.3 127.7,229.6 131.4,229.7 134,231.7 131.8,233.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"152.7,234.4 153.5,231.6 157.2,231.8 160,233.6 158.1,236 154.5,236.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"179.4,229.7 183.1,229.6 185.9,231.4 184.3,234 180.7,234.7 178.3,232.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"209,233.4 211.7,235.3 210.6,238.1 207,238.6 204.2,236.7 205.6,234.1\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M40 164 L75 164\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M84 164 L75 168.2 L75 159.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Pipe</text><path d=\"M52 50 L188 50 L188 156 L64 168\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"64\" cy=\"168\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"86\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Invert</text><path d=\"M66 78 L188 78 L188 156 L100 176\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"100\" cy=\"176\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"114\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Rock at the invert</text><path d=\"M142 108 L188 108 L188 156 L168 198\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"168\" cy=\"198\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"142\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Bedding under the rock</text><path d=\"M182 154 L188 154 L188 168 L168 232\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"168\" cy=\"232\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M70 400 H130 V436 H70 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M88 436 L44 590 H256 L212 436 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><polygon points=\"123.7,494.1 117.1,494 113.4,490.2 116.4,486 122.9,486 126.8,489.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"146.8,525.2 142.8,520.5 145.5,515.2 152.8,515.4 157.9,519.4 153.7,523.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"174.2,490.6 175.7,486.1 182,486.4 186.9,489.3 183.6,493.3 177.4,494.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"136.1,556.2 141.7,556 145.8,559.1 143.5,563.4 138.1,564.5 134.5,560.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"171.5,550.7 175.5,553.9 173.9,558.4 168.5,559.3 164.3,556.1 166.5,551.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M150 408 L150 461\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M150 470 L145.8 461 L154.2 461 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"630\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Widens downstream</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     },
     {
-      id: 'street-sweeping', cat: 'road', name: 'Street sweeping', sheet: 'Street sweeping job aid',
-      one: 'Picks up the mud the exit did not catch.',
-      what: 'A broom or vacuum on the paved road at the exit and anywhere else mud shows up. It is the second half of tracking control. The TxDOT job aid used here says to sweep at the end of the day and during the work. Confirm the frequency on the current job aid and in the plans.',
-      where: [
-        'The public road at each construction exit, and paved areas inside the job that drain to inlets.',
-        'Wherever you can see sediment or rock on the pavement. If you can see it, it is already on its way to the inlet.'
+      "id": "dewatering",
+      "cat": "move",
+      "name": "Dewatering",
+      "sheet": "Special specification for bags, where used",
+      "one": "Pump muddy trench water through a filter, not into the inlet.",
+      "what": "Water pumped from a trench, excavation, or pit. The permit does not allow that discharge unless you control the sediment and keep the outlet from eroding. A filter bag, a tank, a vegetated strip, or a trap can do it. The hose by itself is not a control.",
+      "where": [
+        "Anywhere you will pump: utility trenches, culvert excavations, low piers.",
+        "Show the planned locations on the layout, including where the water finally goes.",
+        "The bag or tank sits on the ground where a leak will not run straight into a creek. A vegetated area or a trap is the usual last step."
       ],
-      install: [
-        'There is nothing to build. Put sweeping on the SWP3 and say who does it.',
-        'Limit the number of exits so one sweeper can keep up.',
-        'Do not wash the gutter to "sweep." That is a discharge.'
+      "install": [
+        "Match the filter to the pump. The TxDOT dewatering-bag specification used for this tool says the bag should pass at least twice the pump's peak flow. Confirm that on the current special specification before you order a bag.",
+        "A sediment tank should hold the discharge long enough for soil to drop. The fact sheet describes a detention time. Check it.",
+        "Stake the bag and aim the discharge at the ground, not at a slope that will rill.",
+        "If the water is not just mud (sheen, sewage, concrete wash), a sediment bag is the wrong tool. Stop and deal with the pollutant."
       ],
-      maintain: [
-        'Sweep before the mud is ground into a paste, and again before a forecast rain if the road is dirty.',
-        'Dispose of the sweepings with the other sediment, not in the ditch.',
-        'If you are sweeping the same spot all day, the exit has failed. Fix the pad, do not only add sweepers.'
+      "maintain": [
+        "Replace a bag when it is about half full of sediment. That is the job-aid rule used here. Confirm it on the current job aid.",
+        "On days you are pumping, look at the discharge that day. The permit requires a daily look and a report. TxDOT has a dewatering inspection form for the contractor.",
+        "The job aid also asks whether the local MS4 was told about the dewatering. Check the current form and the project's MS4 requirements."
       ],
-      mistakes: [
-        'A note that says "sweep as needed" and a road that is brown every evening.',
-        'Sweeping into the inlet instead of picking the material up.',
-        'Washing the turn lane with a water truck.',
-        'Ignoring the opposite gutter, where trucks tracked mud on the way out.'
+      "mistakes": [
+        "The intake hose in the trench and the outlet hose in the inlet, with nothing in between.",
+        "A bag sitting in the ditch, so \"filtered\" water immediately picks up more mud.",
+        "A bag too small for the pump, which bursts or is bypassed by the crew.",
+        "Pumping concrete saw-cut water or sludge through a sediment bag.",
+        "No one assigned to look at it because \"it is only for an hour.\""
       ],
-      confirm: 'How often to sweep is a plan and job-aid question. Check the current TxDOT street-sweeping job aid. Do not treat a rock exit as a reason to skip the road.',
-      svg: fig('Sweeper on a paved road collecting mud tracked past the construction exit',
-        '<rect x="16" y="40" width="288" height="88" fill="currentColor" opacity=".06" stroke="currentColor"/>' +
-        '<path d="M16 84 H304" stroke="currentColor" stroke-width="2" stroke-dasharray="8 6" opacity=".5"/>' +
-        '<rect x="150" y="58" width="70" height="28" rx="4" fill="currentColor" opacity=".2" stroke="currentColor"/>' +
-        '<circle cx="166" cy="92" r="8" fill="none" stroke="currentColor"/><circle cx="204" cy="92" r="8" fill="none" stroke="currentColor"/>' +
-        '<path d="M40 100 h70" stroke="currentColor" stroke-width="4" opacity=".35"/>' +
-        '<text x="20" y="32" fill="currentColor" font-size="14" font-family="system-ui,sans-serif">Tracked mud</text>' +
-        '<text x="150" y="148" fill="currentColor" font-size="13" font-family="system-ui,sans-serif">Pick it up. Do not wash it.</text>')
+      "confirm": "Bag size, tank time, and the daily form are in the current TxDOT dewatering specification and the permit's dewatering section. Check those. Do not copy a bag size from this page.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Dewatering. A hose runs from the trench to a filter bag on a rock pad. Discharge goes onto grass. A hose to an inlet is wrong.\"><defs><pattern id=\"soil-dw\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-dw\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 240 H40 L56 292 H100 L116 240 H278 V312 H22 Z\" fill=\"url(#soil-dw)\"/><path d=\"M22 240 H40 L56 292 H100 L116 240 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 240 H40 L56 292 H100 L116 240 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M52 262 H96 V292 H60 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M74 268 C112 250 128 186 156 180\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\"/><polygon points=\"163.2,218.1 157.5,218 154.3,214.2 157,210 162.5,210 165.8,213.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"175.2,226.3 171.7,222.4 174,218 180.5,218.1 184.9,221.5 181.2,225.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"193,214.6 194.3,210.1 199.8,210.4 203.9,213.3 201.1,217.3 195.8,218.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"184.7,225 189.4,224.8 192.8,227.3 190.9,230.7 186.4,231.6 183.4,228.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M150 156 H236 Q248 156 248 168 V200 Q248 214 236 214 H150 Q138 214 138 200 V168 Q138 156 150 156 Z\" fill=\"url(#fab-dw)\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M150 166 H236 M188 160 V210\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".4\"/><path d=\"M256 240 l-2.2 -8 M256 240 v-10 M256 240 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M268 240 l-2.2 -8 M268 240 v-10 M268 240 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M236 196 L251.9 213.4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M258 220 L248.8 216.2 L255 210.5 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Trench</text><text x=\"20\" y=\"90\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Hose</text><path d=\"M56 94 L100 230\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"100\" cy=\"230\" r=\"2.1\" fill=\"currentColor\"/><text x=\"150\" y=\"146\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Filter bag</text><text x=\"168\" y=\"292\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Rock pad</text><text x=\"236\" y=\"136\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Grass</text><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M24 450 H74 V510 H24 Z\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M74 478 H124\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\"/><path d=\"M124 444 H196 Q208 444 208 456 V500 Q208 514 196 514 H124 Q112 514 112 500 V456 Q112 444 124 444 Z\" fill=\"url(#fab-dw)\" stroke=\"currentColor\" stroke-width=\"1.5\"/><polygon points=\"132.6,531.3 127.9,531.2 125.3,528.2 127.5,524.8 132.1,524.8 134.9,527.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"148,539.4 145.5,536.3 147.2,532.8 151.8,532.9 155,535.6 152.3,538.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"167.8,528.5 168.9,524.9 173.5,525.1 176.9,527.4 174.6,530.6 170.2,531.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M220 490 l-2.2 -8 M220 490 v-10 M220 490 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M234 490 l-2.2 -8 M234 490 v-10 M234 490 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><path d=\"M248 490 l-2.2 -8 M248 490 v-10 M248 490 l2.2 -8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\"/><rect x=\"236\" y=\"410\" width=\"44\" height=\"34\" fill=\"currentColor\" fill-opacity=\".05\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M243.3 413 V441\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M250.7 413 V441\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M258 413 V441\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M265.3 413 V441\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M272.7 413 V441\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M239 423.6 H277 M239 433.1 H277\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-opacity=\".6\"/><path d=\"M196 460 H236\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-dasharray=\"4 3\"/><circle cx=\"214\" cy=\"448\" r=\"9\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M210 444 l8.1 8.1 M218.1 444 l-8.1 8.1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M200 490 L209 490\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M218 490 L209 494.2 L209 485.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"430\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Trench</text><text x=\"124\" y=\"436\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Bag</text><text x=\"20\" y=\"580\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Onto grass</text><text x=\"20\" y=\"630\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Not into the inlet</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
+    },
+    {
+      "id": "construction-exit",
+      "cat": "road",
+      "name": "Construction exit",
+      "sheet": "EC(3)-16",
+      "one": "A rock pad where trucks leave the dirt and enter the paved road.",
+      "what": "A stabilized exit, usually rock, sometimes with timbers or a cattle guard, that knocks mud off tires. It is the control for tracking. It does not vacuum the road. You still sweep. The permit requires you to minimize mud and dust carried off the site, and to show the exits on the map.",
+      "where": [
+        "Every place vehicles leave onto pavement.",
+        "The TxDOT fact sheet used here says a stabilized exit is required when the project disturbs one acre or more, and is recommended on smaller jobs where tracking is likely. Confirm that on the current fact sheet.",
+        "One exit is better than three gaps in the fence. Put the exit where the haul road actually is."
+      ],
+      "install": [
+        "Item 506 and the fact sheet, as read for this tool, describe a rock exit on the order of 8 inches of coarse rock, wide enough for the trucks, and long enough that tires turn several times. Widths on the order of 14 feet for one-way and 20 feet for two-way, and a length on the order of 50 feet for the longer types, are what that text describes. Use the current EC(3)-16 and Item 506. A short thin pad does not work, and the sheet may have been revised.",
+        "The approach should not be so steep that trucks drag mud over the rock. The fact sheet gives a slope limit. Check it.",
+        "Drain the pad to a trap or another sediment control, not into the gutter.",
+        "Do not wash tires into the street. Washing is how mud gets into the storm drain with extra water behind it."
+      ],
+      "maintain": [
+        "Add rock when the pad is full of mud and the tires are riding on dirt again.",
+        "Sweep the public road. The exit and the broom are a pair. See street sweeping.",
+        "Close unofficial exits. A perfect pad does nothing if trucks leave through the ditch."
+      ],
+      "mistakes": [
+        "A pad shorter than the truck, so the trailer tires never touch it.",
+        "Rock so small it packs into a mud slab.",
+        "The pad at the wrong station, with the real exit a hundred feet away.",
+        "Washing the exit with a hose toward the inlet.",
+        "No sweeping, and a claim that the rock \"should have been enough.\""
+      ],
+      "confirm": "Thickness, rock size, width, and length are on the current EC(3)-16 sheet and Item 506. Check those before you put a dimension in the general notes. The one-acre expectation is from the TxDOT fact sheet this tool was written against. Confirm it.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Construction exit. Coarse rock over fabric, thick enough that tires ride on rock. The pad is long in the travel direction and drains to a trap.\"><defs><pattern id=\"soil-ex\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-ex\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 214 H278 V312 H22 Z\" fill=\"url(#soil-ex)\"/><path d=\"M22 214 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 214 H72 L88 246 H236 L252 196 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M92 214 H230\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-dasharray=\"5 3\"/><path d=\"M88 246 H236 L226 186 H100 Z\" fill=\"currentColor\" fill-opacity=\".04\"/><polygon points=\"116.2,224.9 108.7,224.8 104.4,220.3 107.9,215.3 115.3,215.2 119.8,219.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"132.5,212 127.9,206.6 130.9,200.4 139.2,200.6 144.9,205.3 140.1,210.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"155.3,222.7 157.1,217.3 164.3,217.6 169.9,221.2 166.1,225.9 159.1,227.5\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"182.1,198.7 190.5,198.4 196.7,202.7 193.2,208.7 185.2,210.3 179.7,205.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"214,214.8 219.4,218.7 217.2,224.1 209.9,225.2 204.4,221.4 207.3,216.3\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"155.2,228.7 154.2,233.4 148.8,234.1 144.3,231.4 146.6,227.3 151.4,225.1\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M124 164 H206\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><circle cx=\"146\" cy=\"186\" r=\"16\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.8\"/><circle cx=\"146\" cy=\"186\" r=\"6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\"/><circle cx=\"190\" cy=\"186\" r=\"16\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.8\"/><circle cx=\"190\" cy=\"186\" r=\"6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\"/><text x=\"20\" y=\"56\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Tires on rock</text><text x=\"20\" y=\"88\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Fabric</text><path d=\"M66 80 L262 80 L262 136 L150 214\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"150\" cy=\"214\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"120\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Mud under the pad</text><path d=\"M154 132 L160 228\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"160\" cy=\"228\" r=\"2.1\" fill=\"currentColor\"/><text x=\"168\" y=\"120\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Coarse rock</text><path d=\"M220 132 L190 200\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"190\" cy=\"200\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><rect x=\"22\" y=\"410\" width=\"40\" height=\"130\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.3\"/><rect x=\"62\" y=\"418\" width=\"150\" height=\"114\" fill=\"currentColor\" fill-opacity=\".05\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M68 424 H206 V526 H68 Z\" fill=\"none\" stroke=\"currentColor\" stroke-dasharray=\"4 3\" stroke-width=\"1.15\"/><polygon points=\"89.7,454.1 83.1,454 79.4,450.2 82.4,446 88.9,446 92.8,449.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"111.2,454.3 107.7,450.4 110,446 116.5,446.1 120.9,449.5 117.2,453.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"136.2,450.6 137.7,446.1 144,446.4 148.9,449.3 145.6,453.3 139.4,454.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"165.4,446.2 171.9,446 176.8,449.1 174.1,453.4 167.8,454.5 163.6,450.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"87.8,481.7 92.4,484.9 90.5,489.4 84.2,490.3 79.4,487.1 81.9,482.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"120,484.7 118.9,489.4 112.6,490.1 107.3,487.4 110,483.3 115.7,481.1\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"147.3,489.3 140.9,489.8 135.4,487.6 137.6,483.3 143.3,481.2 147.9,484.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"169.1,490.2 163.6,487.8 165.1,483.2 171,481.3 176.1,484.3 175,488.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><rect x=\"212\" y=\"410\" width=\"64\" height=\"130\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.3\"/><path d=\"M220 470 H268\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M130 532 V560 H64 V590 H110\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M48 560 H116 V598 H48 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M36 470 L61 470\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M70 470 L61 474.2 L61 465.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"396\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Dirt</text><text x=\"220\" y=\"396\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Road</text><text x=\"64\" y=\"620\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Trap</text><text x=\"140\" y=\"640\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Not the gutter</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
+    },
+    {
+      "id": "street-sweeping",
+      "cat": "road",
+      "name": "Street sweeping",
+      "sheet": "Street sweeping job aid",
+      "one": "Picks up the mud the exit did not catch.",
+      "what": "A broom or vacuum on the paved road at the exit and anywhere else mud shows up. It is the second half of tracking control. The TxDOT job aid used here says to sweep at the end of the day and during the work. Confirm the frequency on the current job aid and in the plans.",
+      "where": [
+        "The public road at each construction exit, and paved areas inside the job that drain to inlets.",
+        "Wherever you can see sediment or rock on the pavement. If you can see it, it is already on its way to the inlet."
+      ],
+      "install": [
+        "There is nothing to build. Put sweeping on the SWP3 and say who does it.",
+        "Limit the number of exits so one sweeper can keep up.",
+        "Do not wash the gutter to \"sweep.\" That is a discharge."
+      ],
+      "maintain": [
+        "Sweep before the mud is ground into a paste, and again before a forecast rain if the road is dirty.",
+        "Dispose of the sweepings with the other sediment, not in the ditch.",
+        "If you are sweeping the same spot all day, the exit has failed. Fix the pad, do not only add sweepers."
+      ],
+      "mistakes": [
+        "A note that says \"sweep as needed\" and a road that is brown every evening.",
+        "Sweeping into the inlet instead of picking the material up.",
+        "Washing the turn lane with a water truck.",
+        "Ignoring the opposite gutter, where trucks tracked mud on the way out."
+      ],
+      "confirm": "How often to sweep is a plan and job-aid question. Check the current TxDOT street-sweeping job aid. Do not treat a rock exit as a reason to skip the road.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Street sweeping. A sweeper picks mud up into the hopper. Washing it into an inlet, or dumping it in the ditch, is wrong.\"><defs><pattern id=\"soil-sw\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-sw\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Side view</text><path d=\"M22 252 H278 V312 H22 Z\" fill=\"url(#soil-sw)\"/><path d=\"M22 252 H278 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 252 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M22 236 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\" stroke-opacity=\".4\"/><circle cx=\"78\" cy=\"230\" r=\"22\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.8\"/><circle cx=\"78\" cy=\"230\" r=\"7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><circle cx=\"164\" cy=\"230\" r=\"22\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.8\"/><circle cx=\"164\" cy=\"230\" r=\"7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M52 204 H196 V156 H128 V168 H62 V136 H44 V204 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M128 156 H196 V204 H128 Z\" fill=\"currentColor\" fill-opacity=\".14\" stroke=\"currentColor\" stroke-width=\"1.4\"/><rect x=\"50\" y=\"146\" width=\"32\" height=\"22\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.4\"/><circle cx=\"214\" cy=\"228\" r=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M198 216 l8 8 M214 206 v10 M230 216 l-8 8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\" stroke-linecap=\"round\"/><circle cx=\"240\" cy=\"246\" r=\"2\" fill=\"currentColor\"/><circle cx=\"250\" cy=\"248\" r=\"2\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Cab</text><path d=\"M50 48 L274 48 L274 152 L58 152\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"58\" cy=\"152\" r=\"2.1\" fill=\"currentColor\"/><text x=\"150\" y=\"96\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Picks the mud up</text><path d=\"M268 108 L274 108 L274 236\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"274\" cy=\"236\" r=\"2.1\" fill=\"currentColor\"/><text x=\"136\" y=\"140\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Hopper</text><text x=\"214\" y=\"176\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Broom</text><path d=\"M250 188 L220 210\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"220\" cy=\"210\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><rect x=\"22\" y=\"410\" width=\"176\" height=\"150\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M22 486 H198\" fill=\"none\" stroke=\"currentColor\" stroke-dasharray=\"6 5\" stroke-opacity=\".45\"/><path d=\"M36 520 H88\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"4\" stroke-opacity=\".3\" stroke-linecap=\"round\"/><path d=\"M100 440 h64 v30 h-20 v16 h-52 v-14 h-10 z\" fill=\"currentColor\" fill-opacity=\".1\" stroke=\"currentColor\" stroke-width=\"1.4\"/><circle cx=\"116\" cy=\"492\" r=\"7\" fill=\"none\" stroke=\"currentColor\"/><circle cx=\"152\" cy=\"492\" r=\"7\" fill=\"none\" stroke=\"currentColor\"/><rect x=\"214\" y=\"416\" width=\"48\" height=\"34\" fill=\"currentColor\" fill-opacity=\".05\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M222 419 V447\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M230 419 V447\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M238 419 V447\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M246 419 V447\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M254 419 V447\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M217 429.6 H259 M217 439.1 H259\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-opacity=\".6\"/><path d=\"M176 456 H214\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-dasharray=\"4 3\"/><circle cx=\"194\" cy=\"446\" r=\"9\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M190 442 l8.1 8.1 M198.1 442 l-8.1 8.1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M228 520 H276 M228 538 H276\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><circle cx=\"250\" cy=\"570\" r=\"11\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M245.1 565.1 l9.9 9.9 M255 565.1 l-9.9 9.9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><text x=\"20\" y=\"400\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Mud</text><text x=\"108\" y=\"432\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Hopper</text><text x=\"20\" y=\"600\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Not the inlet</text><text x=\"20\" y=\"630\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Not in the ditch</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
+    },
+    {
+      "id": "floating-turbidity",
+      "cat": "water",
+      "name": "Floating turbidity barrier",
+      "sheet": "EC sheet for turbidity barriers",
+      "one": "A floating silt curtain that keeps muddy water on the work side of a creek or pond.",
+      "what": "A fabric skirt hung from floats on the water surface, with a weighted bottom so the current cannot lift it. It holds turbid water next to the work while soil settles. It is not a silt fence, and it does not stop the whole river. People also call it a turbidity curtain or a floating silt fence.",
+      "where": [
+        "Work in or next to a creek, pond, ditch that already has water, or a bridge bent in the water.",
+        "Still or slow water is where a curtain can hold a quiet pool. A fast river will carry the skirt or flow under it. The sheet will say where a curtain is the wrong tool.",
+        "The ends have to land on the bank or on another curtain. An end that stops in open water is a hole."
+      ],
+      "install": [
+        "Floats stay at the surface. The skirt hangs in the water column. A chain, cable, or ballast weights the bottom hem so the skirt stays down.",
+        "Anchor the curtain so it cannot drift into the work or into the channel you are trying to keep open. Tie both ends to the shore, or to a line that reaches the shore.",
+        "Set it before the digging starts, on the downstream side of the work or around the work area, the way the layout shows.",
+        "Depth, fabric, and anchor pattern are on the current TxDOT turbidity-barrier sheet. Check that sheet. Do not guess a skirt length from the depth of a different creek."
+      ],
+      "maintain": [
+        "After a rise in the water, check that the floats are still on the surface, the skirt is not rolled up, and the ends are still on the bank.",
+        "Clear debris that has pulled a float under. A submerged float is a fence lying on the bottom.",
+        "Take the curtain out when the in-water work is done and the bank is stable. Do not leave it as a permanent boom."
+      ],
+      "mistakes": [
+        "A silt fence staked in the mud at the waterline and called a turbidity barrier.",
+        "Skirt with no weight, so the current folds it up to the floats.",
+        "Ends that do not reach the bank, so the muddy water walks around.",
+        "Curtain across the whole channel in a storm, when the sheet wanted it only around the work.",
+        "No curtain at all because the crossing \"is only for a day.\""
+      ],
+      "confirm": "Skirt depth, float size, ballast, and anchors are on the current TxDOT turbidity-barrier sheet. Check it before you put a depth on the plan. This page does not pick one.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Floating turbidity barrier. Floats ride the water surface, a thin skirt hangs to a weighted hem, and anchors run from the top to the bed. Both ends of the curtain tie to the bank.\"><defs><pattern id=\"soil-ft\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-ft\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 200 L78 156 H284 V312 H22 Z\" fill=\"url(#soil-ft)\"/><path d=\"M22 200 L78 156 H284 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 200 L78 156\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M78 156 Q85 153 92 156 Q99 159 106 156 Q113 153 120 156 Q127 159 134 156 Q141 153 148 156 Q155 159 162 156 Q169 153 176 156 Q183 159 190 156 Q197 153 204 156 Q211 159 218 156 Q225 153 232 156 Q239 159 246 156 Q253 153 260 156 Q267 159 274 156 Q279 153 284 156 V268 H100 L78 156 Z\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M78 156 Q85 153 92 156 Q99 159 106 156 Q113 153 120 156 Q127 159 134 156 Q141 153 148 156 Q155 159 162 156 Q169 153 176 156 Q183 159 190 156 Q197 153 204 156 Q211 159 218 156 Q225 153 232 156 Q239 159 246 156 Q253 153 260 156 Q267 159 274 156 Q279 153 284 156\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.45\"/><path d=\"M100 268 H284 V312 H100 Z\" fill=\"url(#soil-ft)\"/><path d=\"M100 268 H284 V312 H100 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M100 268 H284\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M126 164 H206 V248 H126 Z\" fill=\"currentColor\" fill-opacity=\".06\"/><path d=\"M126 164 V248 M152 164 V248 M180 164 V248 M206 164 V248\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\"/><rect x=\"118\" y=\"148\" width=\"24\" height=\"14\" rx=\"7\" fill=\"currentColor\" fill-opacity=\".14\" stroke=\"currentColor\" stroke-width=\"1.5\"/><rect x=\"154\" y=\"148\" width=\"24\" height=\"14\" rx=\"7\" fill=\"currentColor\" fill-opacity=\".14\" stroke=\"currentColor\" stroke-width=\"1.5\"/><rect x=\"190\" y=\"148\" width=\"24\" height=\"14\" rx=\"7\" fill=\"currentColor\" fill-opacity=\".14\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M124 250 H208\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><circle cx=\"130\" cy=\"250\" r=\"3.5\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><circle cx=\"152\" cy=\"250\" r=\"3.5\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><circle cx=\"174\" cy=\"250\" r=\"3.5\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><circle cx=\"196\" cy=\"250\" r=\"3.5\" fill=\"currentColor\" fill-opacity=\".4\" stroke=\"currentColor\" stroke-width=\"1\"/><path d=\"M142 150 L96 250\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\" stroke-dasharray=\"4 3\"/><path d=\"M96 242 V258 M87 259 L96 254 L105 259 M89 265 L95 258 M103 265 L97 258\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"96\" cy=\"242\" r=\"2\" fill=\"currentColor\"/><path d=\"M78 156 H130\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\"/><path d=\"M230 96 L265 96\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M274 96 L265 100.2 L265 91.8 Z\" fill=\"currentColor\"/><text x=\"200\" y=\"78\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Current</text><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Floats</text><path d=\"M66 52 L130 154\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"130\" cy=\"154\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"86\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Bank</text><text x=\"20\" y=\"114\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Anchor</text><path d=\"M74 128 L36 128 L36 220 L96 250\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"96\" cy=\"250\" r=\"2.1\" fill=\"currentColor\"/><text x=\"188\" y=\"130\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Weighted hem</text><path d=\"M220 142 L174 250\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"174\" cy=\"250\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M6 360 L62 390 L48 470 L70 540 L52 620 H6 Z\" fill=\"url(#soil-ft)\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M58 410 C130 440 168 490 150 540 C132 590 96 610 54 618\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/><ellipse cx=\"96\" cy=\"430\" rx=\"9\" ry=\"4.5\" fill=\"currentColor\" fill-opacity=\".12\" stroke=\"currentColor\" stroke-width=\"1.2\"/><ellipse cx=\"140\" cy=\"490\" rx=\"9\" ry=\"4.5\" fill=\"currentColor\" fill-opacity=\".12\" stroke=\"currentColor\" stroke-width=\"1.2\"/><ellipse cx=\"146\" cy=\"548\" rx=\"9\" ry=\"4.5\" fill=\"currentColor\" fill-opacity=\".12\" stroke=\"currentColor\" stroke-width=\"1.2\"/><ellipse cx=\"90\" cy=\"600\" rx=\"9\" ry=\"4.5\" fill=\"currentColor\" fill-opacity=\".12\" stroke=\"currentColor\" stroke-width=\"1.2\"/><path d=\"M140 490 L186 530 M146 548 L196 560\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-dasharray=\"3 2\"/><path d=\"M186 518 V534 M177 535 L186 530 L195 535 M179 541 L185 534 M193 541 L187 534\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"186\" cy=\"518\" r=\"2\" fill=\"currentColor\"/><path d=\"M196 556 V572 M187 573 L196 568 L205 573 M189 579 L195 572 M203 579 L197 572\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"196\" cy=\"556\" r=\"2\" fill=\"currentColor\"/><path d=\"M214 450 L267.7 427.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M276 424 L269.3 431.4 L266.1 423.6 Z\" fill=\"currentColor\"/><text x=\"210\" y=\"400\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Current</text><text x=\"100\" y=\"390\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Floats</text><text x=\"20\" y=\"650\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Both ends on the bank</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
+    },
+    {
+      "id": "stream-crossing",
+      "cat": "water",
+      "name": "Temporary stream crossing",
+      "sheet": "EC sheet and the water permit",
+      "one": "A pipe-and-rock crossing so equipment does not drive in the creek bed.",
+      "what": "A short, temporary way across a channel. Low flow goes through pipes set at the bed. Clean rock covers the pipes so tires stay out of the water. The approaches are stable, and the whole thing comes out when you are done. Driving through the mud is not a crossing. A curtain downstream does not make a mud ford acceptable.",
+      "where": [
+        "Where haul equipment has to cross a creek or a wet ditch, and the layout shows a crossing.",
+        "Not at every wet spot. One crossing, in the place the plan picked, is easier to build and remove.",
+        "Work in a waterway can need a permit besides the construction general permit. The SWP3 does not replace that."
+      ],
+      "install": [
+        "Set the pipes on the bed so the ordinary low flow stays in the pipes and does not dam up behind the rock.",
+        "Cover the pipes with clean rock. If the sheet shows geotextile under the rock, put it there so fines do not migrate into the rock.",
+        "Tie the rock into both banks and stabilize the approaches so mud is not dragged onto the crossing.",
+        "Pipe size, number, and rock are a hydraulic choice on the current sheet and the crossing design. Check those. This page does not size a culvert.",
+        "Have the removal and the bank restoration on the plan before you build it."
+      ],
+      "maintain": [
+        "Clear debris at the pipe mouths so the crossing does not become a dam.",
+        "Replace rock that has washed downstream, and keep equipment on the crossing rather than beside it.",
+        "If the water is overtopping in ordinary weather, the pipes are too small or plugged. Stop and fix it. Do not add another foot of dirt."
+      ],
+      "mistakes": [
+        "A mud ford with a turbidity curtain downstream and no pipes.",
+        "Pipes set high, so the rock dams the creek and the banks wash out.",
+        "Dirt fill instead of clean rock, which becomes the sediment load.",
+        "Leaving the crossing in place after the haul is finished.",
+        "Approaches that rut, so every trip carries a new load of mud into the channel."
+      ],
+      "confirm": "Pipe size, rock, and whether a permit is required are on the current TxDOT sheet and in the project water permits. Check those. Do not reuse a pipe diameter from another creek.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Temporary stream crossing. Three equal pipes sit on the bed under clean rock and a fabric layer. The crossing is square to the channel, with rock aprons.\"><defs><pattern id=\"soil-sx\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-sx\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 148 H70 L100 230 V312 H22 Z\" fill=\"url(#soil-sx)\"/><path d=\"M22 148 H70 L100 230 V312 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 148 H70 L100 230\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M216 230 L248 148 H278 V312 H216 Z\" fill=\"url(#soil-sx)\"/><path d=\"M216 230 L248 148 H278 V312 H216 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M216 230 L248 148 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M100 230 H102 M134 230 H142 M174 230 H182 M214 230 H216\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linecap=\"round\"/><path d=\"M96 235 H220\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-dasharray=\"4 3\"/><circle cx=\"118\" cy=\"214\" r=\"16\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.8\"/><circle cx=\"158\" cy=\"214\" r=\"16\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.8\"/><circle cx=\"198\" cy=\"214\" r=\"16\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.8\"/><polygon points=\"104.8,213.8 96.3,213.6 91.5,208.3 95.4,202.5 103.8,202.3 108.8,207.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"135.2,224.3 131.7,220.4 134,216 140.5,216.1 144.9,219.5 141.2,223.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"172.2,220.6 173.7,216.1 180,216.4 184.9,219.3 181.6,223.3 175.4,224.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"210.1,202.7 218.5,202.4 224.7,206.7 221.2,212.7 213.2,214.3 207.7,209.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"132.6,177.1 139.2,182.2 136.5,189.5 127.4,190.9 120.5,185.8 124.1,179\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"167.5,168 165.8,175.4 155.8,176.6 147.5,172.2 151.7,165.6 160.6,162.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"195.5,189.2 186.5,190.1 178.6,186.6 181.7,179.6 189.9,176.3 196.4,181.7\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"145,203 138.7,200.2 140.4,194.7 147.1,192.4 153,195.9 151.7,201.4\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"167.1,200.3 167.9,194.7 174.7,192.6 181.1,195.6 179.5,201 173.2,203.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M36 214 L87 214\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M96 214 L87 218.2 L87 209.8 Z\" fill=\"currentColor\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Approach</text><text x=\"200\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Clean rock</text><path d=\"M248 70 L188 184\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"188\" cy=\"184\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"86\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Equal pipes</text><path d=\"M104 78 L230 78 L230 150 L158 198\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"158\" cy=\"198\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"114\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Fabric under the rock</text><path d=\"M166 128 L112 235\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"112\" cy=\"235\" r=\"2.1\" fill=\"currentColor\"/><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M40 400 H260 M40 620 H260\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M70 430 H230 V590 H70 Z\" fill=\"currentColor\" fill-opacity=\".06\"/><path d=\"M118 400 V620 M150 400 V620 M182 400 V620\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-opacity=\".28\"/><path d=\"M118 400 V620 M150 400 V620 M182 400 V620\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><polygon points=\"87.7,460.1 81.1,460 77.4,456.2 80.4,452 86.9,452 90.8,455.8\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"93.2,504.3 89.7,500.4 92,496 98.5,496.1 102.9,499.5 99.2,503.2\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"82.2,548.6 83.7,544.1 90,544.4 94.9,547.3 91.6,551.3 85.4,552.6\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"203.4,452.2 209.9,452 214.8,455.1 212.1,459.4 205.8,460.5 201.6,456.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"221.8,503.7 226.4,506.9 224.5,511.4 218.2,512.3 213.4,509.1 215.9,504.9\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><polygon points=\"216,554.7 214.9,559.4 208.6,560.1 203.3,557.4 206,553.3 211.7,551.1\" fill=\"currentColor\" fill-opacity=\".18\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-linejoin=\"round\"/><path d=\"M150 408 L150 439\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M150 448 L145.8 439 L154.2 439 Z\" fill=\"currentColor\"/><path d=\"M248 500 L278 536\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-dasharray=\"4 3\"/><circle cx=\"262\" cy=\"516\" r=\"9\" fill=\"currentColor\" fill-opacity=\".04\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M258 512 l8.1 8.1 M266.1 512 l-8.1 8.1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><text x=\"20\" y=\"430\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Flow</text><text x=\"188\" y=\"390\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Not a mud ford</text><path d=\"M240 402 L258 508\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"258\" cy=\"508\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"650\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Square to the channel</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
+    },
+    {
+      "id": "concrete-washout",
+      "cat": "road",
+      "name": "Concrete washout",
+      "sheet": "SWP3 pollution-prevention note",
+      "one": "A lined pit or a container for concrete wash water. Not the gutter.",
+      "what": "A place to wash chutes and tools so concrete slurry does not reach a ditch, an inlet, or a creek. It is a leak-proof pit or a portable container, signed, and easy for the driver to use. A sediment bag does not treat concrete wash water. The solids are waste, not fill in the roadside ditch.",
+      "where": [
+        "Near the concrete work, on the layout, away from inlets, ditches, and the vegetated buffer.",
+        "Where a truck can reach it without backing across the silt fence.",
+        "Not \"behind the job trailer\" if that spot drains to the curb."
+      ],
+      "install": [
+        "Line an earthen pit so wash water cannot soak out, or use a container that does not leak. Berm the pit or keep the container closed enough that rain does not overflow it.",
+        "Put a sign on it. An unsigned hole gets used as a dumpster, or it gets ignored.",
+        "Cover it or pump it down before a storm if rain would overflow the pit. Overflow is a discharge of concrete water.",
+        "The project SWP3 and the current TxDOT note say how washout is handled and where the waste goes. Check those. Do not invent a pit size here."
+      ],
+      "maintain": [
+        "Empty the pit or the container before it is full. Hardened concrete comes out as solid waste.",
+        "Repair a torn liner the day you find it.",
+        "If drivers are washing out on the ground, the washout is in the wrong place or it is full. Move it or empty it."
+      ],
+      "mistakes": [
+        "Washing the chute into the inlet because the washout is across the job.",
+        "A pit with no liner, dug in sandy soil.",
+        "Dumping the slurry in a low spot and calling it a washout.",
+        "Sending concrete water through a dewatering bag.",
+        "Leaving a full pit at the end of the job for the next rain to overflow."
+      ],
+      "confirm": "Where the washout goes, how it is lined, and how the waste is hauled are in the current project SWP3 and TxDOT notes. Check those. This page does not size the pit.",
+      "svg": "<svg viewBox=\"0 0 300 710\" role=\"img\" aria-label=\"Concrete washout. A lined pit is below the surrounding ground, with a sign. The plan keeps it away from the inlet, with no hose between them.\"><defs><pattern id=\"soil-cw\" width=\"7\" height=\"7\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 7 L7 0 M-1 1 L1 -1 M6 8 L8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".65\" stroke-opacity=\".45\"/></pattern><pattern id=\"fab-cw\" width=\"5\" height=\"5\" patternUnits=\"userSpaceOnUse\"><path d=\"M0 5 L5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".55\" stroke-opacity=\".5\"/></pattern></defs><rect x=\"6\" y=\"6\" width=\"288\" height=\"322\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"26\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Section</text><path d=\"M22 168 H84 L108 274 H186 L210 168 H278 V286 H22 Z\" fill=\"url(#soil-cw)\"/><path d=\"M22 168 H84 L108 274 H186 L210 168 H278 V286 H22 Z\" fill=\"currentColor\" fill-opacity=\".045\"/><path d=\"M22 168 H84 L108 274 H186 L210 168 H278\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M94 174 L114 262 H180 L198 174\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M116 228 H176 L170 268 H122 Z\" fill=\"currentColor\" fill-opacity=\".18\"/><path d=\"M236 168 V128\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><rect x=\"214\" y=\"100\" width=\"46\" height=\"28\" rx=\"2\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.5\"/><text x=\"20\" y=\"58\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Sign</text><path d=\"M54 48 L200 48 L224 112\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"224\" cy=\"112\" r=\"2.1\" fill=\"currentColor\"/><text x=\"124\" y=\"200\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Slurry</text><text x=\"20\" y=\"114\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Liner</text><path d=\"M60 108 L90 108 L108 210\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-opacity=\".5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"108\" cy=\"210\" r=\"2.1\" fill=\"currentColor\"/><text x=\"20\" y=\"312\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Below the surrounding ground</text><rect x=\"6\" y=\"340\" width=\"288\" height=\"330\" rx=\"8\" fill=\"currentColor\" fill-opacity=\".03\" stroke=\"currentColor\" stroke-opacity=\".38\"/><text x=\"18\" y=\"360\" fill=\"currentColor\" font-size=\"15\" font-family=\"system-ui,sans-serif\">Plan</text><path d=\"M40 460 L72 590 H156 L188 460 Z\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M54 474 L80 574 H148 L174 474\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\"/><rect x=\"168\" y=\"440\" width=\"26\" height=\"16\" fill=\"currentColor\" fill-opacity=\".08\" stroke=\"currentColor\" stroke-width=\"1.3\"/><path d=\"M181 456 V474\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><rect x=\"214\" y=\"410\" width=\"50\" height=\"38\" fill=\"currentColor\" fill-opacity=\".05\" stroke=\"currentColor\" stroke-width=\"1.7\"/><path d=\"M222.3 413 V445\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M230.7 413 V445\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M239 413 V445\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M247.3 413 V445\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M255.7 413 V445\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\"/><path d=\"M217 425.2 H261 M217 435.8 H261\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.15\" stroke-opacity=\".6\"/><text x=\"214\" y=\"400\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Inlet</text><text x=\"86\" y=\"530\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">Pit</text><text x=\"20\" y=\"640\" fill=\"currentColor\" font-size=\"14\" font-family=\"system-ui,sans-serif\">No hose to the inlet</text><text x=\"150\" y=\"696\" text-anchor=\"middle\" fill=\"currentColor\" font-size=\"12\" font-family=\"system-ui,sans-serif\">Not to scale</text></svg>"
     }
   ];
-
   function byId(id) {
     for (var i = 0; i < MEASURES.length; i++) if (MEASURES[i].id === id) return MEASURES[i];
     return null;

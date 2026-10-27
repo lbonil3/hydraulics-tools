@@ -20,12 +20,26 @@
 </head>
 <body data-tab="summary">
 <header id="top">
-  <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">&#8592; Home</a>
-  <h1>SWP3 Builder</h1>
-  <span class="sub">Read the SWP3 summary on this screen. Design is a guide to silt fence, rock filter dams, and the other controls.</span>
-  <div class="projbar">
-    <label for="projSel">Project</label>
-    <select id="projSel" aria-label="Active project"></select>
+  <div class="headmain">
+    <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">&#8592; Home</a>
+    <div class="headtext">
+      <h1>SWP3 Builder</h1>
+      <span class="sub">Read the SWP3 summary on this screen. Design is a guide to silt fence, rock filter dams, and the other controls.</span>
+    </div>
+    <div class="projbar">
+      <label for="projSel">Project</label>
+      <select id="projSel" aria-label="Active project"></select>
+    </div>
+    <nav id="tabs" aria-label="Sections">
+      <button type="button" data-t="summary" class="on" aria-current="page">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+        Summary
+      </button>
+      <button type="button" data-t="design">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-9 4 6 3-4 6 7z"/><path d="M3 21h18"/></svg>
+        Design
+      </button>
+    </nav>
   </div>
 </header>
 <div class="draftstrip" role="note">Draft for engineer review. Not a substitute for the TCEQ permit or the TxDOT sheet.</div>
@@ -35,17 +49,6 @@
   <section data-pane="design" id="paneDesign" aria-label="Erosion and sediment control guide"></section>
   <p class="foot">Data stays on this device. Check the current TxDOT standard before you put a dimension on a plan.</p>
 </main>
-
-<nav id="tabs" aria-label="Sections">
-  <button type="button" data-t="summary" class="on" aria-current="page">
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
-    Summary
-  </button>
-  <button type="button" data-t="design">
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-9 4 6 3-4 6 7z"/><path d="M3 21h18"/></svg>
-    Design
-  </button>
-</nav>
 
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="printArea" aria-hidden="true"></div>
