@@ -62,6 +62,19 @@ assert.ok(!fs.existsSync(path.join(__dirname, 'recommend.js')));
 assert.ok(!fs.existsSync(path.join(__dirname, 'lsdata.js')));
 assert.ok(!fs.existsSync(path.join(__dirname, 'test-design.js')));
 
+S.EDIT_GROUPS.forEach(function (g) {
+  assert.ok(g.items.length >= 1, 'group ' + g.id);
+  g.items.forEach(function (it) {
+    assert.ok(it.guide && G.byId(it.guide), 'guide link ' + it.id + ' -> ' + it.guide);
+  });
+});
+var summaryUi = fs.readFileSync(path.join(__dirname, 'summary-ui.js'), 'utf8');
+assert.ok(summaryUi.indexOf('Edit this summary') < 0);
+assert.ok(summaryUi.indexOf('data-copy') > 0 && summaryUi.indexOf('Still to fill in') > 0);
+assert.ok(summaryUi.indexOf('https://websoilsurvey.nrcs.usda.gov') > 0);
+assert.ok(summaryUi.indexOf('https://www.tceq.texas.gov/permitting/stormwater/construction') > 0);
+assert.ok(summaryUi.indexOf('https://www3.tceq.texas.gov/steers/') > 0);
+
 var junk = M.sanitizeProject({ id: 'old', name: 'Old job', form: { acres: '3', type: 'txdot', inspMode: 'nope' }, design: { ro: { C: '0.5' }, bad: undefined }, summary: { variant: 'B', v: { csj: '0001-02-003' } }, sel: null, inspLog: 'x' });
 assert.strictEqual(junk.form.inspMode, 'd7');
 assert.strictEqual(junk.summary.v.csj, '0001-02-003');

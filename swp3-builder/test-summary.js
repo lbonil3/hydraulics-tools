@@ -66,7 +66,16 @@ t('screen view is a short reading of the same sheet', function () {
   assert.strictEqual(s.basin.state, 'not-required');
   assert.ok(s.people.lines[0].length > 20);
   assert.ok(s.reminders.length >= 3);
+  assert.ok(s.reminders[0].short && s.reminders[0].short.length < s.reminders[0].text.length);
   assert.strictEqual(s.variant, 'B');
+  assert.strictEqual(s.status.tier, 'large');
+  assert.ok(/NOI required/.test(s.status.line));
+  assert.ok(/Sediment basin marked not required/.test(s.status.line));
+  assert.ok(s.fields.some(function (f) { return f.id === 'csj' && f.value === '0912-72-345' && !f.empty; }));
+  assert.ok(s.blanks.indexOf('Total project acres') >= 0);
+  var text = S.plainSummary(p);
+  assert.ok(text.indexOf('FM 1960') >= 0 && text.indexOf('0912-72-345') >= 0 && text.indexOf('Silt fence') >= 0);
+  assert.ok(text.indexOf('Still to fill in:') >= 0);
 });
 
 t('screen view survives a broken saved project', function () {
@@ -76,7 +85,22 @@ t('screen view survives a broken saved project', function () {
   assert.ok(Array.isArray(s.controls));
   assert.strictEqual(typeof s.basin.text, 'string');
   assert.ok(s.controls.some(function (c) { return c.label === 'Rock filter dam' && c.permanent; }));
-  assert.doesNotThrow(function () { S.screenView(null); S.screenView({}); });
+  assert.strictEqual(typeof s.status.line, 'string');
+  assert.doesNotThrow(function () { S.screenView(null); S.screenView({}); S.plainSummary(null); });
+});
+
+t('status uses the permit check already in the model', function () {
+  assert.strictEqual(S.screenView(proj({ acres: '2' })).status.tier, 'small');
+  assert.ok(/no NOI/i.test(S.screenView(proj({ acres: '2' })).status.line));
+  var tiny = S.screenView(proj({ acres: '0.4' }));
+  assert.strictEqual(tiny.status.tier, 'none');
+  assert.strictEqual(tiny.variant, 'A');
+  assert.ok(/Under 1 acre/.test(tiny.status.line));
+  assert.ok(/under-1-acre sheet/.test(tiny.status.line));
+  assert.strictEqual(S.screenView(proj({ acres: '' })).status.tier, 'unknown');
+  var plan = proj({ acres: '2', commonPlan: true, planAcres: '8' });
+  assert.strictEqual(S.screenView(plan).status.tier, 'large');
+  assert.ok(/common plan/i.test(S.screenView(plan).status.line));
 });
 
 t('parsers', function () {

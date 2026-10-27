@@ -1,5 +1,5 @@
 /* Offline cache for SWP3 Builder (static files only). Bump CACHE when files change. */
-var CACHE = 'swp3-builder-v5';
+var CACHE = 'swp3-builder-v6';
 var FILES = ['./', './index.html', './style.css', './data.js', './model.js', './app.js', './design-ui.js', './guide.js', './vendor/pdf-lib.min.js', './summary-layout.js', './summary.js', './summary-pdf.js', './summary-ui.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', '../home-btn.css'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); }));
