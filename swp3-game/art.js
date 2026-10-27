@@ -140,6 +140,37 @@
       // berm crest + riser pipe
       for (q = 0; q < 14; q++) { var bp = at(p, 0.03 + q * 0.07, 0.03); r(ctx, bp.x, bp.y, 3, 1, '#d4a674'); var bq = at(p, 0.03, 0.03 + q * 0.07); r(ctx, bq.x - 2, bq.y, 3, 1, '#d4a674'); }
       if (prog >= 1) { var rp = at(p, 0.72, 0.72); r(ctx, rp.x - 2, rp.y - 12, 5, 13, '#8c8c90'); r(ctx, rp.x - 2, rp.y - 12, 5, 2, '#d8d8dc'); r(ctx, rp.x + 2, rp.y - 10, 1, 11, '#5c5c60'); r(ctx, rp.x - 1, rp.y - 12, 3, 1, '#2a2a2e'); }
+    } else if (type === 'dike') {
+      // compacted earth berm (EC(4): 18 in. high, 2 ft top) running along the downslope edge, built from one end
+      var de = o.edge || [[p.x - TW / 2, p.y + TH / 2], [p.x, p.y + TH]], dx0 = de[0][0], dy0 = de[0][1], dx1 = de[1][0], dy1 = de[1][1];
+      var dmx = cx - (dx0 + dx1) / 2, dmy = cy - (dy0 + dy1) / 2; dx0 += dmx * 0.35; dx1 += dmx * 0.35; dy0 += dmy * 0.35; dy1 += dmy * 0.35;
+      var dn = Math.ceil(Math.hypot(dx1 - dx0, dy1 - dy0)), dsh = Math.round(dn * prog);
+      for (q = 0; q <= dsh; q++) { var bx = dx0 + (dx1 - dx0) * q / dn, by = dy0 + (dy1 - dy0) * q / dn, bh = 5 + (hash(q, 2, 61) > 0.7 ? 1 : 0);
+        r(ctx, bx - 1, by - bh + 3, 3, 3, 'rgba(0,0,0,.22)');                    // shadow
+        r(ctx, bx, by - bh, 2, bh + 1, q % 2 ? '#8a6038' : '#9a6c40');            // side slope
+        r(ctx, bx, by - bh, 2, 2, '#c49460');                                      // compacted crown
+        if (q % 5 === 0) r(ctx, bx, by - bh - 1, 1, 1, '#7fbf5f'); }               // sod tufts
+    } else if (type === 'blanket') {
+      // straw blanket with photodegradable netting, unrolled downslope, stapled
+      var bn = 14, bs = Math.round(bn * prog);
+      for (q = 0; q < bs; q++) for (k = 0; k < 14; k++) { var bp2 = at(p, 0.04 + q * 0.066, 0.04 + k * 0.066); r(ctx, bp2.x - 2, bp2.y, 5, 2, (q + k) % 3 ? '#d9bd6a' : '#c7a654'); if ((q * 7 + k * 3) % 11 === 0) r(ctx, bp2.x, bp2.y, 2, 1, '#f1dc96'); }
+      for (q = 0; q <= bs; q += 3) for (k = 0; k < 28; k++) { var np = at(p, 0.04 + q * 0.066, 0.02 + k * 0.034); r(ctx, np.x, np.y, 1, 1, '#9fd06c'); }   // green netting
+      for (k = 0; k < 4; k++) { var npp = at(p, 0.04, 0.1 + k * 0.25), nq = at(p, 0.04 + bs * 0.066, 0.1 + k * 0.25); if (bs) { r(ctx, npp.x, npp.y, 1, 1, '#555'); r(ctx, nq.x, nq.y, 1, 1, '#555'); } }   // staples
+      if (prog < 1 && bs > 0) { var rl = at(p, 0.04 + bs * 0.066, 0.5); r(ctx, rl.x - 14, rl.y - 4, 28, 5, '#b8963e'); r(ctx, rl.x - 14, rl.y - 4, 28, 1, '#e6cc80'); }   // the roll
+    } else if (type === 'psd') {
+      // corrugated pipe from the flared inlet down the slope to the outlet (o.to), with hold-downs every ~10 ft
+      var to = o.to || { x: cx, y: cy + 40 }, len = Math.hypot(to.x - cx, to.y - cy), pn = Math.max(2, Math.round(len)), psh = Math.round(pn * prog);
+      r(ctx, cx - 7, cy - 6, 14, 7, '#7a5a34'); r(ctx, cx - 7, cy - 6, 14, 2, '#a07a48');  // earth dike over the inlet (1 ft above pipe)
+      for (q = 0; q <= psh; q++) { var tx = cx + (to.x - cx) * q / pn, ty = cy + (to.y - cy) * q / pn;
+        r(ctx, tx - 3, ty - 3, 7, 6, '#2a2a2e'); r(ctx, tx - 3, ty - 3, 7, 1, q % 3 ? '#6a6a72' : '#9a9aa4'); r(ctx, tx - 3, ty + 2, 7, 1, '#141416'); }
+      r(ctx, cx - 6, cy - 4, 12, 7, '#b8b8c0'); r(ctx, cx - 5, cy - 3, 10, 5, '#1a1a1c'); r(ctx, cx - 6, cy - 4, 12, 1, '#e8e8f0');  // flared end section
+      for (q = 1; q < 5; q++) { if (q / 5 > prog) break; var hx = cx + (to.x - cx) * q / 5, hy = cy + (to.y - cy) * q / 5; r(ctx, hx - 5, hy - 5, 2, 9, '#8a5e2c'); r(ctx, hx + 4, hy - 5, 2, 9, '#8a5e2c'); r(ctx, hx - 5, hy - 5, 11, 1, '#c08a4a'); }
+    } else if (type === 'apron') {
+      // riprap energy dissipator pad (EC(7) Detail A), stone placed one by one
+      diamond(ctx, p, 0.1, 'rgba(0,0,0,.2)');
+      var ns = Math.round(70 * prog);
+      for (q = 0; q < ns; q++) { var au = 0.12 + 0.76 * hash(q, 1, 81), av = 0.12 + 0.76 * hash(q, 2, 81), ap = at(p, au, av), as = 3 + (q % 3), tn = ['#d6d6d0', '#a8a8a2', '#86867f', '#5a5a54'];
+        r(ctx, ap.x, ap.y - as, as + 1, as, tn[1 + (q % 2)]); r(ctx, ap.x, ap.y - as, as, 1, tn[0]); r(ctx, ap.x, ap.y, as + 1, 1, tn[3]); }
     } else if (type === 'washout') {
       var hgt2 = Math.round(10 * prog);
       diamond(ctx, p, 0.12, 'rgba(0,0,0,.25)');

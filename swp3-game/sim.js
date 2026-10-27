@@ -33,7 +33,17 @@
     washoutLoad: 12,        // game rule: concrete washwater dumped on site with no (or misplaced) washout
     trackLoad: 15,          // game rule: mud tracked onto the road with no construction exit
     designStorm: '2-yr', goodReduction: 0.90, // game rule: 85% sediment reduction = full marks    // TxDOT EC(1)/EC(2): a 2-year storm may be used to calculate the flow rate
-    tilePerAc: 1 / TILE_AC
+    tilePerAc: 1 / TILE_AC,
+    // --- v5 BMPs ---
+    dikeMaxAc: 5,           // TxDOT EC(4)-16 Dike usage guidelines: drainage area contributing runoff to a dike should not exceed 5 ac
+    steepSlope: 1 / 3,      // TxDOT Item 169 2.1: Class 1 Types C/D are for slopes steeper than 3:1 (Types A/B 3:1 or flatter)
+    blanketFactor: 0.15,    // game rule: a soil retention blanket erodes at 15% of bare soil (multiplies with seeding)
+    seedSteepFactor: 0.9,   // game rule: seed + mulch alone on a slope steeper than 3:1 washes out
+    gullyMinAc: 0.5,        // game rule: concentrated flow above 0.5 ac cuts a gully down a steep fill/cut slope
+    gullyRate: 30,          // game rule: gully sediment per storm-adjusted acre per steep tile (x slope)
+    psdMaxAc: 5,            // TxDOT EC(7)-16 usage guidelines: drainage area to a pipe slope drain should not exceed 5 ac
+    psdSizes: [[12, 0.5], [18, 1.5], [21, 2.5], [24, 3.5], [30, 5.0]], // TxDOT EC(7)-16 design criteria: diameter (in) vs max drainage area (ac)
+    psdScourRate: 40        // game rule: scour at an unprotected pipe outlet, per storm-adjusted acre
   };
 
   // Costs: TxDOT low-bid statewide averages (Bid Tabulations on data.texas.gov, lets 2024-09 to 2026-10,
@@ -45,7 +55,11 @@
     exit: { name: 'Construction exit', short: 'Exit', cost: 3430, qty: '111 SY', unitNote: '506 Construction Exits Ty 1 ~$30.87/SY x 50 ft x 20 ft' },
     basin: { name: 'Sediment basin', short: 'Basin', cost: 15990, qty: '10,800 cf (400 CY)', unitNote: '506 Earthwork (Erosn & Sedmt Cont, in veh) ~$39.98/CY x 400 CY' },
     washout: { name: 'Concrete washout', short: 'Washout', cost: 650, qty: '1 lined pit', unitNote: 'game cost (no TxDOT bid item verified)' },
-    seed: { name: 'Temp seeding + mulch', short: 'Seed', cost: 280, qty: '278 SY', unitNote: '164 temp seed ~$0.35/SY + 162 straw mulch ~$0.66/SY' }
+    seed: { name: 'Temp seeding + mulch', short: 'Seed', cost: 280, qty: '278 SY', unitNote: '164 temp seed ~$0.35/SY + 162 straw mulch ~$0.66/SY' },
+    dike: { name: 'Diversion dike', short: 'Dike', cost: 555, qty: '50 LF (13.9 CY)', unitNote: '506 Earthwork (Erosn & Sedmt Cont) ~$39.98/CY x 13.9 CY (EC(4) 18 in. high, 2 ft top, 2:1 sides, 50 LF)' },
+    blanket: { name: 'Erosion control blanket', short: 'Blanket', cost: 450, qty: '278 SY', unitNote: '169 Soil Retention Blankets (Cl 1)(Ty C) ~$1.62/SY x 278 SY (only 1 recent bid: low confidence)' },
+    psd: { name: 'Pipe slope drain', short: 'Pipe drain', cost: 1800, qty: '1 run (~100 LF)', unitNote: 'game cost (no recent TxDOT bid item for temporary pipe slope drains in the bid data)' },
+    apron: { name: 'Outlet riprap apron', short: 'Riprap', cost: 875, qty: '4 CY', unitNote: '432 Riprap (Stone Ty R)(Dry)(18 in) ~$218.75/CY x 4 CY (EC(7) apron 6 x dia long, 3 x dia wide)' }
   };
 
   // ---- Seeded RNG ----
@@ -203,6 +217,30 @@
       L.tip = 'Basin size = 3,600 cf × drainage acres (TxDOT Item 506). Each basin block holds 10,800 cf; place more blocks on the same tile to add storage. Size for the storm you might get, not just the forecast.';
       L.hints = ['Inspect the bottom of the central swale: how many acres, and how many cubic feet at 3,600 cf/ac?', 'Two basin blocks stacked on the swale outlet, silt fence along the bottom of the pad everywhere else, and a construction exit.'];
       L.hintTiles = [16 * W + 9];
+    } else if (n === 8) {
+      // Highway fill above a creek: clean run-on from the hill, a V-graded pad draining to its centre,
+      // then a 36% (about 2.8:1) fill slope straight down to the creek. Only the centre has a bench at the toe.
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        var side = x < 6 ? 6 - x : x > 14 ? x - 14 : 0, zz;
+        if (y <= 4) zz = 72 - y - side * 1.0;                                        // clean grass hillside (run-on)
+        else if (y <= 9) zz = side ? 68.5 - (side - 1) * 1.5 - (y - 5) * 0.05 : 66 - (y - 5) * 0.05 + 0.15 * Math.abs(x - 10); // pad V to x=10, ridges outside
+        else if (y <= 11) zz = 64 - (y - 9) * 18 + (side ? 2 : 0);                     // fill slope
+        else zz = 10 - (y - 12) * 0.2;
+        if (y >= 12 && y <= 13) zz = -8;                                               // creek
+        if (y >= 14) zz = -6 + (y - 14) * 0.5;                                          // far bank drains back to the creek
+        h[y * W + x] = zz + r() * 0.01;
+      }
+      for (x = 9; x <= 11; x++) { h[11 * W + x] = 27.6; h[12 * W + x] = 27; set(x, 11, 'G'); set(x, 12, 'G'); } // toe bench at the low point
+      for (y = 5; y <= 11; y++) for (x = 6; x <= 14; x++) if (L.types[y * W + x] === 'G' && !(y === 11 && x >= 9 && x <= 11)) set(x, y, 'S');
+      for (x = 0; x < W; x++) { set(x, 0, 'R'); if (x < 9 || x > 11) set(x, 12, 'C'); set(x, 13, 'C'); }
+      set(14, 5, 'A');
+      L.name = 'Fill slope above a creek'; L.budget = 31000;
+      L.forecast = { label: '2-yr storm', intensity: 1.0 }; L.actual = { label: '5-yr storm', intensity: 1.25 };
+      L.goal = 'A new highway fill drops straight into a creek. Keep the hillside run-on off the pad, get the pad water down the slope without a gully, and protect the steep face.';
+      L.lesson = 'Three tools for steep ground: a diversion dike keeps clean run-on off the work (EC(4), 5 ac max), a pipe slope drain carries concentrated flow down the slope onto a riprap apron (EC(7), 5 ac max), and a soil retention blanket holds seed on a slope steeper than 3:1 (Item 169 Type C/D).';
+      L.tip = 'Inspect the pad low point: with the hillside draining onto it the pipe drain sees more than 5 ac. Dikes on the grass above the pad cut that down. Seed alone washes off a slope steeper than 3:1.';
+      L.hints = ['Water from the grass hill runs onto the pad and to its centre, then pours down the steep fill. Inspect the centre of the pad edge.', 'Diversion dikes along the grass row just above the pad, a pipe slope drain at the pad edge low point with a riprap apron at its outlet on the bench, and blankets (with seed) on the slope face.'];
+      L.hintTiles = [9 * W + 10];
     }
   }
 
@@ -308,16 +346,46 @@
     return e;
   }
 
+  // ---- Diversion dikes: change where water goes (pre-pass) ----
+  // A working dike on a grass tile intercepts the clean runoff reaching it and carries it around the site to a
+  // stabilized outlet (modelled as leaving the grid), so it no longer adds drainage area to controls downstream.
+  function applyDikes(L, f, acc, controls, intensity) {
+    var dir = f.dir.slice(), sink = f.sink.slice(), dev = {}, any = false;
+    controls.forEach(function (c, k) {
+      if (c.type !== 'dike') return;
+      var i = c.tile, ty = L.types[i], effAc = acc[i] * TILE_AC * intensity, r = { status: 'ok', trap: 0, reason: '' };
+      if (ty !== 'G') { r.status = 'wasted'; r.reason = ty === 'S' || ty === 'A' ? 'A diversion dike here would divert dirty runoff off site. Put dikes on the clean ground above the work to keep run-on out (TxDOT EC(4)-16).' : 'Dikes go on open ground, not in a ditch, road, inlet or creek.'; }
+      else if (f.dir[i] < 0 || acc[i] < 2) { r.status = 'wasted'; r.reason = 'No upslope runoff reaches this tile to divert.'; }
+      else if (effAc > RULES.dikeMaxAc) { r.status = 'overtopped'; r.reason = effAc.toFixed(1) + ' ac drains to this dike; TxDOT EC(4)-16 limits a dike to 5 ac. It overtopped.'; }
+      else { r.reason = 'Diverts ' + effAc.toFixed(2) + ' ac of clean run-on around the site to a stabilized outlet (TxDOT EC(4)-16).'; r.diverted = effAc; dir[i] = -1; sink[i] = 'offsite'; any = true; }
+      dev[k] = r;
+    });
+    return { f: any ? { dir: dir, sink: sink } : f, acc: any ? flowAccumulation(L, dir) : acc, ev: dev };
+  }
+  function steep(L, dir, i) { return slopeOf(L, dir, i) > RULES.steepSlope + 1e-9; }
+  function psdSize(ac) { var t = RULES.psdSizes; for (var k = 0; k < t.length; k++) if (ac <= t[k][1] + 1e-9) return t[k][0]; return 0; }
+  // Path of a pipe slope drain placed at tile i: steep tiles it carries flow over, and the outlet tile at the toe.
+  function psdPath(L, dir, i) {
+    var path = [], j = i, k = 0;
+    if (!steep(L, dir, j)) { j = dir[j]; if (j < 0 || !steep(L, dir, j)) return null; path.push(i); }
+    while (j >= 0 && steep(L, dir, j) && k++ < 40) { path.push(j); j = dir[j]; }
+    return { path: path, outlet: j };
+  }
+
   // ---- Control evaluation ----
   // controls: array of {type, tile}. fence acts on edge tile -> dir[tile].
-  function evalControls(L, f, acc, controls, intensity) {
+  function evalControls(L, f, acc, controls, intensity, pre) {
+    if (!pre) { var dk = applyDikes(L, f, acc, controls, intensity); f = dk.f; acc = dk.acc; pre = dk.ev; }
     var dir = f.dir, ev = {};
-    var damAt = {};
-    controls.forEach(function (c) { if (c.type === 'dam') damAt[c.tile] = true; });
+    var damAt = {}, blanketAt = {}, apronAt = {}, outlets = {};
+    controls.forEach(function (c) { if (c.type === 'dam') damAt[c.tile] = true; if (c.type === 'blanket') blanketAt[c.tile] = true; if (c.type === 'apron') apronAt[c.tile] = true; });
+    controls.forEach(function (c) { if (c.type === 'psd') { var pp = psdPath(L, dir, c.tile); if (pp && pp.outlet >= 0) outlets[pp.outlet] = true; } });
     controls.forEach(function (c, k) {
+      if (pre[k]) { ev[k] = pre[k]; return; }
       var i = c.tile, ty = L.types[i], effAc = acc[i] * TILE_AC * intensity, r = { status: 'ok', trap: 0, reason: '' };
       if (c.type === 'fence') {
         if (dir[i] < 0) { r.status = 'wasted'; r.reason = 'No runoff crosses here.'; }
+        else if (steep(L, dir, i)) { r.status = 'undercut'; r.trap = RULES.fenceFailTrap; r.reason = 'Silt fence on a slope steeper than 3:1 gets undercut and blows out (game rule). Protect the slope face itself with an erosion control blanket.'; }
         else if (ty === 'D') { r.status = 'undercut'; r.trap = RULES.fenceFailTrap; r.reason = 'Silt fence in a ditch sees concentrated flow and gets undercut. Use a rock filter dam (TxDOT EC(2)).'; }
         else if (effAc > RULES.fenceMaxAc) { r.status = 'overtopped'; r.trap = RULES.fenceFailTrap; r.reason = 'Drainage area to this fence is ' + effAc.toFixed(1) + ' ac' + (intensity > 1 ? ' (storm-adjusted)' : '') + '. TxDOT EC(1)-16 does not recommend silt fence above 2 ac; flow overtopped it.'; }
         else { r.trap = RULES.fenceTrap; r.reason = 'Sheet flow, ' + effAc.toFixed(2) + ' ac drainage area: fence holds.'; }
@@ -346,7 +414,27 @@
         else r.reason = 'Trucks leave clean; no mud tracked onto the road.';
       } else if (c.type === 'seed') {
         if (ty !== 'S' && ty !== 'A') { r.status = 'wasted'; r.reason = 'Only bare disturbed soil needs temporary seeding.'; }
+        else if (steep(L, dir, i) && !blanketAt[i]) { r.status = 'washed out'; r.factor = RULES.seedSteepFactor; r.reason = 'Slope is ' + Math.round(slopeOf(L, dir, i) * 100) + '% (steeper than 3:1): seed and mulch alone washed off. Add an erosion control blanket over the seed (TxDOT Item 169 Class 1 Type C/D).'; }
         else { r.factor = seedFactorFor(c.age); r.reason = 'Seed + mulch: erosion at ' + Math.round(r.factor * 100) + '% of bare soil' + (r.factor > RULES.seedFactor ? ' (still growing in; full cover after 2 storms).' : ' (grown in).'); }
+      } else if (c.type === 'blanket') {
+        var sl = slopeOf(L, dir, i);
+        if (ty !== 'S') { r.status = 'wasted'; r.reason = ty === 'A' ? 'Trucks would tear a blanket up on the access tile.' : 'Blankets go on bare disturbed soil.'; }
+        else { r.factor = RULES.blanketFactor; r.reason = 'Soil retention blanket on a ' + Math.round(sl * 100) + '% slope: TxDOT Item 169 Class 1 ' + (sl > RULES.steepSlope ? 'Type C/D (steeper than 3:1)' : 'Type A/B (3:1 or flatter; seeding alone may be enough here)') + '. Place within 24 hr of seeding.'; }
+      } else if (c.type === 'psd') {
+        var pp = psdPath(L, dir, i), dia = psdSize(effAc);
+        if (ty === 'C' || ty === 'R' || ty === 'I' || ty === 'D') { r.status = 'wasted'; r.reason = 'Put the pipe slope drain inlet at the top of the slope.'; }
+        else if (!pp) { r.status = 'wasted'; r.reason = 'No slope steeper than 3:1 below this tile; a pipe slope drain carries flow DOWN a steep slope.'; }
+        else if (effAc < RULES.gullyMinAc) { r.status = 'wasted'; r.reason = 'Only ' + effAc.toFixed(2) + ' ac reaches here: no concentrated flow to carry.'; }
+        else if (!dia) { r.status = 'overtopped'; r.reason = effAc.toFixed(1) + ' ac' + (intensity > 1 ? ' (storm-adjusted)' : '') + ' drains here. TxDOT EC(7)-16 limits a pipe slope drain to 5 ac (30 in. pipe); the dike entrance overtopped and the slope gullied. Divert clean run-on first.'; }
+        else {
+          r.path = pp.path; r.outlet = pp.outlet; r.diameter = dia;
+          if (pp.outlet < 0 || !apronAt[pp.outlet]) { r.status = 'scour'; r.reason = 'PSD ' + dia + ' (' + dia + ' in., ' + effAc.toFixed(1) + ' ac) carried the flow down, but there is no riprap energy dissipator at the outlet: the jet scoured a hole at the toe (TxDOT EC(7)-16 Detail A).'; }
+          else r.reason = 'PSD ' + dia + ': ' + dia + ' in. pipe for ' + effAc.toFixed(1) + ' ac (TxDOT EC(7)-16 design criteria), outlet onto a riprap apron.';
+        }
+      } else if (c.type === 'apron') {
+        if (ty === 'C') { r.status = 'violation'; r.reason = 'No riprap in the creek without a permit (game rule).'; }
+        else if (!outlets[i]) { r.status = 'wasted'; r.reason = 'Outlet protection belongs at the toe where a pipe slope drain discharges.'; }
+        else r.reason = 'Riprap energy dissipator at the pipe outlet (TxDOT EC(7)-16 Detail A: 6 x dia long, 3 x dia wide; Item 432 riprap).';
       } else if (c.type === 'basin') {
         var need = RULES.basinCfPerAc * effAc, blocks = 0, first = -1;
         controls.forEach(function (c2, k2) { if (c2.type === 'basin' && c2.tile === i) { blocks++; if (first < 0) first = k2; } });
@@ -370,6 +458,12 @@
     return ev;
   }
 
+  // Concentrated flow down a steep bare slope cuts a gully (game rule). A working pipe slope drain carries it instead.
+  function gully(L, dir, acc, i, intensity, piped) {
+    if ((piped && piped[i]) || L.types[i] !== 'S' || !steep(L, dir, i)) return 0;
+    var ac = acc[i] * TILE_AC * intensity; if (ac < RULES.gullyMinAc) return 0;
+    return RULES.gullyRate * ac * slopeOf(L, dir, i);
+  }
   function seedFactorFor(age) { var a = RULES.seedGrowIn; return a[Math.max(0, Math.min(a.length - 1, age | 0))]; }
   // EPA: >= 50 ft from storm drains, open ditches, waterbodies. Tiles are 50 ft, so any tile touching one (incl. diagonal) is too close.
   function nearSensitive(L, i) {
@@ -385,11 +479,15 @@
     opts = opts || {};
     controls = controls || [];
     var intensity = opts.intensity != null ? opts.intensity : L.actual.intensity;
-    var n = L.W * L.H, f = flowDirections(L), dir = f.dir, acc = flowAccumulation(L, dir);
-    var ev = evalControls(L, f, acc, controls, intensity);
-    var seeded = {}, tileCtl = {}, fenceCtl = {}, exitOK = false, washOK = false;
+    var n = L.W * L.H, f0 = flowDirections(L), dk = applyDikes(L, f0, flowAccumulation(L, f0.dir), controls, intensity);
+    var f = dk.f, dir = f.dir, acc = dk.acc;
+    var ev = evalControls(L, f, acc, controls, intensity, dk.ev);
+    var seeded = {}, cover = {}, tileCtl = {}, fenceCtl = {}, exitOK = false, washOK = false, piped = {}, scour = {};
     controls.forEach(function (c, k) {
-      if (c.type === 'seed') seeded[c.tile] = Math.min(seeded[c.tile] || 1, seedFactorFor(c.age));
+      if (c.type === 'blanket') { if (ev[k].status === 'ok') cover[c.tile] = RULES.blanketFactor; }
+      else if (c.type === 'psd') { var e = ev[k]; if (e.path) { e.path.forEach(function (j) { piped[j] = true; }); if (e.status === 'scour' && e.outlet >= 0) scour[e.outlet] = (scour[e.outlet] || 0) + RULES.psdScourRate * acc[c.tile] * TILE_AC * intensity; } }
+      else if (c.type === 'dike' || c.type === 'apron') { /* handled in flow / psd */ }
+      else if (c.type === 'seed') seeded[c.tile] = Math.min(seeded[c.tile] || 1, ev[k].factor || seedFactorFor(c.age));
       else if (c.type === 'washout') { if (ev[k].status === 'ok') washOK = true; }
       else if (c.type === 'fence') (fenceCtl[c.tile] = fenceCtl[c.tile] || []).push(k);
       else if (c.type === 'exit') { if (ev[k].status === 'ok') exitOK = true; }
@@ -401,7 +499,8 @@
     var ord = topoOrder(L);
     for (var q = 0; q < ord.length; q++) {
       var i = ord[q];
-      gen[i] = erosion(L, dir, i, intensity, seeded[i]);
+      var cf = (seeded[i] || 1) * (cover[i] || 1);
+      gen[i] = erosion(L, dir, i, intensity, cf < 1 ? cf : undefined) + gully(L, dir, acc, i, intensity, piped) + (scour[i] || 0);
       var s = load[i] + gen[i];
       (tileCtl[i] || []).forEach(function (k) { var t = s * ev[k].trap; trappedBy[k] = (trappedBy[k] || 0) + t; s -= t; });
       if (dir[i] >= 0) {
@@ -445,6 +544,6 @@
   var api = { TILE_FT: TILE_FT, TILE_AC: TILE_AC, RULES: RULES, CONTROLS: CONTROLS, rng: rng, makeLevel: makeLevel,
     flowDirections: flowDirections, flowAccumulation: flowAccumulation, slopeOf: slopeOf, erosion: erosion,
     STORMS: STORMS, stormByKey: stormByKey, defaultSandbox: defaultSandbox, makeSandbox: makeSandbox, editTile: editTile, sandboxData: sandboxData,
-    evalControls: evalControls, seedFactorFor: seedFactorFor, nearSensitive: nearSensitive, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 7 };
+    evalControls: evalControls, applyDikes: applyDikes, psdPath: psdPath, psdSize: psdSize, gully: gully, seedFactorFor: seedFactorFor, nearSensitive: nearSensitive, simulate: simulate, score: score, topoOrder: topoOrder, LEVEL_COUNT: 8 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SWP3 = api;
 })(this);

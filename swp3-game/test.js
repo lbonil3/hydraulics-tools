@@ -237,6 +237,18 @@ t('pick: client<->buffer round trip with zoom, pan, dpr, page offset and CSS != 
   }
 });
 
+t('pick: real terrain of levels 1-' + S.LEVEL_COUNT + ' + sandbox: painter owner == picked tile at every tile centre and 2,000 random points', () => {
+  const levels = []; for (let n = 1; n <= S.LEVEL_COUNT; n++) levels.push(S.makeLevel(n)); levels.push(S.makeSandbox(null));
+  for (const L of levels) {
+    const W = L.W, H = L.H, mn = Math.min(...L.heights), range = Math.max(1, Math.max(...L.heights) - mn), zs = Math.min(4, 110 / range);
+    const g = geom(W, H, L.heights.map(h => Math.round((h - mn) * zs)));
+    const painter = (px, py) => { let o = -1; for (let s2 = 0; s2 <= W + H - 2; s2++) for (let y = 0; y < H; y++) { const x = s2 - y; if (x >= 0 && x < W && PK.hitBlock(g, x, y, px, py)) o = y * W + x; } return o; };
+    let vis = 0;
+    for (let i = 0; i < W * H; i++) { const c = centre(g, i), o = painter(c.x, c.y); assert.strictEqual(PK.pickTile(g, c.x, c.y), o, (L.name) + ' tile ' + i); if (o === i) vis++; }
+    const rr = S.rng(7); for (let k = 0; k < 2000; k++) { const px = rr() * g.w, py = rr() * g.h; assert.strictEqual(PK.pickTile(g, px, py), painter(px, py)); }
+    assert.ok(vis > W * H * 0.5, L.name + ' visible ' + vis);
+  }
+});
 t('art.js draws exactly the block pick.js hit-tests (64x32 tiles, every pixel, several heights)', () => {
   const ART = require('./art.js');
   for (const zv of [0, 7, 30]) {
@@ -282,6 +294,44 @@ t('levels 4-7: two distinct 3-star plans each; naive plan falls short', () => {
   // level 7 rule: 10+ ac disturbed requires a working basin; one block is undersized
   const L7 = S.makeLevel(7), one = S.score(L7, [{ type: 'basin', tile: 15 * 20 + 9 }]);
   assert.ok(one.failed.some(f => f.status === 'undersized') && one.failed.some(f => f.index === -3));
+});
+
+t('BMP v5: diversion dike, erosion control blanket, pipe slope drain + outlet protection', () => {
+  const L = S.makeLevel(8), W = L.W, T = (x, y) => y * W + x, sc = list => S.score(L, list.map(([t, x, y]) => ({ type: t, tile: T(x, y) })));
+  const { row, col } = SOLN, sol = SOLN.SOL[8].flatMap(s => s.place);
+  // EC(7)-16 size table and 5 ac limit
+  assert.strictEqual(S.psdSize(0.5), 12); assert.strictEqual(S.psdSize(1.4), 18); assert.strictEqual(S.psdSize(3.5), 24); assert.strictEqual(S.psdSize(4.9), 30); assert.strictEqual(S.psdSize(5.2), 0);
+  // dike: diverts clean run-on, so the drainage area at the pad low point drops below 5 ac
+  const f = S.flowDirections(L), acc = S.flowAccumulation(L, f.dir), low = T(10, 9);
+  const before = acc[low] * S.TILE_AC * L.actual.intensity;
+  const dk = S.applyDikes(L, f, acc, row('dike', 4, 6, 14).map(([t, x, y]) => ({ type: t, tile: T(x, y) })), L.actual.intensity);
+  const after = dk.acc[low] * S.TILE_AC * L.actual.intensity;
+  assert.ok(before > 5 && after < 5, before + ' -> ' + after);
+  const dikeOnSoil = S.simulate(L, [{ type: 'dike', tile: T(8, 6) }]).evals[0]; assert.strictEqual(dikeOnSoil.status, 'wasted');
+  // pipe slope drain: overtopped without dikes, scour without riprap, ok with both
+  const psdOnly = S.simulate(L, [{ type: 'psd', tile: low }]).evals[0]; assert.strictEqual(psdOnly.status, 'overtopped');
+  const withDikes = row('dike', 4, 6, 14).concat([['psd', 10, 9]]);
+  const r1 = sc(withDikes); assert.ok(r1.failed.some(x => x.status === 'scour'));
+  const r2 = sc(withDikes.concat([['apron', 10, 11], ['exit', 14, 5]])); assert.ok(!r2.failed.length, JSON.stringify(r2.failed));
+  assert.ok(r2.result.evals[9].diameter === 24);
+  // gully: pipe removes it; scour adds load at the outlet
+  const g0 = S.simulate(L, row('dike', 4, 6, 14).map(([t, x, y]) => ({ type: t, tile: T(x, y) }))), g1 = S.simulate(L, withDikes.concat([['apron', 10, 11]]).map(([t, x, y]) => ({ type: t, tile: T(x, y) })));
+  assert.ok(g0.gen[T(10, 10)] > 3 * g1.gen[T(10, 10)], 'gully removed by pipe');
+  assert.ok(S.simulate(L, withDikes.map(([t, x, y]) => ({ type: t, tile: T(x, y) }))).gen[T(10, 11)] > g1.gen[T(10, 11)] + 10, 'scour at unprotected outlet');
+  assert.strictEqual(S.simulate(L, [{ type: 'apron', tile: T(3, 3) }]).evals[0].status, 'wasted');
+  // blanket vs seed on a slope steeper than 3:1; silt fence there is undercut
+  const steepT = T(7, 10); assert.ok(S.slopeOf(L, f.dir, steepT) > 1 / 3);
+  assert.strictEqual(S.simulate(L, [{ type: 'seed', tile: steepT }]).evals[0].status, 'washed out');
+  const both = S.simulate(L, [{ type: 'blanket', tile: steepT }, { type: 'seed', tile: steepT }]);
+  assert.strictEqual(both.evals[1].status, 'ok'); assert.ok(both.gen[steepT] < 0.2 * S.simulate(L, []).gen[steepT]);
+  assert.strictEqual(S.simulate(L, [{ type: 'fence', tile: steepT }]).evals[0].status, 'undercut');
+  // each new BMP is needed for 3 stars on level 8; a second distinct plan also earns 3 stars
+  const drop = type => sol.filter(p => p[0] !== type);
+  for (const ty of ['dike', 'psd', 'apron', 'blanket']) { const r = sc(drop(ty)); assert.ok(r.stars < 3, 'without ' + ty + ': ' + r.stars); }
+  const alt = row('dike', 4, 6, 14).concat([['psd', 10, 9], ['apron', 10, 11]], row('blanket', 9, 6, 14), row('blanket', 10, 6, 14), [6, 7, 8, 12, 13, 14].map(x => ['blanket', x, 11]), col('fence', 9, 5, 8), col('fence', 11, 5, 8), row('fence', 8, 6, 8), row('fence', 8, 12, 14), [['exit', 14, 5]]);
+  const ra = sc(alt); assert.strictEqual(ra.stars, 3, ra.score + JSON.stringify(ra.failed));
+  assert.notDeepStrictEqual(JSON.stringify(alt.slice().sort()), JSON.stringify(sol.slice().sort()));
+  const naive = sc(row('fence', 8, 6, 14).concat(row('seed', 9, 6, 14), row('seed', 10, 6, 14), [['exit', 14, 5]])); assert.ok(naive.stars < 3);
 });
 
 console.log(n + ' tests passed');

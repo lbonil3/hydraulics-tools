@@ -78,3 +78,29 @@ Not used (not verified here): TxDOT Hydraulic Design Manual and the Storm Water 
 | Basin stacking | up to 3 basin blocks per tile add capacity (10,800 cf each) | **game rule** |
 | Solutions | stored in solutions.js; node test requires 3 stars on every level | — |
 | Weather surprise | L4/L7 actual 5-yr, L6 actual 10-yr vs 2-yr forecast | **game rule** (teaches margin) |
+
+## v5 BMPs: diversion dike, erosion control blanket, pipe slope drain + outlet protection (level 8)
+
+Sources were read directly on 2026-10-26 from ftp.txdot.gov. The standard sheets are image-only PDFs and were read by rendering them.
+- EC(4)-16 Dikes: <https://ftp.txdot.gov/pub/txdot-info/cmd/cserve/standard/roadway/ec416.pdf>
+- EC(7)-16 Temporary Pipe Slope Drains: <https://ftp.txdot.gov/pub/txdot-info/cmd/cserve/standard/roadway/ec716.pdf>
+- TxDOT Standard Specifications (2014 book, spec-book-1114.pdf), Items 169, 432, 506: <https://ftp.txdot.gov/pub/txdot-info/des/spec-book-1114.pdf>. The 2024 book could not be retrieved, so section numbers may differ there.
+
+| Rule in game | Value | Basis |
+|---|---|---|
+| Dike drainage area | ≤ 5 ac, else overtopped | **TxDOT EC(4)-16** Dike usage guidelines: "The drainage area contributing runoff to a dike should not exceed 5 acres." |
+| Dike purpose / outlet | intercept run-on and divert around unstabilized areas; outlet to stabilized area | **TxDOT EC(4)-16**; **Item 506.4.4.5.1** (dikes/swales "to prevent runoff spillover or to divert runoff") |
+| Dike section (cost basis) | 18 in. min height, 2 ft min top width | **TxDOT EC(4)-16** typical dike configuration |
+| Dike spacing | 100 ft (>10%), 200 ft (5–10%), 300 ft (<5%) | **TxDOT EC(4)-16**. Shown on the info card but **not checked by the sim** |
+| Dike on bare soil = wasted; diverted area leaves the grid | — | **game rule** |
+| Blanket classes | Class 1 Type A/B: slopes 3:1 or flatter; Type C/D: steeper than 3:1; Class 2 = channel liners | **TxDOT Item 169.2.1–2.2** |
+| Blanket placement | within 24 hr after seeding | **TxDOT Item 169.3** |
+| Steep threshold | slope > 1/3 (3:1) | from **Item 169** Type C/D split |
+| Seed alone on > 3:1 washes out (90%); blanket = 15% of bare soil; silt fence on > 3:1 undercut | — | **game rule** |
+| PSD size table | 12 in. 0.5 ac, 18 in. 1.5 ac, 21 in. 2.5 ac, 24 in. 3.5 ac, 30 in. 5.0 ac | **TxDOT EC(7)-16** design criteria |
+| PSD max drainage area | 5 ac; 25-yr storm may be used for flow rate | **TxDOT EC(7)-16** usage guidelines. The game uses the level's storm factor, not a 25-yr storm |
+| PSD details | inlet slope ≥ 3%; embankment ≥ 12 in. above pipe; hold-downs ≤ 10 ft | **EC(7)-16** notes; **Item 506.4.4.2** |
+| Outlet protection | concrete/rubble riprap energy dissipator, 6 × dia long, 3 × dia wide | **EC(7)-16** Detail A; **Item 506.4.4.2** (riprap per **Item 432**) |
+| Gully (concentrated flow > 0.5 ac on bare slope > 3:1), scour without apron | gullyRate 30, scour 40 per ac | **game rule** |
+| Costs | dike $555 = Item 506 earthwork $39.98/CY × 13.9 CY; blanket $450 = 169 Cl 1 Ty C $1.62/SY × 278 SY (1 bid only); riprap $875 = 432 stone Ty R dry 18 in. $218.75/CY × 4 CY; pipe drain $1,800 = **game cost** | TxDOT bid tabs (data.texas.gov, lets 2024-09 → 2026-10) |
+| Level 8 | dikes needed (6.0 → 3.2 ac at PSD), PSD + apron needed, blankets needed for 3 stars | tests in test.js |

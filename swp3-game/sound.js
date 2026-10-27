@@ -33,6 +33,10 @@
     hammer: function () { tone('square', 820, 600, 0.03, 0.06); noise(0.03, 0.12, 'bandpass', 2500, 4); },
     thunder: function () { noise(2.6, 0.9, 'lowpass', 140, 0.8, 0, 0.05); noise(0.5, 0.5, 'lowpass', 600, 0.7, 0.02, 0.01); tone('sine', 60, 35, 1.6, 0.3); },
     jingle: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone('square', f, 0, 0.16, 0.12, i * 0.11); tone('triangle', f / 2, 0, 0.18, 0.12, i * 0.11); }); },
+    dirt: function () { noise(0.22, 0.5, 'lowpass', 400, 0.8, 0, 0.01); tone('sine', 110, 50, 0.2, 0.4); },
+    unroll: function () { noise(0.45, 0.22, 'bandpass', 1800, 0.6, 0, 0.12); },
+    clank: function () { tone('triangle', 520, 470, 0.25, 0.25); tone('triangle', 1310, 1200, 0.18, 0.12); noise(0.05, 0.2, 'highpass', 3000); },
+    rocks: function () { for (var i = 0; i < 5; i++) noise(0.04, 0.3, 'bandpass', 900 + i * 300, 2, i * 0.05); },
     buzz: function () { tone('sawtooth', 140, 110, 0.35, 0.18); tone('sawtooth', 147, 112, 0.35, 0.12); }
   };
   function play(name) { if (!unlocked || muted || !ctx || !SFX[name]) return; try { SFX[name](); } catch (e) { /* ignore */ } }

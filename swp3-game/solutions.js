@@ -39,6 +39,14 @@
       { why: 'The central swale drains about 8 ac in the 5-yr storm: 8 × 3,600 cf = about 29,000 cf. Three basin blocks (32,400 cf) stacked on the swale outlet.', basis: 'TxDOT Item 506 (3,600 cf/ac, 10+ ac disturbed); block size = game rule', place: [['basin', 9, 15], ['basin', 9, 15], ['basin', 9, 15]] },
       { why: 'Everywhere else the pad still sheds sheet flow: silt fence along the bottom edge, about 0.8 ac per fence.', basis: 'TxDOT EC(1)-16', place: row('fence', 14, 1, 5).concat(row('fence', 14, 13, 18)) },
       { why: 'Construction exit on the access tile.', basis: 'TxDOT Item 506', place: [['exit', 18, 1]] }
+    ],
+    8: [
+      { why: 'Diversion dikes on the clean grass row just above the pad. They catch the hillside run-on and carry it around the site, so the pad low point drains about 3.2 ac instead of about 6.0 ac in the 5-yr storm.', basis: 'TxDOT EC(4)-16 (5 ac per dike; outlet to a stabilized area)', place: row('dike', 4, 6, 14) },
+      { why: 'Pipe slope drain at the pad-edge low point, carrying the concentrated flow down the fill instead of letting it cut a gully. At about 3.2 ac EC(7) calls for a 24 in. pipe (3.5 ac max).', basis: 'TxDOT EC(7)-16 design criteria (5 ac max)', place: [['psd', 10, 9]] },
+      { why: 'Riprap energy dissipator on the bench where the pipe discharges, so the jet does not scour the toe into the creek.', basis: 'TxDOT EC(7)-16 Detail A; Item 432 riprap', place: [['apron', 10, 11]] },
+      { why: 'Soil retention blankets over seed on every tile of the fill face. The face is steeper than 3:1, so seed alone would wash off and silt fence would be undercut.', basis: 'TxDOT Item 169 Class 1 Type C/D (steeper than 3:1); Item 164 seeding', place: [].concat(row('blanket', 9, 6, 14), row('blanket', 10, 6, 14), [6, 7, 8, 12, 13, 14].map(function (x) { return ['blanket', x, 11]; }), row('seed', 9, 6, 14), row('seed', 10, 6, 14), [6, 7, 8, 12, 13, 14].map(function (x) { return ['seed', x, 11]; })) },
+      { why: 'Silt fence on each side of the pad centre line. The pad sheet-flows sideways to the low point, and each fence drains well under 2 ac.', basis: 'TxDOT EC(1)-16', place: [].concat(col('fence', 9, 5, 8), col('fence', 11, 5, 8)) },
+      { why: 'Construction exit on the access tile.', basis: 'TxDOT Item 506 / EC(3)-16', place: [['exit', 14, 5]] }
     ]
   };
   function controlsFor(n, W) { var out = []; (SOL[n] || []).forEach(function (s) { s.place.forEach(function (p) { out.push({ type: p[0], tile: p[2] * W + p[1] }); }); }); return out; }

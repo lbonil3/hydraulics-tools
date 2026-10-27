@@ -40,6 +40,18 @@
     { id: 'washout', label: 'Washout', rule: 'Concrete truck washout pit. Needed on sites with concrete work. Keep it at least 50 ft (1 tile, diagonals too) away from storm inlets, ditches and the creek.',
       basis: 'No TxDOT number verified for this. EPA Stormwater BMP fact sheet "Concrete Washout" (epa.gov): washout facilities should not be placed within 50 ft of storm drains, open ditches, or waterbodies.',
       game: 'Game rule: a missing or too-close washout adds a fixed washwater load; cost $650 is a game value.' },
+    { id: 'dike', label: 'Dike', rule: 'Place on the clean GRASS just above the disturbed area. The dike catches run-on from upslope and carries it around the site, so less water reaches the controls below. Up to 5 ac per dike. On bare soil it would divert dirty water: wasted.',
+      basis: 'TxDOT EC(4)-16 Dikes, usage guidelines: a dike may be used to intercept runoff and divert it around unstabilized areas; drainage area contributing runoff to a dike should not exceed 5 acres; spacing 100 ft (slope over 10%), 200 ft (5–10%), 300 ft (under 5%); outlet intercepted runoff to a stabilized area. Typical section: 18 in. min. height, 2 ft min. top width. Item 506.4.4.5.1: place dikes and swales to prevent runoff spillover or to divert runoff.',
+      game: 'Game rule: a working dike tile removes everything draining to it from the flow below (assumes a stabilized outlet). Dike spacing is not checked. Cost = Item 506 earthwork $/CY x 13.9 CY per 50 LF.' },
+    { id: 'blanket', label: 'Blanket', rule: 'Erosion control blanket on bare soil. Needed on slopes steeper than 3:1, where seed and mulch alone wash off. Combine with seed: the blanket holds the seed until grass grows. Blankets are for sheet flow; concentrated flow still gullies through.',
+      basis: 'TxDOT Standard Specifications Item 169 Soil Retention Blankets: Class 1 slope protection, Type A/B for slopes 3:1 or flatter (clay/sandy), Type C/D for slopes steeper than 3:1; Class 2 is flexible channel liner. Place within 24 hr after seeding; product from the Erosion Control Approved Products list. Price: Item 169 Cl 1 Ty C bid tabs.',
+      game: 'Game rule: blanket = 15% of bare-soil erosion (x seed factor when seeded); seed alone on a slope steeper than 3:1 = washed out (90%); silt fence on a slope steeper than 3:1 is undercut.' },
+    { id: 'psd', label: 'Pipe drain', rule: 'Pipe slope drain: place at the top of a steep slope where flow concentrates. It carries the water down to the toe instead of letting it cut a gully. Needs a riprap apron at the outlet, or the jet scours the toe. Max 5 ac; the pipe size is picked from the drainage area.',
+      basis: 'TxDOT EC(7)-16 Temporary Pipe Slope Drains: PSD 12/18/21/24/30 in. for max drainage area 0.5/1.5/2.5/3.5/5.0 ac; drainage area should not exceed 5 ac; a 25-yr storm may be used for the flow rate; inlet pipe slope 3% min.; embankment at least 12 in. above the top of the pipe; hold-downs max 10 ft apart; energy dissipator of concrete or rubble riprap 6 x dia long, 3 x dia wide (Detail A). Item 506.4.4.2.',
+      game: 'Game rule: over 5 ac (storm-adjusted) the dike entrance overtops and the slope gullies; gully and scour loads are game values. Pipe cost $1,800 is a game value (no recent TxDOT bid price found).' },
+    { id: 'apron', label: 'Riprap', rule: 'Riprap energy dissipator at the OUTLET of a pipe slope drain (the first flatter tile at the toe). Anywhere else it does nothing.',
+      basis: 'TxDOT EC(7)-16 Detail A: concrete or rubble riprap energy dissipator at the pipe outlet, 6 x pipe dia long and 3 x dia wide. Item 506.4.4.2: construct energy dissipaters as shown; riprap per Item 432. Price: Item 432 stone riprap (Ty R, dry, 18 in.) bid tabs.',
+      game: 'Game rule: needs a pipe slope drain outlet on this tile; in the creek = violation.' },
     { id: 'demolish', icon: '✖', label: 'Remove' }
   ];
 
@@ -129,8 +141,15 @@
     var i = c.tile, W = G.L.W, p = tileTop(i % W, (i / W) | 0), bornAt = G.born[k], prog = 1;
     if (bornAt != null) prog = Math.max(0, Math.min(1, (t - bornAt) / buildMs(c.type)));
     var o = { prog: prog, t: t, age: (G.round || 0) - (c.round || 0) };
-    if (c.type === 'fence') { var dir = G.simDir[i]; o.edge = edgeCorners(i, dir >= 0 ? dir : i + W); }
+    ctlOpts(c.type, i, o);
     A.drawControl(ctx, c.type, p, o);
+  }
+  // per-type extras: fence/dike edge, pipe slope drain outlet point
+  function ctlOpts(type, i, o) {
+    var W = G.L.W, dir = G.simDir || G.sim.dir;
+    if (type === 'fence' || type === 'dike') { var d = dir[i]; o.edge = edgeCorners(i, d >= 0 ? d : i + W); }
+    if (type === 'psd') { var pp = S.psdPath(G.L, dir, i); if (pp && pp.outlet >= 0) { var q = tileTop(pp.outlet % W, (pp.outlet / W) | 0); o.to = { x: q.x, y: q.y + TH / 2 }; } }
+    return o;
   }
   // ---------- live storm water (visual; driven by the sim result) ----------
   function wetness() {
@@ -176,7 +195,7 @@
       if (c.type !== 'inlet') { A.diamond(ctx, p, 0.42 - 0.3 * lvl, 'rgba(' + Math.round(120 + 40 * mud) + ',' + Math.round(96 + 10 * mud) + ',' + Math.round(70) + ',' + (0.55 + 0.25 * lvl).toFixed(2) + ')');
         for (var q = 0; q < 3; q++) { var ph = (t / 1100 + q / 3) % 1, w = A.at(p, 0.3 + 0.4 * A.hash(k, q, 81), 0.3 + 0.4 * ph); ctx.fillStyle = 'rgba(240,220,190,.6)'; ctx.fillRect(Math.round(w.x) - 2, Math.round(w.y), 4, 1); } }
       var dir = sim.dir[c.tile], dn = dir >= 0 ? tileCenter(dir) : { x: cen.x - 10, y: cen.y + 10 }, ex = (cen.x + dn.x) / 2, ey = (cen.y + dn.y) / 2;
-      var bad = e.status === 'overtopped' || e.status === 'undersized' || e.status === 'blown out' || e.status === 'undercut' || e.status === 'spacing';
+      var bad = e.status === 'scour' || e.status === 'washed out' || e.status === 'overtopped' || e.status === 'undersized' || e.status === 'blown out' || e.status === 'undercut' || e.status === 'spacing';
       if (!bad || G.phase !== 'storm') return;
       for (var f = 0; f < 14; f++) { // spill / jets over the downstream edge
         var ph2 = ((t / 500) + A.hash(k, f, 91)) % 1, ox = (A.hash(k, f, 92) - 0.5) * 30, x = ex + ox + (dn.x - cen.x) * 0.4 * ph2, y = ey + (dn.y - cen.y) * 0.4 * ph2 - (e.status === 'undercut' ? -2 : 8 * (1 - ph2) * (1 - ph2));
@@ -242,7 +261,7 @@
     for (k = G.mud.length - 1; k >= 0; k--) { var m2 = G.mud[k], age = (t - m2.t) / 9000; if (age > 1 || !noExit) { G.mud.splice(k, 1); continue; }
       ctx.fillStyle = 'rgba(106,68,34,' + (0.8 * (1 - age)).toFixed(2) + ')'; ctx.fillRect(Math.round(m2.x) - 2, Math.round(m2.y), 4, 2); ctx.fillRect(Math.round(m2.x) - 1, Math.round(m2.y) - 1, 2, 1); }
   }
-  function buildMs(type) { return type === 'basin' ? 2200 : type === 'exit' || type === 'dam' ? 1600 : 1100; }
+  function buildMs(type) { return type === 'basin' ? 2200 : type === 'psd' ? 1900 : type === 'exit' || type === 'dam' || type === 'apron' ? 1600 : type === 'dike' || type === 'blanket' ? 1400 : 1100; }
 
 
   // ---------- frame ----------
@@ -481,14 +500,14 @@
     var ty = G.L.types[i], same = G.controls.filter(function (c) { return c.tile === i && c.type === tool; }).length;
     if (tool === 'basin' ? same >= S.RULES.basinMaxStack : same) return tool === 'basin' ? 'Max ' + S.RULES.basinMaxStack + ' basin blocks per tile' : 'Already a ' + S.CONTROLS[tool].name.toLowerCase() + ' here';
     if (tool === 'fence' && G.sim.dir[i] < 0) return ty === 'C' ? 'Keep fences out of the creek' : 'Water does not leave this tile to a neighbor; nowhere to put a fence';
-    if ((tool === 'seed' || tool === 'exit' || tool === 'inlet' || tool === 'fence') && ty === 'C') return 'Not in the creek';
+    if ((tool === 'seed' || tool === 'exit' || tool === 'inlet' || tool === 'fence' || tool === 'dike' || tool === 'blanket' || tool === 'psd') && ty === 'C') return 'Not in the creek';
     if (spent() + S.CONTROLS[tool].cost > G.L.budget) return 'Over budget! $' + (G.L.budget - spent()) + ' left';
     return null;
   }
   function placeControl(tool, i, quiet) {
     var why = placeBlock(tool, i);
     if (why) { if (!quiet) { toast(why); if (/budget/.test(why)) { snd('buzz'); flashMoney(); } } return false; }
-    G.controls.push({ type: tool, tile: i, round: G.round || 0 }); snd('thunk');
+    G.controls.push({ type: tool, tile: i, round: G.round || 0 }); snd({ dike: 'dirt', blanket: 'unroll', psd: 'clank', apron: 'rocks' }[tool] || 'thunk');
     G.born[G.controls.length - 1] = performance.now();
     G.history.push({ op: 'add' }); G.ghostKey = null;
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ }
@@ -508,7 +527,7 @@
   }
   function drawGhost(ctx, t) {
     var g = G.ghost, W = G.L.W, p = tileTop(g.tile % W, (g.tile / W) | 0), o = { prog: 1, t: t, age: 0 };
-    if (g.type === 'fence') { var d = G.sim.dir[g.tile]; o.edge = edgeCorners(g.tile, d >= 0 ? d : g.tile + W); }
+    ctlOpts(g.type, g.tile, o);
     ctx.globalAlpha = 0.6; A.drawControl(ctx, g.type, p, o); ctx.globalAlpha = 1;
     ctx.beginPath(); ctx.moveTo(p.x, p.y - A.TH / 2); ctx.lineTo(p.x + A.TW / 2, p.y); ctx.lineTo(p.x, p.y + A.TH / 2); ctx.lineTo(p.x - A.TW / 2, p.y); ctx.closePath();
     ctx.fillStyle = g.ok ? 'rgba(60,220,90,.35)' : 'rgba(240,50,40,.42)'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = g.ok ? '#5dff7a' : '#ff4a3a'; ctx.stroke();
@@ -516,7 +535,7 @@
   function drawSolGhost(ctx, t) {
     var W = G.L.W, pulse = 0.35 + 0.25 * Math.sin(t / 300);
     G.solGhost.forEach(function (c) { var p = tileTop(c.tile % W, (c.tile / W) | 0), o = { prog: 1, t: t, age: 0 };
-      if (c.type === 'fence') { var d = G.sim.dir[c.tile]; o.edge = edgeCorners(c.tile, d >= 0 ? d : c.tile + W); }
+      ctlOpts(c.type, c.tile, o);
       A.diamond(ctx, p, 0.04, 'rgba(80,200,255,' + pulse.toFixed(2) + ')'); ctx.globalAlpha = 0.65; A.drawControl(ctx, c.type, p, o); ctx.globalAlpha = 1; });
   }
   function rebornIndex() { G.born = {}; }
@@ -584,6 +603,10 @@
     if (id === 'exit') { x.fillStyle = '#cfcfcf'; for (var q = 0; q < 16; q++) x.fillRect(8 + (q * 5) % 16, 9 + (q * 3) % 7, 2, 1); }
     if (id === 'basin') { poly(x, [16, 9, 25, 13, 16, 17, 7, 13], '#4a7fa8'); x.fillStyle = '#5a3a1c'; x.fillRect(7, 13, 18, 1); }
     if (id === 'washout') { x.fillStyle = '#222'; x.fillRect(9, 8, 14, 8); x.fillStyle = '#bdbdbd'; x.fillRect(10, 9, 12, 5); x.fillStyle = '#ffd400'; x.fillRect(9, 7, 14, 1); }
+    if (id === 'dike') { x.fillStyle = '#8a6038'; x.fillRect(5, 11, 22, 4); x.fillStyle = '#c49460'; x.fillRect(6, 10, 20, 2); }
+    if (id === 'blanket') { x.fillStyle = '#d9bd6a'; poly(x, [16, 8, 27, 13, 16, 18, 5, 13], '#d9bd6a'); x.fillStyle = '#9fd06c'; for (q = 0; q < 5; q++) x.fillRect(8 + q * 4, 11 + (q % 2), 1, 4); }
+    if (id === 'psd') { x.fillStyle = '#2a2a2e'; for (q = 0; q < 12; q++) x.fillRect(8 + q, 7 + q * 0.6, 4, 4); x.fillStyle = '#b8b8c0'; x.fillRect(6, 6, 6, 4); }
+    if (id === 'apron') { for (q = 0; q < 14; q++) { x.fillStyle = ['#d6d6d0', '#a8a8a2', '#86867f'][q % 3]; x.fillRect(8 + (q * 5) % 16, 9 + (q * 3) % 7, 3, 2); } }
     if (id === 'seed') { for (q = 0; q < 12; q++) { x.fillStyle = q % 3 ? '#e6cf7a' : '#7fbf5f'; x.fillRect(8 + (q * 5) % 16, 9 + (q * 3) % 7, 2, 1); } }
     void save; return c;
   }
