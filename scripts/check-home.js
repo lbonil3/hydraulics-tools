@@ -20,12 +20,12 @@ if (/recently/i.test(html)) fail('home should not add a recently-used section');
 
 const groups = [
   { title: 'Design', hrefs: ['rational/index.html', 'drainage/index.html', 'storm/index.html', 'ditch-table/index.html', 'culvert/index.html'] },
-  { title: 'Estimating', hrefs: ['bid-cost/index.html', 'bid-estimator/index.html', 'pse-tracker/index.html'] },
+  { title: 'Estimating', hrefs: ['bid-cost/index.html', 'bid-estimator/index.html', 'pm/index.html', 'pse-tracker/index.html'] },
   { title: 'Pursuits &amp; compliance', hrefs: ['capture-terminal/index.html', 'opportunity-radar/index.html', 'national-radar/index.html', 'swp3-builder/index.html', 'swp3-game/index.html', 'flow-game/index.html'] },
 ];
 const hrefs = groups.flatMap((g) => g.hrefs);
-const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-bid-cost', 'tool-bid-estimator', 'tool-ditch', 'tool-culvert', 'tool-pse', 'tool-capture', 'tool-radar', 'tool-national', 'tool-swp3', 'tool-swp3-game', 'tool-flow-game'];
-const names = ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Bid Cost', 'Bid Estimator', 'Ditch', 'Culvert Studio', 'PS&amp;E Tracker', 'Capture Terminal', 'Opportunity Radar', 'National Radar', 'SWP3 Builder', 'SWP3 Designer (Game)', 'Storm Designer (Game)'];
+const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-bid-cost', 'tool-bid-estimator', 'tool-pm', 'tool-ditch', 'tool-culvert', 'tool-pse', 'tool-capture', 'tool-radar', 'tool-national', 'tool-swp3', 'tool-swp3-game', 'tool-flow-game'];
+const names = ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Bid Cost', 'Bid Estimator', 'Project Tracker', 'Ditch', 'Culvert Studio', 'PS&amp;E Tracker', 'Capture Terminal', 'Opportunity Radar', 'National Radar', 'SWP3 Builder', 'SWP3 Designer (Game)', 'Storm Designer (Game)'];
 
 let cursor = 0;
 for (const g of groups) {
@@ -53,6 +53,7 @@ const localData = new Set([
   'ditch-table/index.html',
   'culvert/index.html',
   'bid-estimator/index.html',
+  'pm/index.html',
   'pse-tracker/index.html',
   'capture-terminal/index.html',
   'swp3-builder/index.html',

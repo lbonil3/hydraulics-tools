@@ -408,6 +408,7 @@ a.tool .local {
 .tool-bid-estimator .icon { background: linear-gradient(155deg, #0d9488 0%, #0f766e 58%, #115e59 100%); }
 .tool-ditch .icon { background: linear-gradient(155deg, #16a34a 0%, #15803d 55%, #166534 100%); }
 .tool-culvert .icon { background: linear-gradient(155deg, #6366f1 0%, #4f46e5 52%, #4338ca 100%); }
+.tool-pm .icon { background: linear-gradient(155deg, #4f46e5 0%, #4338ca 58%, #3730a3 100%); }
 .tool-pse .icon { background: linear-gradient(155deg, #ea580c 0%, #c2410c 58%, #9a3412 100%); }
 .tool-capture .icon { background: linear-gradient(155deg, #5c5c56 0%, #3f3f3a 55%, #2e2e2c 100%); }
 .tool-radar .icon { background: linear-gradient(155deg, #0f766e 0%, #115e59 58%, #134e4a 100%); }
