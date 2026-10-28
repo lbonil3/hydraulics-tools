@@ -1,4 +1,4 @@
-// Headless-Chrome end-to-end test for Project Tracker v2.1 (testing mode, no login).
+// Headless-Chrome end-to-end test for Project Tracker v2.2 (testing mode, no login).
 // Run from anywhere: node pm/e2e/pm-e2e.js [1440x900|1920x1080|iphone]
 // Files are served from this checkout by request interception (no server). Set PM_BASE=https://.../pm/ to test a live site.
 // Needs puppeteer-core and Chrome at /usr/bin/google-chrome.
@@ -180,7 +180,7 @@ async function serve(r) {
   await sleep(800);
   const files = fs.readdirSync(DL);
   const ppf = files.find((f) => f.startsWith('pm-pp-summary'));
-  ok(files.some((f) => f.startsWith('pm-sheets')) && ppf && /Project total,,,,,2031,,,,,8/.test(fs.readFileSync(DL + '/' + ppf, 'utf8')), 'CSV exports: sheets + PP summary (8 PP total)');
+  ok(files.some((f) => f.startsWith('pm-sheets')) && ppf && /Project total,All,,,,,2031,,,,,8/.test(fs.readFileSync(DL + '/' + ppf, 'utf8')), 'CSV exports: sheets + PP summary (8 PP total)');
   await click('#vTree');
 
   // 7. PP calculator what-if (not saved)
@@ -219,7 +219,7 @@ async function serve(r) {
   // 10. reload persists, plain store
   await sleep(300);
   await pg.reload({ waitUntil: 'networkidle0' });
-  ok(!(await pg.$('input[type=password]')) && (await pg.$$('.node.n-seg')).length === 2, 'reload opens straight to data (no lock)');
+  ok(!(await pg.$('input[type=password]')) && (await pg.$$('.node.n-seg')).length === 4, 'reload opens straight to data (no lock)');
   const keys = await pg.evaluate(() => Object.keys(localStorage).sort());
   ok(JSON.stringify(keys) === '["pm.data.v2","pm.ui.v2"]', 'storage keys: pm.data.v2 + pm.ui.v2 (' + keys + ')');
 
@@ -307,6 +307,64 @@ async function serve(r) {
   await click('#modalClose'); await sleep(200);
   await pg.keyboard.press('Escape'); await sleep(200);
 
+  // 10c. v2.2 discipline branches
+  const shot22 = (name) => pg.screenshot({ path: SHOTS + 'v2.2-' + name + '-' + tag + '.png' });
+  await click('#xAll'); await sleep(250);
+  const D = await pg.evaluate(() => { const d = JSON.parse(localStorage.getItem('pm.data.v2')); const all = d.subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)); return { A: d.subs[0].id, segA: d.subs[0].segments[0].id, sw: all.filter((x) => x.discipline === 'SWP3').length, dr: all.filter((x) => x.discipline === 'Drainage').length }; });
+  ok((await pg.$$('.node.n-disc')).length === 8 && !!(await pg.$('.node[data-key="disc:' + D.A + ':Drainage"]')) && !!(await pg.$('.node[data-key="disc:' + D.A + ':SWP3"]')), 'each sub-project splits into Drainage + SWP3 branches (8 branch nodes)');
+  ok((await pg.$$('.node.n-sheet.d-sw')).length === D.sw && (await pg.$$('.node.n-sheet.d-dr')).length === D.dr, 'each sheet appears once, under its discipline branch');
+  const segSW = 'seg:' + D.segA + '@SWP3', segDR = 'seg:' + D.segA + '@Drainage';
+  ok(!!(await pg.$('.node[data-key="' + segSW + '"]')) && !!(await pg.$('.node[data-key="' + segDR + '"]')), 'same road segment appears under both branches');
+  ok(/SW PP/.test(await txt('.node[data-key="' + segSW + '"]')) && /DR PP/.test(await txt('.node[data-key="' + segDR + '"]')) && /10\+00 → 25\+50/.test(await txt('.node[data-key="' + segSW + '"]')), 'branch segment shows stations + that discipline’s PP count');
+  ok(/DR \d+%/.test(await txt('.node[data-key="sub:' + D.A + '"]')) && /SW \d+%/.test(await txt('.node[data-key="sub:' + D.A + '"]')), 'sub-project node aggregates both disciplines');
+  ok(/\d+ PP/.test(await txt('.node[data-key="disc:' + D.A + ':SWP3"]')) && !!(await pg.$('.node[data-key="disc:' + D.A + ':SWP3"] svg')), 'branch node: progress ring, sheet + PP counts');
+  ok((await pg.$$('#rail .discline')).length === 8, 'overview: progress per discipline per sub-project');
+  ok((await pg.$$('#timeline .tl-row.lane')).length === 8, 'station timeline: Drainage + SWP3 lane per sub-project');
+  ok(await pg.$$eval('#linkG path.lnk', (ps) => ps.length === 2 && ps.every((p) => p.dataset.a.startsWith('sheet:') && p.dataset.b.startsWith('sheet:'))), 'connectors still attach to sheet nodes across branches');
+  await shot22('tree');
+  // collapse one branch: its sheets hide, the other branch stays; arrows re-attach to the branch node
+  await click('.node[data-key="disc:' + D.A + ':Drainage"] .nbtn.tog'); await sleep(200);
+  ok(!(await pg.$('.node[data-key="' + segDR + '"]')) && !!(await pg.$('.node[data-key="' + segSW + '"]')), 'collapse per branch');
+  ok(await pg.$$eval('#linkG path.lnk', (ps, k) => ps.some((p) => p.dataset.a === k), 'disc:' + D.A + ':Drainage'), 'collapsed branch: connector attaches to the branch node');
+  await click('.node[data-key="disc:' + D.A + ':Drainage"] .nbtn.tog'); await sleep(200);
+  // branch visibility
+  await click('#bDr'); await sleep(200);
+  ok((await pg.$$('.node.n-disc')).length === 4 && !(await pg.$('.node.n-sheet.d-sw')) && (await pg.$$('#timeline .tl-row.lane')).length === 4, 'show only Drainage branch');
+  await shot22('drainage-only');
+  await click('#bSw'); await sleep(200);
+  ok((await pg.$$('.node.n-disc.d-sw')).length === 4 && !(await pg.$('.node.n-sheet.d-dr')), 'show only SWP3 branch');
+  await click('#bBoth'); await sleep(200);
+  // add from within a branch defaults the discipline
+  await click('.node[data-key="' + segSW + '"] .nbtn.add'); await pg.waitForSelector('#addSheetDisc');
+  ok((await pg.$eval('#addSheetDisc', (e) => e.value)) === 'SWP3' && /SWP3 branch/i.test(await txt('#drawer .dkind')), '+ on a SWP3 segment defaults the new sheet to SWP3');
+  await typeInto(await pg.$('#addSheetTitle'), 'Inlet protection details');
+  await pg.$eval('#addSheetTitle', (e) => e.form.requestSubmit()); await sleep(250);
+  ok(await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs[0].segments[0].sheets.some((x) => x.title === 'Inlet protection details' && x.discipline === 'SWP3')), 'sheet added to SWP3 branch');
+  ok(!!(await pg.$('#genDR')) && !!(await pg.$('#genSW')) && /✓/.test(await txt('#genSW')), 'per-discipline generate buttons (SWP3 up to date)');
+  await shot22('segment-drawer');
+  // branch drawer + per-discipline generate
+  await click('.node[data-key="disc:' + D.A + ':SWP3"]'); await pg.waitForSelector('#genBranchBtn');
+  ok(/SWP3 PP sheets/.test(await txt('#drawer')) && /Generate SWP3 PP for all segments/.test(await txt('#genBranchBtn')), 'branch drawer with stats + generate for that discipline');
+  await shot22('branch-drawer');
+  await click('#genBranchBtn'); await sleep(200);
+  ok(/already up to date/.test(await txt('#toast')), 'generate per discipline is idempotent');
+  await pg.keyboard.press('Escape'); await sleep(200);
+  // PP calculator by discipline
+  await click('#ppBtn'); await pg.waitForSelector('#ppDr');
+  const ppd = await pg.evaluate(() => [document.querySelector('#ppDr').textContent, document.querySelector('#ppSw').textContent, document.querySelector('#ppWhatIf').textContent].map(Number));
+  ok(ppd[0] + ppd[1] === ppd[2] && ppd[0] > 0 && ppd[1] > 0, 'PP calculator totals by discipline: DR ' + ppd[0] + ' + SW ' + ppd[1] + ' = ' + ppd[2]);
+  await click('#modalClose'); await sleep(200);
+  // list: discipline filter + grouping
+  await click('#vList'); await sleep(200);
+  await pg.select('#groupSel', 'subdisc'); await sleep(200);
+  const grps = await pg.$$eval('table.grid tr.grp', (t) => t.map((x) => x.textContent));
+  ok(grps.length === 4 && /Drainage/.test(grps[0]) && /SWP3/.test(grps[1]), 'list grouped by sub-project › discipline (' + grps.length + ' groups)');
+  await shot22('list-grouped');
+  await pg.$$eval('.listbar select', (ss) => { const s = ss.find((x) => x.getAttribute('aria-label') === 'Discipline'); s.value = 'SWP3'; s.dispatchEvent(new Event('change')); }); await sleep(200);
+  ok((await pg.$$('table.grid tbody tr:not(.grp)')).length === D.sw + 1 && (await pg.$$('table.grid tr.grp')).length === 2, 'list discipline filter');
+  await pg.select('#groupSel', ''); await sleep(100);
+  await pg.select('#fDisc', ''); await sleep(150);
+  await click('#vTree'); await sleep(200);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);
@@ -320,7 +378,7 @@ async function serve(r) {
   await click('#setBtn');
   await (await pg.$('#modalBody form.imp input[type=file]')).uploadFile(DL + '/' + bk);
   await click('#modalBody form.imp button[type=submit]');
-  await pg.waitForFunction(() => document.querySelectorAll('.node.n-seg').length === 2, { timeout: 5000 });
+  await pg.waitForFunction(() => document.querySelectorAll('.node.n-seg').length === 4, { timeout: 5000 });
   ok(true, 'import restored both segments');
   ok((await pg.$$('#linkG path.lnk')).length === 2 || (await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 2, 'import restored connectors');
 
@@ -345,7 +403,7 @@ async function serve(r) {
   await pg.type('#migPass', 'old v1 passphrase');
   await click('#modalBody button[type=submit]');
   await pg.waitForFunction(() => document.querySelector('#modal').hidden, { timeout: 15000 });
-  ok(/Old Encrypted Project/.test(await txt('#appTitle')) && (await pg.$$('.node.n-seg')).length === 1, 'v1 data migrated into plain store');
+  ok(/Old Encrypted Project/.test(await txt('#appTitle')) && (await pg.$$('.node.n-seg')).length === 2, 'v1 data migrated into plain store');
   const migrated = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
   ok(migrated.schema === 2 && migrated.subs[0].segments[0].sheets[0].status === 'In review', 'migrated data saved as schema 2');
   ok(!(await pg.evaluate(() => JSON.stringify(localStorage))).includes('old v1 passphrase'), 'passphrase not stored');
@@ -353,7 +411,7 @@ async function serve(r) {
   await click('#setBtn');
   await (await pg.$('#modalBody form.imp input[type=file]')).uploadFile(DL + '/' + bk);
   await click('#modalBody form.imp button[type=submit]');
-  await pg.waitForFunction(() => document.querySelectorAll('.node.n-seg').length === 2, { timeout: 5000 });
+  await pg.waitForFunction(() => document.querySelectorAll('.node.n-seg').length === 4, { timeout: 5000 });
 
   // 13. layout checks
   const node = await pg.$$eval('.node.n-seg', (e) => e[0].dataset.key);
