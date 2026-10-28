@@ -9,7 +9,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v1` | First live version of `/pm/` (no home card) |
 | `pm-v1.1` / `pm-v1.1-final` | + "Project Tracker" card on the home page (last encrypted, passphrase-login version) |
 | `pm-v2` / `pm-v2-final` | Testing mode (no login, plain JSON), tree UI, PP sheet counts (last version before connectors) |
-| `pm-v2.1` | + Connectors between sheets/segments in any sub-project, build order, update-needed, blocked/ready, impact |
+| `pm-v2.1` / `pm-v2.1-final` | + Connectors between sheets/segments in any sub-project, build order, update-needed, blocked/ready, impact |
+| `pm-v2.2` | + Drainage / SWP3 branches under each sub-project |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -121,3 +122,22 @@ git commit -m "pm: back to v2 (no connectors)" && git push
 Data note: v2.1 converts old v2 "Depends on" lists into connectors (`links`) the first time it loads.
 If you go back to v2 with data saved by v2.1, v2 ignores `links` (connectors and revisions are simply
 not shown; sheets, segments and statuses are unaffected). Export a backup before rolling back.
+
+## v2.2 (Drainage / SWP3 branches) commits
+
+| Commit | Change |
+|---|---|
+| f20b91b | Model: discipline default by keywords, per-discipline stats / PP counts / generate, discipline in PP CSV + tests |
+| 533e3da | UI: two branches per sub-project, overview per discipline, timeline lanes, list grouping, PP calc split, branch toggle |
+| 45ebfab | e2e test for branches |
+
+Undo just v2.2 (keeps v2.1): `git revert --no-edit 45ebfab 533e3da f20b91b` then push, or:
+
+```
+git checkout pm-v2.1-final -- pm
+git commit -m "pm: back to v2.1 (no discipline branches)" && git push
+```
+
+Data note: v2.2 does not change the data format. Segments are still stored once per sub-project and
+shown under both branches; it only fills in a missing sheet discipline (SWP3 / erosion / stormwater
+keywords → SWP3, else Drainage). Going back to v2.1 keeps everything.
