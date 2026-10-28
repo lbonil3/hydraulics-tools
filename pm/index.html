@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f4e79">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="icon" type="image/png" href="../icon-192.png">
+  <title>Project Manager (private)</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../home-btn.css">
+</head>
+<body class="locked">
+<header id="top">
+  <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">&#8592; Home</a>
+  <div class="titlebar">
+    <h1 id="appTitle">Project Manager</h1>
+    <button type="button" id="lockBtn" class="btn sec hdr" hidden>Lock</button>
+  </div>
+  <span class="sub">Private PS&amp;E sheet tracker &mdash; drainage &amp; SWP3. Encrypted, stays on this device.</span>
+  <nav id="nav" aria-label="Sections" hidden>
+    <a href="#/" data-nav="dash">Dashboard</a>
+    <a href="#/subs" data-nav="subs">Sub-projects</a>
+    <a href="#/table" data-nav="table">All sheets</a>
+    <a href="#/settings" data-nav="settings">Settings</a>
+  </nav>
+</header>
+
+<main id="lock" aria-labelledby="lockTitle">
+  <section class="card lockcard">
+    <h2 id="lockTitle">Unlock</h2>
+    <div id="lockBody"></div>
+  </section>
+</main>
+
+<main id="view" hidden></main>
+
+<p class="foot">Encrypted with your passphrase (AES-GCM, PBKDF2 600,000 rounds) and kept only in this browser. No network, no analytics.
+  It protects against someone opening this page or browser storage &mdash; not against clearing browser data. Export backups regularly.</p>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="crypto.js"></script>
+<script src="model.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
