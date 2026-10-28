@@ -253,7 +253,8 @@ kbd{display:inline-block;min-width:26px;text-align:center;padding:1px 6px;border
   body.rail-open #rail{transform:none}
   #drawer{position:fixed;z-index:16;left:0;right:0;bottom:0;max-height:78vh;border-radius:18px 18px 0 0;border:1px solid var(--line);box-shadow:var(--shadow-lg)}
   .legend{display:none}
-  .zoombar{left:8px;bottom:8px}
+  .zoombar{left:8px;right:8px;bottom:8px;overflow-x:auto;scrollbar-width:none}
+  .zoombar .ibtn{flex:0 0 auto}
   .timeline{max-height:180px}
   .g2,.settings{grid-template-columns:1fr}
   .msrow{grid-template-columns:1fr 1fr}
@@ -261,3 +262,56 @@ kbd{display:inline-block;min-width:26px;text-align:center;padding:1px 6px;border
   .btn.sm,.rowbtn,#drawer .ibtn,.top .ibtn,#drawer select,#drawer input:not([type=checkbox]):not([type=range]){min-height:44px}
   .chk{min-height:40px}
 }
+
+/* ---- v2.1 connectors ---- */
+:root{--lk-cross:#7c3aed;--lk-same:#0891b2;--amber:#d97706}
+[data-theme=dark]{--lk-cross:#c084fc;--lk-same:#22d3ee;--amber:#fbbf24}
+.links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:2}
+.links.off #linkG{display:none}
+.links marker path{fill:context-stroke}
+.lnk{fill:none;stroke-width:2;opacity:.28;transition:opacity .15s,stroke-width .15s}
+.lnk.cross{stroke:var(--lk-cross)}
+.lnk.same{stroke:var(--lk-same)}
+.lnk.upd{stroke-dasharray:6 4}
+.lnk.wrong{stroke:var(--bad)}
+.lnk.stale{stroke:var(--amber)}
+.lnk.on,.lnk.hov{opacity:1;stroke-width:3}
+.dragline{fill:none;stroke:var(--brand);stroke-width:2.5;stroke-dasharray:5 4}
+.handle{position:absolute;left:-7px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--lk-cross);cursor:crosshair;opacity:.55;touch-action:none;z-index:3}
+.node:hover .handle,.node.sel .handle,.handle:focus{opacity:1}
+body.linking,body.linking *{cursor:crosshair!important}
+.node.droptarget{outline:3px dashed var(--lk-cross);outline-offset:3px}
+.node.imp-up{box-shadow:0 0 0 3px color-mix(in srgb,var(--lk-same) 60%,transparent)}
+.node.imp-down{box-shadow:0 0 0 3px color-mix(in srgb,var(--amber) 70%,transparent)}
+.node.imp-self{box-shadow:0 0 0 4px var(--brand)}
+.nflags{display:flex;gap:6px;margin-top:2px}
+.fl{font-size:11px;font-weight:700;border-radius:8px;padding:0 6px;white-space:nowrap;line-height:17px}
+.fl-blk{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+.fl-upd{background:color-mix(in srgb,var(--amber) 20%,transparent);color:var(--amber)}
+.fl-wrong{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad)}
+.lkcount{font-size:11px;color:var(--lk-cross);font-weight:700}
+.code .ord{font-size:10px;font-weight:600;opacity:.75;margin-left:2px}
+.chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.chain .code{cursor:pointer;border:0}
+.chain .arr{color:var(--muted);font-weight:700}
+.chainmini{color:var(--lk-cross);font-weight:600}
+.legend .lk{display:inline-block;width:18px;height:0;border-top:3px solid var(--lk-same);vertical-align:middle}
+.legend .lk-cross{border-color:var(--lk-cross)}
+.legend .lk-upd{border-top-style:dashed;border-color:var(--muted)}
+.conn .lklist li{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lkverb{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--lk-same);min-width:92px}
+.lkrow.cross .lkverb{color:var(--lk-cross)}
+.lkverb.upd{font-style:italic}
+.lkres{list-style:none;margin:0;padding:0;max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.lkres li{border-bottom:1px solid var(--line)}
+.lkres .rowbtn{width:100%}
+.updbox{background:color-mix(in srgb,var(--amber) 15%,transparent);border:1px solid var(--amber);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.revrow input{flex:1;min-width:0}
+.revrow input[type=date]{flex:0 0 150px}
+.ordrow{display:flex;align-items:center;gap:8px}
+.ordrow .num{width:64px}
+.ok{color:var(--dn)}
+[data-panel=update] h3{color:var(--amber)}
+.link.upd{color:var(--amber)}
+.link.ok{color:var(--dn)}
+@media (max-width:900px){.handle{width:22px;height:22px;left:-11px}.lkverb{flex-basis:100%;min-width:0}.revrow{flex-wrap:wrap}.revrow input:not([type=date]){flex-basis:100%}}

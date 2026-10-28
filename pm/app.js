@@ -9,15 +9,16 @@
   const SVGNS = 'http://www.w3.org/2000/svg';
 
   let st = null;
-  const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true },
+  const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true, links: true, linkSel: false },
     safeJSON(localStorage.getItem(UIKEY)) || {});
-  const filt = { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '' };
+  const filt = { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '', flag: '' };
   let sel = null; // { type, id }
   let view = { x: 40, y: 40, k: 1 };
   let firstFit = true;
+  let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort })); }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -25,6 +26,7 @@
     for (const [k, v] of Object.entries(attrs || {})) {
       if (v == null || v === false) continue;
       if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (k === '_link') el._link = v;
       else if (k === 'class') el.className = v;
       else if (k === 'value' || k === 'checked' || k === 'selected') el[k] = v;
       else el.setAttribute(k, v === true ? '' : v);
@@ -121,14 +123,15 @@
   }
 
   /* ---------- filters ---------- */
-  function sheetMatches(r) { return M.filterRows([r], { status: filt.status, owner: filt.owner, discipline: filt.discipline, q: filt.q }).length === 1; }
-  function filtersActive() { return !!(filt.status || filt.owner || filt.discipline || filt.q); }
+  function sheetMatches(r) { return M.filterRows([r], { status: filt.status, owner: filt.owner, discipline: filt.discipline, q: filt.q, flag: filt.flag, st }).length === 1; }
+  function filtersActive() { return !!(filt.status || filt.owner || filt.discipline || filt.q || filt.flag); }
   function fillFilterSelects() {
     const owners = [...new Set(st.staff.map((x) => x.name).concat(M.allSheets(st).map((r) => r.sh.owner).filter(Boolean)))].sort();
     const set = (id, opts, v) => { const el = $(id); el.replaceChildren(...select(opts, v).children); el.value = v; };
     set('#fStatus', [['', 'All statuses']].concat(M.STATUSES), filt.status);
     set('#fOwner', [['', 'All owners'], ['(unassigned)', 'Unassigned']].concat(owners), filt.owner);
     set('#fDisc', [['', 'Drainage + SWP3'], 'Drainage', 'SWP3'], filt.discipline);
+    set('#fFlag', [['', 'All sheets'], ['update', '⟳ Needs update'], ['blocked', '⛓ Blocked'], ['ready', '▶ Ready to start'], ['linked', '↔ Has connectors']], filt.flag);
   }
 
   /* ---------- render ---------- */
@@ -151,10 +154,11 @@
   function renderRail() {
     const S = M.summary(st);
     const PP = M.ppSummary(st);
+    const F = M.flags(st);
     const o = S.overall;
     const days = st.lastBackup ? (Date.now() - Date.parse(st.lastBackup)) / 864e5 : Infinity;
     const kpi = (n, l, cls, on) => h('button', { type: 'button', class: 'kpi ' + (cls || ''), onclick: on }, h('b', {}, n), h('span', {}, l));
-    const toList = (f) => () => { Object.assign(filt, { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '' }, f); $('#q').value = filt.q; ui.view = 'list'; saveUI(); renderAll(); };
+    const toList = (f) => () => { Object.assign(filt, { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '', flag: '' }, f); $('#q').value = filt.q; ui.view = 'list'; saveUI(); renderAll(); };
     $('#rail').replaceChildren(...[
       days > BACKUP_DAYS ? h('div', { class: 'warnbox' }, st.lastBackup ? 'Last backup ' + Math.floor(days) + ' days ago. ' : 'No backup yet. ', h('button', { type: 'button', class: 'link', onclick: openSettings }, 'Export backup')) : null,
       h('section', { class: 'panel hero' }, ring(o.pct, 84),
@@ -173,6 +177,13 @@
             h('span', { class: 'code' }, x.sub.code), h('span', { class: 'grow' }, h('span', { class: 'nm' }, x.sub.name), bar(x.pct, 'Progress ' + x.sub.name)),
             h('span', { class: 'pp', title: 'PP sheets' }, pp.total + ' PP'));
         })),
+      h('section', { class: 'panel' }, h('h3', {}, 'Build order'),
+        h('div', { class: 'chain', id: 'buildChain' }, M.orderedSubs(st).map((sub, i) => [i ? h('span', { class: 'arr', 'aria-hidden': 'true' }, '→') : null,
+          h('button', { type: 'button', class: 'code', title: sub.name + ' (built #' + (i + 1) + ')', onclick: () => { select_('sub', sub.id); focusNode('sub:' + sub.id); } }, sub.code)]).flat().filter(Boolean)),
+        h('button', { type: 'button', class: 'link', onclick: () => openSettings('order') }, 'Change build order')),
+      refPanel('Needs update', F.update.map((x) => ({ ref: x.ref, why: 'from ' + x.from.map((r) => M.refLabel(st, r)).join(', ') })), 'upd', 'update'),
+      refPanel('Blocked', F.blocked.map((x) => ({ ref: x.ref, why: 'by ' + x.by.map((r) => M.refLabel(st, r)).join(', ') })), 'bad', 'blocked'),
+      refPanel('Ready to start', F.ready.map((x) => ({ ref: x.ref, why: 'prerequisites done' })), 'ok', 'ready'),
       listPanel('Overdue', S.overdue, 'bad'),
       listPanel('Upcoming (14 days)', S.upcoming, 'warn'),
       h('section', { class: 'panel' }, h('h3', {}, 'Milestones'),
@@ -181,6 +192,20 @@
         h('button', { type: 'button', class: 'link', onclick: openMilestones }, 'Manage milestones')),
       h('section', { class: 'panel' }, h('h3', {}, 'Recent activity'),
         st.log.length ? h('ol', { class: 'log' }, st.log.slice(0, 8).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })), ' ', l.msg))) : h('p', { class: 'muted' }, 'Nothing yet.'))].filter(Boolean));
+  }
+  function revealRef(ref) {
+    const r = M.resolve(st, ref);
+    if (!r) return;
+    ui.collapsed['sub:' + r.sub.id] = false; if (r.t === 'sheet') ui.collapsed['seg:' + r.seg.id] = false; saveUI();
+    if (ui.view !== 'tree') { ui.view = 'tree'; saveUI(); }
+    renderAll(); select_(r.t, ref.id);
+    setTimeout(() => focusNode(M.rk(ref)), 20);
+  }
+  function refPanel(title, items, cls, flag) {
+    return h('section', { class: 'panel', 'data-panel': flag }, h('h3', {}, title + ' (' + items.length + ')'),
+      items.length ? h('ul', { class: 'mini' }, items.slice(0, 6).map((x) => h('li', {}, h('button', { type: 'button', class: 'link ' + cls, onclick: () => revealRef(x.ref) }, M.refLabel(st, x.ref)),
+        h('small', { class: 'muted' }, ' ' + x.why)))) : h('p', { class: 'muted' }, 'None'),
+      items.length ? h('button', { type: 'button', class: 'link', onclick: () => { Object.assign(filt, { flag }); ui.view = 'list'; saveUI(); renderAll(); } }, 'Show in list') : null);
   }
   function listPanel(title, rows, cls) {
     return h('section', { class: 'panel' }, h('h3', {}, title + ' (' + rows.length + ')'),
@@ -229,7 +254,7 @@
     const any = rows.some(sheetMatches);
     const q = filt.q.trim().toLowerCase();
     const selfHit = !!q && (n.type === 'seg' ? (n.seg.name + ' ' + n.seg.road).toLowerCase().includes(q) : n.type === 'sub' ? (n.sub.code + ' ' + n.sub.name).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
-    const onlyQ = !filt.status && !filt.owner && !filt.discipline;
+    const onlyQ = !filt.status && !filt.owner && !filt.discipline && !filt.flag;
     return { dim: !(any || (selfHit && onlyQ)), hit: selfHit && (n.type !== 'sheet' || any) };
   }
   function renderTree() {
@@ -250,8 +275,90 @@
     }
     edges.setAttribute('width', maxX + 40); edges.setAttribute('height', maxY + 40);
     box.replaceChildren(...els);
+    lastNodes = nodes;
+    drawLinks(nodes, maxX, maxY);
     $('#stage').dataset.w = maxX; $('#stage').dataset.h = maxY; $('#stage').dataset.ry = nodes[0].y + nodes[0].h / 2;
     if (firstFit) { firstFit = false; requestAnimationFrame(() => fit(true)); } else applyView();
+  }
+  let lastNodes = [];
+  /* endpoint: the node itself, or its nearest visible ancestor when collapsed */
+  function nodeFor(map, ref) {
+    const r = M.resolve(st, ref);
+    if (!r) return null;
+    return map.get(M.rk(ref)) || map.get('seg:' + r.seg.id) || map.get('sub:' + r.sub.id) || null;
+  }
+  function selKey() { return sel ? (sel.type === 'root' ? 'root' : sel.type + ':' + sel.id) : null; }
+  function drawLinks(nodes, maxX, maxY) {
+    const svg = $('#links'), g = $('#linkG');
+    g.replaceChildren();
+    svg.setAttribute('width', maxX + 400); svg.setAttribute('height', maxY + 60);
+    $('#lkBtn').setAttribute('aria-pressed', String(ui.links));
+    $('#lkSelBtn').setAttribute('aria-pressed', String(ui.linkSel));
+    svg.classList.toggle('off', !ui.links);
+    const map = new Map(nodes.map((n) => [n.key, n]));
+    const sk = selKey();
+    const imp = impactKey ? M.impact(st, impactKey.split(':').length === 2 ? { t: impactKey.split(':')[0], id: impactKey.split(':')[1] } : null) : null;
+    document.querySelectorAll('.node.imp-up, .node.imp-down, .node.imp-self').forEach((e) => e.classList.remove('imp-up', 'imp-down', 'imp-self'));
+    if (imp) {
+      const mark = (k, c) => { const n = nodeFor(map, { t: k.split(':')[0], id: k.split(':')[1] }); const el = n && document.querySelector('.node[data-key="' + n.key + '"]'); if (el) el.classList.add(c); };
+      imp.up.forEach((k) => mark(k, 'imp-up')); imp.down.forEach((k) => mark(k, 'imp-down')); mark(impactKey, 'imp-self');
+    }
+    const fan = new Map();
+    for (const l of st.links) {
+      const a = nodeFor(map, l.src), b = nodeFor(map, l.dst);
+      if (!a || !b || a === b) continue;
+      const related = sk && (M.rk(l.src) === sk || M.rk(l.dst) === sk || a.key === sk || b.key === sk);
+      const inImpact = imp && ([M.rk(l.src), M.rk(l.dst)].every((k) => k === impactKey || imp.up.has(k) || imp.down.has(k)));
+      if (ui.linkSel && !related && !inImpact) continue;
+      /* both ends leave from the right side, past the node buttons; arc bulges right by distance */
+      const n = (fan.get(a.key) || 0) + 1; fan.set(a.key, n);
+      const x1 = a.x + a.w + 16, y1 = a.y + a.h / 2 + Math.min(n, 4) * 3 - 6, x2 = b.x + b.w + 16, y2 = b.y + b.h / 2;
+      const bulge = 50 + Math.min(260, Math.abs(y2 - y1) * 0.18) + Math.abs(x2 - x1) * 0.1;
+      const cx = Math.max(x1, x2) + bulge;
+      const cls = ['lnk', M.isCross(st, l) ? 'cross' : 'same', l.kind === 'update' ? 'upd' : 'dep'];
+      if (M.wrongWay(st, l)) cls.push('wrong');
+      if (M.revCount(st, l.src) > (l.ack || 0)) cls.push('stale');
+      if (related || inImpact) cls.push('on');
+      const path = s('path', { d: 'M' + x1 + ' ' + y1 + ' C' + cx + ' ' + y1 + ',' + cx + ' ' + y2 + ',' + x2 + ' ' + y2, class: cls.join(' '), 'marker-end': 'url(#arw)', 'data-a': a.key, 'data-b': b.key, 'data-id': l.id });
+      const t = s('title'); t.textContent = M.refLabel(st, l.src) + (l.kind === 'dep' ? '  →  needed first by  →  ' : '  →  update  →  ') + M.refLabel(st, l.dst); path.append(t);
+      g.append(path);
+    }
+  }
+  function hoverLinks(key, on) {
+    document.querySelectorAll('#linkG path').forEach((p) => { if (p.dataset.a === key || p.dataset.b === key) p.classList.toggle('hov', on); });
+  }
+  /* drag from a node's connector handle onto another node to link them (target depends on source) */
+  function startLinkDrag(e, n, ref, handleEl) {
+    e.preventDefault(); e.stopPropagation();
+    const line = $('#dragLine');
+    const stage = $('#stage');
+    const toStage = (cx, cy) => { const r = stage.getBoundingClientRect(); return { x: (cx - r.left) / view.k, y: (cy - r.top) / view.k }; };
+    const x0 = n.x + n.w, y0 = n.y + n.h;
+    const handle = handleEl || e.currentTarget;
+    try { handle.setPointerCapture(e.pointerId); } catch (ex) { /* synthetic */ }
+    document.body.classList.add('linking');
+    let over = null;
+    const move = (ev) => {
+      const p = toStage(ev.clientX, ev.clientY);
+      line.setAttribute('d', 'M' + x0 + ' ' + y0 + ' L' + p.x + ' ' + p.y);
+      const t = document.elementsFromPoint(ev.clientX, ev.clientY).map((x) => x.closest && x.closest('.node')).find((x) => x && /^(sheet|seg):/.test(x.dataset.key) && x.dataset.key !== n.key);
+      if (over && over !== t) over.classList.remove('droptarget');
+      over = t || null; if (over) over.classList.add('droptarget');
+    };
+    const up = (ev) => {
+      handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); handle.removeEventListener('pointercancel', up);
+      document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+      if (ev.type !== 'pointercancel') move(ev);
+      line.setAttribute('d', ''); document.body.classList.remove('linking');
+      if (over) {
+        over.classList.remove('droptarget');
+        const [t, id] = over.dataset.key.split(':');
+        const r = commit(() => M.addLink(st, ref, { t, id }, 'dep'));
+        if (r) toast('Connected: ' + M.refLabel(st, { t, id }) + ' depends on ' + M.refLabel(st, ref) + '.' + (r.warns.length ? ' ⚠ ' + r.warns.join(' ') : ' Change the kind in the drawer.'));
+      }
+    };
+    handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
+    document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
   }
   function toggleBtn(n) {
     if (!n.kids.length && n.type !== 'sub') return null;
@@ -266,13 +373,13 @@
     let body;
     if (n.type === 'root') {
       const p = M.progress(M.allSheets(st).map((r) => r.sh));
-      body = [ring(p.pct, 56), h('div', { class: 'nb' }, h('div', { class: 'nt' }, st.project.name), h('div', { class: 'ns' }, p.total + ' sheets · ' + M.ppSummary(st).total + ' PP'), h('div', { class: 'ns' }, 'Sub-projects A–D'))];
+      body = [ring(p.pct, 56), h('div', { class: 'nb' }, h('div', { class: 'nt' }, st.project.name), h('div', { class: 'ns' }, p.total + ' sheets · ' + M.ppSummary(st).total + ' PP'), h('div', { class: 'ns chainmini' }, 'Build: ' + M.orderedSubs(st).map((x) => x.code).join(' → ')))];
     } else if (n.type === 'sub') {
       const sheets = n.sub.segments.flatMap((g) => g.sheets);
       const p = M.progress(sheets);
       const pp = M.ppSummary(st).bySub.find((b) => b.sub === n.sub);
       const od = sheets.filter((x) => M.isOverdue(x, today)).length;
-      body = [h('span', { class: 'code lg' }, n.sub.code), h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.sub.name),
+      body = [h('span', { class: 'code lg' }, n.sub.code, h('small', { class: 'ord', title: 'Build order' }, '#' + (M.orderedSubs(st).indexOf(n.sub) + 1))), h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.sub.name),
         h('div', { class: 'ns' }, plural(n.sub.segments.length, 'segment') + ' · ' + fmtFt(pp.length)),
         h('div', { class: 'ns' }, pp.total + ' PP @ ' + n.sub.scale + ' scale' + (od ? '' : '')), od ? h('span', { class: 'flag' }, '⚑ ' + od + ' overdue') : null), ring(p.pct, 46)];
     } else if (n.type === 'seg') {
@@ -280,18 +387,30 @@
       const pp = M.segPP(st, n.sub, n.seg);
       const od = n.seg.sheets.filter((x) => M.isOverdue(x, today)).length;
       const owners = [...new Set(n.seg.sheets.map((x) => x.owner).filter(Boolean))];
+      const gref = { t: 'seg', id: n.seg.id };
+      const gb = M.isDone(st, gref) ? 0 : M.blockers(st, gref).length, gu = M.needsUpdate(st, gref).length;
+      const inner = n.seg.sheets.map((x) => ({ t: 'sheet', id: x.id }));
+      const ib = inner.filter((r) => M.resolve(st, r).sh.status !== 'Done' && M.blockers(st, r).length).length, iu = inner.filter((r) => M.needsUpdate(st, r).length).length;
       body = [h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.seg.name + (n.seg.road ? ' · ' + n.seg.road : '')),
         h('div', { class: 'ns mono' }, M.formatStation(n.seg.start) + ' → ' + M.formatStation(n.seg.end) + ' · ' + fmtFt(pp.length)),
         h('div', { class: 'ns' }, M.segScale(n.sub, n.seg) + ' scale · ', h('b', {}, pp.total + ' PP'), ' · ' + plural(n.seg.sheets.length, 'sheet')),
         h('div', { class: 'nrow' }, bar(p.pct, 'Progress ' + n.seg.name), od ? h('span', { class: 'flag' }, '⚑ ' + od) : null,
+          gb || ib ? h('span', { class: 'fl fl-blk', title: 'Blocked items' }, '⛓' + (gb ? ' seg' : '') + (ib ? ' ' + ib : '')) : null,
+          gu || iu ? h('span', { class: 'fl fl-upd', title: 'Items needing update' }, '⟳' + (gu ? ' seg' : '') + (iu ? ' ' + iu : '')) : null,
           h('span', { class: 'avs' }, owners.slice(0, 4).map((o) => h('span', { class: 'av', title: o }, initials(o))))))];
     } else {
       const sh = n.sh;
       const od = M.isOverdue(sh, today);
-      const blocked = M.blockedBy(st, sh).length;
+      const ref = { t: 'sheet', id: sh.id };
+      const blocked = sh.status === 'Done' ? 0 : M.blockers(st, ref).length;
+      const upd = M.needsUpdate(st, ref).length;
+      const nl = M.linksOf(st, ref);
       body = [h('span', { class: 'chip ' + (sh.discipline === 'SWP3' ? 'sw' : 'dr'), title: sh.discipline }, sh.discipline === 'SWP3' ? 'SW' : 'DR'),
         h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, sh.title),
-          h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.pct && sh.status !== 'Done' ? ' · ' + sh.pct + '%' : '') + (sh.due ? ' · ' + sh.due : '') + (sh.gen ? ' · PP' : '') + (blocked ? ' · ⛓ blocked' : ''))),
+          h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.pct && sh.status !== 'Done' ? ' · ' + sh.pct + '%' : '') + (sh.due ? ' · ' + sh.due : '') + (sh.gen ? ' · PP' : '')),
+          blocked || upd ? h('div', { class: 'nflags' }, blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked by ' + blocked + ' unfinished prerequisite(s)' }, '⛓ Blocked by ' + blocked) : null,
+            upd ? h('span', { class: 'fl fl-upd', title: 'An upstream item changed' }, '⟳ Update needed') : null) : null),
+        nl.in.length + nl.out.length ? h('span', { class: 'lkcount', title: nl.in.length + ' in, ' + nl.out.length + ' out' }, '↔' + (nl.in.length + nl.out.length)) : null,
         od ? h('span', { class: 'flag', title: 'Overdue' }, '⚑') : null,
         sh.owner ? h('span', { class: 'av', title: sh.owner }, initials(sh.owner)) : h('span', { class: 'av none', title: 'Unassigned' }, '–')];
     }
@@ -300,11 +419,14 @@
     const el = h('div', { class: 'node n-' + n.type + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) + (n.sh.discipline === 'SWP3' ? ' d-sw' : ' d-dr') : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
       tabindex: 0, role: 'button', 'data-key': n.key, 'aria-label': nodeLabel(n),
       onclick: () => select_(n.type, id),
+      onmouseenter: () => hoverLinks(n.key, true), onmouseleave: () => hoverLinks(n.key, false),
       onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id); } } },
     body, h('div', { class: 'nacts' },
       n.type === 'sub' ? addBtn(n, 'Add segment to ' + n.sub.code, () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegName'); if (i) i.focus(); }, 30); }) : null,
       n.type === 'seg' ? addBtn(n, 'Add sheet to ' + n.seg.name, () => { ui.collapsed[n.key] = false; select_('seg', n.seg.id); setTimeout(() => { const i = $('#addSheetTitle'); if (i) i.focus(); }, 30); }) : null,
-      toggleBtn(n)));
+      toggleBtn(n)),
+    n.type === 'sheet' || n.type === 'seg' ? h('span', { class: 'handle', role: 'button', tabindex: -1, title: 'Drag onto another sheet or segment: it will depend on this one', 'aria-label': 'Connector handle for ' + nodeLabel(n),
+      onpointerdown: (e) => startLinkDrag(e, n, { t: n.type, id }), _link: { n, ref: { t: n.type, id } }, onclick: (e) => { e.stopPropagation(); select_(n.type, id); setTimeout(() => { const i = $('#lkSearch'); if (i) i.focus(); }, 30); } }) : null);
     el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; el.style.width = n.w + 'px'; el.style.height = n.h + 'px';
     return el;
   }
@@ -346,8 +468,19 @@
     const vp = $('#viewport');
     const pts = new Map();
     let last = null, pinch = null, moved = 0;
+    /* touch screens retarget presses on small targets: a press within 20px of a connector handle starts a link drag */
     vp.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button, input, select, textarea')) return;
+      if (e.pointerType === 'mouse' || e.target.closest('.handle, button, input, select, textarea')) return;
+      let best = null, bd = 21;
+      for (const hd of vp.querySelectorAll('.handle')) {
+        const r = hd.getBoundingClientRect();
+        const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+        if (d < bd) { bd = d; best = hd; }
+      }
+      if (best && best._link) startLinkDrag(e, best._link.n, best._link.ref, best);
+    }, true);
+    vp.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button, input, select, textarea, .handle')) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       vp.setPointerCapture(e.pointerId);
       moved = 0;
@@ -426,7 +559,9 @@
     { k: 'hoursBudget', l: 'Hrs bud', get: (r) => Number(r.sh.hoursBudget) || 0, edit: 'num' },
     { k: 'hoursActual', l: 'Hrs act', get: (r) => Number(r.sh.hoursActual) || 0, edit: 'num' },
     { k: 'qc', l: 'QC', get: (r) => st.settings.qcSteps.filter((q) => r.sh.qc && r.sh.qc[q]).length, show: (r) => st.settings.qcSteps.filter((q) => r.sh.qc && r.sh.qc[q]).length + '/' + st.settings.qcSteps.length },
-    { k: 'deps', l: 'Deps', get: (r) => M.blockedBy(st, r.sh).length, show: (r) => { const b = M.blockedBy(st, r.sh).length; return (r.sh.deps || []).length ? (b ? '⛓ ' + b + ' open' : '✓ ' + r.sh.deps.length) : ''; } },
+    { k: 'deps', l: 'Links', get: (r) => M.blockedBy(st, r.sh).length * 100 + M.needsUpdate(st, { t: 'sheet', id: r.sh.id }).length, show: (r) => {
+      const ref = { t: 'sheet', id: r.sh.id }, lo = M.linksOf(st, ref), b = r.sh.status === 'Done' ? 0 : M.blockers(st, ref).length, u = M.needsUpdate(st, ref).length;
+      return [b ? '⛓ ' + b : '', u ? '⟳ update' : '', lo.in.length + lo.out.length && !b && !u ? '↔ ' + (lo.in.length + lo.out.length) : ''].filter(Boolean).join(' '); } },
     { k: 'notes', l: 'Notes', get: (r) => r.sh.notes, edit: 'text' },
   ];
   const DEFAULT_COLS = ['sub', 'seg', 'number', 'title', 'discipline', 'range', 'status', 'pct', 'owner', 'due', 'milestone', 'hoursBudget', 'hoursActual', 'qc', 'deps'];
@@ -457,7 +592,7 @@
   function renderList() {
     const cols = COLS.filter((c) => (ui.cols || DEFAULT_COLS).includes(c.k));
     const all = M.allSheets(st);
-    let rows = M.filterRows(all, filt);
+    let rows = M.filterRows(all, Object.assign({}, filt, { st }));
     const sc = COLS.find((c) => c.k === ui.sort.key) || COLS[0];
     rows = M.sortRows(rows, sc.k, ui.sort.dir, (r) => sc.get(r));
     const wrap = $('#listWrap');
@@ -501,6 +636,7 @@
         h('span', { class: 'grow' }),
         h('span', { class: 'muted', 'aria-live': 'polite' }, rows.length + ' of ' + all.length + ' sheets'),
         h('button', { type: 'button', class: 'btn sec sm', onclick: () => download('pm-sheets-' + M.todayISO() + '.csv', '\ufeff' + M.toCSV(st, rows), 'text/csv') }, 'CSV (filtered)'),
+        h('button', { type: 'button', class: 'btn sec sm', onclick: () => download('pm-dependencies-' + M.todayISO() + '.csv', '\ufeff' + M.depsCSV(st), 'text/csv') }, 'Dependencies CSV'),
         h('button', { type: 'button', class: 'btn sec sm', onclick: () => download('pm-pp-summary-' + M.todayISO() + '.csv', '\ufeff' + M.ppCSV(st), 'text/csv') }, 'PP summary CSV')),
       h('div', { class: 'tablebox' }, h('table', { class: 'grid' }, thead, tbody)),
       rows.length ? null : h('p', { class: 'muted pad' }, all.length ? 'No sheets match the filters.' : 'No sheets yet. Use the tree: + on a sub-project adds a segment, + on a segment adds sheets.')].filter(Boolean));
@@ -514,9 +650,11 @@
     document.querySelectorAll('.node.sel, .grid tr.sel, .tl-seg.sel').forEach((e) => e.classList.remove('sel'));
     const key = type === 'root' ? 'root' : type + ':' + id;
     const n = document.querySelector('.node[data-key="' + key + '"]'); if (n) n.classList.add('sel');
+    if (impactKey && impactKey !== key) impactKey = null;
+    if (ui.view === 'tree' && lastNodes.length) drawLinks(lastNodes, Number($('#stage').dataset.w), Number($('#stage').dataset.h));
     const tr = document.querySelector('.grid tr[data-id="' + id + '"]'); if (tr) tr.classList.add('sel');
   }
-  function closeDrawer() { sel = null; renderDrawer(); document.querySelectorAll('.sel').forEach((e) => e.classList.remove('sel')); }
+  function closeDrawer() { sel = null; impactKey = null; renderDrawer(); if (lastNodes.length && ui.view === 'tree') drawLinks(lastNodes, Number($('#stage').dataset.w), Number($('#stage').dataset.h)); document.querySelectorAll('.sel').forEach((e) => e.classList.remove('sel')); }
   function renderDrawer() {
     const d = $('#drawer');
     let content = null;
@@ -633,9 +771,66 @@
         h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); if (!nt.value.trim()) return; const shx = commit(() => M.addSheet(st, seg.id, { title: nt.value, discipline: nd.value })); ui.collapsed['seg:' + seg.id] = false; saveUI(); renderAll(); if (shx) { const i = $('#addSheetTitle'); if (i) i.focus(); } } },
           nt, nd, h('button', { class: 'btn', type: 'submit' }, 'Add')),
         h('datalist', { id: 'tplList' }, sub.templates.map((t) => h('option', { value: t.title })))),
+      connectorsBox({ t: 'seg', id: seg.id }),
       h('h3', {}, 'Sheets (' + seg.sheets.length + ')'),
       h('ul', { class: 'dlist' }, seg.sheets.map((sh) => h('li', {}, h('button', { type: 'button', class: 'rowbtn st-' + slug(sh.status), onclick: () => select_('sheet', sh.id) },
         h('span', { class: 'chip ' + (sh.discipline === 'SWP3' ? 'sw' : 'dr') }, sh.discipline === 'SWP3' ? 'SW' : 'DR'), h('span', { class: 'grow' }, ' ' + sh.title), h('span', { class: 'stpill' }, sh.status))))));
+  }
+  let pickState = { key: null, q: '', open: false, kind: 'dep', dir: 'in' };
+  function connectorsBox(ref) {
+    const lo = M.linksOf(st, ref);
+    const key = M.rk(ref);
+    const row = (l, dir) => {
+      const other = dir === 'in' ? l.src : l.dst;
+      const stale = M.revCount(st, l.src) > (l.ack || 0);
+      const verb = dir === 'in' ? (l.kind === 'dep' ? 'Depends on' : 'Update from') : (l.kind === 'dep' ? 'Needed first by' : 'Updates');
+      return h('li', { class: 'lkrow ' + (M.isCross(st, l) ? 'cross' : 'same') },
+        h('span', { class: 'lkverb' + (l.kind === 'update' ? ' upd' : '') }, verb),
+        h('button', { type: 'button', class: 'link grow', onclick: () => revealRef(other) }, M.refLabel(st, other)),
+        dir === 'in' && l.kind === 'dep' ? h('span', { class: M.isDone(st, l.src) ? 'ok' : 'bad' }, M.isDone(st, l.src) ? '✓ done' : '⛓ open') : null,
+        stale && dir === 'in' ? h('span', { class: 'fl fl-upd' }, '⟳') : null,
+        M.wrongWay(st, l) ? h('span', { class: 'fl fl-wrong', title: 'Points against the build order' }, '⚠ upstream') : null,
+        h('button', { type: 'button', class: 'ibtn danger', 'aria-label': 'Remove connector to ' + M.refLabel(st, other), onclick: () => commit(() => M.removeLink(st, l.id)) }, '×'));
+    };
+    const need = M.needsUpdate(st, ref);
+    const I = M.impact(st, ref);
+    if (pickState.key !== key) pickState = { key, q: '', open: false, kind: 'dep', dir: 'in' };
+    const q = h('input', { value: pickState.q, id: 'lkSearch', type: 'search', placeholder: 'Search any sub-project, segment or sheet…', autocomplete: 'off', 'aria-label': 'Find item to connect' });
+    const kind = select([['dep', 'Depends on (must be done first)'], ['update', 'Update needed when it changes']], pickState.kind, { id: 'lkKind', 'aria-label': 'Connector kind', onchange: (e) => { pickState.kind = e.target.value; } });
+    const dir = select([['in', 'Picked item → this (this waits / updates)'], ['out', 'This → picked item (picked waits / updates)']], pickState.dir, { id: 'lkDir', 'aria-label': 'Direction', onchange: (e) => { pickState.dir = e.target.value; } });
+    const res = h('ul', { class: 'lkres', id: 'lkRes', role: 'listbox', 'aria-label': 'Matching items' });
+    const fill = () => {
+      const t = q.value.trim().toLowerCase();
+      const cand = M.allRefs(st).filter((r) => M.rk(r) !== key).map((r) => ({ r, x: M.resolve(st, r) }))
+        .filter(({ x }) => !t || (x.sub.code + ' ' + x.sub.name + ' ' + x.seg.name + ' ' + (x.t === 'sheet' ? x.sh.title + ' ' + x.sh.number : 'segment')).toLowerCase().includes(t));
+      res.replaceChildren(...cand.slice(0, 40).map(({ r, x }) => h('li', {}, h('button', { type: 'button', class: 'rowbtn', role: 'option', onclick: () => {
+        const [a, b] = dir.value === 'in' ? [r, ref] : [ref, r];
+        const out = commit(() => M.addLink(st, a, b, kind.value));
+        if (out) toast('Connector added.' + (out.warns.length ? ' ⚠ ' + out.warns.join(' ') : ''));
+        setTimeout(() => { const i = $('#lkSearch'); if (i) i.focus(); }, 20);
+      } }, h('span', { class: 'code' }, x.sub.code), h('span', { class: 'grow' }, ' ' + x.seg.name + (x.t === 'sheet' ? ' · ' + x.sh.title : ' (whole segment)')),
+        x.t === 'sheet' ? h('span', { class: 'stpill' }, x.sh.status) : null))));
+      if (cand.length > 40) res.append(h('li', { class: 'muted' }, (cand.length - 40) + ' more — keep typing'));
+    };
+    q.addEventListener('input', () => { pickState.q = q.value; fill(); });
+    const pick = h('details', { class: 'lkadd', open: pickState.open }, h('summary', {}, '+ Add connector'), h('div', { class: 'stack' }, kind, dir, q, res));
+    pick.addEventListener('toggle', () => { pickState.open = pick.open; if (pick.open) fill(); });
+    if (pickState.open) fill();
+    const rn = h('input', { id: 'revNote', placeholder: 'What changed? (optional)', 'aria-label': 'Revision note' });
+    const rd = h('input', { type: 'date', value: M.todayISO(), 'aria-label': 'Revision date' });
+    const obj = M.resolve(st, ref).obj;
+    return h('section', { class: 'box conn', id: 'connBox' }, h('h3', {}, 'Connectors (' + (lo.in.length + lo.out.length) + ')'),
+      need.length ? h('div', { class: 'updbox' }, h('b', {}, '⟳ Update needed'), ' — changed upstream: ' + need.map((l) => M.refLabel(st, l.src)).join(', ') + ' ',
+        h('button', { type: 'button', class: 'btn sm', id: 'markUpdBtn', onclick: () => { const n = commit(() => M.markUpdated(st, ref)); if (n) toast('Marked updated.'); } }, 'Mark updated')) : null,
+      lo.in.length + lo.out.length ? h('ul', { class: 'dlist lklist' }, lo.in.map((l) => row(l, 'in')).concat(lo.out.map((l) => row(l, 'out')))) : h('p', { class: 'muted' }, 'No connectors. Link this to items in any sub-project, or drag the ● handle on the tree.'),
+      pick,
+      h('div', { class: 'row revrow' }, rn, rd, h('button', { type: 'button', class: 'btn sec sm', id: 'markRevBtn', onclick: () => { commit(() => M.markRevised(st, ref, rn.value, rd.value ? rd.value + 'T12:00:00' : null)); toast(lo.out.length ? 'Revision recorded; ' + lo.out.length + ' linked item(s) flagged “Update needed”.' : 'Revision recorded.'); } }, 'Mark revised')),
+      (obj.revs || []).length ? h('p', { class: 'muted' }, 'Revisions: ' + obj.revs.length + ' · last ' + obj.revs[obj.revs.length - 1].t.slice(0, 10) + (obj.revs[obj.revs.length - 1].note ? ' — ' + obj.revs[obj.revs.length - 1].note : '')) : null,
+      h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec sm', id: 'impactBtn', 'aria-pressed': String(impactKey === key), onclick: () => {
+        impactKey = impactKey === key ? null : key;
+        if (impactKey && !ui.links) ui.links = true;
+        renderAll();
+      } }, impactKey === key ? 'Hide impact' : 'Show impact'), h('span', { class: 'muted', id: 'impactCounts' }, I.up.size + ' upstream · ' + I.down.size + ' downstream')));
   }
   function sheetDrawer({ sub, seg, sh }) {
     const up = (f) => commit(() => M.updateSheet(st, sh.id, f));
@@ -649,22 +844,19 @@
     pct.addEventListener('input', () => { pctOut.textContent = pct.value + '%'; });
     pct.addEventListener('change', () => up({ pct: Number(pct.value) }));
     const notes = h('textarea', { rows: 4 }); notes.value = sh.notes || ''; notes.addEventListener('change', () => up({ notes: notes.value }));
-    const blocked = M.blockedBy(st, sh);
-    const candidates = sub.segments.flatMap((g) => g.sheets.map((x) => ({ g, x }))).filter((c) => c.x.id !== sh.id);
+    const blocked = sh.status === 'Done' ? [] : M.blockers(st, { t: 'sheet', id: sh.id });
     return h('div', { class: 'dbody' },
       h('p', { class: 'crumb' }, h('button', { type: 'button', class: 'link', onclick: () => select_('sub', sub.id) }, sub.code), ' › ', h('button', { type: 'button', class: 'link', onclick: () => select_('seg', seg.id) }, seg.name)),
       field('Title', inp('title')),
       sh.gen ? h('p', { class: 'pill' }, 'Generated PP sheet ' + sh.gen.idx + ' of ' + sh.gen.of + ' · Sta ' + M.formatStation(sh.gen.start) + ' to ' + M.formatStation(sh.gen.end) + ' (' + fmtFt(sh.gen.end - sh.gen.start) + ')') : null,
-      blocked.length ? h('p', { class: 'warnbox' }, '⛓ Waiting on: ' + blocked.map((x) => x.title).join(', ')) : null,
+      blocked.length ? h('p', { class: 'warnbox', id: 'blockedMsg' }, '⛓ Blocked by ' + blocked.length + ': ' + blocked.map((r) => M.refLabel(st, r)).join(', ')) : null,
       h('div', { class: 'g2' }, field('Status', status), field('Owner', owner), field('Due date', inp('due', { type: 'date' })), field('Milestone', ms),
         field('Discipline', disc), field('Sheet number', inp('number', { placeholder: 'e.g. DR-01' })), field('Series', inp('series', { placeholder: 'e.g. Drainage Plan & Profile' })),
         h('div', { class: 'f' }, h('label', { for: pct.id = 'pct' + sh.id }, '% complete'), h('div', { class: 'rangebox' }, pct, pctOut)),
         field('Hours budget', inp('hoursBudget', { type: 'number', min: 0, step: 0.5 })), field('Hours actual', inp('hoursActual', { type: 'number', min: 0, step: 0.5 }))),
       h('fieldset', { class: 'qc' }, h('legend', {}, 'QC checklist'),
         st.settings.qcSteps.map((q) => h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: !!(sh.qc && sh.qc[q]), onchange: (e) => up({ qc: Object.assign({}, sh.qc, { [q]: e.target.checked }) }) }), ' ' + q))),
-      h('details', {}, h('summary', {}, 'Depends on (' + (sh.deps || []).length + ')'),
-        candidates.length ? h('div', { class: 'deps' }, candidates.map((c) => h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: (sh.deps || []).includes(c.x.id),
-          onchange: (e) => up({ deps: e.target.checked ? (sh.deps || []).concat(c.x.id) : (sh.deps || []).filter((d) => d !== c.x.id) }) }), ' ' + c.g.name + ' · ' + c.x.title + ' (' + c.x.status + ')'))) : h('p', { class: 'muted' }, 'No other sheets in ' + sub.code + '.')),
+      connectorsBox({ t: 'sheet', id: sh.id }),
       field('Notes', notes),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn sec', onclick: () => { const c = commit(() => M.duplicateSheet(st, sh.id)); if (c) select_('sheet', c.id); } }, 'Duplicate'),
@@ -740,7 +932,7 @@
       h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); commit(() => M.addMilestone(st, nn.value, nd.value)); openMilestones(); } }, nn, nd, h('button', { class: 'btn', type: 'submit' }, 'Add milestone')));
     openModal('Milestones', body);
   }
-  function openSettings() {
+  function openSettings(focus) {
     const sc = h('input', { type: 'number', min: 1, step: 'any', placeholder: 'Scale (e.g. 30)', 'aria-label': 'New scale' });
     const ft = h('input', { type: 'number', min: 1, step: 'any', placeholder: 'Feet per sheet', 'aria-label': 'Feet per sheet for new scale' });
     sc.addEventListener('input', () => { if (!ft.value && Number(sc.value) > 0) ft.placeholder = (Number(sc.value) * 12) + ' (12 in × scale)'; });
@@ -770,6 +962,17 @@
             const sp = select([['', 'Segment scale']].concat(scaleOpts(false)), se.scale == null ? '' : String(se.scale), { 'aria-label': 'Series scale', onchange: (e) => commit(() => { se.scale = e.target.value ? Number(e.target.value) : null; }) });
             return h('tr', {}, h('td', {}, h('input', { type: 'checkbox', checked: se.enabled, 'aria-label': 'Enable ' + se.name, onchange: (e) => commit(() => { se.enabled = e.target.checked; }) })), h('td', {}, nm), h('td', {}, di), h('td', {}, sp));
           })))),
+      h('section', { id: 'orderSec' }, h('h3', {}, 'Build order'),
+        h('p', { class: 'muted' }, 'Sub-projects are built in this order. A connector pointing from a later sub-project to an earlier one is flagged “upstream”.'),
+        h('ol', { class: 'dlist order' }, M.orderedSubs(st).map((sub, i, arr) => {
+          const ids = arr.map((x) => x.id);
+          const move = (d) => { const j = i + d; if (j < 0 || j >= ids.length) return; [ids[i], ids[j]] = [ids[j], ids[i]]; commit(() => M.setOrder(st, ids)); openSettings('order'); };
+          const num = h('input', { type: 'number', min: 1, max: arr.length, value: i + 1, class: 'num', 'aria-label': 'Build position of ' + sub.code, onchange: (e) => {
+            const to = Math.max(1, Math.min(arr.length, Number(e.target.value) || i + 1)) - 1; ids.splice(i, 1); ids.splice(to, 0, sub.id); commit(() => M.setOrder(st, ids)); openSettings('order'); } });
+          return h('li', { class: 'ordrow' }, num, h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, ' ' + sub.name),
+            h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + sub.code + ' earlier', disabled: i === 0, onclick: () => move(-1) }, '↑'),
+            h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + sub.code + ' later', disabled: i === arr.length - 1, onclick: () => move(1) }, '↓'));
+        }))),
       h('section', {}, h('h3', {}, 'QC checklist steps'), qc),
       h('section', {}, h('h3', {}, 'Backup & export'),
         h('p', {}, 'Last backup: ', h('b', { id: 'lastBackup' }, st.lastBackup ? new Date(st.lastBackup).toLocaleString() : 'never')),
@@ -777,7 +980,8 @@
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn', id: 'exportBtn', onclick: () => { st.lastBackup = new Date().toISOString(); download('pm-backup-' + M.todayISO() + '.json', JSON.stringify(M.backupFile(st), null, 1), 'application/json'); flush(); renderAll(); openSettings(); toast('Backup downloaded.'); } }, 'Export backup (JSON)'),
           h('button', { type: 'button', class: 'btn sec', onclick: () => download('pm-sheets-' + M.todayISO() + '.csv', '\ufeff' + M.toCSV(st, M.allSheets(st)), 'text/csv') }, 'All sheets CSV'),
-          h('button', { type: 'button', class: 'btn sec', onclick: () => download('pm-pp-summary-' + M.todayISO() + '.csv', '\ufeff' + M.ppCSV(st), 'text/csv') }, 'PP summary CSV')),
+          h('button', { type: 'button', class: 'btn sec', onclick: () => download('pm-pp-summary-' + M.todayISO() + '.csv', '\ufeff' + M.ppCSV(st), 'text/csv') }, 'PP summary CSV'),
+          h('button', { type: 'button', class: 'btn sec', id: 'depsCsvBtn', onclick: () => download('pm-dependencies-' + M.todayISO() + '.csv', '\ufeff' + M.depsCSV(st), 'text/csv') }, 'Dependencies CSV')),
         h('form', { class: 'stack imp', onsubmit: async (e) => {
           e.preventDefault(); impErr.textContent = '';
           if (!impFile.files[0]) { impErr.textContent = 'Choose a backup file.'; return; }
@@ -796,10 +1000,11 @@
       hasOld ? h('section', {}, h('h3', {}, 'Old encrypted v1 data'), h('p', { class: 'muted' }, 'An encrypted v1 vault is still stored in this browser.'),
         h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec', onclick: () => { closeModal(); migrationPanel(true); } }, 'Import it again…'),
           h('button', { type: 'button', class: 'btn danger', onclick: () => { if (confirm('Delete the old encrypted vault from this browser? Current data is not affected.')) { localStorage.removeItem(OLDKEY); openSettings(); } } }, 'Delete old vault'))) : null,
-      h('section', {}, h('h3', {}, 'Keyboard'), h('ul', { class: 'keys' }, [['/', 'Search'], ['n', 'Add (segment / sheet in the open drawer)'], ['l', 'Toggle Tree / List'], ['t', 'Toggle timeline'], ['f', 'Fit tree to screen'], ['d', 'Light / dark'], ['Esc', 'Close drawer or dialog'], ['Enter', 'Open the focused node or row'], ['↑ ↓', 'Move between rows in the list (Alt+↑↓ in dropdowns)'], ['Arrows, + −', 'Pan / zoom when the tree has focus']].map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v)))),
+      h('section', {}, h('h3', {}, 'Keyboard'), h('ul', { class: 'keys' }, [['/', 'Search'], ['n', 'Add (segment / sheet in the open drawer)'], ['l', 'Toggle Tree / List'], ['t', 'Toggle timeline'], ['f', 'Fit tree to screen'], ['c', 'Show / hide connectors'], ['d', 'Light / dark'], ['Esc', 'Close drawer or dialog'], ['Enter', 'Open the focused node or row'], ['↑ ↓', 'Move between rows in the list (Alt+↑↓ in dropdowns)'], ['Arrows, + −', 'Pan / zoom when the tree has focus']].map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v)))),
       h('section', {}, h('h3', {}, 'Activity log'), h('ol', { class: 'log long' }, st.log.slice(0, 200).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString()), ' ', l.msg)))),
       h('section', {}, h('h3', {}, 'Danger zone'), h('button', { type: 'button', class: 'btn danger', onclick: () => { if (prompt('Type ERASE to delete all project data in this browser.') === 'ERASE') { localStorage.removeItem(KEY); st = M.newState(); flush(); closeModal(); closeDrawer(); renderAll(); } } }, 'Erase all data')));
     openModal('Settings, backup & export', body);
+    if (focus === 'order') setTimeout(() => { const o = $('#orderSec'); if (o) { o.scrollIntoView({ block: 'start' }); const i = o.querySelector('input'); if (i) i.focus({ preventScroll: true }); } }, 40);
   }
   /* one-time import of the encrypted v1 vault */
   function migrationPanel(again) {
@@ -848,7 +1053,9 @@
       renderAll();
     }, 120);
   });
-  for (const [id, k] of [['#fStatus', 'status'], ['#fOwner', 'owner'], ['#fDisc', 'discipline']]) $(id).addEventListener('change', (e) => { filt[k] = e.target.value; renderAll(); });
+  $('#lkBtn').addEventListener('click', () => { ui.links = !ui.links; saveUI(); renderTree(); });
+  $('#lkSelBtn').addEventListener('click', () => { ui.linkSel = !ui.linkSel; if (ui.linkSel) ui.links = true; saveUI(); renderTree(); });
+  for (const [id, k] of [['#fStatus', 'status'], ['#fOwner', 'owner'], ['#fDisc', 'discipline'], ['#fFlag', 'flag']]) $(id).addEventListener('change', (e) => { filt[k] = e.target.value; renderAll(); });
   document.addEventListener('keydown', (e) => {
     const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement && document.activeElement.tagName);
     if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (sel) closeDrawer(); else if (typing) document.activeElement.blur(); return; }
@@ -857,6 +1064,7 @@
     else if (e.key === 'l') { ui.view = ui.view === 'tree' ? 'list' : 'tree'; saveUI(); renderAll(); }
     else if (e.key === 't') { ui.timeline = !ui.timeline; saveUI(); renderAll(); }
     else if (e.key === 'f') fit();
+    else if (e.key === 'c') $('#lkBtn').click();
     else if (e.key === 'd') $('#themeBtn').click();
     else if (e.key === '?') openSettings();
     else if (e.key === 'n') {

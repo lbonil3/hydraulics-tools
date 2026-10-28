@@ -23,6 +23,7 @@
     <label class="sr" for="fStatus">Filter by status</label><select id="fStatus"></select>
     <label class="sr" for="fOwner">Filter by owner</label><select id="fOwner"></select>
     <label class="sr" for="fDisc">Filter by discipline</label><select id="fDisc"></select>
+    <label class="sr" for="fFlag">Filter by connector flag</label><select id="fFlag"></select>
   </div>
   <div class="seg-toggle" role="group" aria-label="View">
     <button type="button" id="vTree" aria-pressed="true">Tree</button>
@@ -42,7 +43,7 @@
   <main id="center">
     <div id="treeWrap" class="treewrap">
       <div id="viewport" class="viewport" aria-label="Project tree. Drag to pan, wheel or pinch to zoom." tabindex="0">
-        <div id="stage" class="stage"><svg id="edges" class="edges" aria-hidden="true"></svg><div id="nodes"></div></div>
+        <div id="stage" class="stage"><svg id="edges" class="edges" aria-hidden="true"></svg><div id="nodes"></div><svg id="links" class="links" aria-hidden="true"><defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"></path></marker></defs><g id="linkG"></g><path id="dragLine" class="dragline" d=""></path></svg></div>
       </div>
       <div class="zoombar" role="group" aria-label="Tree controls">
         <button type="button" class="ibtn" id="zIn" aria-label="Zoom in">+</button>
@@ -50,8 +51,10 @@
         <button type="button" class="ibtn" id="zFit" title="Fit to screen (f)">Fit</button>
         <button type="button" class="ibtn" id="xAll" title="Expand all">Expand all</button>
         <button type="button" class="ibtn" id="cAll" title="Collapse to segments">Collapse</button>
+        <button type="button" class="ibtn" id="lkBtn" aria-pressed="true" title="Show / hide connectors (c)">Connectors</button>
+        <button type="button" class="ibtn" id="lkSelBtn" aria-pressed="false" title="Only connectors of the selected item">Only selected</button>
       </div>
-      <div class="legend" aria-hidden="true"><span class="lg st-not-started">Not started</span><span class="lg st-in-progress">In progress</span><span class="lg st-in-review">In review</span><span class="lg st-done">Done</span><span class="chip dr">DR</span>Drainage <span class="chip sw">SW</span>SWP3</div>
+      <div class="legend" aria-hidden="true"><span class="lg st-not-started">Not started</span><span class="lg st-in-progress">In progress</span><span class="lg st-in-review">In review</span><span class="lg st-done">Done</span><span class="chip dr">DR</span>Drainage <span class="chip sw">SW</span>SWP3 <span class="lk lk-cross"></span>Cross-project <span class="lk lk-same"></span>Same <span class="lk lk-upd"></span>Update</div>
     </div>
     <div id="listWrap" class="listwrap" hidden></div>
     <section id="timeline" class="timeline" aria-label="Station timeline"></section>
