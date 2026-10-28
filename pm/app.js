@@ -9,7 +9,7 @@
   const SVGNS = 'http://www.w3.org/2000/svg';
 
   let st = null;
-  const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true, links: true, linkSel: false },
+  const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true, links: true, linkSel: false, branch: 'both', group: '' },
     safeJSON(localStorage.getItem(UIKEY)) || {});
   const filt = { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '', flag: '' };
   let sel = null; // { type, id }
@@ -18,7 +18,7 @@
   let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel })); }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -144,6 +144,7 @@
     $('#vTree').setAttribute('aria-pressed', String(ui.view === 'tree'));
     $('#vList').setAttribute('aria-pressed', String(ui.view === 'list'));
     $('#tlBtn').setAttribute('aria-pressed', String(ui.timeline));
+    for (const [id, v] of [['#bBoth', 'both'], ['#bDr', 'Drainage'], ['#bSw', 'SWP3']]) $(id).setAttribute('aria-pressed', String((ui.branch || 'both') === v));
     $('#timeline').hidden = !ui.timeline;
     if (ui.view === 'tree') renderTree(); else renderList();
     if (ui.timeline) renderTimeline();
@@ -165,7 +166,7 @@
         h('div', {}, h('div', { class: 'big' }, o.pct + '%'), h('div', { class: 'muted' }, 'weighted progress'), h('div', { class: 'muted' }, o.done + ' of ' + o.total + ' sheets done'))),
       h('section', { class: 'kpis' },
         kpi(o.total, 'Sheets', '', toList({})),
-        kpi(PP.total, 'PP sheets (calc)', 'accent', openPP),
+        kpi(PP.total, 'PP sheets · DR ' + PP.byDisc.Drainage + ' / SW ' + PP.byDisc.SWP3, 'accent', openPP),
         kpi(S.overdue.length, 'Overdue', S.overdue.length ? 'bad' : '', toList({ when: 'overdue' })),
         kpi(S.upcoming.length, 'Due ≤ 14 days', S.upcoming.length ? 'warn' : '', toList({ when: 'upcoming' })),
         kpi(o.hoursActual + ' / ' + o.hoursBudget, 'Hours act / bud', o.hoursBudget && o.hoursActual > o.hoursBudget ? 'bad' : '', openStaff),
@@ -173,9 +174,11 @@
       h('section', { class: 'panel' }, h('h3', {}, 'Sub-projects'),
         S.subs.map((x) => {
           const pp = PP.bySub.find((b) => b.sub === x.sub);
-          return h('button', { type: 'button', class: 'subline', onclick: () => { select_('sub', x.sub.id); focusNode('sub:' + x.sub.id); } },
+          return h('div', { class: 'subblock' }, h('button', { type: 'button', class: 'subline', onclick: () => { select_('sub', x.sub.id); focusNode('sub:' + x.sub.id); } },
             h('span', { class: 'code' }, x.sub.code), h('span', { class: 'grow' }, h('span', { class: 'nm' }, x.sub.name), bar(x.pct, 'Progress ' + x.sub.name)),
-            h('span', { class: 'pp', title: 'PP sheets' }, pp.total + ' PP'));
+            h('span', { class: 'pp', title: 'PP sheets' }, pp.total + ' PP')),
+            DISCS.map((d) => { const b = M.branchStats(st, x.sub, d); return h('button', { type: 'button', class: 'discline ' + DINFO[d].cls, 'data-disc': d, onclick: () => { openBranch(x.sub.id, d); saveUI(); renderTree(); select_('disc', x.sub.id + ':' + d); focusNode('disc:' + x.sub.id + ':' + d); } },
+              h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), h('span', { class: 'grow' }, bar(b.pct, x.sub.code + ' ' + d + ' progress')), h('span', { class: 'muted' }, b.total + ' sh · ' + b.pp + ' PP')); }));
         })),
       h('section', { class: 'panel' }, h('h3', {}, 'Build order'),
         h('div', { class: 'chain', id: 'buildChain' }, M.orderedSubs(st).map((sub, i) => [i ? h('span', { class: 'arr', 'aria-hidden': 'true' }, '→') : null,
@@ -196,7 +199,7 @@
   function revealRef(ref) {
     const r = M.resolve(st, ref);
     if (!r) return;
-    ui.collapsed['sub:' + r.sub.id] = false; if (r.t === 'sheet') ui.collapsed['seg:' + r.seg.id] = false; saveUI();
+    ui.collapsed['sub:' + r.sub.id] = false; if (r.t === 'sheet') { setSeg(r.seg.id, false); openBranch(r.sub.id, r.sh.discipline); } else DISCS.forEach((d) => openBranch(r.sub.id, d)); saveUI();
     if (ui.view !== 'tree') { ui.view = 'tree'; saveUI(); }
     renderAll(); select_(r.t, ref.id);
     setTimeout(() => focusNode(M.rk(ref)), 20);
@@ -214,21 +217,34 @@
   }
 
   /* ----- tree ----- */
-  const COLX = [0, 300, 620, 980];
-  const W = { root: 250, sub: 260, seg: 300, sheet: 320 };
-  const H = { root: 112, sub: 100, seg: 118, sheet: 56 };
+  const COLX = [0, 290, 590, 900, 1250];
+  const W = { root: 250, sub: 260, disc: 260, seg: 300, sheet: 320 };
+  const H = { root: 112, sub: 108, disc: 96, seg: 118, sheet: 56 };
   const GAP = 10;
   function isCollapsed(key, def) { return key in ui.collapsed ? ui.collapsed[key] : def; }
+  const DISCS = ['Drainage', 'SWP3'];
+  const DINFO = { Drainage: { cls: 'dr', icon: '≋', short: 'DR', label: 'Drainage' }, SWP3: { cls: 'sw', icon: '❖', short: 'SW', label: 'SWP3' } };
+  function shownDiscs() { return ui.branch === 'Drainage' || ui.branch === 'SWP3' ? [ui.branch] : DISCS; }
+  /* a segment has one collapse state per branch ('seg:<id>@<disc>'); 'seg:<id>' sets both */
+  function setSeg(id, v) { ui.collapsed['seg:' + id] = v; for (const d of DISCS) delete ui.collapsed['seg:' + id + '@' + d]; }
+  function segCollapsed(id, d) { const k = 'seg:' + id + '@' + d; return k in ui.collapsed ? ui.collapsed[k] : isCollapsed('seg:' + id, true); }
+  function openBranch(subId, d) { ui.collapsed['disc:' + subId + ':' + d] = false; if (!shownDiscs().includes(d)) ui.branch = 'both'; }
+  function keyQuery(key) { return /^seg:[^@]+$/.test(key) ? '.node[data-key^="' + key + '@"]' : '.node[data-key="' + key + '"]'; }
   function buildTree() {
     const root = { key: 'root', type: 'root', depth: 0, kids: [] };
     for (const sub of st.subs) {
       const sn = { key: 'sub:' + sub.id, type: 'sub', sub, depth: 1, kids: [] };
       sn.collapsed = isCollapsed(sn.key, false);
-      for (const seg of sub.segments) {
-        const gn = { key: 'seg:' + seg.id, type: 'seg', sub, seg, depth: 2, kids: [] };
-        gn.collapsed = isCollapsed(gn.key, true);
-        for (const sh of seg.sheets) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, depth: 3, kids: [] });
-        sn.kids.push(gn);
+      for (const d of shownDiscs()) {
+        const dn = { key: 'disc:' + sub.id + ':' + d, type: 'disc', sub, disc: d, depth: 2, kids: [] };
+        dn.collapsed = isCollapsed(dn.key, false);
+        for (const seg of sub.segments) {
+          const gn = { key: 'seg:' + seg.id + '@' + d, type: 'seg', sub, seg, disc: d, depth: 3, kids: [] };
+          gn.collapsed = segCollapsed(seg.id, d);
+          for (const sh of seg.sheets) if (sh.discipline === d) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
+          dn.kids.push(gn);
+        }
+        sn.kids.push(dn);
       }
       root.kids.push(sn);
     }
@@ -248,12 +264,13 @@
   }
   function nodeMatch(n) {
     if (!filtersActive()) return { dim: false, hit: false };
-    const sheets = n.type === 'sheet' ? [n] : n.type === 'seg' ? n.seg.sheets.map((sh) => ({ sub: n.sub, seg: n.seg, sh })) :
+    const sheets = n.type === 'sheet' ? [n] : n.type === 'seg' ? n.seg.sheets.filter((sh) => sh.discipline === n.disc).map((sh) => ({ sub: n.sub, seg: n.seg, sh })) :
+      n.type === 'disc' ? n.sub.segments.flatMap((seg) => seg.sheets.filter((sh) => sh.discipline === n.disc).map((sh) => ({ sub: n.sub, seg, sh }))) :
       n.type === 'sub' ? n.sub.segments.flatMap((seg) => seg.sheets.map((sh) => ({ sub: n.sub, seg, sh }))) : M.allSheets(st);
     const rows = n.type === 'sheet' ? [{ sub: n.sub, seg: n.seg, sh: n.sh }] : sheets;
     const any = rows.some(sheetMatches);
     const q = filt.q.trim().toLowerCase();
-    const selfHit = !!q && (n.type === 'seg' ? (n.seg.name + ' ' + n.seg.road).toLowerCase().includes(q) : n.type === 'sub' ? (n.sub.code + ' ' + n.sub.name).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
+    const selfHit = !!q && (n.type === 'disc' ? n.disc.toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.name + ' ' + n.seg.road).toLowerCase().includes(q) : n.type === 'sub' ? (n.sub.code + ' ' + n.sub.name).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
     const onlyQ = !filt.status && !filt.owner && !filt.discipline && !filt.flag;
     return { dim: !(any || (selfHit && onlyQ)), hit: selfHit && (n.type !== 'sheet' || any) };
   }
@@ -285,7 +302,11 @@
   function nodeFor(map, ref) {
     const r = M.resolve(st, ref);
     if (!r) return null;
-    return map.get(M.rk(ref)) || map.get('seg:' + r.seg.id) || map.get('sub:' + r.sub.id) || null;
+    if (r.t === 'sheet') { const d = r.sh.discipline; return map.get('sheet:' + r.sh.id) || map.get('seg:' + r.seg.id + '@' + d) || map.get('disc:' + r.sub.id + ':' + d) || map.get('sub:' + r.sub.id) || null; }
+    /* a whole-segment connector attaches to its Drainage branch copy (or SWP3 when only that branch is shown) */
+    for (const d of DISCS) { const n = map.get('seg:' + r.seg.id + '@' + d); if (n) return n; }
+    for (const d of DISCS) { const n = map.get('disc:' + r.sub.id + ':' + d); if (n) return n; }
+    return map.get('sub:' + r.sub.id) || null;
   }
   function selKey() { return sel ? (sel.type === 'root' ? 'root' : sel.type + ':' + sel.id) : null; }
   function drawLinks(nodes, maxX, maxY) {
@@ -341,7 +362,7 @@
     const move = (ev) => {
       const p = toStage(ev.clientX, ev.clientY);
       line.setAttribute('d', 'M' + x0 + ' ' + y0 + ' L' + p.x + ' ' + p.y);
-      const t = document.elementsFromPoint(ev.clientX, ev.clientY).map((x) => x.closest && x.closest('.node')).find((x) => x && /^(sheet|seg):/.test(x.dataset.key) && x.dataset.key !== n.key);
+      const t = document.elementsFromPoint(ev.clientX, ev.clientY).map((x) => x.closest && x.closest('.node')).find((x) => x && /^(sheet|seg):/.test(x.dataset.key) && x.dataset.key.split('@')[0] !== n.key.split('@')[0]);
       if (over && over !== t) over.classList.remove('droptarget');
       over = t || null; if (over) over.classList.add('droptarget');
     };
@@ -352,7 +373,7 @@
       line.setAttribute('d', ''); document.body.classList.remove('linking');
       if (over) {
         over.classList.remove('droptarget');
-        const [t, id] = over.dataset.key.split(':');
+        const [t, id] = over.dataset.key.split('@')[0].split(':');
         const r = commit(() => M.addLink(st, ref, { t, id }, 'dep'));
         if (r) toast('Connected: ' + M.refLabel(st, { t, id }) + ' depends on ' + M.refLabel(st, ref) + '.' + (r.warns.length ? ' ⚠ ' + r.warns.join(' ') : ' Change the kind in the drawer.'));
       }
@@ -366,7 +387,7 @@
       onclick: (e) => { e.stopPropagation(); ui.collapsed[n.key] = !n.collapsed; saveUI(); renderTree(); } }, (n.collapsed ? '▸ ' : '▾ ') + n.kids.length);
   }
   function addBtn(n, label, fn) { return h('button', { type: 'button', class: 'nbtn add', 'aria-label': label, title: label, onclick: (e) => { e.stopPropagation(); fn(); } }, '+'); }
-  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'sub' ? 'Sub-project ' + n.sub.code : n.type === 'seg' ? 'segment ' + n.seg.name : 'sheet ' + n.sh.title; }
+  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'sub' ? 'Sub-project ' + n.sub.code : n.type === 'disc' ? n.sub.code + ' ' + n.disc + ' branch' : n.type === 'seg' ? n.disc + ' segment ' + n.seg.name : 'sheet ' + n.sh.title; }
   function nodeEl(n) {
     const m = nodeMatch(n);
     const today = M.todayISO();
@@ -381,19 +402,31 @@
       const od = sheets.filter((x) => M.isOverdue(x, today)).length;
       body = [h('span', { class: 'code lg' }, n.sub.code, h('small', { class: 'ord', title: 'Build order' }, '#' + (M.orderedSubs(st).indexOf(n.sub) + 1))), h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.sub.name),
         h('div', { class: 'ns' }, plural(n.sub.segments.length, 'segment') + ' · ' + fmtFt(pp.length)),
-        h('div', { class: 'ns' }, pp.total + ' PP @ ' + n.sub.scale + ' scale' + (od ? '' : '')), od ? h('span', { class: 'flag' }, '⚑ ' + od + ' overdue') : null), ring(p.pct, 46)];
+        h('div', { class: 'ns' }, pp.total + ' PP @ ' + n.sub.scale + ' scale'),
+        h('div', { class: 'ns dmix' }, DISCS.map((d) => { const b = M.branchStats(st, n.sub, d); return h('span', { class: 'dm ' + DINFO[d].cls, title: d + ': ' + b.pct + '% · ' + b.total + ' sheets · ' + b.pp + ' PP' }, DINFO[d].short + ' ' + b.pct + '%'); }),
+          od ? h('span', { class: 'flag' }, '⚑ ' + od) : null)), ring(p.pct, 46)];
+    } else if (n.type === 'disc') {
+      const b = M.branchStats(st, n.sub, n.disc, null, today);
+      const I = DINFO[n.disc];
+      body = [h('span', { class: 'dicon ' + I.cls, 'aria-hidden': 'true' }, I.icon), h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.sub.code + ' · ' + I.label),
+        h('div', { class: 'ns' }, plural(b.total, 'sheet') + ' · ', h('b', {}, b.pp + ' PP')),
+        h('div', { class: 'nrow' }, b.overdue ? h('span', { class: 'flag', title: 'Overdue' }, '⚑ ' + b.overdue) : null,
+          b.blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked sheets' }, '⛓ ' + b.blocked) : null,
+          b.update ? h('span', { class: 'fl fl-upd', title: 'Sheets needing update' }, '⟳ ' + b.update) : null,
+          !b.overdue && !b.blocked && !b.update ? h('span', { class: 'ns' }, b.done + ' done') : null)), ring(b.pct, 44)];
     } else if (n.type === 'seg') {
-      const p = M.progress(n.seg.sheets);
-      const pp = M.segPP(st, n.sub, n.seg);
-      const od = n.seg.sheets.filter((x) => M.isOverdue(x, today)).length;
-      const owners = [...new Set(n.seg.sheets.map((x) => x.owner).filter(Boolean))];
+      const dsheets = n.seg.sheets.filter((x) => x.discipline === n.disc);
+      const p = M.progress(dsheets);
+      const pp = M.segPP(st, n.sub, n.seg, { discipline: n.disc });
+      const od = dsheets.filter((x) => M.isOverdue(x, today)).length;
+      const owners = [...new Set(dsheets.map((x) => x.owner).filter(Boolean))];
       const gref = { t: 'seg', id: n.seg.id };
       const gb = M.isDone(st, gref) ? 0 : M.blockers(st, gref).length, gu = M.needsUpdate(st, gref).length;
-      const inner = n.seg.sheets.map((x) => ({ t: 'sheet', id: x.id }));
+      const inner = dsheets.map((x) => ({ t: 'sheet', id: x.id }));
       const ib = inner.filter((r) => M.resolve(st, r).sh.status !== 'Done' && M.blockers(st, r).length).length, iu = inner.filter((r) => M.needsUpdate(st, r).length).length;
       body = [h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.seg.name + (n.seg.road ? ' · ' + n.seg.road : '')),
         h('div', { class: 'ns mono' }, M.formatStation(n.seg.start) + ' → ' + M.formatStation(n.seg.end) + ' · ' + fmtFt(pp.length)),
-        h('div', { class: 'ns' }, M.segScale(n.sub, n.seg) + ' scale · ', h('b', {}, pp.total + ' PP'), ' · ' + plural(n.seg.sheets.length, 'sheet')),
+        h('div', { class: 'ns' }, M.segScale(n.sub, n.seg) + ' scale · ', h('b', { title: pp.series.map((x) => x.series.name + ': ' + x.count).join(', ') || 'No enabled ' + n.disc + ' series' }, pp.total + ' ' + DINFO[n.disc].short + ' PP'), ' · ' + plural(dsheets.length, 'sheet')),
         h('div', { class: 'nrow' }, bar(p.pct, 'Progress ' + n.seg.name), od ? h('span', { class: 'flag' }, '⚑ ' + od) : null,
           gb || ib ? h('span', { class: 'fl fl-blk', title: 'Blocked items' }, '⛓' + (gb ? ' seg' : '') + (ib ? ' ' + ib : '')) : null,
           gu || iu ? h('span', { class: 'fl fl-upd', title: 'Items needing update' }, '⟳' + (gu ? ' seg' : '') + (iu ? ' ' + iu : '')) : null,
@@ -414,16 +447,17 @@
         od ? h('span', { class: 'flag', title: 'Overdue' }, '⚑') : null,
         sh.owner ? h('span', { class: 'av', title: sh.owner }, initials(sh.owner)) : h('span', { class: 'av none', title: 'Unassigned' }, '–')];
     }
-    const id = n.type === 'root' ? 'root' : n.type === 'sub' ? n.sub.id : n.type === 'seg' ? n.seg.id : n.sh.id;
-    const selected = sel && (sel.type === n.type && sel.id === id || (n.type === 'root' && sel.type === 'root'));
-    const el = h('div', { class: 'node n-' + n.type + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) + (n.sh.discipline === 'SWP3' ? ' d-sw' : ' d-dr') : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
+    const id = n.type === 'root' ? 'root' : n.type === 'sub' ? n.sub.id : n.type === 'disc' ? n.sub.id + ':' + n.disc : n.type === 'seg' ? n.seg.id : n.sh.id;
+    const selected = sel && (sel.type === n.type && sel.id === id && (n.type !== 'seg' || !sel.disc || sel.disc === n.disc) || (n.type === 'root' && sel.type === 'root'));
+    const el = h('div', { class: 'node n-' + n.type + (n.disc ? ' d-' + DINFO[n.disc].cls : '') + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
       tabindex: 0, role: 'button', 'data-key': n.key, 'aria-label': nodeLabel(n),
-      onclick: () => select_(n.type, id),
+      onclick: () => select_(n.type, id, n.disc),
       onmouseenter: () => hoverLinks(n.key, true), onmouseleave: () => hoverLinks(n.key, false),
-      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id); } } },
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id, n.disc); } } },
     body, h('div', { class: 'nacts' },
       n.type === 'sub' ? addBtn(n, 'Add segment to ' + n.sub.code, () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegName'); if (i) i.focus(); }, 30); }) : null,
-      n.type === 'seg' ? addBtn(n, 'Add sheet to ' + n.seg.name, () => { ui.collapsed[n.key] = false; select_('seg', n.seg.id); setTimeout(() => { const i = $('#addSheetTitle'); if (i) i.focus(); }, 30); }) : null,
+      n.type === 'disc' ? addBtn(n, 'Add segment to ' + n.sub.code + ' (shared by both branches)', () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegName'); if (i) i.focus(); }, 30); }) : null,
+      n.type === 'seg' ? addBtn(n, 'Add ' + n.disc + ' sheet to ' + n.seg.name, () => { ui.collapsed[n.key] = false; select_('seg', n.seg.id, n.disc); setTimeout(() => { const i = $('#addSheetTitle'); if (i) i.focus(); }, 30); }) : null,
       toggleBtn(n)),
     n.type === 'sheet' || n.type === 'seg' ? h('span', { class: 'handle', role: 'button', tabindex: -1, title: 'Drag onto another sheet or segment: it will depend on this one', 'aria-label': 'Connector handle for ' + nodeLabel(n),
       onpointerdown: (e) => startLinkDrag(e, n, { t: n.type, id }), _link: { n, ref: { t: n.type, id } }, onclick: (e) => { e.stopPropagation(); select_(n.type, id); setTimeout(() => { const i = $('#lkSearch'); if (i) i.focus(); }, 30); } }) : null);
@@ -450,7 +484,7 @@
   }
   function focusNode(key) {
     if (ui.view !== 'tree') return;
-    const el = document.querySelector('.node[data-key="' + key + '"]');
+    const el = document.querySelector(keyQuery(key));
     if (!el) return;
     const vp = $('#viewport').getBoundingClientRect();
     const x = parseFloat(el.style.left) + parseFloat(el.style.width) / 2, y = parseFloat(el.style.top) + parseFloat(el.style.height) / 2;
@@ -459,7 +493,7 @@
     el.focus({ preventScroll: true });
   }
   function revealSheet(r) {
-    ui.collapsed['sub:' + r.sub.id] = false; ui.collapsed['seg:' + r.seg.id] = false; saveUI();
+    ui.collapsed['sub:' + r.sub.id] = false; setSeg(r.seg.id, false); openBranch(r.sub.id, r.sh.discipline); saveUI();
     renderAll();
     setTimeout(() => focusNode('sheet:' + r.sh.id), 20);
   }
@@ -529,17 +563,18 @@
     for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) { const t = h('span', { class: 'tick' }, M.formatStation(v)); t.style.left = ((v - lo) / span * 100) + '%'; axis.append(t); }
     box.replaceChildren(...[h('div', { class: 'tl-head' }, h('b', {}, 'Station timeline'), h('span', { class: 'muted' }, ' colour = progress · click a segment')),
       h('div', { class: 'tl-row' }, h('span', { class: 'tl-lbl' }), axis),
-      st.subs.map((sub) => h('div', { class: 'tl-row' }, h('span', { class: 'tl-lbl' }, h('span', { class: 'code' }, sub.code)),
+      st.subs.flatMap((sub) => shownDiscs().map((d, di) => h('div', { class: 'tl-row lane ' + DINFO[d].cls + (di ? ' lane2' : '') }, h('span', { class: 'tl-lbl' }, di ? null : h('span', { class: 'code' }, sub.code), h('span', { class: 'chip ' + DINFO[d].cls, title: d }, DINFO[d].short)),
         h('div', { class: 'tl-track' }, sub.segments.map((seg) => {
-          const p = M.progress(seg.sheets).pct;
-          const pp = M.segPP(st, sub, seg).total;
-          const b = h('button', { type: 'button', class: 'tl-seg p' + Math.min(4, Math.floor(p / 25)) + (sel && sel.id === seg.id ? ' sel' : ''),
-            title: sub.code + ' · ' + seg.name + (seg.road ? ' · ' + seg.road : '') + '\n' + M.formatStation(seg.start) + ' – ' + M.formatStation(seg.end) + ' · ' + fmtFt(seg.end - seg.start) + ' · ' + pp + ' PP · ' + Math.round(p) + '%',
-            'aria-label': 'Segment ' + seg.name + ', ' + Math.round(p) + '% complete',
-            onclick: () => { select_('seg', seg.id); focusNode('seg:' + seg.id); } }, h('span', {}, seg.name));
+          const g = M.branchStats(st, sub, d, seg);
+          const p = g.pct;
+          const pp = g.pp;
+          const b = h('button', { type: 'button', class: 'tl-seg p' + Math.min(4, Math.floor(p / 25)) + (sel && sel.id === seg.id && (!sel.disc || sel.disc === d) ? ' sel' : ''),
+            title: sub.code + ' · ' + d + ' · ' + seg.name + (seg.road ? ' · ' + seg.road : '') + '\n' + M.formatStation(seg.start) + ' – ' + M.formatStation(seg.end) + ' · ' + fmtFt(seg.end - seg.start) + ' · ' + pp + ' ' + DINFO[d].short + ' PP · ' + g.total + ' sheets · ' + Math.round(p) + '%',
+            'aria-label': d + ' segment ' + seg.name + ', ' + Math.round(p) + '% complete',
+            onclick: () => { openBranch(sub.id, d); select_('seg', seg.id, d); renderTree(); focusNode('seg:' + seg.id + '@' + d); } }, h('span', {}, seg.name));
           b.style.left = ((seg.start - lo) / span * 100) + '%'; b.style.width = Math.max(0.6, (seg.end - seg.start) / span * 100) + '%';
           return b;
-        }))))].flat());
+        })))))].flat());
   }
 
   /* ----- list (dense table) ----- */
@@ -602,17 +637,21 @@
       return h('th', { scope: 'col', class: c.wide ? 'wide' : '', 'aria-sort': on ? (ui.sort.dir === 'asc' ? 'ascending' : 'descending') : 'none' },
         h('button', { type: 'button', class: 'sort', onclick: () => { ui.sort = { key: c.k, dir: on && ui.sort.dir === 'asc' ? 'desc' : 'asc' }; saveUI(); renderList(); } }, c.l, on ? (ui.sort.dir === 'asc' ? ' ▲' : ' ▼') : ''));
     })));
-    const tbody = h('tbody', {}, rows.map((r) => h('tr', { tabindex: 0, 'data-id': r.sh.id, class: (M.isOverdue(r.sh, M.todayISO()) ? 'od ' : '') + (sel && sel.id === r.sh.id ? 'sel' : ''),
+    if (ui.group) rows = rows.map((r, i) => ({ r, i })).sort((a, b) => M.subOrder(st, a.r.sub) - M.subOrder(st, b.r.sub) || DISCS.indexOf(a.r.sh.discipline) - DISCS.indexOf(b.r.sh.discipline) || a.i - b.i).map((x) => x.r);
+    const grpRow = (r) => { const g = rows.filter((x) => x.sub === r.sub && x.sh.discipline === r.sh.discipline); const p = M.progress(g.map((x) => x.sh));
+      return h('tr', { class: 'grp ' + DINFO[r.sh.discipline].cls }, h('th', { colspan: cols.length, scope: 'rowgroup' }, h('span', { class: 'code' }, r.sub.code), ' ', h('span', { class: 'chip ' + DINFO[r.sh.discipline].cls }, DINFO[r.sh.discipline].short), ' ' + r.sub.name + ' · ' + r.sh.discipline + ' — ' + plural(g.length, 'sheet') + ' · ' + p.pct + '%')); };
+    const tbody = h('tbody', {}, rows.map((r, i) => [ui.group && (!i || rows[i - 1].sub !== r.sub || rows[i - 1].sh.discipline !== r.sh.discipline) ? grpRow(r) : null, h('tr', { tabindex: 0, 'data-id': r.sh.id, class: (M.isOverdue(r.sh, M.todayISO()) ? 'od ' : '') + (sel && sel.id === r.sh.id ? 'sel' : ''),
       onkeydown: (e) => { if (e.key === 'Enter' && e.target.tagName === 'TR') { e.preventDefault(); select_('sheet', r.sh.id); } } },
     cols.map((c, ci) => h('td', { class: c.wide ? 'wide' : '' , 'data-col': ci }, c.edit ? cellEditor(c, r, refresh) : c.k === 'title' ? null : (c.show ? c.show(r) : c.get(r))) ),
-    )));
-    tbody.addEventListener('click', (e) => { const tr = e.target.closest('tr'); if (tr && !e.target.closest('input,select,button')) select_('sheet', tr.dataset.id); });
+    )]));
+    tbody.addEventListener('click', (e) => { const tr = e.target.closest('tr'); if (tr && tr.dataset.id && !e.target.closest('input,select,button')) select_('sheet', tr.dataset.id); });
     tbody.addEventListener('keydown', (e) => {
       if (!['ArrowUp', 'ArrowDown'].includes(e.key)) return;
       const t = e.target;
       if (t.tagName === 'SELECT' && !e.altKey) return; /* native select keys; Alt+Arrow moves rows */
       const tr = t.closest('tr'); const td = t.closest('td');
-      const next = e.key === 'ArrowDown' ? tr.nextElementSibling : tr.previousElementSibling;
+      let next = e.key === 'ArrowDown' ? tr.nextElementSibling : tr.previousElementSibling;
+      while (next && next.classList.contains('grp')) next = e.key === 'ArrowDown' ? next.nextElementSibling : next.previousElementSibling;
       if (!next) return;
       e.preventDefault();
       const target = td && t !== tr ? next.children[td.dataset.col].querySelector('input,select') : next;
@@ -620,10 +659,12 @@
     });
     const views = select([['', 'Saved views…']].concat(st.views.map((v) => [v.id, v.name])), '', { 'aria-label': 'Saved views' });
     views.addEventListener('change', () => { const v = st.views.find((x) => x.id === views.value); if (v) { Object.assign(filt, { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '' }, v.filt); if (v.sort) ui.sort = v.sort; $('#q').value = filt.q; renderAll(); } });
-    const fsel = (k, opts, lab) => { const e = select(opts, filt[k], { 'aria-label': lab }); e.addEventListener('change', () => { filt[k] = e.value; renderList(); }); return e; };
+    const fsel = (k, opts, lab) => { const e = select(opts, filt[k], { 'aria-label': lab }); e.addEventListener('change', () => { filt[k] = e.value; if (k === 'discipline') renderAll(); else renderList(); }); return e; };
     wrap.replaceChildren(...[
       h('div', { class: 'listbar' },
         fsel('sub', [['', 'All sub-projects']].concat(st.subs.map((x) => [x.id, x.code + ' · ' + x.name])), 'Sub-project'),
+        fsel('discipline', [['', 'Drainage + SWP3'], ['Drainage', 'Drainage only'], ['SWP3', 'SWP3 only']], 'Discipline'),
+        (() => { const g = select([['', 'No grouping'], ['subdisc', 'Group: sub-project › discipline']], ui.group, { 'aria-label': 'Grouping', id: 'groupSel' }); g.addEventListener('change', () => { ui.group = g.value; saveUI(); renderList(); }); return g; })(),
         fsel('kind', [['', 'All sheets'], ['pp', 'PP (generated)'], ['other', 'Other sheets']], 'Sheet kind'),
         fsel('when', [['', 'Any date'], ['open', 'Open only'], ['overdue', 'Overdue'], ['upcoming', 'Due ≤ 14 days']], 'Due'),
         fsel('milestone', [['', 'All milestones'], ['(none)', 'No milestone']].concat(st.milestones.map((m) => [m.id, m.name])), 'Milestone'),
@@ -643,13 +684,13 @@
   }
 
   /* ----- drawer ----- */
-  function select_(type, id) {
-    sel = { type, id };
+  function select_(type, id, disc) {
+    sel = { type, id, disc: disc || (type === 'disc' ? id.split(':')[1] : sel && sel.type === type && sel.id === id ? sel.disc : null) };
     if (type === 'sheet' && window.innerWidth < 900) { /* mobile: drawer as sheet */ }
     renderDrawer();
     document.querySelectorAll('.node.sel, .grid tr.sel, .tl-seg.sel').forEach((e) => e.classList.remove('sel'));
     const key = type === 'root' ? 'root' : type + ':' + id;
-    const n = document.querySelector('.node[data-key="' + key + '"]'); if (n) n.classList.add('sel');
+    document.querySelectorAll(type === 'seg' && sel.disc ? '.node[data-key="seg:' + id + '@' + sel.disc + '"]' : keyQuery(key)).forEach((n) => n.classList.add('sel'));
     if (impactKey && impactKey !== key) impactKey = null;
     if (ui.view === 'tree' && lastNodes.length) drawLinks(lastNodes, Number($('#stage').dataset.w), Number($('#stage').dataset.h));
     const tr = document.querySelector('.grid tr[data-id="' + id + '"]'); if (tr) tr.classList.add('sel');
@@ -662,13 +703,14 @@
       if (sel.type === 'root') content = rootDrawer();
       else if (sel.type === 'sub') { const sub = M.findSub(st, sel.id); content = sub && subDrawer(sub); }
       else if (sel.type === 'seg') { const hit = M.findSeg(st, sel.id); content = hit && segDrawer(hit); }
+      else if (sel.type === 'disc') { const [sid, d] = sel.id.split(':'); const sub = M.findSub(st, sid); content = sub && discDrawer(sub, d); }
       else if (sel.type === 'sheet') { const hit = M.findSheet(st, sel.id); content = hit && sheetDrawer(hit); }
     }
     if (!content) { sel = null; d.hidden = true; $('#layout').classList.remove('drawer-open'); d.replaceChildren(); return; }
     const scroll = d.scrollTop;
     const had = !d.hidden;
     d.hidden = false; $('#layout').classList.add('drawer-open');
-    d.replaceChildren(h('div', { class: 'dhead' }, h('span', { class: 'dkind' }, { root: 'Project', sub: 'Sub-project', seg: 'Segment', sheet: 'Sheet' }[sel.type]),
+    d.replaceChildren(h('div', { class: 'dhead' }, h('span', { class: 'dkind' }, ({ root: 'Project', sub: 'Sub-project', disc: 'Discipline branch', seg: 'Segment', sheet: 'Sheet' }[sel.type] + (sel.type === 'seg' && sel.disc ? ' · ' + sel.disc + ' branch' : ''))),
       h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Close details', onclick: closeDrawer }, '×')), content);
     if (had) d.scrollTop = scroll;
   }
@@ -740,14 +782,40 @@
           h('button', { type: 'button', class: 'btn sec sm', onclick: () => commit(() => M.addTemplate(st, sub.id, { title: 'New sheet', discipline: 'Drainage' })) }, '+ Template'),
           h('button', { type: 'button', class: 'btn sec sm', onclick: () => { if (confirm('Reset ' + sub.code + ' templates to defaults?')) commit(() => M.resetTemplates(st, sub.id)); } }, 'Reset defaults'))));
   }
+  /* generate PP sheets for one segment; disc = 'Drainage' | 'SWP3' | null (both) */
+  function genPP(seg, disc) {
+    const pl = M.planGenerate(st, seg.id, disc ? { discipline: disc } : undefined);
+    let rm = false;
+    if (pl.removeTouched.length) rm = confirm(pl.removeTouched.length + ' generated PP sheet(s) beyond the new count have your edits (status, owner, notes…):\n\n' + pl.removeTouched.map((x) => '• ' + x.title).join('\n') + '\n\nOK = delete them too. Cancel = keep them.');
+    const r = commit(() => M.applyGenerate(st, seg.id, pl, { removeTouched: rm }));
+    if (disc) ui.collapsed['seg:' + seg.id + '@' + disc] = false; else setSeg(seg.id, false);
+    saveUI(); renderAll();
+    if (r) toast((disc ? disc + ' ' : '') + 'PP sheets: ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed' + (r.keptTouched ? ', ' + r.keptTouched + ' edited kept' : '') + '.');
+    return r;
+  }
+  function discDrawer(sub, d) {
+    const b = M.branchStats(st, sub, d);
+    const I = DINFO[d];
+    return h('div', { class: 'dbody' },
+      h('p', { class: 'crumb' }, h('button', { type: 'button', class: 'link', onclick: () => select_('sub', sub.id) }, sub.code + ' · ' + sub.name)),
+      h('h2', {}, h('span', { class: 'dicon ' + I.cls }, I.icon), ' ' + sub.code + ' · ' + d),
+      h('div', { class: 'statrow' }, ring(b.pct, 54), h('div', {}, h('div', {}, plural(b.total, 'sheet') + ' · ' + b.done + ' done'), h('div', {}, h('b', {}, b.pp + ' ' + d + ' PP sheets'), ' (' + st.settings.series.filter((x) => x.enabled && x.discipline === d).map((x) => x.name).join(', ') + ')'),
+        h('div', {}, [b.overdue ? '⚑ ' + b.overdue + ' overdue' : '', b.blocked ? '⛓ ' + b.blocked + ' blocked' : '', b.update ? '⟳ ' + b.update + ' need update' : ''].filter(Boolean).join(' · ')))),
+      h('h3', {}, 'Segments (shared with the ' + (d === 'SWP3' ? 'Drainage' : 'SWP3') + ' branch)'),
+      sub.segments.length ? h('ul', { class: 'dlist' }, sub.segments.map((seg) => { const g = M.branchStats(st, sub, d, seg); return h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: () => { select_('seg', seg.id, d); focusNode('seg:' + seg.id + '@' + d); } },
+        h('span', { class: 'mono' }, M.formatStation(seg.start) + '–' + M.formatStation(seg.end)), h('span', { class: 'grow' }, ' ' + seg.name + ' · ' + g.total + ' sh · ' + g.pct + '%'), h('b', {}, g.pp + ' PP'))); })) : h('p', { class: 'muted' }, 'No segments yet — add one on the sub-project; it appears in both branches.'),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn', id: 'genBranchBtn', disabled: !sub.segments.length, onclick: () => { let n = 0; for (const seg of sub.segments) { const pl = M.planGenerate(st, seg.id, { discipline: d }); if (pl.create.length + pl.update.length + pl.remove.length + pl.removeTouched.length) { genPP(seg, d); n++; } } if (!n) toast(d + ' PP sheets already up to date.'); } }, 'Generate ' + d + ' PP for all segments'),
+        h('button', { type: 'button', class: 'btn sec', onclick: () => { select_('sub', sub.id); setTimeout(() => { const i = $('#addSegName'); if (i) i.focus(); }, 30); } }, '+ Segment')));
+  }
   function segDrawer({ sub, seg }) {
     const p = M.progress(seg.sheets);
-    const bd = select([['', 'All disciplines'], ['Drainage', 'Drainage only'], ['SWP3', 'SWP3 only']], '', { 'aria-label': 'Which standard sheets' });
+    const bd = select([['', 'All disciplines'], ['Drainage', 'Drainage only'], ['SWP3', 'SWP3 only']], (sel && sel.disc) || '', { 'aria-label': 'Which standard sheets' });
     const bo = select([['', 'Owner: none']].concat(st.staff.map((x) => x.name)), '', { 'aria-label': 'Owner for added sheets' });
     const bm = select([['', 'Milestone: none']].concat(st.milestones.map((m) => [m.id, m.name])), '', { 'aria-label': 'Milestone for added sheets' });
     const bdue = h('input', { type: 'date', 'aria-label': 'Due date for added sheets' });
     const nt = h('input', { id: 'addSheetTitle', placeholder: 'Sheet title', 'aria-label': 'New sheet title', list: 'tplList' });
-    const nd = select(M.DISCIPLINES, 'Drainage', { 'aria-label': 'New sheet discipline' });
+    const nd = select(M.DISCIPLINES, (sel && sel.disc) || 'Drainage', { 'aria-label': 'New sheet discipline', id: 'addSheetDisc' });
     const plan = M.planGenerate(st, seg.id);
     const pending = plan.create.length + plan.update.length + plan.remove.length + plan.removeTouched.length;
     return h('div', { class: 'dbody' },
@@ -755,20 +823,17 @@
       h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, ppLine(sub, seg))),
       h('section', { class: 'box' }, h('h3', {}, 'PP sheets'),
         h('p', { class: 'muted' }, pending ? 'Generate creates ' + plan.create.length + ', updates ' + plan.update.length + ', removes ' + (plan.remove.length + plan.removeTouched.length) + ' generated sheet(s). Your other sheets are never touched.' : 'Generated PP sheets are up to date (' + plan.unchanged + ').'),
-        h('button', { type: 'button', class: 'btn', id: 'genBtn', disabled: !pending, onclick: () => {
-          const pl = M.planGenerate(st, seg.id);
-          let rm = false;
-          if (pl.removeTouched.length) rm = confirm(pl.removeTouched.length + ' generated PP sheet(s) beyond the new count have your edits (status, owner, notes…):\n\n' + pl.removeTouched.map((x) => '• ' + x.title).join('\n') + '\n\nOK = delete them too. Cancel = keep them.');
-          const r = commit(() => M.applyGenerate(st, seg.id, pl, { removeTouched: rm }));
-          ui.collapsed['seg:' + seg.id] = false; saveUI(); renderAll();
-          if (r) toast('PP sheets: ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed' + (r.keptTouched ? ', ' + r.keptTouched + ' edited kept' : '') + '.');
-        } }, 'Generate PP sheets')),
+        h('div', { class: 'row' },
+          h('button', { type: 'button', class: 'btn', id: 'genBtn', disabled: !pending, onclick: () => genPP(seg, null) }, 'Generate PP sheets (both)'),
+          DISCS.map((d) => { const pl = M.planGenerate(st, seg.id, { discipline: d }); const n = pl.create.length + pl.update.length + pl.remove.length + pl.removeTouched.length;
+            return h('button', { type: 'button', class: 'btn sec ' + DINFO[d].cls, id: 'gen' + DINFO[d].short, disabled: !n, title: n ? n + ' change(s) for ' + d + ' series' : d + ' PP sheets up to date', onclick: () => genPP(seg, d) }, DINFO[d].short + ' only' + (n ? ' (' + n + ')' : ' ✓'));
+          }))),
       h('details', {}, h('summary', {}, 'Edit segment (stations, scale)'), segFields(sub, seg, () => renderAll()),
         h('button', { type: 'button', class: 'btn danger sm', onclick: () => { if (confirm('Delete segment “' + seg.name + '” and its ' + seg.sheets.length + ' sheets?')) { commit(() => M.deleteSegment(st, seg.id)); closeDrawer(); } } }, 'Delete segment')),
       h('section', { class: 'box' }, h('h3', {}, 'Add sheets'),
         h('form', { class: 'g2', onsubmit: (e) => { e.preventDefault(); const a = commit(() => M.bulkAddTemplates(st, seg.id, { discipline: bd.value, owner: bo.value, due: bdue.value, milestone: bm.value })) || []; toast(a.length ? 'Added ' + a.length + ' standard sheets.' : 'Standard sheets already on this segment.'); } },
           bd, bo, bm, bdue, h('button', { class: 'btn sec', type: 'submit' }, 'Add standard set')),
-        h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); if (!nt.value.trim()) return; const shx = commit(() => M.addSheet(st, seg.id, { title: nt.value, discipline: nd.value })); ui.collapsed['seg:' + seg.id] = false; saveUI(); renderAll(); if (shx) { const i = $('#addSheetTitle'); if (i) i.focus(); } } },
+        h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); if (!nt.value.trim()) return; const shx = commit(() => M.addSheet(st, seg.id, { title: nt.value, discipline: nd.value })); setSeg(seg.id, false); saveUI(); renderAll(); if (shx) { const i = $('#addSheetTitle'); if (i) i.focus(); } } },
           nt, nd, h('button', { class: 'btn', type: 'submit' }, 'Add')),
         h('datalist', { id: 'tplList' }, sub.templates.map((t) => h('option', { value: t.title })))),
       connectorsBox({ t: 'seg', id: seg.id }),
@@ -880,15 +945,15 @@
       const cur = M.ppSummary(st), W = M.ppSummary(st, { subScale: what });
       body.replaceChildren(
         h('p', { class: 'muted' }, 'PP sheets = ceil(segment length ÷ feet per sheet)' + (st.settings.overlapFt ? ' with ' + st.settings.overlapFt + ' ft overlap' : ', no overlap') + ', for each enabled series (' + st.settings.series.filter((x) => x.enabled).map((x) => x.name).join(', ') + '). What-if changes are not saved unless you apply them.'),
-        h('table', { class: 'grid compact' }, h('thead', {}, h('tr', {}, ['Sub-project', 'Segments', 'Length', 'Default scale', 'What-if scale', 'PP now', 'PP what-if'].map((x) => h('th', { scope: 'col' }, x)))),
+        h('table', { class: 'grid compact' }, h('thead', {}, h('tr', {}, ['Sub-project', 'Segments', 'Length', 'Default scale', 'What-if scale', 'DR PP', 'SW PP', 'PP now', 'PP what-if'].map((x) => h('th', { scope: 'col' }, x)))),
           h('tbody', {}, st.subs.map((sub, i) => {
             const ws = select([['', 'same (' + sub.scale + ')']].concat(scaleOpts(false)), what[sub.id] || '', { 'aria-label': 'What-if scale for ' + sub.code });
             ws.addEventListener('change', () => { if (ws.value) what[sub.id] = Number(ws.value); else delete what[sub.id]; draw(); });
             const a = cur.bySub[i].total, b = W.bySub[i].total;
             return h('tr', {}, h('th', { scope: 'row' }, sub.code + ' · ' + sub.name), h('td', {}, sub.segments.length), h('td', {}, fmtFt(cur.bySub[i].length)), h('td', {}, sub.scale), h('td', {}, ws),
-              h('td', {}, a), h('td', { class: b !== a ? 'chg' : '' }, b, b !== a ? ' (' + (b > a ? '+' : '') + (b - a) + ')' : ''));
+              h('td', { class: 'dr-c' }, cur.bySub[i].disc.Drainage), h('td', { class: 'sw-c' }, cur.bySub[i].disc.SWP3), h('td', {}, a), h('td', { class: b !== a ? 'chg' : '' }, b, b !== a ? ' (' + (b > a ? '+' : '') + (b - a) + ')' : ''));
           })),
-          h('tfoot', {}, h('tr', {}, h('th', { scope: 'row' }, 'Project'), h('td', {}), h('td', {}, fmtFt(cur.length)), h('td', {}), h('td', {}), h('td', {}, h('b', {}, cur.total)), h('td', {}, h('b', { id: 'ppWhatIf' }, W.total))))),
+          h('tfoot', {}, h('tr', {}, h('th', { scope: 'row' }, 'Project'), h('td', {}), h('td', {}, fmtFt(cur.length)), h('td', {}), h('td', {}), h('td', { id: 'ppDr' }, h('b', {}, cur.byDisc.Drainage)), h('td', { id: 'ppSw' }, h('b', {}, cur.byDisc.SWP3)), h('td', {}, h('b', {}, cur.total)), h('td', {}, h('b', { id: 'ppWhatIf' }, W.total))))),
         h('p', { class: 'muted' }, 'Segments with their own scale, and series with a fixed scale, are not changed by the what-if.'),
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn', disabled: !Object.keys(what).length, onclick: () => { commit(() => { for (const [id, v] of Object.entries(what)) { const sub = M.findSub(st, id); sub.scale = v; M.log(st, sub.code + ' default scale → ' + v + ' (from calculator)'); } }); toast('Default scales applied. Use “Generate PP sheets” on segments to update sheet entries.'); openPP(); } }, 'Apply what-if scales'),
@@ -1041,18 +1106,19 @@
   $('#zIn').addEventListener('click', () => { const v = $('#viewport'); zoomAt(1.25, v.clientWidth / 2, v.clientHeight / 2); });
   $('#zOut').addEventListener('click', () => { const v = $('#viewport'); zoomAt(0.8, v.clientWidth / 2, v.clientHeight / 2); });
   $('#zFit').addEventListener('click', () => fit());
-  $('#xAll').addEventListener('click', () => { for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; for (const g of sub.segments) ui.collapsed['seg:' + g.id] = false; } saveUI(); renderTree(); fit(); });
-  $('#cAll').addEventListener('click', () => { for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; for (const g of sub.segments) ui.collapsed['seg:' + g.id] = true; } saveUI(); renderTree(); fit(); });
+  $('#xAll').addEventListener('click', () => { for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; DISCS.forEach((d) => { ui.collapsed['disc:' + sub.id + ':' + d] = false; }); for (const g of sub.segments) setSeg(g.id, false); } saveUI(); renderTree(); fit(); });
+  $('#cAll').addEventListener('click', () => { for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; DISCS.forEach((d) => { ui.collapsed['disc:' + sub.id + ':' + d] = false; }); for (const g of sub.segments) setSeg(g.id, true); } saveUI(); renderTree(); fit(); });
   $('#railBtn').addEventListener('click', () => { const open = !document.body.classList.contains('rail-open'); document.body.classList.toggle('rail-open', open); $('#railBtn').setAttribute('aria-expanded', String(open)); });
   let qTm;
   $('#q').addEventListener('input', () => {
     clearTimeout(qTm);
     qTm = setTimeout(() => {
       filt.q = $('#q').value;
-      if (filt.q.trim()) for (const r of M.filterRows(M.allSheets(st), { q: filt.q })) { ui.collapsed['sub:' + r.sub.id] = false; ui.collapsed['seg:' + r.seg.id] = false; }
+      if (filt.q.trim()) for (const r of M.filterRows(M.allSheets(st), { q: filt.q })) { ui.collapsed['sub:' + r.sub.id] = false; ui.collapsed['disc:' + r.sub.id + ':' + r.sh.discipline] = false; setSeg(r.seg.id, false); }
       renderAll();
     }, 120);
   });
+  for (const [id, v] of [['#bBoth', 'both'], ['#bDr', 'Drainage'], ['#bSw', 'SWP3']]) $(id).addEventListener('click', () => { ui.branch = v; saveUI(); renderAll(); });
   $('#lkBtn').addEventListener('click', () => { ui.links = !ui.links; saveUI(); renderTree(); });
   $('#lkSelBtn').addEventListener('click', () => { ui.linkSel = !ui.linkSel; if (ui.linkSel) ui.links = true; saveUI(); renderTree(); });
   for (const [id, k] of [['#fStatus', 'status'], ['#fOwner', 'owner'], ['#fDisc', 'discipline'], ['#fFlag', 'flag']]) $(id).addEventListener('change', (e) => { filt[k] = e.target.value; renderAll(); });
