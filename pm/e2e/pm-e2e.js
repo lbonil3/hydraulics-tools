@@ -1,4 +1,4 @@
-// Headless-Chrome end-to-end test for Project Tracker v2 (testing mode, no login).
+// Headless-Chrome end-to-end test for Project Tracker v2.1 (testing mode, no login).
 // Run from anywhere: node pm/e2e/pm-e2e.js [1440x900|1920x1080|iphone]
 // Files are served from this checkout by request interception (no server). Set PM_BASE=https://.../pm/ to test a live site.
 // Needs puppeteer-core and Chrome at /usr/bin/google-chrome.
@@ -223,11 +223,96 @@ async function serve(r) {
   const keys = await pg.evaluate(() => Object.keys(localStorage).sort());
   ok(JSON.stringify(keys) === '["pm.data.v2","pm.ui.v2"]', 'storage keys: pm.data.v2 + pm.ui.v2 (' + keys + ')');
 
+  // 10b. v2.1 connectors across sub-projects
+  const shot21 = (name) => pg.screenshot({ path: SHOTS + 'v2.1-' + name + '-' + tag + '.png' });
+  await click('#xAll'); await sleep(300);
+  const ids = await pg.evaluate(() => { const d = JSON.parse(localStorage.getItem('pm.data.v2')); const a = d.subs[0].segments[0].sheets, b = d.subs[1].segments[0].sheets; return { a0: a[0].id, a1: a[1].id, a0t: a[0].title, b0: b[0].id, b1: b[1].id }; });
+  ok(/A\s*→\s*B\s*→\s*C\s*→\s*D/.test(await txt('#buildChain')) && /Build: A → B → C → D/.test(await txt('.node.n-root')), 'build order chain A→B→C→D on overview and tree');
+  // link via drawer picker: B sheet depends on A sheet
+  await click('.node[data-key="sheet:' + ids.b0 + '"]');
+  await pg.waitForSelector('#connBox');
+  await pg.$eval('#connBox details.lkadd summary', (e) => e.click()); await sleep(100);
+  await typeInto(await pg.$('#lkSearch'), ids.a0t); await sleep(150);
+  const opts = await pg.$$eval('#lkRes button', (bs) => bs.map((b) => b.textContent));
+  ok(opts.length >= 1 && opts.every((t) => /^A/.test(t)) && opts.some((t) => /Mainlane North/.test(t)), 'picker searches other sub-projects (shows sub, segment, sheet)');
+  await pg.$$eval('#lkRes button', (bs, t) => bs.find((b) => b.textContent.includes(t)).click(), ids.a0t); await sleep(200);
+  ok(/Depends on/i.test(await txt('#connBox .lklist')) && /Mainlane North/.test(await txt('#connBox .lklist')), 'drawer lists the new cross-project connector');
+  ok(/Blocked by 1/.test(await txt('#blockedMsg')), 'drawer shows “Blocked by 1”');
+  ok(/Blocked by 1/.test(await txt('.node[data-key="sheet:' + ids.b0 + '"] .fl-blk')), 'tree node flagged ⛓ Blocked by 1');
+  ok((await pg.$$('#linkG path.lnk.cross.dep')).length === 1, 'cross-project connector drawn as SVG curve');
+  ok(await pg.$eval('#linkG path.lnk', (e) => e.classList.contains('on') && Number(getComputedStyle(e).opacity) > 0.9), 'connector at full strength while its node is selected');
+  await shot21('drawer-link');
+  // cycle is blocked with a clear message
+  await pg.select('#lkDir', 'out'); await sleep(50);
+  await pg.$$eval('#lkRes button', (bs, t) => bs.find((b) => b.textContent.includes(t)).click(), ids.a0t); await sleep(150);
+  ok(/circular dependency/.test(await txt('#toast')), 'circular dependency rejected: ' + (await txt('#toast')).slice(0, 60));
+  ok((await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 1, 'cycle not saved');
+  // link via drag from a node's connector handle
+  await pg.keyboard.press('Escape'); await sleep(250);
+  await click('#zFit'); await sleep(450);
+  const hp = await pg.$eval('.node[data-key="sheet:' + ids.a1 + '"] .handle', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+  const tp = await pg.$eval('.node[data-key="sheet:' + ids.b1 + '"]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+  if (MOBILE) { /* finger drag */
+    await pg.touchscreen.touchStart(hp.x, hp.y);
+    for (let i = 1; i <= 8; i++) { await pg.touchscreen.touchMove(hp.x + (tp.x - hp.x) * i / 8, hp.y + (tp.y - hp.y) * i / 8); await sleep(20); }
+    await pg.touchscreen.touchEnd();
+  } else {
+    await pg.mouse.move(hp.x, hp.y); await pg.mouse.down();
+    for (let i = 1; i <= 8; i++) { await pg.mouse.move(hp.x + (tp.x - hp.x) * i / 8, hp.y + (tp.y - hp.y) * i / 8); await sleep(20); }
+    await pg.mouse.up();
+  }
+  await sleep(250);
+  const L = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links);
+  ok(L.length === 2 && L[1].src.id === ids.a1 && L[1].dst.id === ids.b1 && L[1].kind === 'dep', 'drag from handle onto another node creates a connector');
+  ok((await pg.$$('#linkG path.lnk')).length === 2 && !(await pg.$('#linkG path.lnk.on')), 'two connectors drawn, faded when nothing selected');
+  ok(/Blocked \(2\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'overview lists 2 blocked sheets');
+  await shot21('tree');
+  // change propagation: revise A sheet → B flagged update needed
+  await click('.node[data-key="sheet:' + ids.a0 + '"]'); await pg.waitForSelector('#markRevBtn');
+  await typeInto(await pg.$('#revNote'), 'Culvert size 4x3 → 5x3');
+  await click('#markRevBtn'); await sleep(200);
+  ok(/Update needed/.test(await txt('.node[data-key="sheet:' + ids.b0 + '"] .fl-upd')), 'downstream sheet flagged ⟳ Update needed after Mark revised');
+  ok(/Needs update \(1\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'overview “Needs update (1)”');
+  await click('#impactBtn'); await sleep(200);
+  ok(/0 upstream · 1 downstream/.test(await txt('#impactCounts')) && (await pg.$$('.node.imp-down')).length === 1 && !!(await pg.$('.node.imp-self')), 'impact view highlights downstream + counts');
+  await shot21('impact');
+  // only-selected + hide toggles
+  await click('#lkSelBtn'); await sleep(150);
+  ok((await pg.$$('#linkG path.lnk')).length === 1, '“Only selected” shows just the selected node’s connectors');
+  await click('#lkSelBtn'); await click('#lkBtn'); await sleep(150);
+  ok(await pg.$eval('#links', (e) => e.classList.contains('off')), 'connectors can be hidden');
+  await click('#lkBtn');
+  // filter + acknowledge
+  await pg.select('#fFlag', 'update'); await sleep(150);
+  ok((await pg.$$('.node.n-sheet:not(.dim)')).length === 1, '“Needs update” filter dims everything else');
+  await pg.select('#fFlag', ''); await sleep(100);
+  await click('.node[data-key="sheet:' + ids.b0 + '"]'); await pg.waitForSelector('#markUpdBtn');
+  await shot21('update-needed');
+  await click('#markUpdBtn'); await sleep(200);
+  ok(!(await pg.$('.node[data-key="sheet:' + ids.b0 + '"] .fl-upd')) && /Needs update \(0\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'Mark updated clears the flag');
+  // prerequisite done → ready
+  await click('.node[data-key="sheet:' + ids.a0 + '"]'); await pg.waitForSelector('#drawer .stsel');
+  await pg.select('#drawer .stsel', 'Done'); await sleep(200);
+  ok(!(await pg.$('.node[data-key="sheet:' + ids.b0 + '"] .fl-blk')) && /Ready to start \(1\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'prerequisite Done → dependent unblocked and listed Ready');
+  // build order editor + dependencies CSV
+  await click('#setBtn'); await pg.waitForSelector('#orderSec');
+  await pg.$eval('#orderSec button[aria-label="Move B earlier"]', (e) => e.click()); await sleep(200);
+  ok(/B\s*→\s*A\s*→\s*C\s*→\s*D/.test(await txt('#buildChain')), 'build order editable (B moved first)');
+  await pg.$eval('#orderSec button[aria-label="Move A earlier"]', (e) => e.click()); await sleep(200);
+  await click('#depsCsvBtn'); await sleep(700);
+  const dcf = fs.readdirSync(DL).find((f) => f.startsWith('pm-dependencies'));
+  const dcsv = dcf && fs.readFileSync(DL + '/' + dcf, 'utf8');
+  ok(dcsv && /^\ufeff?Type,From sub/.test(dcsv) && dcsv.trim().split(/\r\n/).length === 3 && /dep,A,Mainlane North/.test(dcsv), 'dependencies CSV exported');
+  await shot21('settings-order');
+  await click('#modalClose'); await sleep(200);
+  await pg.keyboard.press('Escape'); await sleep(200);
+
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);
   const bk = fs.readdirSync(DL).find((f) => f.startsWith('pm-backup'));
   ok(bk && JSON.parse(fs.readFileSync(DL + '/' + bk, 'utf8')).fmt === 'pm-plain-backup', 'backup downloaded (plain JSON)');
+  ok(JSON.parse(fs.readFileSync(DL + '/' + bk, 'utf8')).data.links.length === 2, 'backup includes connectors');
   await click('#modalClose');
   await pg.evaluate(() => localStorage.removeItem('pm.data.v2'));
   await pg.reload({ waitUntil: 'networkidle0' });
@@ -237,6 +322,7 @@ async function serve(r) {
   await click('#modalBody form.imp button[type=submit]');
   await pg.waitForFunction(() => document.querySelectorAll('.node.n-seg').length === 2, { timeout: 5000 });
   ok(true, 'import restored both segments');
+  ok((await pg.$$('#linkG path.lnk')).length === 2 || (await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 2, 'import restored connectors');
 
   // 12. migration from encrypted v1 vault
   await pg.evaluate(async () => {
