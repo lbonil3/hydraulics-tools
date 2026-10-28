@@ -142,7 +142,7 @@ t('sheet fields, %/status sync, deps, QC, staff roles, log', () => {
   const a = M.addSheet(st, s1.id, { title: 'Drainage Area Map' });
   const b = M.addSheet(st, s1.id, { title: 'Hydraulic Data', hoursBudget: 12 });
   M.updateSheet(st, b.id, { deps: [a.id, b.id, 'nope'], pct: 55.4, hoursActual: 3.25, owner: 'Bo', number: 'DR-02', qc: { 'Design check': true } });
-  assert.deepStrictEqual(b.deps, [a.id]);
+  assert.deepStrictEqual(M.linksOf(st, { t: 'sheet', id: b.id }).in.map((l) => l.src.id), [a.id]);
   assert.strictEqual(b.pct, 55);
   assert.strictEqual(b.hoursActual, 3.3);
   assert.deepStrictEqual(M.blockedBy(st, b).map((s) => s.id), [a.id]);
@@ -155,7 +155,7 @@ t('sheet fields, %/status sync, deps, QC, staff roles, log', () => {
   M.addStaff(st, 'Bo', 'EIT');
   assert.deepStrictEqual(st.staff, [{ name: 'Bo', role: 'EIT' }]);
   M.deleteSheet(st, a.id);
-  assert.deepStrictEqual(b.deps, []);
+  assert.strictEqual(st.links.length, 0, 'links to a deleted sheet are pruned');
   assert(st.log.length >= 5 && /Deleted sheet/.test(st.log[0].msg));
   const d = M.duplicateSheet(st, b.id);
   assert.strictEqual(d.status, 'Not started');
@@ -237,6 +237,126 @@ t('crypto still works (kept for v1 migration)', async () => {
   const { env } = await C.seal('pass phrase 123', { a: 1 }, 'vault', ITER);
   const ct = C.unb64(env.ct); ct[3] ^= 1;
   await assert.rejects(C.open('pass phrase 123', { ...env, ct: C.b64(ct) }, 'vault'), /modified/);
+});
+
+function linkSetup() {
+  const st = M.newState();
+  const [A, B, Cc] = st.subs;
+  const a = M.addSegment(st, A.id, { name: 'A1', start: '10+00', end: '20+00' }).seg;
+  const b = M.addSegment(st, B.id, { name: 'B1', start: '50+00', end: '60+00' }).seg;
+  const c = M.addSegment(st, Cc.id, { name: 'C1', start: '80+00', end: '90+00' }).seg;
+  const sa = M.addSheet(st, a.id, { title: 'A culvert' });
+  const sb = M.addSheet(st, b.id, { title: 'B culvert' });
+  const sc = M.addSheet(st, c.id, { title: 'C culvert' });
+  const R = (x) => ({ t: 'sheet', id: x.id });
+  return { st, A, B, Cc, a, b, c, sa, sb, sc, R };
+}
+t('connectors: cross-project links, wrong-direction warning, duplicates, self', () => {
+  const { st, A, B, a, sa, sb, sc, R } = linkSetup();
+  const r = M.addLink(st, R(sa), R(sb), 'dep');
+  assert.strictEqual(r.warns.length, 0);
+  assert(M.isCross(st, r.link));
+  assert.throws(() => M.addLink(st, R(sa), R(sb), 'dep'), /already exists/);
+  assert.throws(() => M.addLink(st, R(sa), R(sa), 'dep'), /itself/);
+  const w = M.addLink(st, R(sc), R(sa), 'update');
+  assert.strictEqual(w.warns.length, 1);
+  assert.match(w.warns[0], /Points upstream/);
+  assert(M.wrongWay(st, w.link));
+  // reorder build sequence: C first → the same link is no longer wrong-way
+  M.setOrder(st, [st.subs[2].id, A.id, B.id, st.subs[3].id]);
+  assert.deepStrictEqual(M.orderedSubs(st).map((s) => s.code), ['C', 'A', 'B', 'D']);
+  assert(!M.wrongWay(st, w.link));
+  assert(M.wrongWay(st, M.addLink(st, { t: 'seg', id: a.id }, R(sc), 'dep').link));
+  assert.match(M.depsCSV(st), /^Type,From sub/);
+  assert.strictEqual(M.depsCSV(st).trim().split('\r\n').length, 4);
+});
+t('connectors: cycle detection blocks circular dependencies', () => {
+  const { st, sa, sb, sc, R } = linkSetup();
+  M.addLink(st, R(sa), R(sb), 'dep');
+  M.addLink(st, R(sb), R(sc), 'dep');
+  assert.throws(() => M.addLink(st, R(sc), R(sa), 'dep'), /circular dependency/);
+  assert.throws(() => M.addLink(st, R(sb), R(sa), 'dep'), /circular/);
+  // update links do not create dependency cycles
+  M.addLink(st, R(sc), R(sa), 'update');
+  assert.strictEqual(st.links.length, 3);
+});
+t('connectors: blocked / ready, segment prerequisites', () => {
+  const { st, b, sa, sb, sc, R } = linkSetup();
+  M.addLink(st, R(sa), R(sb), 'dep');
+  M.addLink(st, { t: 'seg', id: b.id }, R(sc), 'dep');
+  let F = M.flags(st);
+  assert.deepStrictEqual(F.blocked.map((x) => x.ref.id).sort(), [sb.id, sc.id].sort());
+  assert.deepStrictEqual(F.ready, []);
+  assert.deepStrictEqual(M.blockedBy(st, sb).map((s) => s.id), [sa.id]);
+  M.updateSheet(st, sa.id, { status: 'Done' });
+  F = M.flags(st);
+  assert.deepStrictEqual(F.blocked.map((x) => x.ref.id), [sc.id]);
+  assert.deepStrictEqual(F.ready.map((x) => x.ref.id), [sb.id]);
+  M.updateSheet(st, sb.id, { status: 'Done' }); // segment B1 all done → C unblocked
+  F = M.flags(st);
+  assert.deepStrictEqual(F.blocked, []);
+  assert.deepStrictEqual(F.ready.map((x) => x.ref.id), [sc.id]);
+  const rows = M.allSheets(st);
+  assert.strictEqual(M.filterRows(rows, { flag: 'ready', st }).length, 1);
+  assert.strictEqual(M.filterRows(rows, { flag: 'linked', st }).length, 3);
+});
+t('connectors: change propagation and acknowledgement', () => {
+  const { st, a, sa, sb, sc, R } = linkSetup();
+  M.addLink(st, R(sa), R(sb), 'update');
+  M.addLink(st, R(sa), R(sc), 'dep');
+  assert.deepStrictEqual(M.flags(st).update, []);
+  M.markRevised(st, R(sa), 'Pipe size changed');
+  assert.deepStrictEqual(M.flags(st).update.map((x) => x.ref.id).sort(), [sb.id, sc.id].sort());
+  assert.strictEqual(M.filterRows(M.allSheets(st), { flag: 'update', st }).length, 2);
+  assert.strictEqual(M.markUpdated(st, R(sb)), 1);
+  assert.deepStrictEqual(M.flags(st).update.map((x) => x.ref.id), [sc.id]);
+  // re-opening a Done sheet counts as a revision automatically
+  M.markUpdated(st, R(sc));
+  M.updateSheet(st, sa.id, { status: 'Done' });
+  assert.strictEqual(M.flags(st).update.length, 0);
+  M.updateSheet(st, sa.id, { status: 'In progress' });
+  assert.strictEqual(sa.revs.length, 2);
+  assert.match(sa.revs[1].note, /Re-opened/);
+  assert.strictEqual(M.flags(st).update.length, 2);
+  // a link created after a revision starts acknowledged
+  const s2 = M.addSheet(st, a.id, { title: 'late link' });
+  M.addLink(st, R(sa), R(s2), 'update');
+  assert(!M.needsUpdate(st, R(s2)).length);
+  // segments can be revised too
+  M.addLink(st, { t: 'seg', id: a.id }, R(sb), 'update');
+  M.markRevised(st, { t: 'seg', id: a.id }, 'Alignment shift');
+  assert(M.needsUpdate(st, R(sb)).some((l) => l.src.t === 'seg'));
+});
+t('connectors: impact upstream/downstream', () => {
+  const { st, b, sa, sb, sc, R } = linkSetup();
+  M.addLink(st, R(sa), R(sb), 'dep');
+  M.addLink(st, R(sb), { t: 'seg', id: b.id }, 'update');
+  M.addLink(st, { t: 'seg', id: b.id }, R(sc), 'dep');
+  const I = M.impact(st, R(sb));
+  assert.deepStrictEqual([...I.up], ['sheet:' + sa.id]);
+  assert.deepStrictEqual([...I.down].sort(), ['seg:' + b.id, 'sheet:' + sc.id].sort());
+  assert.strictEqual(M.impact(st, R(sa)).down.size, 3);
+});
+t('connectors: migration of v2.0 sheet.deps, pruning, backup round trip', () => {
+  const { st, a, sa, R } = linkSetup();
+  const s2 = M.addSheet(st, a.id, { title: 'needs culvert' });
+  const old = JSON.parse(JSON.stringify(st));
+  delete old.links;
+  for (const sub of old.subs) { delete sub.order; for (const g of sub.segments) { delete g.revs; for (const h of g.sheets) { delete h.revs; h.deps = []; } } }
+  old.subs[0].segments[0].sheets[1].deps = [sa.id, 'gone'];
+  const m = M.migrate(old);
+  assert.strictEqual(m.links.length, 1);
+  assert.deepStrictEqual([m.links[0].src.id, m.links[0].dst.id, m.links[0].kind], [sa.id, s2.id, 'dep']);
+  assert(m.subs.every((s, i) => s.order === i + 1));
+  assert(!('deps' in m.subs[0].segments[0].sheets[1]));
+  assert.deepStrictEqual(M.blockedBy(m, m.subs[0].segments[0].sheets[1]).map((x) => x.id), [sa.id]);
+  M.addLink(m, R(sa), { t: 'sheet', id: m.subs[1].segments[0].sheets[0].id }, 'update');
+  M.markRevised(m, R(sa), 'x');
+  const back = M.readBackup(JSON.parse(JSON.stringify(M.backupFile(m))));
+  assert.deepStrictEqual(back, JSON.parse(JSON.stringify(m)));
+  assert.strictEqual(M.flags(back).update.length, 2);
+  M.deleteSheet(back, sa.id);
+  assert.strictEqual(back.links.length, 0);
 });
 
 (async () => {

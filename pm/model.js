@@ -39,10 +39,11 @@
     return {
       schema: SCHEMA,
       project: { name: projectName || 'PSE Drainage & SWP3 Project' },
-      subs: ['A', 'B', 'C', 'D'].map((code) => ({ id: uid(), code, name: 'Sub-project ' + code, scale: 100, templates: defaultTemplates(), segments: [] })),
+      subs: ['A', 'B', 'C', 'D'].map((code) => ({ id: uid(), code, name: 'Sub-project ' + code, order: ['A', 'B', 'C', 'D'].indexOf(code) + 1, scale: 100, templates: defaultTemplates(), segments: [] })),
       staff: [],
       settings: { scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES) },
       milestones: DEFAULT_MILESTONES.map((name) => ({ id: uid(), name, date: '' })),
+      links: [],
       views: [],
       log: [],
       lastBackup: null,
@@ -188,6 +189,7 @@
     }
     const kill = new Set(plan.remove.concat(opts && opts.removeTouched ? plan.removeTouched : []));
     seg.sheets = seg.sheets.filter((s) => !kill.has(s));
+    if (kill.size) pruneLinks(st);
     seg.sheets.sort((a, b) => (a.gen ? 0 : 1) - (b.gen ? 0 : 1) || (a.gen && b.gen ? String(a.gen.series).localeCompare(b.gen.series) || a.gen.idx - b.gen.idx : 0));
     const keptTouched = opts && opts.removeTouched ? 0 : plan.removeTouched.length;
     log(st, 'Generated PP sheets for ' + seg.name + ': +' + plan.create.length + ' new, ' + plan.update.length + ' updated, ' + kill.size + ' removed' + (keptTouched ? ', ' + keptTouched + ' edited extra kept' : ''));
@@ -212,7 +214,7 @@
     const sub = findSub(st, subId);
     if (!sub) throw new Error('No such sub-project');
     const seg = { id: uid(), name: String(f.name || '').trim(), road: String(f.road || '').trim(),
-      start: parseStation(f.start), end: parseStation(f.end), scale: f.scale ? Number(f.scale) : null, notes: f.notes || '', sheets: [] };
+      start: parseStation(f.start), end: parseStation(f.end), scale: f.scale ? Number(f.scale) : null, notes: f.notes || '', revs: [], sheets: [] };
     const v = validateSegment(seg, sub.segments);
     if (v.errs.length) throw new Error(v.errs.join(' '));
     sub.segments.push(seg);
@@ -234,7 +236,7 @@
   }
   function deleteSegment(st, segId) {
     const hit = findSeg(st, segId);
-    if (hit) { hit.sub.segments = hit.sub.segments.filter((s) => s !== hit.seg); log(st, 'Deleted segment ' + hit.sub.code + ' · ' + hit.seg.name); }
+    if (hit) { hit.sub.segments = hit.sub.segments.filter((s) => s !== hit.seg); pruneLinks(st); log(st, 'Deleted segment ' + hit.sub.code + ' · ' + hit.seg.name); }
     return !!hit;
   }
   function newSheet(f) {
@@ -243,7 +245,7 @@
       number: f.number || '', series: f.series || '',
       status: STATUSES.includes(f.status) ? f.status : 'Not started',
       owner: String(f.owner || '').trim(), due: f.due || '', pct: 0, hoursBudget: Number(f.hoursBudget) || 0, hoursActual: 0,
-      milestone: f.milestone || '', notes: f.notes || '', qc: {}, deps: [], gen: null };
+      milestone: f.milestone || '', notes: f.notes || '', qc: {}, revs: [], gen: null };
   }
   function addSheet(st, segId, f) {
     const hit = findSeg(st, segId);
@@ -266,21 +268,28 @@
       if (!Number.isFinite(v) || v < 0) throw new Error(k + ' must be a number ≥ 0');
       g[k] = k === 'pct' ? Math.min(100, Math.round(v)) : Math.round(v * 10) / 10;
     }
-    if ('deps' in g) g.deps = (g.deps || []).filter((d) => d !== sh.id && findSheet(st, d));
+    if ('deps' in g) { /* compat: set this sheet's prerequisite sheets */
+      const want = new Set((g.deps || []).filter((d) => d !== sh.id && findSheet(st, d)));
+      for (const l of st.links.filter((x) => x.kind === 'dep' && x.dst.t === 'sheet' && x.dst.id === sh.id && x.src.t === 'sheet' && !want.has(x.src.id))) removeLink(st, l.id);
+      for (const d of want) if (!st.links.some((x) => x.kind === 'dep' && x.dst.id === sh.id && x.src.id === d)) addLink(st, { t: 'sheet', id: d }, { t: 'sheet', id: sh.id }, 'dep');
+      delete g.deps;
+    }
+    const reopened = sh.status === 'Done' && 'status' in g && g.status !== 'Done';
     if ('title' in g && sh.gen && g.title !== sh.title) sh.gen.titleEdited = true;
     if (g.status === 'Done' && !('pct' in g)) g.pct = 100;
     if ('pct' in g && g.pct === 100 && !('status' in g) && sh.status !== 'Done') g.status = 'Done';
     const changed = Object.keys(g).filter((k) => JSON.stringify(sh[k]) !== JSON.stringify(g[k]));
     Object.assign(sh, g);
     if (sh.owner) addStaff(st, sh.owner);
-    if (changed.length) log(st, sh.title + ': ' + changed.map((k) => k + (['notes', 'qc', 'deps'].includes(k) ? '' : ' → ' + (g[k] === '' ? '(blank)' : g[k]))).join(', '));
+    if (reopened) markRevised(st, { t: 'sheet', id: sh.id }, 'Re-opened (was Done)');
+    if (changed.length) log(st, sh.title + ': ' + changed.map((k) => k + (['notes', 'qc'].includes(k) ? '' : ' → ' + (g[k] === '' ? '(blank)' : g[k]))).join(', '));
     return sh;
   }
   function deleteSheet(st, sheetId) {
     const hit = findSheet(st, sheetId);
     if (hit) {
       hit.seg.sheets = hit.seg.sheets.filter((s) => s !== hit.sh);
-      for (const r of allSheets(st)) r.sh.deps = (r.sh.deps || []).filter((d) => d !== sheetId);
+      pruneLinks(st);
       log(st, 'Deleted sheet ' + hit.sh.title);
     }
     return !!hit;
@@ -288,12 +297,12 @@
   function duplicateSheet(st, sheetId) {
     const hit = findSheet(st, sheetId);
     if (!hit) throw new Error('No such sheet');
-    const copy = { ...clone(hit.sh), id: uid(), title: hit.sh.title + ' (copy)', status: 'Not started', pct: 0, hoursActual: 0, qc: {}, gen: null };
+    const copy = { ...clone(hit.sh), id: uid(), title: hit.sh.title + ' (copy)', status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], gen: null };
     hit.seg.sheets.splice(hit.seg.sheets.indexOf(hit.sh) + 1, 0, copy);
     log(st, 'Duplicated sheet ' + hit.sh.title);
     return copy;
   }
-  function blockedBy(st, sh) { return (sh.deps || []).map((d) => findSheet(st, d)).filter((r) => r && r.sh.status !== 'Done').map((r) => r.sh); }
+  function blockedBy(st, sh) { return blockers(st, { t: 'sheet', id: sh.id }).map((r) => resolve(st, r)).filter(Boolean).map((r) => r.obj); }
   function bulkAddTemplates(st, segId, opts) {
     const hit = findSeg(st, segId);
     if (!hit) throw new Error('No such segment');
@@ -419,6 +428,13 @@
       if (f.when === 'overdue' && !isOverdue(r.sh, today)) return false;
       if (f.when === 'upcoming' && !isUpcoming(r.sh, today, 14)) return false;
       if (f.when === 'open' && r.sh.status === 'Done') return false;
+      if (f.flag) {
+        const ref = { t: 'sheet', id: r.sh.id };
+        if (f.flag === 'blocked' && (r.sh.status === 'Done' || !blockers(st0(f), ref).length)) return false;
+        if (f.flag === 'update' && !needsUpdate(st0(f), ref).length) return false;
+        if (f.flag === 'ready' && !(r.sh.status === 'Not started' && !blockers(st0(f), ref).length && linksOf(st0(f), ref).in.some((l) => l.kind === 'dep'))) return false;
+        if (f.flag === 'linked') { const lo = linksOf(st0(f), ref); if (!lo.in.length && !lo.out.length) return false; }
+      }
       if (q) {
         const hay = [r.sh.title, r.sh.number, r.sh.series, r.sh.owner, r.sh.notes, r.sh.status, r.sh.discipline, r.seg.name, r.seg.road, r.sub.code, r.sub.name].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
@@ -426,6 +442,8 @@
       return true;
     });
   }
+  /* flag filters need the state: pass it as f.st (non-enumerable-safe) */
+  function st0(f) { if (!f.st) throw new Error('flag filter needs f.st'); return f.st; }
   function sortRows(rows, key, dir, getter) {
     const m = dir === 'desc' ? -1 : 1;
     return rows.slice().sort((a, b) => {
@@ -455,7 +473,7 @@
     for (const r of rows) {
       const sh = r.sh;
       const qcDone = st.settings.qcSteps.filter((q) => sh.qc && sh.qc[q]).length + '/' + st.settings.qcSteps.length;
-      const deps = (sh.deps || []).map((d) => { const h = findSheet(st, d); return h ? h.sh.title : ''; }).filter(Boolean).join('; ');
+      const deps = linksOf(st, { t: 'sheet', id: sh.id }).in.filter((l) => l.kind === 'dep').map((l) => refLabel(st, l.src)).join('; ');
       lines.push([r.sub.code, r.seg.name, r.seg.road, formatStation(r.seg.start), formatStation(r.seg.end), sh.number, sh.title, sh.series, sh.discipline,
         sh.gen ? formatStation(sh.gen.start) : '', sh.gen ? formatStation(sh.gen.end) : '', sh.status, sh.pct, sh.owner, sh.due, ms[sh.milestone] || '',
         sh.hoursBudget, sh.hoursActual, qcDone, deps, sh.gen ? 'yes' : '', sh.notes].map(csvCell).join(','));
@@ -493,16 +511,29 @@
     st.settings = Object.assign({ scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES) }, st.settings || {});
     st.milestones = Array.isArray(st.milestones) ? st.milestones : [];
     st.views = Array.isArray(st.views) ? st.views : [];
+    st.links = Array.isArray(st.links) ? st.links : [];
     st.log = Array.isArray(st.log) ? st.log : [];
     for (const sub of st.subs) {
       sub.scale = Number(sub.scale) || 100;
+      if (!Number.isFinite(Number(sub.order))) sub.order = st.subs.indexOf(sub) + 1;
       sub.templates = Array.isArray(sub.templates) ? sub.templates : defaultTemplates();
       sub.segments = Array.isArray(sub.segments) ? sub.segments : [];
       for (const seg of sub.segments) {
         seg.sheets = Array.isArray(seg.sheets) ? seg.sheets : [];
+        seg.revs = Array.isArray(seg.revs) ? seg.revs : [];
         for (const sh of seg.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; }
       }
     }
+    /* v2.0 kept prerequisites in sheet.deps (same sub-project only) → convert to 'dep' links */
+    const ids = new Set(allSheets(st).map((r) => r.sh.id));
+    for (const r of allSheets(st)) {
+      if (Array.isArray(r.sh.deps)) {
+        for (const d of r.sh.deps) if (ids.has(d) && d !== r.sh.id && !st.links.some((l) => l.kind === 'dep' && l.src.id === d && l.dst.id === r.sh.id))
+          st.links.push({ id: uid(), src: { t: 'sheet', id: d }, dst: { t: 'sheet', id: r.sh.id }, kind: 'dep', ack: 0, created: new Date().toISOString() });
+        delete r.sh.deps;
+      }
+    }
+    pruneLinks(st);
     return st;
   }
   function backupFile(st) { return { fmt: 'pm-plain-backup', v: SCHEMA, exported: new Date().toISOString(), data: st }; }
@@ -511,7 +542,141 @@
     if (obj && obj.schema) return migrate(obj);
     throw new Error('Not a PM backup file');
   }
-  return { SCHEMA, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* ---- connectors (cross-project links) ----
+     link = { id, src:{t,id}, dst:{t,id}, kind:'dep'|'update', ack, created }
+     src is upstream: for 'dep' the dst depends on src (src must be done first); for 'update' dst needs an update when src is revised.
+     Both kinds flag "update needed" on dst when src gets a new revision; ack = src revision count already acknowledged. */
+  const LINK_KINDS = { dep: 'Depends on (must be done first)', update: 'Update needed when this changes' };
+  const rk = (r) => r.t + ':' + r.id;
+  function resolve(st, ref) {
+    if (!ref) return null;
+    if (ref.t === 'sheet') { const x = findSheet(st, ref.id); return x && { t: 'sheet', ref, sub: x.sub, seg: x.seg, sh: x.sh, obj: x.sh, name: x.sh.title }; }
+    if (ref.t === 'seg') { const x = findSeg(st, ref.id); return x && { t: 'seg', ref, sub: x.sub, seg: x.seg, obj: x.seg, name: x.seg.name }; }
+    return null;
+  }
+  function refLabel(st, ref) {
+    const r = resolve(st, ref);
+    if (!r) return '(missing)';
+    return r.sub.code + ' · ' + r.seg.name + (r.t === 'sheet' ? ' · ' + r.sh.title : ' (segment)');
+  }
+  function isDone(st, ref) {
+    const r = resolve(st, ref);
+    if (!r) return true;
+    if (r.t === 'sheet') return r.sh.status === 'Done';
+    return r.seg.sheets.length > 0 && r.seg.sheets.every((s) => s.status === 'Done');
+  }
+  function revCount(st, ref) { const r = resolve(st, ref); return r && Array.isArray(r.obj.revs) ? r.obj.revs.length : 0; }
+  function subOrder(st, sub) { return Number.isFinite(Number(sub.order)) ? Number(sub.order) : st.subs.indexOf(sub) + 1; }
+  function orderedSubs(st) { return st.subs.slice().sort((a, b) => subOrder(st, a) - subOrder(st, b) || a.code.localeCompare(b.code)); }
+  function setOrder(st, ids) { ids.forEach((id, i) => { const s = findSub(st, id); if (s) s.order = i + 1; }); log(st, 'Build order → ' + orderedSubs(st).map((s) => s.code).join(' → ')); }
+  function wrongWay(st, link) {
+    const a = resolve(st, link.src), b = resolve(st, link.dst);
+    return !!(a && b && subOrder(st, a.sub) > subOrder(st, b.sub));
+  }
+  function isCross(st, link) { const a = resolve(st, link.src), b = resolve(st, link.dst); return !!(a && b && a.sub !== b.sub); }
+  function linksOf(st, ref) {
+    const k = rk(ref);
+    return { in: st.links.filter((l) => rk(l.dst) === k), out: st.links.filter((l) => rk(l.src) === k) };
+  }
+  /* would adding src→dst (dep) create a cycle? i.e. can src already be reached from dst following dep links */
+  function depPath(st, fromRef, toRef) {
+    const target = rk(toRef), seen = new Set(), stack = [rk(fromRef)];
+    while (stack.length) {
+      const k = stack.pop();
+      if (k === target) return true;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      for (const l of st.links) if (l.kind === 'dep' && rk(l.src) === k) stack.push(rk(l.dst));
+    }
+    return false;
+  }
+  function addLink(st, src, dst, kind) {
+    kind = kind === 'update' ? 'update' : 'dep';
+    const a = resolve(st, src), b = resolve(st, dst);
+    if (!a || !b) throw new Error('Both ends of a connector must exist.');
+    if (rk(src) === rk(dst)) throw new Error('A sheet cannot be linked to itself.');
+    if (st.links.some((l) => l.kind === kind && rk(l.src) === rk(src) && rk(l.dst) === rk(dst))) throw new Error('That connector already exists.');
+    if (kind === 'dep' && depPath(st, dst, src)) throw new Error('Not added: this would create a circular dependency (' + refLabel(st, src) + ' already depends on ' + refLabel(st, dst) + ').');
+    const link = { id: uid(), src: { t: src.t, id: src.id }, dst: { t: dst.t, id: dst.id }, kind, ack: revCount(st, src), created: new Date().toISOString() };
+    st.links.push(link);
+    const warns = [];
+    if (wrongWay(st, link)) warns.push('Points upstream: ' + a.sub.code + ' is built after ' + b.sub.code + ', but ' + b.sub.code + ' ' + (kind === 'dep' ? 'depends on' : 'is updated from') + ' it.');
+    log(st, 'Connector ' + refLabel(st, src) + ' → ' + refLabel(st, dst) + ' (' + (kind === 'dep' ? 'depends on' : 'update') + ')');
+    return { link, warns };
+  }
+  function removeLink(st, id) {
+    const l = st.links.find((x) => x.id === id);
+    if (!l) return false;
+    st.links = st.links.filter((x) => x !== l);
+    log(st, 'Removed connector ' + refLabel(st, l.src) + ' → ' + refLabel(st, l.dst));
+    return true;
+  }
+  function pruneLinks(st) {
+    st.links = st.links.filter((l) => resolve(st, l.src) && resolve(st, l.dst));
+  }
+  function blockers(st, ref) { return linksOf(st, ref).in.filter((l) => l.kind === 'dep' && !isDone(st, l.src)).map((l) => l.src); }
+  function needsUpdate(st, ref) { return linksOf(st, ref).in.filter((l) => revCount(st, l.src) > (l.ack || 0)); }
+  function markRevised(st, ref, note, date) {
+    const r = resolve(st, ref);
+    if (!r) throw new Error('Not found');
+    r.obj.revs = Array.isArray(r.obj.revs) ? r.obj.revs : [];
+    r.obj.revs.push({ t: date || new Date().toISOString(), note: String(note || '').trim() });
+    const n = linksOf(st, ref).out.length;
+    log(st, 'Revised ' + refLabel(st, ref) + (note ? ': ' + note : '') + (n ? ' → ' + n + ' linked item(s) flagged' : ''));
+    return r.obj.revs.length;
+  }
+  function markUpdated(st, ref) {
+    const ls = needsUpdate(st, ref);
+    for (const l of ls) l.ack = revCount(st, l.src);
+    if (ls.length) log(st, 'Marked updated: ' + refLabel(st, ref));
+    return ls.length;
+  }
+  /* transitive upstream / downstream over all links */
+  function impact(st, ref) {
+    const walk = (dir) => {
+      const out = new Set(), stack = [rk(ref)];
+      while (stack.length) {
+        const k = stack.pop();
+        for (const l of st.links) {
+          const from = dir === 'down' ? l.src : l.dst, to = dir === 'down' ? l.dst : l.src;
+          if (rk(from) === k && !out.has(rk(to)) && rk(to) !== rk(ref)) { out.add(rk(to)); stack.push(rk(to)); }
+        }
+      }
+      return out;
+    };
+    return { up: walk('up'), down: walk('down') };
+  }
+  function allRefs(st) {
+    const out = [];
+    for (const sub of st.subs) for (const seg of sub.segments) { out.push({ t: 'seg', id: seg.id }); for (const sh of seg.sheets) out.push({ t: 'sheet', id: sh.id }); }
+    return out;
+  }
+  function flags(st) {
+    const blocked = [], update = [], ready = [];
+    for (const ref of allRefs(st)) {
+      const b = blockers(st, ref);
+      if (b.length && !isDone(st, ref)) blocked.push({ ref, by: b });
+      const u = needsUpdate(st, ref);
+      if (u.length) update.push({ ref, from: u.map((l) => l.src) });
+      if (ref.t === 'sheet') {
+        const deps = linksOf(st, ref).in.filter((l) => l.kind === 'dep');
+        if (deps.length && !b.length && resolve(st, ref).sh.status === 'Not started') ready.push({ ref });
+      }
+    }
+    return { blocked, update, ready };
+  }
+  function depsCSV(st) {
+    const lines = [['Type', 'From sub', 'From segment', 'From item', 'To sub', 'To segment', 'To item', 'Meaning', 'Cross-project', 'Wrong direction', 'From done', 'Update needed'].join(',')];
+    for (const l of st.links) {
+      const a = resolve(st, l.src), b = resolve(st, l.dst);
+      if (!a || !b) continue;
+      lines.push([l.kind, a.sub.code, a.seg.name, a.t === 'sheet' ? a.sh.title : '(segment)', b.sub.code, b.seg.name, b.t === 'sheet' ? b.sh.title : '(segment)',
+        l.kind === 'dep' ? 'To depends on From (From first)' : 'Update To when From changes', isCross(st, l) ? 'yes' : '', wrongWay(st, l) ? 'yes' : '',
+        isDone(st, l.src) ? 'yes' : '', revCount(st, l.src) > (l.ack || 0) ? 'yes' : ''].map(csvCell).join(','));
+    }
+    return lines.join('\r\n') + '\r\n';
+  }
+  return { SCHEMA, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,
