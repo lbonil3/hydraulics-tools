@@ -6,40 +6,59 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1f4e79">
+  <meta name="theme-color" content="#0f172a">
   <meta name="format-detection" content="telephone=no">
   <link rel="icon" type="image/png" href="../icon-192.png">
-  <title>Project Manager (private)</title>
+  <title>Project Tracker</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="../home-btn.css">
 </head>
-<body class="locked">
-<header id="top">
-  <a class="homebtn" href="../" aria-label="Back to Hydraulics Tools home">&#8592; Home</a>
-  <div class="titlebar">
-    <h1 id="appTitle">Project Manager</h1>
-    <button type="button" id="lockBtn" class="btn sec hdr" hidden>Lock</button>
+<body>
+<div class="testbar" role="note"><b>Testing mode:</b> data is NOT encrypted on this device. It stays only in this browser &mdash; export a backup regularly.</div>
+<header class="top">
+  <a class="home" href="../" aria-label="Back to Hydraulics Tools home">&#8592;</a>
+  <button type="button" class="ibtn railbtn" id="railBtn" aria-label="Show overview" aria-controls="rail" aria-expanded="false">&#9776;</button>
+  <div class="brand"><h1 id="appTitle">Project Tracker</h1><span id="saved" class="saved" aria-live="polite"></span></div>
+  <div class="search"><label for="q" class="sr">Search</label><input id="q" type="search" placeholder="Search sheets, segments, roads…  ( / )" autocomplete="off"></div>
+  <div class="filters" id="filters">
+    <label class="sr" for="fStatus">Filter by status</label><select id="fStatus"></select>
+    <label class="sr" for="fOwner">Filter by owner</label><select id="fOwner"></select>
+    <label class="sr" for="fDisc">Filter by discipline</label><select id="fDisc"></select>
   </div>
-  <span class="sub">Private PS&amp;E sheet tracker &mdash; drainage &amp; SWP3. Encrypted, stays on this device.</span>
-  <nav id="nav" aria-label="Sections" hidden>
-    <a href="#/" data-nav="dash">Dashboard</a>
-    <a href="#/subs" data-nav="subs">Sub-projects</a>
-    <a href="#/table" data-nav="table">All sheets</a>
-    <a href="#/settings" data-nav="settings">Settings</a>
-  </nav>
+  <div class="seg-toggle" role="group" aria-label="View">
+    <button type="button" id="vTree" aria-pressed="true">Tree</button>
+    <button type="button" id="vList" aria-pressed="false">List</button>
+  </div>
+  <div class="tools">
+    <button type="button" class="ibtn" id="tlBtn" aria-pressed="true" title="Station timeline (t)">Timeline</button>
+    <button type="button" class="ibtn" id="ppBtn" title="PP sheet calculator">PP calc</button>
+    <button type="button" class="ibtn" id="msBtn" title="Milestones">Milestones</button>
+    <button type="button" class="ibtn" id="staffBtn" title="Staff &amp; workload">Staff</button>
+    <button type="button" class="ibtn" id="setBtn" title="Settings, backup, export">Settings</button>
+    <button type="button" class="ibtn" id="themeBtn" aria-label="Toggle dark mode" title="Light / dark">&#9681;</button>
+  </div>
 </header>
-
-<main id="lock" aria-labelledby="lockTitle">
-  <section class="card lockcard">
-    <h2 id="lockTitle">Unlock</h2>
-    <div id="lockBody"></div>
-  </section>
-</main>
-
-<main id="view" hidden></main>
-
-<p class="foot">Encrypted with your passphrase (AES-GCM, PBKDF2 600,000 rounds) and kept only in this browser. No network, no analytics.
-  It protects against someone opening this page or browser storage &mdash; not against clearing browser data. Export backups regularly.</p>
+<div class="layout" id="layout">
+  <aside id="rail" aria-label="Project overview"></aside>
+  <main id="center">
+    <div id="treeWrap" class="treewrap">
+      <div id="viewport" class="viewport" aria-label="Project tree. Drag to pan, wheel or pinch to zoom." tabindex="0">
+        <div id="stage" class="stage"><svg id="edges" class="edges" aria-hidden="true"></svg><div id="nodes"></div></div>
+      </div>
+      <div class="zoombar" role="group" aria-label="Tree controls">
+        <button type="button" class="ibtn" id="zIn" aria-label="Zoom in">+</button>
+        <button type="button" class="ibtn" id="zOut" aria-label="Zoom out">&minus;</button>
+        <button type="button" class="ibtn" id="zFit" title="Fit to screen (f)">Fit</button>
+        <button type="button" class="ibtn" id="xAll" title="Expand all">Expand all</button>
+        <button type="button" class="ibtn" id="cAll" title="Collapse to segments">Collapse</button>
+      </div>
+      <div class="legend" aria-hidden="true"><span class="lg st-not-started">Not started</span><span class="lg st-in-progress">In progress</span><span class="lg st-in-review">In review</span><span class="lg st-done">Done</span><span class="chip dr">DR</span>Drainage <span class="chip sw">SW</span>SWP3</div>
+    </div>
+    <div id="listWrap" class="listwrap" hidden></div>
+    <section id="timeline" class="timeline" aria-label="Station timeline"></section>
+  </main>
+  <aside id="drawer" aria-label="Details" hidden></aside>
+</div>
+<div id="modal" class="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button type="button" class="ibtn" id="modalClose" aria-label="Close">&times;</button></div><div id="modalBody" class="modal-body"></div></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="crypto.js"></script>
 <script src="model.js"></script>

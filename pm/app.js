@@ -1,18 +1,25 @@
-/* PM app: UI + encrypted persistence. Only storage key: localStorage['pm.vault.v1'] (ciphertext envelope). */
+/* Project Tracker v2 (testing mode: plain JSON in localStorage, no login).
+   Storage keys: pm.data.v2 (project JSON), pm.ui.v2 (view prefs). Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
 (function () {
   'use strict';
   const C = window.PMCrypto, M = window.PMModel;
-  const KEY = 'pm.vault.v1';
+  const KEY = 'pm.data.v2', UIKEY = 'pm.ui.v2', OLDKEY = 'pm.vault.v1';
   const BACKUP_DAYS = 14;
   const $ = (s, r) => (r || document).querySelector(s);
+  const SVGNS = 'http://www.w3.org/2000/svg';
 
-  let st = null;        // decrypted state (memory only while unlocked)
-  let vk = null;        // { key, salt, iter }  key is a non-extractable CryptoKey
-  let lastAct = Date.now();
-  let saving = Promise.resolve();
-  const filt = { status: '', owner: '', discipline: '', sub: '', q: '', overdue: false };
+  let st = null;
+  const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true },
+    safeJSON(localStorage.getItem(UIKEY)) || {});
+  const filt = { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '' };
+  let sel = null; // { type, id }
+  let view = { x: 40, y: 40, k: 1 };
+  let firstFit = true;
 
-  /* ---------- tiny DOM helper (textContent only; never innerHTML with data) ---------- */
+  function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort })); }
+
+  /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -25,498 +32,847 @@
     for (const c of kids.flat(Infinity)) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
     return el;
   }
+  function s(tag, attrs) { const el = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v); return el; }
   function field(label, input, hint) {
-    const id = input.id || (input.id = 'f' + M.uid());
-    return h('div', { class: 'f' }, h('label', { for: id }, label), input, hint ? h('small', { class: 'muted' }, hint) : null);
+    if (!input.id) input.id = 'f' + M.uid();
+    return h('div', { class: 'f' }, h('label', { for: input.id }, label), input, hint ? h('small', { class: 'hint' }, hint) : null);
   }
   function select(opts, value, attrs) {
-    return h('select', attrs, opts.map((o) => {
-      const [v, t] = Array.isArray(o) ? o : [o, o];
-      return h('option', { value: v, selected: v === value }, t);
-    }));
+    return h('select', attrs, opts.map((o) => { const [v, t] = Array.isArray(o) ? o : [o, o]; return h('option', { value: v, selected: String(v) === String(value == null ? '' : value) }, t); }));
   }
-  function toast(msg) {
-    const t = $('#toast');
-    t.textContent = msg;
-    t.classList.add('on');
-    clearTimeout(toast.tm);
-    toast.tm = setTimeout(() => t.classList.remove('on'), 3500);
-  }
-  function bar(pct, label) {
-    return h('div', { class: 'bar' }, h('progress', { max: 100, value: pct, 'aria-label': label }), h('span', { class: 'pct' }, Math.round(pct) + '%'));
-  }
+  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.remove('on'), 3200); }
+  function slug(x) { return String(x).toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
   function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
-  function slug(s) { return String(s).toLowerCase().replace(/\s+/g, '-'); }
-  function stBadge(s) { return h('span', { class: 'badge s-' + slug(s) }, s); }
+  function fmtFt(n) { return Math.round(n).toLocaleString() + ' ft'; }
+  function initials(name) { return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join(''); }
+  function ring(pct, size) {
+    size = size || 44;
+    const r = size / 2 - 4, c = 2 * Math.PI * r;
+    const svg = s('svg', { class: 'ring', width: size, height: size, viewBox: '0 0 ' + size + ' ' + size, role: 'img', 'aria-label': Math.round(pct) + '% complete' });
+    svg.append(s('circle', { cx: size / 2, cy: size / 2, r, class: 'ring-bg' }));
+    const fg = s('circle', { cx: size / 2, cy: size / 2, r, class: 'ring-fg', 'stroke-dasharray': c, 'stroke-dashoffset': c * (1 - pct / 100), transform: 'rotate(-90 ' + size / 2 + ' ' + size / 2 + ')' });
+    svg.append(fg);
+    const tx = s('text', { x: '50%', y: '50%', 'dominant-baseline': 'central', 'text-anchor': 'middle', class: 'ring-tx' });
+    tx.textContent = Math.round(pct) + '%';
+    svg.append(tx);
+    return svg;
+  }
+  function bar(pct, label) { return h('div', { class: 'bar' }, h('progress', { max: 100, value: pct, 'aria-label': label }), h('span', {}, Math.round(pct) + '%')); }
   function download(name, text, type) {
     const url = URL.createObjectURL(new Blob([text], { type }));
-    const a = h('a', { href: url, download: name });
-    document.body.append(a); a.click(); a.remove();
+    const a = h('a', { href: url, download: name }); document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  function scaleOpts(withInherit, inheritLabel) {
+    const o = st.settings.scales.map((r) => [String(r.scale), r.scale + ' scale (1" = ' + r.scale + "') · " + r.ft.toLocaleString() + ' ft/sheet']);
+    return withInherit ? [['', inheritLabel]].concat(o) : o;
+  }
+  /* scale picker: preset select + custom number */
+  function scalePicker(value, inheritLabel, onInput) {
+    const known = st.settings.scales.some((r) => Number(r.scale) === Number(value));
+    const opts = scaleOpts(inheritLabel != null, inheritLabel).concat([['custom', 'Custom scale…']]);
+    const sel = select(opts, value == null || value === '' ? '' : known ? String(value) : 'custom', { 'aria-label': 'Plan scale' });
+    const num = h('input', { type: 'number', min: 1, step: 'any', value: known || value == null ? '' : value, 'aria-label': 'Custom scale (feet per inch)', placeholder: 'e.g. 30', class: 'custom-scale' });
+    num.hidden = sel.value !== 'custom';
+    const get = () => (sel.value === 'custom' ? (Number(num.value) > 0 ? Number(num.value) : null) : sel.value === '' ? null : Number(sel.value));
+    sel.addEventListener('change', () => { num.hidden = sel.value !== 'custom'; if (!num.hidden) num.focus(); onInput && onInput(get()); });
+    num.addEventListener('input', () => onInput && onInput(get()));
+    const wrap = h('div', { class: 'scalepick' }, sel, num);
+    wrap.get = get;
+    return wrap;
   }
 
   /* ---------- persistence ---------- */
-  function readEnv() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+  function load() {
+    const raw = safeJSON(localStorage.getItem(KEY));
+    if (raw) { try { return M.migrate(raw); } catch (e) { toast('Stored data could not be read: ' + e.message); } }
+    return null;
+  }
+  let saveTm = null, dirty = false;
   function save() {
-    if (!st || !vk) return saving;
-    const snap = JSON.parse(JSON.stringify(st));
-    const k = vk;
-    saving = saving.then(async () => {
-      const env = await C.sealWithKey(k.key, k.salt, k.iter, snap, 'vault');
-      if (vk === k) localStorage.setItem(KEY, JSON.stringify(env));
-    }).catch((e) => toast('Save failed: ' + e.message));
-    return saving;
+    dirty = true;
+    clearTimeout(saveTm);
+    saveTm = setTimeout(flush, 150);
+    $('#saved').textContent = 'Saving…';
   }
-  function commit(fn) {
-    try { const r = fn(); save(); return r; } catch (e) { toast(e.message); return undefined; }
-  }
-
-  /* ---------- lock / unlock ---------- */
-  function showLock(msg) {
-    document.body.classList.add('locked');
-    $('#view').hidden = true; $('#view').replaceChildren();
-    $('#nav').hidden = true; $('#lockBtn').hidden = true;
-    $('#lock').hidden = false;
-    const env = readEnv();
-    const body = $('#lockBody');
-    const err = h('p', { class: 'err', role: 'alert', 'aria-live': 'assertive' }, msg || '');
-    if (!env) {
-      $('#lockTitle').textContent = 'Set a passphrase';
-      const p1 = h('input', { type: 'password', autocomplete: 'new-password', 'aria-describedby': 'passHint' });
-      const p2 = h('input', { type: 'password', autocomplete: 'new-password', required: true });
-      const f = h('form', { class: 'stack', onsubmit: async (e) => {
-        e.preventDefault();
-        const issues = C.passIssues(p1.value, p2.value);
-        if (issues.length) { err.textContent = issues.join(' '); return; }
-        busy(f, true, 'Encrypting…');
-        const fresh = M.newState();
-        const r = await C.seal(p1.value, fresh, 'vault');
-        p1.value = p2.value = '';
-        localStorage.setItem(KEY, JSON.stringify(r.env));
-        vk = { key: r.key, salt: r.salt, iter: r.iter };
-        st = fresh;
-        enter();
-      } },
-      h('p', { class: 'muted', id: 'passHint' }, 'First run on this device. Choose a passphrase of at least ' + C.MIN_PASS + ' characters — a short sentence of 4+ random words is strong and memorable.'),
-      field('New passphrase', p1), field('Confirm passphrase', p2),
-      h('p', { class: 'warn' }, 'There is no recovery. If you forget the passphrase, the data cannot be decrypted by anyone.'),
-      err, h('button', { class: 'btn block', type: 'submit' }, 'Create encrypted project'));
-      body.replaceChildren(f, restoreForm());
-      p1.focus();
-    } else {
-      $('#lockTitle').textContent = 'Unlock';
-      const p = h('input', { type: 'password', autocomplete: 'current-password', required: true });
-      const f = h('form', { class: 'stack', onsubmit: async (e) => {
-        e.preventDefault();
-        busy(f, true, 'Unlocking…');
-        try {
-          const r = await C.open(p.value, readEnv(), 'vault');
-          st = M.normalize(r.data);
-          vk = { key: r.key, salt: r.salt, iter: r.iter };
-          p.value = '';
-          enter();
-        } catch (ex) {
-          busy(f, false);
-          p.value = ''; p.focus();
-          err.textContent = ex.code === 'DECRYPT' ? 'Wrong passphrase. Try again.' : 'Could not unlock: ' + ex.message;
-        }
-      } }, field('Passphrase', p), err, h('button', { class: 'btn block', type: 'submit' }, 'Unlock'));
-      body.replaceChildren(f);
-      p.focus();
-    }
-  }
-  function busy(form, on, label) {
-    const b = form.querySelector('button[type=submit]');
-    if (!b.dataset.t) b.dataset.t = b.textContent;
-    b.disabled = on; b.textContent = on ? label : b.dataset.t;
-  }
-  function restoreForm() {
-    const file = h('input', { type: 'file', accept: '.json,application/json' });
-    const p = h('input', { type: 'password', autocomplete: 'off' });
-    const err = h('p', { class: 'err', role: 'alert' });
-    const f = h('form', { class: 'stack', onsubmit: async (e) => {
-      e.preventDefault();
-      if (!file.files[0]) { err.textContent = 'Choose a backup file.'; return; }
-      busy(f, true, 'Decrypting…');
-      try {
-        const env = JSON.parse(await file.files[0].text());
-        const r = await C.open(p.value, env, 'backup');
-        st = M.normalize(r.data);
-        vk = { key: r.key, salt: r.salt, iter: r.iter };
-        p.value = '';
-        await save();
-        enter();
-        toast('Backup restored. Your passphrase is the one used for that backup.');
-      } catch (ex) {
-        busy(f, false);
-        err.textContent = ex.code === 'DECRYPT' ? 'Wrong passphrase for this backup (or the file was modified).' : 'Could not read backup: ' + ex.message;
-      }
-    } }, field('Backup file', file), field('Backup passphrase', p), err, h('button', { class: 'btn sec block', type: 'submit' }, 'Restore'));
-    return h('details', { class: 'restore' }, h('summary', {}, 'Restore from an encrypted backup instead'), f);
-  }
-  function lock(reason) {
-    st = null; vk = null;
-    showLock(reason || '');
-  }
-  function enter() {
-    document.body.classList.remove('locked');
-    $('#lock').hidden = true; $('#lockBody').replaceChildren();
-    $('#view').hidden = false; $('#nav').hidden = false; $('#lockBtn').hidden = false;
-    lastAct = Date.now();
-    route();
-  }
-
-  /* ---------- auto-lock ---------- */
-  ['pointerdown', 'keydown', 'input', 'wheel', 'touchstart'].forEach((ev) => document.addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true, capture: true }));
-  setInterval(() => {
-    if (st && Date.now() - lastAct > (Number(st.settings.autoLockMin) || 5) * 60000) lock('Locked after inactivity.');
-  }, 1000);
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && st && st.settings.lockOnHide) lock('Locked when the tab was hidden.');
-  });
-  $('#lockBtn').addEventListener('click', () => lock('Locked.'));
-
-  /* ---------- routing ---------- */
-  window.addEventListener('hashchange', route);
-  function route() {
+  function flush() {
+    clearTimeout(saveTm);
     if (!st) return;
-    const [, a, b] = (location.hash || '#/').slice(1).split('/');
-    let view, nav = a || 'dash';
-    if (a === 'sub' && M.findSub(st, b)) { view = subView(M.findSub(st, b)); nav = 'subs'; }
-    else if (a === 'seg' && M.findSeg(st, b)) { view = segView(M.findSeg(st, b)); nav = 'subs'; }
-    else if (a === 'subs') view = subsView();
-    else if (a === 'table') view = tableView();
-    else if (a === 'settings') view = settingsView();
-    else { view = dashView(); nav = 'dash'; }
-    document.querySelectorAll('#nav a').forEach((x) => x.classList.toggle('on', x.dataset.nav === nav));
-    $('#appTitle').textContent = st.project.name || 'Project Manager';
-    const v = $('#view');
-    const y = v.dataset.route === location.hash ? window.scrollY : 0;
-    v.dataset.route = location.hash;
-    v.replaceChildren(...[backupBanner(), view].filter(Boolean));
-    window.scrollTo(0, y);
+    dirty = false;
+    try { localStorage.setItem(KEY, JSON.stringify(st)); $('#saved').textContent = 'Saved on this device'; }
+    catch (e) { $('#saved').textContent = 'Save failed'; toast('Save failed: ' + e.message); }
   }
-  function rerender() { route(); }
-
-  function backupBanner() {
-    const days = st.lastBackup ? (Date.now() - Date.parse(st.lastBackup)) / 864e5 : Infinity;
-    if (days <= BACKUP_DAYS) return null;
-    return h('div', { class: 'banner', role: 'note' },
-      st.lastBackup ? 'Last encrypted backup was ' + Math.floor(days) + ' days ago. ' : 'No encrypted backup yet. ',
-      'Clearing browser data erases everything. ', h('a', { href: '#/settings' }, 'Export a backup'));
+  const flushIfDirty = () => { if (dirty) flush(); };
+  window.addEventListener('beforeunload', flushIfDirty);
+  window.addEventListener('pagehide', flushIfDirty);
+  function commit(fn, opts) {
+    let r;
+    try { r = fn(); } catch (e) { toast(e.message); return undefined; }
+    save();
+    if (!opts || opts.render !== false) renderAll();
+    return r;
   }
 
-  /* ---------- views ---------- */
-  function dashView() {
+  /* ---------- theme ---------- */
+  function applyTheme() {
+    const dark = ui.theme ? ui.theme === 'dark' : window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    $('#themeBtn').setAttribute('aria-pressed', String(dark));
+  }
+
+  /* ---------- filters ---------- */
+  function sheetMatches(r) { return M.filterRows([r], { status: filt.status, owner: filt.owner, discipline: filt.discipline, q: filt.q }).length === 1; }
+  function filtersActive() { return !!(filt.status || filt.owner || filt.discipline || filt.q); }
+  function fillFilterSelects() {
+    const owners = [...new Set(st.staff.map((x) => x.name).concat(M.allSheets(st).map((r) => r.sh.owner).filter(Boolean)))].sort();
+    const set = (id, opts, v) => { const el = $(id); el.replaceChildren(...select(opts, v).children); el.value = v; };
+    set('#fStatus', [['', 'All statuses']].concat(M.STATUSES), filt.status);
+    set('#fOwner', [['', 'All owners'], ['(unassigned)', 'Unassigned']].concat(owners), filt.owner);
+    set('#fDisc', [['', 'Drainage + SWP3'], 'Drainage', 'SWP3'], filt.discipline);
+  }
+
+  /* ---------- render ---------- */
+  function renderAll() {
+    $('#appTitle').textContent = st.project.name || 'Project Tracker';
+    fillFilterSelects();
+    renderRail();
+    $('#treeWrap').hidden = ui.view !== 'tree';
+    $('#listWrap').hidden = ui.view !== 'list';
+    $('#vTree').setAttribute('aria-pressed', String(ui.view === 'tree'));
+    $('#vList').setAttribute('aria-pressed', String(ui.view === 'list'));
+    $('#tlBtn').setAttribute('aria-pressed', String(ui.timeline));
+    $('#timeline').hidden = !ui.timeline;
+    if (ui.view === 'tree') renderTree(); else renderList();
+    if (ui.timeline) renderTimeline();
+    renderDrawer();
+  }
+
+  /* ----- overview rail ----- */
+  function renderRail() {
     const S = M.summary(st);
+    const PP = M.ppSummary(st);
     const o = S.overall;
-    return h('div', {},
-      h('section', { class: 'card' },
-        h('h2', {}, 'Overall progress'),
-        bar(o.pct, 'Overall progress'),
-        h('p', { class: 'muted' }, o.total + ' sheets · ' + o.done + ' done (' + o.donePct + '%). Weighted: In progress 40%, In review 80%, Done 100%.'),
-        h('div', { class: 'counts' }, M.STATUSES.map((s) => h('a', { class: 'count s-' + slug(s), href: '#/table', onclick: () => { resetFilt(); filt.status = s; } },
-          h('b', {}, o.counts[s]), h('span', {}, s))))),
-      h('section', { class: 'card' },
-        h('h2', {}, 'Sub-projects'),
-        h('ul', { class: 'plain' }, S.subs.map((x) => h('li', { class: 'subrow' },
-          h('a', { href: '#/sub/' + x.sub.id, class: 'subname' }, h('span', { class: 'code' }, x.sub.code), x.sub.name),
-          bar(x.pct, 'Progress ' + x.sub.name),
-          h('small', { class: 'muted' }, plural(x.sub.segments.length, 'segment') + ' · ' + x.total + ' sheets · ' + x.done + ' done'))))),
-      h('section', { class: 'card' },
-        h('h2', {}, 'Overdue sheets (' + S.overdue.length + ')'),
-        S.overdue.length ? h('ul', { class: 'plain' }, S.overdue.slice(0, 15).map((r) => h('li', { class: 'odrow' },
-          h('a', { href: '#/seg/' + r.seg.id }, r.sub.code + ' · ' + r.seg.name + ' — ' + r.sh.title),
-          h('small', { class: 'over' }, ' due ' + r.sh.due + (r.sh.owner ? ' · ' + r.sh.owner : '') + ' · ' + r.sh.status))))
-          : h('p', { class: 'muted' }, 'Nothing overdue.'),
-        S.overdue.length > 15 ? h('a', { href: '#/table', onclick: () => { resetFilt(); filt.overdue = true; } }, 'See all overdue') : null),
-      h('section', { class: 'card' },
-        h('h2', {}, 'Workload by owner'),
-        S.workload.length ? h('table', { class: 'wl' },
-          h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Owner'), h('th', { scope: 'col' }, 'Open'), h('th', { scope: 'col' }, 'Overdue'), h('th', { scope: 'col' }, 'Done'))),
-          h('tbody', {}, S.workload.map((w) => h('tr', {},
-            h('th', { scope: 'row' }, h('a', { href: '#/table', onclick: () => { resetFilt(); filt.owner = w.owner; } }, w.owner)),
-            h('td', {}, w.open), h('td', { class: w.overdue ? 'over' : '' }, w.overdue), h('td', {}, w.done)))))
-          : h('p', { class: 'muted' }, 'No sheets yet. Open a sub-project to add segments and sheets.')));
+    const days = st.lastBackup ? (Date.now() - Date.parse(st.lastBackup)) / 864e5 : Infinity;
+    const kpi = (n, l, cls, on) => h('button', { type: 'button', class: 'kpi ' + (cls || ''), onclick: on }, h('b', {}, n), h('span', {}, l));
+    const toList = (f) => () => { Object.assign(filt, { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '' }, f); $('#q').value = filt.q; ui.view = 'list'; saveUI(); renderAll(); };
+    $('#rail').replaceChildren(...[
+      days > BACKUP_DAYS ? h('div', { class: 'warnbox' }, st.lastBackup ? 'Last backup ' + Math.floor(days) + ' days ago. ' : 'No backup yet. ', h('button', { type: 'button', class: 'link', onclick: openSettings }, 'Export backup')) : null,
+      h('section', { class: 'panel hero' }, ring(o.pct, 84),
+        h('div', {}, h('div', { class: 'big' }, o.pct + '%'), h('div', { class: 'muted' }, 'weighted progress'), h('div', { class: 'muted' }, o.done + ' of ' + o.total + ' sheets done'))),
+      h('section', { class: 'kpis' },
+        kpi(o.total, 'Sheets', '', toList({})),
+        kpi(PP.total, 'PP sheets (calc)', 'accent', openPP),
+        kpi(S.overdue.length, 'Overdue', S.overdue.length ? 'bad' : '', toList({ when: 'overdue' })),
+        kpi(S.upcoming.length, 'Due ≤ 14 days', S.upcoming.length ? 'warn' : '', toList({ when: 'upcoming' })),
+        kpi(o.hoursActual + ' / ' + o.hoursBudget, 'Hours act / bud', o.hoursBudget && o.hoursActual > o.hoursBudget ? 'bad' : '', openStaff),
+        kpi(fmtFt(PP.length), 'Total length', '', null)),
+      h('section', { class: 'panel' }, h('h3', {}, 'Sub-projects'),
+        S.subs.map((x) => {
+          const pp = PP.bySub.find((b) => b.sub === x.sub);
+          return h('button', { type: 'button', class: 'subline', onclick: () => { select_('sub', x.sub.id); focusNode('sub:' + x.sub.id); } },
+            h('span', { class: 'code' }, x.sub.code), h('span', { class: 'grow' }, h('span', { class: 'nm' }, x.sub.name), bar(x.pct, 'Progress ' + x.sub.name)),
+            h('span', { class: 'pp', title: 'PP sheets' }, pp.total + ' PP'));
+        })),
+      listPanel('Overdue', S.overdue, 'bad'),
+      listPanel('Upcoming (14 days)', S.upcoming, 'warn'),
+      h('section', { class: 'panel' }, h('h3', {}, 'Milestones'),
+        S.milestones.length ? S.milestones.map((m) => h('button', { type: 'button', class: 'msline', onclick: toList({ milestone: m.m.id }) },
+          h('span', { class: 'grow' }, h('span', { class: 'nm' }, m.m.name + (m.m.date ? ' · ' + m.m.date : '')), bar(m.pct, m.m.name)), h('span', { class: 'muted' }, m.total + ' sh'))) : h('p', { class: 'muted' }, 'None'),
+        h('button', { type: 'button', class: 'link', onclick: openMilestones }, 'Manage milestones')),
+      h('section', { class: 'panel' }, h('h3', {}, 'Recent activity'),
+        st.log.length ? h('ol', { class: 'log' }, st.log.slice(0, 8).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })), ' ', l.msg))) : h('p', { class: 'muted' }, 'Nothing yet.'))].filter(Boolean));
   }
-  function resetFilt() { Object.assign(filt, { status: '', owner: '', discipline: '', sub: '', q: '', overdue: false }); }
-
-  function subsView() {
-    return h('div', {}, st.subs.map((sub) => {
-      const p = M.progress(sub.segments.flatMap((s) => s.sheets));
-      return h('a', { class: 'card linkcard', href: '#/sub/' + sub.id },
-        h('h2', {}, h('span', { class: 'code' }, sub.code), sub.name), bar(p.pct, 'Progress ' + sub.name),
-        h('small', { class: 'muted' }, plural(sub.segments.length, 'segment') + ' · ' + p.total + ' sheets'));
-    }));
+  function listPanel(title, rows, cls) {
+    return h('section', { class: 'panel' }, h('h3', {}, title + ' (' + rows.length + ')'),
+      rows.length ? h('ul', { class: 'mini' }, rows.slice(0, 6).map((r) => h('li', {}, h('button', { type: 'button', class: 'link ' + cls, onclick: () => { select_('sheet', r.sh.id); revealSheet(r); } },
+        r.sub.code + ' · ' + r.sh.title), h('small', { class: 'muted' }, ' ' + r.sh.due + (r.sh.owner ? ' · ' + r.sh.owner : ''))))) : h('p', { class: 'muted' }, 'None'));
   }
 
-  function segForm(sub, seg, onDone) {
-    const name = h('input', { value: seg ? seg.name : '', required: true, placeholder: 'e.g. Mainlane north' });
+  /* ----- tree ----- */
+  const COLX = [0, 300, 620, 980];
+  const W = { root: 250, sub: 260, seg: 300, sheet: 320 };
+  const H = { root: 112, sub: 100, seg: 118, sheet: 56 };
+  const GAP = 10;
+  function isCollapsed(key, def) { return key in ui.collapsed ? ui.collapsed[key] : def; }
+  function buildTree() {
+    const root = { key: 'root', type: 'root', depth: 0, kids: [] };
+    for (const sub of st.subs) {
+      const sn = { key: 'sub:' + sub.id, type: 'sub', sub, depth: 1, kids: [] };
+      sn.collapsed = isCollapsed(sn.key, false);
+      for (const seg of sub.segments) {
+        const gn = { key: 'seg:' + seg.id, type: 'seg', sub, seg, depth: 2, kids: [] };
+        gn.collapsed = isCollapsed(gn.key, true);
+        for (const sh of seg.sheets) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, depth: 3, kids: [] });
+        sn.kids.push(gn);
+      }
+      root.kids.push(sn);
+    }
+    let cursor = 0;
+    const out = [];
+    (function lay(n) {
+      out.push(n);
+      const kids = n.collapsed ? [] : n.kids;
+      n.x = COLX[n.depth]; n.w = W[n.type]; n.h = H[n.type];
+      if (!kids.length) { n.y = cursor; cursor += n.h + GAP; return; }
+      kids.forEach(lay);
+      const first = kids[0], last = kids[kids.length - 1];
+      n.y = Math.max((first.y + first.h / 2 + last.y + last.h / 2) / 2 - n.h / 2, 0);
+      n.vis = kids;
+    })(root);
+    return out;
+  }
+  function nodeMatch(n) {
+    if (!filtersActive()) return { dim: false, hit: false };
+    const sheets = n.type === 'sheet' ? [n] : n.type === 'seg' ? n.seg.sheets.map((sh) => ({ sub: n.sub, seg: n.seg, sh })) :
+      n.type === 'sub' ? n.sub.segments.flatMap((seg) => seg.sheets.map((sh) => ({ sub: n.sub, seg, sh }))) : M.allSheets(st);
+    const rows = n.type === 'sheet' ? [{ sub: n.sub, seg: n.seg, sh: n.sh }] : sheets;
+    const any = rows.some(sheetMatches);
+    const q = filt.q.trim().toLowerCase();
+    const selfHit = !!q && (n.type === 'seg' ? (n.seg.name + ' ' + n.seg.road).toLowerCase().includes(q) : n.type === 'sub' ? (n.sub.code + ' ' + n.sub.name).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
+    const onlyQ = !filt.status && !filt.owner && !filt.discipline;
+    return { dim: !(any || (selfHit && onlyQ)), hit: selfHit && (n.type !== 'sheet' || any) };
+  }
+  function renderTree() {
+    const nodes = buildTree();
+    const edges = $('#edges');
+    const box = $('#nodes');
+    edges.replaceChildren();
+    let maxX = 0, maxY = 0;
+    const els = [];
+    for (const n of nodes) {
+      maxX = Math.max(maxX, n.x + n.w); maxY = Math.max(maxY, n.y + n.h);
+      for (const c of n.vis || []) {
+        const x1 = n.x + n.w, y1 = n.y + n.h / 2, x2 = c.x, y2 = c.y + c.h / 2, mx = (x1 + x2) / 2;
+        const m = nodeMatch(c);
+        edges.append(s('path', { d: 'M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ',' + mx + ' ' + y2 + ',' + x2 + ' ' + y2, class: 'edge' + (m.dim ? ' dim' : '') + (c.type === 'sheet' ? ' st-' + slug(c.sh.status) : '') }));
+      }
+      els.push(nodeEl(n));
+    }
+    edges.setAttribute('width', maxX + 40); edges.setAttribute('height', maxY + 40);
+    box.replaceChildren(...els);
+    $('#stage').dataset.w = maxX; $('#stage').dataset.h = maxY; $('#stage').dataset.ry = nodes[0].y + nodes[0].h / 2;
+    if (firstFit) { firstFit = false; requestAnimationFrame(() => fit(true)); } else applyView();
+  }
+  function toggleBtn(n) {
+    if (!n.kids.length && n.type !== 'sub') return null;
+    return h('button', { type: 'button', class: 'nbtn tog', 'aria-expanded': String(!n.collapsed), 'aria-label': (n.collapsed ? 'Expand ' : 'Collapse ') + nodeLabel(n),
+      onclick: (e) => { e.stopPropagation(); ui.collapsed[n.key] = !n.collapsed; saveUI(); renderTree(); } }, (n.collapsed ? '▸ ' : '▾ ') + n.kids.length);
+  }
+  function addBtn(n, label, fn) { return h('button', { type: 'button', class: 'nbtn add', 'aria-label': label, title: label, onclick: (e) => { e.stopPropagation(); fn(); } }, '+'); }
+  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'sub' ? 'Sub-project ' + n.sub.code : n.type === 'seg' ? 'segment ' + n.seg.name : 'sheet ' + n.sh.title; }
+  function nodeEl(n) {
+    const m = nodeMatch(n);
+    const today = M.todayISO();
+    let body;
+    if (n.type === 'root') {
+      const p = M.progress(M.allSheets(st).map((r) => r.sh));
+      body = [ring(p.pct, 56), h('div', { class: 'nb' }, h('div', { class: 'nt' }, st.project.name), h('div', { class: 'ns' }, p.total + ' sheets · ' + M.ppSummary(st).total + ' PP'), h('div', { class: 'ns' }, 'Sub-projects A–D'))];
+    } else if (n.type === 'sub') {
+      const sheets = n.sub.segments.flatMap((g) => g.sheets);
+      const p = M.progress(sheets);
+      const pp = M.ppSummary(st).bySub.find((b) => b.sub === n.sub);
+      const od = sheets.filter((x) => M.isOverdue(x, today)).length;
+      body = [h('span', { class: 'code lg' }, n.sub.code), h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.sub.name),
+        h('div', { class: 'ns' }, plural(n.sub.segments.length, 'segment') + ' · ' + fmtFt(pp.length)),
+        h('div', { class: 'ns' }, pp.total + ' PP @ ' + n.sub.scale + ' scale' + (od ? '' : '')), od ? h('span', { class: 'flag' }, '⚑ ' + od + ' overdue') : null), ring(p.pct, 46)];
+    } else if (n.type === 'seg') {
+      const p = M.progress(n.seg.sheets);
+      const pp = M.segPP(st, n.sub, n.seg);
+      const od = n.seg.sheets.filter((x) => M.isOverdue(x, today)).length;
+      const owners = [...new Set(n.seg.sheets.map((x) => x.owner).filter(Boolean))];
+      body = [h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.seg.name + (n.seg.road ? ' · ' + n.seg.road : '')),
+        h('div', { class: 'ns mono' }, M.formatStation(n.seg.start) + ' → ' + M.formatStation(n.seg.end) + ' · ' + fmtFt(pp.length)),
+        h('div', { class: 'ns' }, M.segScale(n.sub, n.seg) + ' scale · ', h('b', {}, pp.total + ' PP'), ' · ' + plural(n.seg.sheets.length, 'sheet')),
+        h('div', { class: 'nrow' }, bar(p.pct, 'Progress ' + n.seg.name), od ? h('span', { class: 'flag' }, '⚑ ' + od) : null,
+          h('span', { class: 'avs' }, owners.slice(0, 4).map((o) => h('span', { class: 'av', title: o }, initials(o))))))];
+    } else {
+      const sh = n.sh;
+      const od = M.isOverdue(sh, today);
+      const blocked = M.blockedBy(st, sh).length;
+      body = [h('span', { class: 'chip ' + (sh.discipline === 'SWP3' ? 'sw' : 'dr'), title: sh.discipline }, sh.discipline === 'SWP3' ? 'SW' : 'DR'),
+        h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, sh.title),
+          h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.pct && sh.status !== 'Done' ? ' · ' + sh.pct + '%' : '') + (sh.due ? ' · ' + sh.due : '') + (sh.gen ? ' · PP' : '') + (blocked ? ' · ⛓ blocked' : ''))),
+        od ? h('span', { class: 'flag', title: 'Overdue' }, '⚑') : null,
+        sh.owner ? h('span', { class: 'av', title: sh.owner }, initials(sh.owner)) : h('span', { class: 'av none', title: 'Unassigned' }, '–')];
+    }
+    const id = n.type === 'root' ? 'root' : n.type === 'sub' ? n.sub.id : n.type === 'seg' ? n.seg.id : n.sh.id;
+    const selected = sel && (sel.type === n.type && sel.id === id || (n.type === 'root' && sel.type === 'root'));
+    const el = h('div', { class: 'node n-' + n.type + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) + (n.sh.discipline === 'SWP3' ? ' d-sw' : ' d-dr') : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
+      tabindex: 0, role: 'button', 'data-key': n.key, 'aria-label': nodeLabel(n),
+      onclick: () => select_(n.type, id),
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id); } } },
+    body, h('div', { class: 'nacts' },
+      n.type === 'sub' ? addBtn(n, 'Add segment to ' + n.sub.code, () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegName'); if (i) i.focus(); }, 30); }) : null,
+      n.type === 'seg' ? addBtn(n, 'Add sheet to ' + n.seg.name, () => { ui.collapsed[n.key] = false; select_('seg', n.seg.id); setTimeout(() => { const i = $('#addSheetTitle'); if (i) i.focus(); }, 30); }) : null,
+      toggleBtn(n)));
+    el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; el.style.width = n.w + 'px'; el.style.height = n.h + 'px';
+    return el;
+  }
+  function applyView() { $('#stage').style.transform = 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + view.k + ')'; }
+  /* Fit: whole tree on screen. readable=true (first view): fit width only, never below 0.75 zoom, top aligned. */
+  function fit(readable) {
+    const vp = $('#viewport').getBoundingClientRect();
+    const w = Number($('#stage').dataset.w) + 60, hh = Number($('#stage').dataset.h) + 40;
+    if (!vp.width) return;
+    const kw = (vp.width - 40) / w, kh = (vp.height - 90) / hh;
+    view.k = readable === true ? Math.max(0.55, Math.min(1, kw, kh)) : Math.max(0.15, Math.min(1.1, kw, kh));
+    view.x = Math.max(20, (vp.width - w * view.k) / 2);
+    if (hh * view.k <= vp.height - 90) view.y = Math.max(20, (vp.height - 70 - hh * view.k) / 2);
+    else view.y = (vp.height - 70) / 2 - Number($('#stage').dataset.ry || 0) * view.k; /* centre on the project root */
+    applyView();
+  }
+  function zoomAt(f, cx, cy) {
+    const k = Math.max(0.15, Math.min(2.5, view.k * f));
+    view.x = cx - (cx - view.x) * (k / view.k); view.y = cy - (cy - view.y) * (k / view.k); view.k = k;
+    applyView();
+  }
+  function focusNode(key) {
+    if (ui.view !== 'tree') return;
+    const el = document.querySelector('.node[data-key="' + key + '"]');
+    if (!el) return;
+    const vp = $('#viewport').getBoundingClientRect();
+    const x = parseFloat(el.style.left) + parseFloat(el.style.width) / 2, y = parseFloat(el.style.top) + parseFloat(el.style.height) / 2;
+    view.x = vp.width / 2 - x * view.k; view.y = vp.height / 2 - y * view.k;
+    $('#stage').classList.add('anim'); applyView(); setTimeout(() => $('#stage').classList.remove('anim'), 350);
+    el.focus({ preventScroll: true });
+  }
+  function revealSheet(r) {
+    ui.collapsed['sub:' + r.sub.id] = false; ui.collapsed['seg:' + r.seg.id] = false; saveUI();
+    renderAll();
+    setTimeout(() => focusNode('sheet:' + r.sh.id), 20);
+  }
+  /* pan / zoom / pinch */
+  (function panzoom() {
+    const vp = $('#viewport');
+    const pts = new Map();
+    let last = null, pinch = null, moved = 0;
+    vp.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button, input, select, textarea')) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      vp.setPointerCapture(e.pointerId);
+      moved = 0;
+      if (pts.size === 1) last = { x: e.clientX, y: e.clientY };
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) }; }
+    });
+    vp.addEventListener('pointermove', (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const r = vp.getBoundingClientRect();
+      if (pts.size === 2 && pinch) {
+        const [a, b] = [...pts.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        zoomAt(d / pinch.d, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top); pinch.d = d; moved += 10;
+      } else if (last) {
+        view.x += e.clientX - last.x; view.y += e.clientY - last.y; moved += Math.abs(e.clientX - last.x) + Math.abs(e.clientY - last.y);
+        last = { x: e.clientX, y: e.clientY }; applyView();
+        if (moved > 4) vp.classList.add('grabbing');
+      }
+    });
+    const end = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { last = null; vp.classList.remove('grabbing'); } };
+    vp.addEventListener('pointerup', end); vp.addEventListener('pointercancel', end);
+    /* a drag should not count as a click on a node */
+    vp.addEventListener('click', (e) => { if (moved > 6) { e.stopPropagation(); e.preventDefault(); moved = 0; } }, true);
+    vp.addEventListener('wheel', (e) => { e.preventDefault(); const r = vp.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    vp.addEventListener('keydown', (e) => {
+      if (e.target !== vp) return;
+      const step = 60;
+      if (e.key === 'ArrowLeft') view.x += step; else if (e.key === 'ArrowRight') view.x -= step; else if (e.key === 'ArrowUp') view.y += step; else if (e.key === 'ArrowDown') view.y -= step;
+      else if (e.key === '+' || e.key === '=') zoomAt(1.2, vp.clientWidth / 2, vp.clientHeight / 2); else if (e.key === '-') zoomAt(1 / 1.2, vp.clientWidth / 2, vp.clientHeight / 2); else return;
+      e.preventDefault(); applyView();
+    });
+  })();
+
+  /* ----- station timeline ----- */
+  function renderTimeline() {
+    const segs = st.subs.flatMap((sub) => sub.segments.map((seg) => ({ sub, seg })));
+    const box = $('#timeline');
+    if (!segs.length) { box.replaceChildren(h('div', { class: 'tl-empty muted' }, 'Station timeline — add segments to see them by station range.')); return; }
+    const lo = Math.floor(Math.min(...segs.map((x) => x.seg.start)) / 500) * 500;
+    const hi = Math.ceil(Math.max(...segs.map((x) => x.seg.end)) / 500) * 500 || lo + 500;
+    const span = hi - lo || 1;
+    const stepRaw = span / 8;
+    const step = [100, 200, 500, 1000, 2000, 5000, 10000].find((v) => v >= stepRaw) || 20000;
+    const axis = h('div', { class: 'tl-axis' });
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) { const t = h('span', { class: 'tick' }, M.formatStation(v)); t.style.left = ((v - lo) / span * 100) + '%'; axis.append(t); }
+    box.replaceChildren(...[h('div', { class: 'tl-head' }, h('b', {}, 'Station timeline'), h('span', { class: 'muted' }, ' colour = progress · click a segment')),
+      h('div', { class: 'tl-row' }, h('span', { class: 'tl-lbl' }), axis),
+      st.subs.map((sub) => h('div', { class: 'tl-row' }, h('span', { class: 'tl-lbl' }, h('span', { class: 'code' }, sub.code)),
+        h('div', { class: 'tl-track' }, sub.segments.map((seg) => {
+          const p = M.progress(seg.sheets).pct;
+          const pp = M.segPP(st, sub, seg).total;
+          const b = h('button', { type: 'button', class: 'tl-seg p' + Math.min(4, Math.floor(p / 25)) + (sel && sel.id === seg.id ? ' sel' : ''),
+            title: sub.code + ' · ' + seg.name + (seg.road ? ' · ' + seg.road : '') + '\n' + M.formatStation(seg.start) + ' – ' + M.formatStation(seg.end) + ' · ' + fmtFt(seg.end - seg.start) + ' · ' + pp + ' PP · ' + Math.round(p) + '%',
+            'aria-label': 'Segment ' + seg.name + ', ' + Math.round(p) + '% complete',
+            onclick: () => { select_('seg', seg.id); focusNode('seg:' + seg.id); } }, h('span', {}, seg.name));
+          b.style.left = ((seg.start - lo) / span * 100) + '%'; b.style.width = Math.max(0.6, (seg.end - seg.start) / span * 100) + '%';
+          return b;
+        }))))].flat());
+  }
+
+  /* ----- list (dense table) ----- */
+  const COLS = [
+    { k: 'sub', l: 'Sub', get: (r) => r.sub.code },
+    { k: 'seg', l: 'Segment', get: (r) => r.seg.name },
+    { k: 'number', l: 'No.', get: (r) => r.sh.number, edit: 'text' },
+    { k: 'title', l: 'Sheet', get: (r) => r.sh.title, edit: 'text', wide: true },
+    { k: 'series', l: 'Series', get: (r) => r.sh.series },
+    { k: 'discipline', l: 'Disc.', get: (r) => r.sh.discipline, edit: 'disc' },
+    { k: 'range', l: 'Sheet stations', get: (r) => (r.sh.gen ? r.sh.gen.start : r.seg.start), show: (r) => (r.sh.gen ? M.formatStation(r.sh.gen.start) + '–' + M.formatStation(r.sh.gen.end) : '') },
+    { k: 'status', l: 'Status', get: (r) => M.STATUSES.indexOf(r.sh.status), edit: 'status' },
+    { k: 'pct', l: '%', get: (r) => Number(r.sh.pct) || 0, edit: 'num' },
+    { k: 'owner', l: 'Owner', get: (r) => r.sh.owner, edit: 'owner' },
+    { k: 'due', l: 'Due', get: (r) => r.sh.due, edit: 'date' },
+    { k: 'milestone', l: 'Milestone', get: (r) => { const m = st.milestones.find((x) => x.id === r.sh.milestone); return m ? m.name : ''; }, edit: 'ms' },
+    { k: 'hoursBudget', l: 'Hrs bud', get: (r) => Number(r.sh.hoursBudget) || 0, edit: 'num' },
+    { k: 'hoursActual', l: 'Hrs act', get: (r) => Number(r.sh.hoursActual) || 0, edit: 'num' },
+    { k: 'qc', l: 'QC', get: (r) => st.settings.qcSteps.filter((q) => r.sh.qc && r.sh.qc[q]).length, show: (r) => st.settings.qcSteps.filter((q) => r.sh.qc && r.sh.qc[q]).length + '/' + st.settings.qcSteps.length },
+    { k: 'deps', l: 'Deps', get: (r) => M.blockedBy(st, r.sh).length, show: (r) => { const b = M.blockedBy(st, r.sh).length; return (r.sh.deps || []).length ? (b ? '⛓ ' + b + ' open' : '✓ ' + r.sh.deps.length) : ''; } },
+    { k: 'notes', l: 'Notes', get: (r) => r.sh.notes, edit: 'text' },
+  ];
+  const DEFAULT_COLS = ['sub', 'seg', 'number', 'title', 'discipline', 'range', 'status', 'pct', 'owner', 'due', 'milestone', 'hoursBudget', 'hoursActual', 'qc', 'deps'];
+  function ownerOpts(cur) {
+    const o = [['', '—']].concat(st.staff.map((x) => [x.name, x.name]));
+    if (cur && !st.staff.some((x) => x.name === cur)) o.push([cur, cur]);
+    return o.concat([['__new', '+ New person…']]);
+  }
+  function onOwner(selEl, sh, after) {
+    let v = selEl.value;
+    if (v === '__new') { v = (prompt('New staff name') || '').trim(); if (!v) { selEl.value = sh.owner; return; } }
+    commit(() => M.updateSheet(st, sh.id, { owner: v }), { render: false });
+    after && after();
+  }
+  function cellEditor(c, r, refresh) {
+    const sh = r.sh;
+    const lab = c.l + ' for ' + sh.title;
+    const upd = (f) => { commit(() => M.updateSheet(st, sh.id, f), { render: false }); refresh(); };
+    if (c.edit === 'text') { const i = h('input', { value: sh[c.k] || '', 'aria-label': lab, class: 'c-' + c.k }); i.addEventListener('change', () => upd({ [c.k]: i.value })); return i; }
+    if (c.edit === 'num') { const i = h('input', { type: 'number', min: 0, max: c.k === 'pct' ? 100 : null, step: c.k === 'pct' ? 5 : 0.5, value: sh[c.k] || 0, 'aria-label': lab, class: 'num' }); i.addEventListener('change', () => upd({ [c.k]: i.value || 0 })); return i; }
+    if (c.edit === 'date') { const i = h('input', { type: 'date', value: sh.due, 'aria-label': lab }); i.addEventListener('change', () => upd({ due: i.value })); return i; }
+    if (c.edit === 'status') { const i = select(M.STATUSES, sh.status, { 'aria-label': lab, class: 'stsel st-' + slug(sh.status) }); i.addEventListener('change', () => upd({ status: i.value })); return i; }
+    if (c.edit === 'disc') { const i = select(M.DISCIPLINES, sh.discipline, { 'aria-label': lab }); i.addEventListener('change', () => upd({ discipline: i.value })); return i; }
+    if (c.edit === 'ms') { const i = select([['', '—']].concat(st.milestones.map((m) => [m.id, m.name])), sh.milestone, { 'aria-label': lab }); i.addEventListener('change', () => upd({ milestone: i.value })); return i; }
+    if (c.edit === 'owner') { const i = select(ownerOpts(sh.owner), sh.owner, { 'aria-label': lab }); i.addEventListener('change', () => { onOwner(i, sh); refresh(); }); return i; }
+    return null;
+  }
+  function renderList() {
+    const cols = COLS.filter((c) => (ui.cols || DEFAULT_COLS).includes(c.k));
+    const all = M.allSheets(st);
+    let rows = M.filterRows(all, filt);
+    const sc = COLS.find((c) => c.k === ui.sort.key) || COLS[0];
+    rows = M.sortRows(rows, sc.k, ui.sort.dir, (r) => sc.get(r));
+    const wrap = $('#listWrap');
+    const refresh = () => { renderRail(); if (ui.timeline) renderTimeline(); renderDrawer(); };
+    const thead = h('thead', {}, h('tr', {}, cols.map((c) => {
+      const on = ui.sort.key === c.k;
+      return h('th', { scope: 'col', class: c.wide ? 'wide' : '', 'aria-sort': on ? (ui.sort.dir === 'asc' ? 'ascending' : 'descending') : 'none' },
+        h('button', { type: 'button', class: 'sort', onclick: () => { ui.sort = { key: c.k, dir: on && ui.sort.dir === 'asc' ? 'desc' : 'asc' }; saveUI(); renderList(); } }, c.l, on ? (ui.sort.dir === 'asc' ? ' ▲' : ' ▼') : ''));
+    })));
+    const tbody = h('tbody', {}, rows.map((r) => h('tr', { tabindex: 0, 'data-id': r.sh.id, class: (M.isOverdue(r.sh, M.todayISO()) ? 'od ' : '') + (sel && sel.id === r.sh.id ? 'sel' : ''),
+      onkeydown: (e) => { if (e.key === 'Enter' && e.target.tagName === 'TR') { e.preventDefault(); select_('sheet', r.sh.id); } } },
+    cols.map((c, ci) => h('td', { class: c.wide ? 'wide' : '' , 'data-col': ci }, c.edit ? cellEditor(c, r, refresh) : c.k === 'title' ? null : (c.show ? c.show(r) : c.get(r))) ),
+    )));
+    tbody.addEventListener('click', (e) => { const tr = e.target.closest('tr'); if (tr && !e.target.closest('input,select,button')) select_('sheet', tr.dataset.id); });
+    tbody.addEventListener('keydown', (e) => {
+      if (!['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      const t = e.target;
+      if (t.tagName === 'SELECT' && !e.altKey) return; /* native select keys; Alt+Arrow moves rows */
+      const tr = t.closest('tr'); const td = t.closest('td');
+      const next = e.key === 'ArrowDown' ? tr.nextElementSibling : tr.previousElementSibling;
+      if (!next) return;
+      e.preventDefault();
+      const target = td && t !== tr ? next.children[td.dataset.col].querySelector('input,select') : next;
+      (target || next).focus();
+    });
+    const views = select([['', 'Saved views…']].concat(st.views.map((v) => [v.id, v.name])), '', { 'aria-label': 'Saved views' });
+    views.addEventListener('change', () => { const v = st.views.find((x) => x.id === views.value); if (v) { Object.assign(filt, { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '' }, v.filt); if (v.sort) ui.sort = v.sort; $('#q').value = filt.q; renderAll(); } });
+    const fsel = (k, opts, lab) => { const e = select(opts, filt[k], { 'aria-label': lab }); e.addEventListener('change', () => { filt[k] = e.value; renderList(); }); return e; };
+    wrap.replaceChildren(...[
+      h('div', { class: 'listbar' },
+        fsel('sub', [['', 'All sub-projects']].concat(st.subs.map((x) => [x.id, x.code + ' · ' + x.name])), 'Sub-project'),
+        fsel('kind', [['', 'All sheets'], ['pp', 'PP (generated)'], ['other', 'Other sheets']], 'Sheet kind'),
+        fsel('when', [['', 'Any date'], ['open', 'Open only'], ['overdue', 'Overdue'], ['upcoming', 'Due ≤ 14 days']], 'Due'),
+        fsel('milestone', [['', 'All milestones'], ['(none)', 'No milestone']].concat(st.milestones.map((m) => [m.id, m.name])), 'Milestone'),
+        views,
+        h('button', { type: 'button', class: 'btn sec sm', onclick: () => { const n = prompt('Name this view'); if (n) commit(() => M.saveView(st, n, filt, { sort: ui.sort })); } }, 'Save view'),
+        st.views.length ? h('button', { type: 'button', class: 'btn sec sm', onclick: () => { const v = st.views.find((x) => x.id === views.value); if (!v) return toast('Pick a saved view first.'); commit(() => { st.views = st.views.filter((x) => x !== v); }); } }, 'Delete view') : null,
+        h('details', { class: 'colmenu' }, h('summary', { class: 'btn sec sm' }, 'Columns'),
+          h('div', { class: 'colpop' }, COLS.map((c) => h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: (ui.cols || DEFAULT_COLS).includes(c.k),
+            onchange: (e) => { const set = new Set(ui.cols || DEFAULT_COLS); if (e.target.checked) set.add(c.k); else set.delete(c.k); ui.cols = COLS.map((x) => x.k).filter((k) => set.has(k)); saveUI(); renderList(); } }), ' ' + c.l)))),
+        h('span', { class: 'grow' }),
+        h('span', { class: 'muted', 'aria-live': 'polite' }, rows.length + ' of ' + all.length + ' sheets'),
+        h('button', { type: 'button', class: 'btn sec sm', onclick: () => download('pm-sheets-' + M.todayISO() + '.csv', '\ufeff' + M.toCSV(st, rows), 'text/csv') }, 'CSV (filtered)'),
+        h('button', { type: 'button', class: 'btn sec sm', onclick: () => download('pm-pp-summary-' + M.todayISO() + '.csv', '\ufeff' + M.ppCSV(st), 'text/csv') }, 'PP summary CSV')),
+      h('div', { class: 'tablebox' }, h('table', { class: 'grid' }, thead, tbody)),
+      rows.length ? null : h('p', { class: 'muted pad' }, all.length ? 'No sheets match the filters.' : 'No sheets yet. Use the tree: + on a sub-project adds a segment, + on a segment adds sheets.')].filter(Boolean));
+  }
+
+  /* ----- drawer ----- */
+  function select_(type, id) {
+    sel = { type, id };
+    if (type === 'sheet' && window.innerWidth < 900) { /* mobile: drawer as sheet */ }
+    renderDrawer();
+    document.querySelectorAll('.node.sel, .grid tr.sel, .tl-seg.sel').forEach((e) => e.classList.remove('sel'));
+    const key = type === 'root' ? 'root' : type + ':' + id;
+    const n = document.querySelector('.node[data-key="' + key + '"]'); if (n) n.classList.add('sel');
+    const tr = document.querySelector('.grid tr[data-id="' + id + '"]'); if (tr) tr.classList.add('sel');
+  }
+  function closeDrawer() { sel = null; renderDrawer(); document.querySelectorAll('.sel').forEach((e) => e.classList.remove('sel')); }
+  function renderDrawer() {
+    const d = $('#drawer');
+    let content = null;
+    if (sel) {
+      if (sel.type === 'root') content = rootDrawer();
+      else if (sel.type === 'sub') { const sub = M.findSub(st, sel.id); content = sub && subDrawer(sub); }
+      else if (sel.type === 'seg') { const hit = M.findSeg(st, sel.id); content = hit && segDrawer(hit); }
+      else if (sel.type === 'sheet') { const hit = M.findSheet(st, sel.id); content = hit && sheetDrawer(hit); }
+    }
+    if (!content) { sel = null; d.hidden = true; $('#layout').classList.remove('drawer-open'); d.replaceChildren(); return; }
+    const scroll = d.scrollTop;
+    const had = !d.hidden;
+    d.hidden = false; $('#layout').classList.add('drawer-open');
+    d.replaceChildren(h('div', { class: 'dhead' }, h('span', { class: 'dkind' }, { root: 'Project', sub: 'Sub-project', seg: 'Segment', sheet: 'Sheet' }[sel.type]),
+      h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Close details', onclick: closeDrawer }, '×')), content);
+    if (had) d.scrollTop = scroll;
+  }
+  function rootDrawer() {
+    const n = h('input', { value: st.project.name, 'aria-label': 'Project name' });
+    n.addEventListener('change', () => commit(() => { st.project.name = n.value.trim() || st.project.name; }));
+    const PP = M.ppSummary(st);
+    return h('div', { class: 'dbody' }, h('h2', {}, st.project.name), field('Project name', n),
+      h('p', { class: 'muted' }, M.allSheets(st).length + ' sheets · ' + PP.total + ' PP sheets calculated · ' + fmtFt(PP.length) + ' of segments'),
+      h('button', { type: 'button', class: 'btn sec', onclick: openPP }, 'Open PP sheet calculator'));
+  }
+  function ppLine(sub, seg) {
+    const p = M.segPP(st, sub, seg);
+    return h('span', {}, fmtFt(p.length) + ' → ', p.series.map((x, i) => [i ? ' + ' : '', h('b', {}, x.count), ' ' + x.series.name + ' @' + x.scale + ' (' + x.ft + ' ft/sh)']), ' = ', h('b', {}, p.total + ' PP'));
+  }
+  function segFields(sub, seg, onSaved) {
+    const ids = seg ? '' : 'addSeg';
+    const name = h('input', { id: ids ? 'addSegName' : null, value: seg ? seg.name : '', placeholder: 'e.g. Mainlane north' });
     const road = h('input', { value: seg ? seg.road : '', placeholder: 'e.g. FM 1960' });
-    const a = h('input', { value: seg ? M.formatStation(seg.start) : '', required: true, placeholder: '10+00', inputmode: 'decimal', autocomplete: 'off' });
-    const b = h('input', { value: seg ? M.formatStation(seg.end) : '', required: true, placeholder: '25+50', inputmode: 'decimal', autocomplete: 'off' });
+    const a = h('input', { value: seg ? M.formatStation(seg.start) : '', placeholder: '10+00', autocomplete: 'off', class: 'mono' });
+    const b = h('input', { value: seg ? M.formatStation(seg.end) : '', placeholder: '25+50', autocomplete: 'off', class: 'mono' });
+    const live = h('div', { class: 'live', 'aria-live': 'polite' });
     const msg = h('p', { class: 'err', role: 'alert' });
+    const sp = scalePicker(seg ? seg.scale : null, 'Sub-project default (' + sub.scale + ' scale)', upd);
+    function upd() {
+      const s1 = M.parseStation(a.value), s2 = M.parseStation(b.value);
+      if (!Number.isFinite(s1) || !Number.isFinite(s2) || s2 <= s1) { live.textContent = 'Enter stations like 10+00 and 25+50 to see the PP sheet count.'; return; }
+      const tmp = { id: seg ? seg.id : 'tmp', start: s1, end: s2, scale: sp.get() };
+      live.replaceChildren(h('span', { class: 'muted' }, 'Live: '), ppLine(sub, tmp));
+    }
+    a.addEventListener('input', upd); b.addEventListener('input', upd);
+    upd();
     return h('form', { class: 'stack', onsubmit: (e) => {
       e.preventDefault();
-      const f = { name: name.value, road: road.value, start: a.value, end: b.value };
+      const f = { name: name.value, road: road.value, start: a.value, end: b.value, scale: sp.get() };
       try {
         const r = seg ? M.updateSegment(st, seg.id, f) : M.addSegment(st, sub.id, f);
         save();
-        if (r.warns.length) toast('Saved. Warning: ' + r.warns.join(' '));
-        else toast(seg ? 'Segment updated.' : 'Segment added.');
-        onDone(r.seg);
+        toast((seg ? 'Segment saved.' : 'Segment added.') + (r.warns.length ? ' Warning: ' + r.warns.join(' ') : ''));
+        onSaved(r.seg);
       } catch (ex) { msg.textContent = ex.message; }
-    } }, h('div', { class: 'grid2' }, field('Segment name', name), field('Road', road), field('Start station', a, 'Format 10+00'), field('End station', b, 'Format 25+50')),
-    msg, h('button', { class: 'btn', type: 'submit' }, seg ? 'Save segment' : 'Add segment'));
+    } }, h('div', { class: 'g2' }, field('Segment name', name), field('Road', road), field('Start station', a), field('End station', b)), field('Plan scale', sp), live, msg,
+    h('button', { class: 'btn', type: 'submit' }, seg ? 'Save segment' : 'Add segment'));
   }
-
-  function subView(sub) {
-    const all = sub.segments.flatMap((s) => s.sheets);
-    const p = M.progress(all);
-    const nameIn = h('input', { value: sub.name, 'aria-label': 'Sub-project name', onchange: () => commit(() => { sub.name = nameIn.value.trim() || sub.name; }) });
-    return h('div', {},
-      h('p', { class: 'crumb' }, h('a', { href: '#/subs' }, 'Sub-projects'), ' › ', sub.code),
-      h('section', { class: 'card' },
-        h('h2', {}, h('span', { class: 'code' }, sub.code), sub.name),
-        field('Name', nameIn),
-        bar(p.pct, 'Progress ' + sub.name),
-        h('p', { class: 'muted' }, M.STATUSES.map((s) => s + ': ' + p.counts[s]).join(' · '))),
-      h('section', { class: 'card' },
-        h('h2', {}, 'Stations / segments (' + sub.segments.length + ')'),
-        sub.segments.length ? h('ul', { class: 'plain segs' }, sub.segments.map((seg) => {
-          const sp = M.progress(seg.sheets);
-          const w = M.overlaps(seg, sub.segments);
-          return h('li', {}, h('a', { class: 'segrow', href: '#/seg/' + seg.id },
-            h('span', { class: 'sta' }, M.formatStation(seg.start) + ' – ' + M.formatStation(seg.end)),
-            h('span', { class: 'segname' }, seg.name + (seg.road ? ' · ' + seg.road : '')),
-            bar(sp.pct, 'Progress ' + seg.name),
-            h('small', { class: 'muted' }, seg.sheets.length + ' sheets · ' + Math.round(seg.end - seg.start).toLocaleString() + ' ft' + (w.length ? ' · ⚠ overlaps ' + w.map((x) => x.name).join(', ') : ''))));
-        })) : h('p', { class: 'muted' }, 'No segments yet.'),
-        h('details', { class: 'add', open: !sub.segments.length }, h('summary', {}, '+ Add segment'), segForm(sub, null, (seg) => { location.hash = '#/seg/' + seg.id; }))),
-      templatesCard(sub));
-  }
-
-  function templatesCard(sub) {
-    const title = h('input', { placeholder: 'Sheet title', 'aria-label': 'New template title' });
-    const disc = select(M.DISCIPLINES, 'Drainage', { 'aria-label': 'New template discipline' });
-    return h('section', { class: 'card' },
-      h('details', {}, h('summary', {}, h('h2', { class: 'inl' }, 'Standard sheet set for ' + sub.code + ' (' + sub.templates.length + ')')),
-        h('p', { class: 'muted' }, 'Used by “Add standard sheet set” on each segment. Edits apply to this sub-project only.'),
-        h('ul', { class: 'plain tpls' }, sub.templates.map((t) => {
-          const ti = h('input', { value: t.title, 'aria-label': 'Template title', onchange: () => commit(() => M.updateTemplate(st, sub.id, t.id, { title: ti.value })) });
-          const di = select(M.DISCIPLINES, t.discipline, { 'aria-label': 'Template discipline', onchange: () => commit(() => M.updateTemplate(st, sub.id, t.id, { discipline: di.value })) });
-          return h('li', { class: 'tpl' }, ti, di,
-            h('button', { type: 'button', class: 'btn sec sm', 'aria-label': 'Duplicate template ' + t.title, onclick: () => { commit(() => M.duplicateTemplate(st, sub.id, t.id)); rerender(); } }, 'Duplicate'),
-            h('button', { type: 'button', class: 'btn danger sm', 'aria-label': 'Delete template ' + t.title, onclick: () => { commit(() => M.deleteTemplate(st, sub.id, t.id)); rerender(); } }, 'Delete'));
+  function subDrawer(sub) {
+    const name = h('input', { value: sub.name, 'aria-label': 'Sub-project name' });
+    name.addEventListener('change', () => commit(() => { sub.name = name.value.trim() || sub.name; }));
+    const sp = scalePicker(sub.scale, null, (v) => { if (v) commit(() => { sub.scale = v; M.log(st, sub.code + ' default scale → ' + v); }); });
+    const pp = M.ppSummary(st).bySub.find((b) => b.sub === sub);
+    const p = M.progress(sub.segments.flatMap((g) => g.sheets));
+    return h('div', { class: 'dbody' },
+      h('h2', {}, h('span', { class: 'code' }, sub.code), ' ', sub.name),
+      h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, h('div', {}, plural(sub.segments.length, 'segment') + ' · ' + fmtFt(pp.length)), h('div', {}, h('b', {}, pp.total + ' PP sheets'), ' at current scales'))),
+      field('Name', name), field('Default plan scale for segments', sp, 'Segments inherit this unless they set their own scale.'),
+      h('h3', {}, 'Segments'),
+      sub.segments.length ? h('ul', { class: 'dlist' }, sub.segments.map((seg) => h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: () => { select_('seg', seg.id); focusNode('seg:' + seg.id); } },
+        h('span', { class: 'mono' }, M.formatStation(seg.start) + '–' + M.formatStation(seg.end)), h('span', { class: 'grow' }, ' ' + seg.name), h('b', {}, M.segPP(st, sub, seg).total + ' PP'))))) : h('p', { class: 'muted' }, 'No segments yet.'),
+      h('h3', {}, 'Add segment'),
+      segFields(sub, null, (seg) => { ui.collapsed['sub:' + sub.id] = false; renderAll(); select_('seg', seg.id); }),
+      h('details', { class: 'tpls' }, h('summary', {}, 'Standard (non-PP) sheet set for ' + sub.code + ' (' + sub.templates.length + ')'),
+        h('ul', { class: 'dlist' }, sub.templates.map((t) => {
+          const ti = h('input', { value: t.title, 'aria-label': 'Template title' }); ti.addEventListener('change', () => commit(() => M.updateTemplate(st, sub.id, t.id, { title: ti.value })));
+          const di = select(M.DISCIPLINES, t.discipline, { 'aria-label': 'Template discipline' }); di.addEventListener('change', () => commit(() => M.updateTemplate(st, sub.id, t.id, { discipline: di.value })));
+          return h('li', { class: 'tplrow' }, ti, di,
+            h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Duplicate template ' + t.title, onclick: () => commit(() => M.duplicateTemplate(st, sub.id, t.id)) }, '⧉'),
+            h('button', { type: 'button', class: 'ibtn danger', 'aria-label': 'Delete template ' + t.title, onclick: () => commit(() => M.deleteTemplate(st, sub.id, t.id)) }, '×'));
         })),
-        h('form', { class: 'tpl', onsubmit: (e) => { e.preventDefault(); if (!title.value.trim()) return; commit(() => M.addTemplate(st, sub.id, { title: title.value, discipline: disc.value })); rerender(); } },
-          title, disc, h('button', { class: 'btn sm', type: 'submit' }, 'Add')),
-        h('button', { type: 'button', class: 'btn sec sm', onclick: () => { if (confirm('Replace ' + sub.code + "'s sheet set with the defaults?")) { commit(() => M.resetTemplates(st, sub.id)); rerender(); } } }, 'Reset to defaults')));
+        h('div', { class: 'row' },
+          h('button', { type: 'button', class: 'btn sec sm', onclick: () => commit(() => M.addTemplate(st, sub.id, { title: 'New sheet', discipline: 'Drainage' })) }, '+ Template'),
+          h('button', { type: 'button', class: 'btn sec sm', onclick: () => { if (confirm('Reset ' + sub.code + ' templates to defaults?')) commit(() => M.resetTemplates(st, sub.id)); } }, 'Reset defaults'))));
   }
-
-  function ownerSelect(sh, onChange) {
-    const opts = [['', '(unassigned)']].concat(st.staff.map((s) => [s, s]));
-    if (sh.owner && !st.staff.includes(sh.owner)) opts.push([sh.owner, sh.owner]);
-    opts.push(['__new', '+ New person…']);
-    const s = select(opts, sh.owner, { 'aria-label': 'Owner of ' + sh.title });
-    s.addEventListener('change', () => {
-      let v = s.value;
-      if (v === '__new') {
-        v = (prompt('Staff name') || '').trim();
-        if (!v) { s.value = sh.owner; return; }
-      }
-      commit(() => { M.addStaff(st, v); M.updateSheet(st, sh.id, { owner: v }); });
-      onChange(true);
-    });
-    return s;
-  }
-
-  function sheetRow(r, ctx, onChange) {
-    const sh = r.sh;
-    const status = select(M.STATUSES, sh.status, { 'aria-label': 'Status of ' + sh.title, class: 'stsel s-' + slug(sh.status) });
-    status.addEventListener('change', () => { commit(() => M.updateSheet(st, sh.id, { status: status.value })); status.className = 'stsel s-' + slug(status.value); onChange(); });
-    const due = h('input', { type: 'date', value: sh.due, 'aria-label': 'Due date of ' + sh.title, onchange: () => { commit(() => M.updateSheet(st, sh.id, { due: due.value })); onChange(); } });
-    const notes = h('textarea', { 'aria-label': 'Notes for ' + sh.title, rows: 2, placeholder: 'Notes', onchange: () => commit(() => M.updateSheet(st, sh.id, { notes: notes.value })) });
-    notes.value = sh.notes || '';
-    const title = h('input', { class: 'ttl', value: sh.title, 'aria-label': 'Sheet title', onchange: () => commit(() => M.updateSheet(st, sh.id, { title: title.value.trim() || sh.title })) });
-    const disc = select(M.DISCIPLINES, sh.discipline, { 'aria-label': 'Discipline of ' + sh.title, onchange: () => { commit(() => M.updateSheet(st, sh.id, { discipline: disc.value })); onChange(); } });
-    const over = M.isOverdue(sh, M.todayISO());
-    return h('li', { class: 'sheet' + (over ? ' overdue' : '') + (sh.status === 'Done' ? ' done' : ''), 'data-id': sh.id },
-      ctx ? h('a', { class: 'ctx', href: '#/seg/' + r.seg.id }, r.sub.code + ' · ' + r.seg.name + ' (' + M.formatStation(r.seg.start) + '–' + M.formatStation(r.seg.end) + ')') : null,
-      h('div', { class: 'srow' },
-        h('div', { class: 'c-title' }, title, over ? h('small', { class: 'over' }, 'Overdue') : null),
-        h('div', { class: 'c-st' }, status),
-        h('div', { class: 'c-own' }, ownerSelect(sh, onChange)),
-        h('div', { class: 'c-due' }, due),
-        h('div', { class: 'c-disc' }, disc)),
-      h('div', { class: 'srow2' }, notes,
-        h('div', { class: 'acts' },
-          h('button', { type: 'button', class: 'btn sec sm', 'aria-label': 'Duplicate ' + sh.title, onclick: () => { commit(() => M.duplicateSheet(st, sh.id)); onChange(true); } }, 'Duplicate'),
-          h('button', { type: 'button', class: 'btn danger sm', 'aria-label': 'Delete ' + sh.title, onclick: () => { if (confirm('Delete sheet “' + sh.title + '”?')) { commit(() => M.deleteSheet(st, sh.id)); onChange(true); } } }, 'Delete'))));
-  }
-
-  function segView(hit) {
-    const { sub, seg } = hit;
+  function segDrawer({ sub, seg }) {
     const p = M.progress(seg.sheets);
-    const progBox = h('div', {}, bar(p.pct, 'Progress ' + seg.name), h('p', { class: 'muted' }, M.STATUSES.map((s) => s + ': ' + p.counts[s]).join(' · ')));
-    const refresh = (full) => {
-      if (full) return rerender();
-      const q = M.progress(seg.sheets);
-      progBox.replaceChildren(bar(q.pct, 'Progress ' + seg.name), h('p', { class: 'muted' }, M.STATUSES.map((s) => s + ': ' + q.counts[s]).join(' · ')));
-    };
-    const nt = h('input', { placeholder: 'Sheet title', 'aria-label': 'New sheet title', list: 'tplList' });
-    const nd = select(M.DISCIPLINES, 'Drainage', { 'aria-label': 'New sheet discipline' });
-    const bdisc = select([['', 'All disciplines'], ['Drainage', 'Drainage only'], ['SWP3', 'SWP3 only']], '', { 'aria-label': 'Which standard sheets' });
-    const bown = select([['', '(unassigned)']].concat(st.staff), '', { 'aria-label': 'Owner for added sheets' });
+    const bd = select([['', 'All disciplines'], ['Drainage', 'Drainage only'], ['SWP3', 'SWP3 only']], '', { 'aria-label': 'Which standard sheets' });
+    const bo = select([['', 'Owner: none']].concat(st.staff.map((x) => x.name)), '', { 'aria-label': 'Owner for added sheets' });
+    const bm = select([['', 'Milestone: none']].concat(st.milestones.map((m) => [m.id, m.name])), '', { 'aria-label': 'Milestone for added sheets' });
     const bdue = h('input', { type: 'date', 'aria-label': 'Due date for added sheets' });
-    return h('div', {},
-      h('p', { class: 'crumb' }, h('a', { href: '#/subs' }, 'Sub-projects'), ' › ', h('a', { href: '#/sub/' + sub.id }, sub.code), ' › ', seg.name),
-      h('section', { class: 'card' },
-        h('h2', {}, seg.name),
-        h('p', { class: 'sta big' }, 'Sta ' + M.formatStation(seg.start) + ' to ' + M.formatStation(seg.end) + (seg.road ? ' · ' + seg.road : '') + ' · ' + Math.round(seg.end - seg.start).toLocaleString() + ' ft'),
-        progBox,
-        h('details', {}, h('summary', {}, 'Edit segment'), segForm(sub, seg, () => rerender()),
-          h('button', { type: 'button', class: 'btn danger sm', onclick: () => { if (confirm('Delete segment “' + seg.name + '” and its ' + seg.sheets.length + ' sheets?')) { commit(() => M.deleteSegment(st, seg.id)); location.hash = '#/sub/' + sub.id; } } }, 'Delete segment'))),
-      h('section', { class: 'card' },
-        h('h2', {}, 'Sheets (' + seg.sheets.length + ')'),
-        h('form', { class: 'bulk', onsubmit: (e) => {
-          e.preventDefault();
-          const added = commit(() => M.bulkAddTemplates(st, seg.id, { discipline: bdisc.value, owner: bown.value, due: bdue.value })) || [];
-          toast(added.length ? 'Added ' + added.length + ' standard sheets.' : 'All standard sheets are already on this segment.');
-          rerender();
-        } }, h('b', {}, 'Add standard sheet set'), bdisc, bown, bdue, h('button', { class: 'btn', type: 'submit' }, 'Add set')),
-        seg.sheets.length ? h('ul', { class: 'plain sheets' }, seg.sheets.map((sh) => sheetRow({ sub, seg, sh }, false, refresh)))
-          : h('p', { class: 'muted' }, 'No sheets yet — add the standard set above or one at a time below.'),
-        h('datalist', { id: 'tplList' }, sub.templates.map((t) => h('option', { value: t.title }))),
-        h('form', { class: 'tpl', onsubmit: (e) => {
-          e.preventDefault();
-          if (!nt.value.trim()) return;
-          commit(() => M.addSheet(st, seg.id, { title: nt.value, discipline: nd.value }));
-          rerender();
-        } }, nt, nd, h('button', { class: 'btn sm', type: 'submit' }, 'Add sheet'))));
+    const nt = h('input', { id: 'addSheetTitle', placeholder: 'Sheet title', 'aria-label': 'New sheet title', list: 'tplList' });
+    const nd = select(M.DISCIPLINES, 'Drainage', { 'aria-label': 'New sheet discipline' });
+    const plan = M.planGenerate(st, seg.id);
+    const pending = plan.create.length + plan.update.length + plan.remove.length + plan.removeTouched.length;
+    return h('div', { class: 'dbody' },
+      h('h2', {}, seg.name), h('p', { class: 'mono muted' }, sub.code + ' · Sta ' + M.formatStation(seg.start) + ' to ' + M.formatStation(seg.end) + (seg.road ? ' · ' + seg.road : '')),
+      h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, ppLine(sub, seg))),
+      h('section', { class: 'box' }, h('h3', {}, 'PP sheets'),
+        h('p', { class: 'muted' }, pending ? 'Generate creates ' + plan.create.length + ', updates ' + plan.update.length + ', removes ' + (plan.remove.length + plan.removeTouched.length) + ' generated sheet(s). Your other sheets are never touched.' : 'Generated PP sheets are up to date (' + plan.unchanged + ').'),
+        h('button', { type: 'button', class: 'btn', id: 'genBtn', disabled: !pending, onclick: () => {
+          const pl = M.planGenerate(st, seg.id);
+          let rm = false;
+          if (pl.removeTouched.length) rm = confirm(pl.removeTouched.length + ' generated PP sheet(s) beyond the new count have your edits (status, owner, notes…):\n\n' + pl.removeTouched.map((x) => '• ' + x.title).join('\n') + '\n\nOK = delete them too. Cancel = keep them.');
+          const r = commit(() => M.applyGenerate(st, seg.id, pl, { removeTouched: rm }));
+          ui.collapsed['seg:' + seg.id] = false; saveUI(); renderAll();
+          if (r) toast('PP sheets: ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed' + (r.keptTouched ? ', ' + r.keptTouched + ' edited kept' : '') + '.');
+        } }, 'Generate PP sheets')),
+      h('details', {}, h('summary', {}, 'Edit segment (stations, scale)'), segFields(sub, seg, () => renderAll()),
+        h('button', { type: 'button', class: 'btn danger sm', onclick: () => { if (confirm('Delete segment “' + seg.name + '” and its ' + seg.sheets.length + ' sheets?')) { commit(() => M.deleteSegment(st, seg.id)); closeDrawer(); } } }, 'Delete segment')),
+      h('section', { class: 'box' }, h('h3', {}, 'Add sheets'),
+        h('form', { class: 'g2', onsubmit: (e) => { e.preventDefault(); const a = commit(() => M.bulkAddTemplates(st, seg.id, { discipline: bd.value, owner: bo.value, due: bdue.value, milestone: bm.value })) || []; toast(a.length ? 'Added ' + a.length + ' standard sheets.' : 'Standard sheets already on this segment.'); } },
+          bd, bo, bm, bdue, h('button', { class: 'btn sec', type: 'submit' }, 'Add standard set')),
+        h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); if (!nt.value.trim()) return; const shx = commit(() => M.addSheet(st, seg.id, { title: nt.value, discipline: nd.value })); ui.collapsed['seg:' + seg.id] = false; saveUI(); renderAll(); if (shx) { const i = $('#addSheetTitle'); if (i) i.focus(); } } },
+          nt, nd, h('button', { class: 'btn', type: 'submit' }, 'Add')),
+        h('datalist', { id: 'tplList' }, sub.templates.map((t) => h('option', { value: t.title })))),
+      h('h3', {}, 'Sheets (' + seg.sheets.length + ')'),
+      h('ul', { class: 'dlist' }, seg.sheets.map((sh) => h('li', {}, h('button', { type: 'button', class: 'rowbtn st-' + slug(sh.status), onclick: () => select_('sheet', sh.id) },
+        h('span', { class: 'chip ' + (sh.discipline === 'SWP3' ? 'sw' : 'dr') }, sh.discipline === 'SWP3' ? 'SW' : 'DR'), h('span', { class: 'grow' }, ' ' + sh.title), h('span', { class: 'stpill' }, sh.status))))));
+  }
+  function sheetDrawer({ sub, seg, sh }) {
+    const up = (f) => commit(() => M.updateSheet(st, sh.id, f));
+    const inp = (k, attrs) => { const i = h('input', Object.assign({ value: sh[k] == null ? '' : sh[k] }, attrs || {})); i.addEventListener('change', () => up({ [k]: i.type === 'number' ? Number(i.value) || 0 : i.value })); return i; };
+    const status = select(M.STATUSES, sh.status, { class: 'stsel st-' + slug(sh.status) }); status.addEventListener('change', () => up({ status: status.value }));
+    const disc = select(M.DISCIPLINES, sh.discipline); disc.addEventListener('change', () => up({ discipline: disc.value }));
+    const owner = select(ownerOpts(sh.owner), sh.owner); owner.addEventListener('change', () => { onOwner(owner, sh); renderAll(); });
+    const ms = select([['', '—']].concat(st.milestones.map((m) => [m.id, m.name + (m.date ? ' (' + m.date + ')' : '')])), sh.milestone); ms.addEventListener('change', () => up({ milestone: ms.value }));
+    const pct = h('input', { type: 'range', min: 0, max: 100, step: 5, value: sh.pct || 0, 'aria-label': '% complete' });
+    const pctOut = h('output', {}, (sh.pct || 0) + '%');
+    pct.addEventListener('input', () => { pctOut.textContent = pct.value + '%'; });
+    pct.addEventListener('change', () => up({ pct: Number(pct.value) }));
+    const notes = h('textarea', { rows: 4 }); notes.value = sh.notes || ''; notes.addEventListener('change', () => up({ notes: notes.value }));
+    const blocked = M.blockedBy(st, sh);
+    const candidates = sub.segments.flatMap((g) => g.sheets.map((x) => ({ g, x }))).filter((c) => c.x.id !== sh.id);
+    return h('div', { class: 'dbody' },
+      h('p', { class: 'crumb' }, h('button', { type: 'button', class: 'link', onclick: () => select_('sub', sub.id) }, sub.code), ' › ', h('button', { type: 'button', class: 'link', onclick: () => select_('seg', seg.id) }, seg.name)),
+      field('Title', inp('title')),
+      sh.gen ? h('p', { class: 'pill' }, 'Generated PP sheet ' + sh.gen.idx + ' of ' + sh.gen.of + ' · Sta ' + M.formatStation(sh.gen.start) + ' to ' + M.formatStation(sh.gen.end) + ' (' + fmtFt(sh.gen.end - sh.gen.start) + ')') : null,
+      blocked.length ? h('p', { class: 'warnbox' }, '⛓ Waiting on: ' + blocked.map((x) => x.title).join(', ')) : null,
+      h('div', { class: 'g2' }, field('Status', status), field('Owner', owner), field('Due date', inp('due', { type: 'date' })), field('Milestone', ms),
+        field('Discipline', disc), field('Sheet number', inp('number', { placeholder: 'e.g. DR-01' })), field('Series', inp('series', { placeholder: 'e.g. Drainage Plan & Profile' })),
+        h('div', { class: 'f' }, h('label', { for: pct.id = 'pct' + sh.id }, '% complete'), h('div', { class: 'rangebox' }, pct, pctOut)),
+        field('Hours budget', inp('hoursBudget', { type: 'number', min: 0, step: 0.5 })), field('Hours actual', inp('hoursActual', { type: 'number', min: 0, step: 0.5 }))),
+      h('fieldset', { class: 'qc' }, h('legend', {}, 'QC checklist'),
+        st.settings.qcSteps.map((q) => h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: !!(sh.qc && sh.qc[q]), onchange: (e) => up({ qc: Object.assign({}, sh.qc, { [q]: e.target.checked }) }) }), ' ' + q))),
+      h('details', {}, h('summary', {}, 'Depends on (' + (sh.deps || []).length + ')'),
+        candidates.length ? h('div', { class: 'deps' }, candidates.map((c) => h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: (sh.deps || []).includes(c.x.id),
+          onchange: (e) => up({ deps: e.target.checked ? (sh.deps || []).concat(c.x.id) : (sh.deps || []).filter((d) => d !== c.x.id) }) }), ' ' + c.g.name + ' · ' + c.x.title + ' (' + c.x.status + ')'))) : h('p', { class: 'muted' }, 'No other sheets in ' + sub.code + '.')),
+      field('Notes', notes),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn sec', onclick: () => { const c = commit(() => M.duplicateSheet(st, sh.id)); if (c) select_('sheet', c.id); } }, 'Duplicate'),
+        h('button', { type: 'button', class: 'btn danger', onclick: () => { if (confirm('Delete sheet “' + sh.title + '”?')) { commit(() => M.deleteSheet(st, sh.id)); select_('seg', seg.id); } } }, 'Delete')));
   }
 
-  function tableView() {
-    const rows = M.allSheets(st);
-    const owners = [['', 'All'], ['(unassigned)', '(unassigned)']].concat([...new Set(st.staff.concat(rows.map((r) => r.sh.owner).filter(Boolean)))].sort().map((o) => [o, o]));
-    const list = h('ul', { class: 'plain sheets table' });
-    const count = h('p', { class: 'muted', 'aria-live': 'polite' });
+  /* ---------- modals ---------- */
+  let lastFocus = null;
+  function openModal(title, body) {
+    lastFocus = document.activeElement;
+    $('#modalTitle').textContent = title;
+    $('#modalBody').replaceChildren(body);
+    $('#modal').hidden = false;
+    setTimeout(() => { const f = $('#modalBody').querySelector('input,select,button,textarea'); (f || $('#modalClose')).focus(); }, 20);
+  }
+  function closeModal() { $('#modal').hidden = true; $('#modalBody').replaceChildren(); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+  function openPP() {
+    const what = {};
+    const body = h('div', {});
     const draw = () => {
-      const out = M.filterRows(rows, filt);
-      count.textContent = out.length + ' of ' + rows.length + ' sheets';
-      list.replaceChildren(...out.map((r) => sheetRow(r, true, (full) => { if (full) rerender(); })));
+      const cur = M.ppSummary(st), W = M.ppSummary(st, { subScale: what });
+      body.replaceChildren(
+        h('p', { class: 'muted' }, 'PP sheets = ceil(segment length ÷ feet per sheet)' + (st.settings.overlapFt ? ' with ' + st.settings.overlapFt + ' ft overlap' : ', no overlap') + ', for each enabled series (' + st.settings.series.filter((x) => x.enabled).map((x) => x.name).join(', ') + '). What-if changes are not saved unless you apply them.'),
+        h('table', { class: 'grid compact' }, h('thead', {}, h('tr', {}, ['Sub-project', 'Segments', 'Length', 'Default scale', 'What-if scale', 'PP now', 'PP what-if'].map((x) => h('th', { scope: 'col' }, x)))),
+          h('tbody', {}, st.subs.map((sub, i) => {
+            const ws = select([['', 'same (' + sub.scale + ')']].concat(scaleOpts(false)), what[sub.id] || '', { 'aria-label': 'What-if scale for ' + sub.code });
+            ws.addEventListener('change', () => { if (ws.value) what[sub.id] = Number(ws.value); else delete what[sub.id]; draw(); });
+            const a = cur.bySub[i].total, b = W.bySub[i].total;
+            return h('tr', {}, h('th', { scope: 'row' }, sub.code + ' · ' + sub.name), h('td', {}, sub.segments.length), h('td', {}, fmtFt(cur.bySub[i].length)), h('td', {}, sub.scale), h('td', {}, ws),
+              h('td', {}, a), h('td', { class: b !== a ? 'chg' : '' }, b, b !== a ? ' (' + (b > a ? '+' : '') + (b - a) + ')' : ''));
+          })),
+          h('tfoot', {}, h('tr', {}, h('th', { scope: 'row' }, 'Project'), h('td', {}), h('td', {}, fmtFt(cur.length)), h('td', {}), h('td', {}), h('td', {}, h('b', {}, cur.total)), h('td', {}, h('b', { id: 'ppWhatIf' }, W.total))))),
+        h('p', { class: 'muted' }, 'Segments with their own scale, and series with a fixed scale, are not changed by the what-if.'),
+        h('div', { class: 'row' },
+          h('button', { type: 'button', class: 'btn', disabled: !Object.keys(what).length, onclick: () => { commit(() => { for (const [id, v] of Object.entries(what)) { const sub = M.findSub(st, id); sub.scale = v; M.log(st, sub.code + ' default scale → ' + v + ' (from calculator)'); } }); toast('Default scales applied. Use “Generate PP sheets” on segments to update sheet entries.'); openPP(); } }, 'Apply what-if scales'),
+          h('button', { type: 'button', class: 'btn sec', onclick: () => download('pm-pp-summary-' + M.todayISO() + '.csv', '\ufeff' + M.ppCSV(st, { subScale: what }), 'text/csv') }, 'Export PP summary CSV'),
+          h('button', { type: 'button', class: 'btn sec', onclick: () => { closeModal(); openSettings(); } }, 'Edit scale table')));
     };
-    const ctl = (el, k) => { el.addEventListener(el.type === 'search' ? 'input' : 'change', () => { filt[k] = el.type === 'checkbox' ? el.checked : el.value; draw(); }); return el; };
-    const view = h('div', {},
-      h('section', { class: 'card' },
-        h('h2', {}, 'All sheets — A to D'),
-        h('div', { class: 'filters' },
-          field('Search', ctl(h('input', { type: 'search', value: filt.q, placeholder: 'Title, segment, road, notes…' }), 'q')),
-          field('Status', ctl(select([['', 'All']].concat(M.STATUSES), filt.status), 'status')),
-          field('Owner', ctl(select(owners, filt.owner), 'owner')),
-          field('Discipline', ctl(select([['', 'All'], 'Drainage', 'SWP3'], filt.discipline), 'discipline')),
-          field('Sub-project', ctl(select([['', 'A–D']].concat(st.subs.map((s) => [s.id, s.code + ' · ' + s.name])), filt.sub), 'sub')),
-          h('label', { class: 'chk' }, ctl(h('input', { type: 'checkbox', checked: filt.overdue }), 'overdue'), ' Overdue only')),
-        h('div', { class: 'row' }, count,
-          h('button', { type: 'button', class: 'btn sec', onclick: () => {
-            if (!confirm('The CSV file is NOT encrypted. Anyone who gets the file can read it. Export the ' + M.filterRows(rows, filt).length + ' filtered sheets anyway?')) return;
-            download('pm-sheets-' + M.todayISO() + '.csv', '\ufeff' + M.toCSV(M.filterRows(rows, filt)), 'text/csv');
-          } }, 'Export CSV (unencrypted)'))),
-      list);
     draw();
-    return view;
+    openModal('PP sheet calculator', body);
   }
-
-  function settingsView() {
-    const pn = h('input', { value: st.project.name, onchange: () => { commit(() => { st.project.name = pn.value.trim() || st.project.name; }); rerender(); } });
-    const al = h('input', { type: 'number', min: 1, max: 240, step: 1, value: st.settings.autoLockMin, inputmode: 'numeric',
-      onchange: () => { const v = Math.min(240, Math.max(1, Math.round(Number(al.value) || 5))); al.value = v; commit(() => { st.settings.autoLockMin = v; }); } });
-    const oh = h('input', { type: 'checkbox', checked: !!st.settings.lockOnHide, onchange: () => commit(() => { st.settings.lockOnHide = oh.checked; }) });
-    const staffIn = h('input', { placeholder: 'Name', 'aria-label': 'New staff name' });
-    const cur = h('input', { type: 'password', autocomplete: 'current-password' });
-    const n1 = h('input', { type: 'password', autocomplete: 'new-password' });
-    const n2 = h('input', { type: 'password', autocomplete: 'new-password' });
-    const cpErr = h('p', { class: 'err', role: 'alert' });
-    const impFile = h('input', { type: 'file', accept: '.json,application/json' });
-    const impPass = h('input', { type: 'password', autocomplete: 'off' });
+  function openStaff() {
+    const S = M.summary(st);
+    const nn = h('input', { placeholder: 'Name', 'aria-label': 'New staff name' });
+    const nr = h('input', { placeholder: 'Role (e.g. EIT, CADD, PE)', 'aria-label': 'New staff role' });
+    const body = h('div', {},
+      h('table', { class: 'grid compact' }, h('thead', {}, h('tr', {}, ['Name', 'Role', 'Open', 'Overdue', 'Done', 'Hours bud', 'Hours act', ''].map((x) => h('th', { scope: 'col' }, x)))),
+        h('tbody', {}, S.workload.map((w) => {
+          const person = st.staff.find((x) => x.name === w.owner);
+          const role = person ? h('input', { value: person.role || '', 'aria-label': 'Role of ' + w.owner, onchange: (e) => { commit(() => { person.role = e.target.value; }); } }) : h('span', { class: 'muted' }, '—');
+          const max = Math.max(1, ...S.workload.map((x) => x.open));
+          const b = h('span', { class: 'wbar' }); b.style.width = (w.open / max * 100) + '%';
+          return h('tr', {}, h('th', { scope: 'row' }, w.owner), h('td', {}, role), h('td', {}, h('span', { class: 'wcell' }, b, h('span', {}, w.open))), h('td', { class: w.overdue ? 'bad' : '' }, w.overdue), h('td', {}, w.done),
+            h('td', {}, w.hoursBudget), h('td', { class: w.hoursBudget && w.hoursActual > w.hoursBudget ? 'bad' : '' }, w.hoursActual),
+            h('td', {}, person ? h('button', { type: 'button', class: 'ibtn danger', 'aria-label': 'Remove ' + w.owner, onclick: () => { commit(() => M.removeStaff(st, w.owner)); openStaff(); } }, '×') : null));
+        }))),
+      h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); if (!nn.value.trim()) return; commit(() => M.addStaff(st, nn.value, nr.value)); openStaff(); } }, nn, nr, h('button', { class: 'btn', type: 'submit' }, 'Add person')));
+    openModal('Staff & workload', body);
+  }
+  function openMilestones() {
+    const S = M.summary(st);
+    const nn = h('input', { placeholder: 'e.g. 30% submittal', 'aria-label': 'New milestone name' });
+    const nd = h('input', { type: 'date', 'aria-label': 'New milestone date' });
+    const body = h('div', {},
+      h('ul', { class: 'dlist' }, S.milestones.map((m) => {
+        const n = h('input', { value: m.m.name, 'aria-label': 'Milestone name', onchange: (e) => commit(() => { m.m.name = e.target.value.trim() || m.m.name; }) });
+        const d = h('input', { type: 'date', value: m.m.date, 'aria-label': 'Milestone date', onchange: (e) => { commit(() => { m.m.date = e.target.value; M.sortMilestones(st); }); openMilestones(); } });
+        const late = m.m.date && m.m.date < M.todayISO() && m.done < m.total;
+        return h('li', { class: 'msrow' }, n, d, h('div', { class: 'grow' }, bar(m.pct, m.m.name), h('small', { class: late ? 'bad' : 'muted' }, m.total + ' sheets · ' + M.STATUSES.map((x) => m.counts[x] + ' ' + x.toLowerCase()).join(', ') + (late ? ' · date passed' : ''))),
+          h('button', { type: 'button', class: 'btn sec sm', onclick: () => { closeModal(); Object.assign(filt, { milestone: m.m.id }); ui.view = 'list'; saveUI(); renderAll(); } }, 'Sheets'),
+          h('button', { type: 'button', class: 'ibtn danger', 'aria-label': 'Delete milestone ' + m.m.name, onclick: () => { if (confirm('Delete milestone ' + m.m.name + '? Sheets keep everything else.')) { commit(() => M.removeMilestone(st, m.m.id)); openMilestones(); } } }, '×'));
+      })),
+      h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); commit(() => M.addMilestone(st, nn.value, nd.value)); openMilestones(); } }, nn, nd, h('button', { class: 'btn', type: 'submit' }, 'Add milestone')));
+    openModal('Milestones', body);
+  }
+  function openSettings() {
+    const sc = h('input', { type: 'number', min: 1, step: 'any', placeholder: 'Scale (e.g. 30)', 'aria-label': 'New scale' });
+    const ft = h('input', { type: 'number', min: 1, step: 'any', placeholder: 'Feet per sheet', 'aria-label': 'Feet per sheet for new scale' });
+    sc.addEventListener('input', () => { if (!ft.value && Number(sc.value) > 0) ft.placeholder = (Number(sc.value) * 12) + ' (12 in × scale)'; });
+    const ov = h('input', { type: 'number', min: 0, step: 10, value: st.settings.overlapFt, 'aria-label': 'Overlap feet between consecutive PP sheets' });
+    ov.addEventListener('change', () => commit(() => { const v = Math.max(0, Number(ov.value) || 0); st.settings.overlapFt = v; M.log(st, 'PP overlap → ' + v + ' ft'); }));
+    const qc = h('textarea', { rows: 4, 'aria-label': 'QC steps, one per line' }); qc.value = st.settings.qcSteps.join('\n');
+    qc.addEventListener('change', () => commit(() => { st.settings.qcSteps = qc.value.split('\n').map((x) => x.trim()).filter(Boolean); }));
+    const impFile = h('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Backup file' });
+    const impPass = h('input', { type: 'password', autocomplete: 'off', 'aria-label': 'Passphrase (only for old encrypted backups)' });
     const impErr = h('p', { class: 'err', role: 'alert' });
-    const lb = st.lastBackup ? new Date(st.lastBackup).toLocaleString() : 'never';
-    return h('div', {},
-      h('section', { class: 'card' }, h('h2', {}, 'Backup'),
-        h('p', {}, 'Last backup: ', h('b', { id: 'lastBackup' }, lb)),
-        h('p', { class: 'warn' }, 'The backup file is encrypted with your current passphrase. If you forget the passphrase, the backup cannot be opened — by you or anyone.'),
-        h('button', { type: 'button', class: 'btn', id: 'exportBtn', onclick: async () => {
-          st.lastBackup = new Date().toISOString();
-          const env = await C.sealWithKey(vk.key, vk.salt, vk.iter, st, 'backup');
-          download('pm-backup-' + M.todayISO() + '.json', JSON.stringify(env), 'application/json');
-          await save();
-          toast('Encrypted backup downloaded. Keep it somewhere safe (e.g. OneDrive or a USB drive).');
-          rerender();
-        } }, 'Export encrypted backup'),
+    const hasOld = !!localStorage.getItem(OLDKEY);
+    const body = h('div', { class: 'settings' },
+      h('section', {}, h('h3', {}, 'Plan scale → feet per sheet'),
+        h('p', { class: 'muted' }, '1 in = scale ft, and a sheet covers 12 in of length by default. Edit if your sheet layout differs.'),
+        h('table', { class: 'grid compact' }, h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Scale'), h('th', { scope: 'col' }, 'Feet per sheet'), h('th', {}))),
+          h('tbody', {}, st.settings.scales.map((r) => h('tr', {}, h('th', { scope: 'row' }, r.scale + ' scale'),
+            h('td', {}, h('input', { type: 'number', min: 1, step: 'any', value: r.ft, 'aria-label': 'Feet per sheet at ' + r.scale + ' scale', onchange: (e) => { commit(() => { M.setScale(st, r.scale, e.target.value); M.log(st, r.scale + ' scale → ' + e.target.value + ' ft/sheet'); }); } })),
+            h('td', {}, h('button', { type: 'button', class: 'ibtn danger', 'aria-label': 'Remove ' + r.scale + ' scale', onclick: () => { commit(() => M.removeScale(st, r.scale)); openSettings(); } }, '×')))))),
+        h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); commit(() => M.setScale(st, sc.value, ft.value || Number(sc.value) * 12)); openSettings(); } }, sc, ft, h('button', { class: 'btn sec', type: 'submit' }, 'Add / update scale')),
+        field('Overlap between consecutive PP sheets (ft)', ov, '0 = no match-line overlap (sheet count = ceil(length ÷ ft per sheet)).')),
+      h('section', {}, h('h3', {}, 'PP sheet series'),
+        h('p', { class: 'muted' }, 'Each enabled series is counted per segment by the same rule. Fixed scale overrides the segment scale for that series.'),
+        h('table', { class: 'grid compact' }, h('thead', {}, h('tr', {}, ['On', 'Series name', 'Discipline', 'Scale'].map((x) => h('th', { scope: 'col' }, x)))),
+          h('tbody', {}, st.settings.series.map((se) => {
+            const nm = h('input', { value: se.name, 'aria-label': 'Series name', onchange: (e) => commit(() => { se.name = e.target.value.trim() || se.name; }) });
+            const di = select(M.DISCIPLINES, se.discipline, { 'aria-label': 'Series discipline', onchange: (e) => commit(() => { se.discipline = e.target.value; }) });
+            const sp = select([['', 'Segment scale']].concat(scaleOpts(false)), se.scale == null ? '' : String(se.scale), { 'aria-label': 'Series scale', onchange: (e) => commit(() => { se.scale = e.target.value ? Number(e.target.value) : null; }) });
+            return h('tr', {}, h('td', {}, h('input', { type: 'checkbox', checked: se.enabled, 'aria-label': 'Enable ' + se.name, onchange: (e) => commit(() => { se.enabled = e.target.checked; }) })), h('td', {}, nm), h('td', {}, di), h('td', {}, sp));
+          })))),
+      h('section', {}, h('h3', {}, 'QC checklist steps'), qc),
+      h('section', {}, h('h3', {}, 'Backup & export'),
+        h('p', {}, 'Last backup: ', h('b', { id: 'lastBackup' }, st.lastBackup ? new Date(st.lastBackup).toLocaleString() : 'never')),
+        h('p', { class: 'warnbox' }, 'Testing mode: backups and data are plain JSON (not encrypted). Clearing browser data erases the project — keep backups.'),
+        h('div', { class: 'row' },
+          h('button', { type: 'button', class: 'btn', id: 'exportBtn', onclick: () => { st.lastBackup = new Date().toISOString(); download('pm-backup-' + M.todayISO() + '.json', JSON.stringify(M.backupFile(st), null, 1), 'application/json'); flush(); renderAll(); openSettings(); toast('Backup downloaded.'); } }, 'Export backup (JSON)'),
+          h('button', { type: 'button', class: 'btn sec', onclick: () => download('pm-sheets-' + M.todayISO() + '.csv', '\ufeff' + M.toCSV(st, M.allSheets(st)), 'text/csv') }, 'All sheets CSV'),
+          h('button', { type: 'button', class: 'btn sec', onclick: () => download('pm-pp-summary-' + M.todayISO() + '.csv', '\ufeff' + M.ppCSV(st), 'text/csv') }, 'PP summary CSV')),
         h('form', { class: 'stack imp', onsubmit: async (e) => {
-          e.preventDefault();
-          impErr.textContent = '';
+          e.preventDefault(); impErr.textContent = '';
           if (!impFile.files[0]) { impErr.textContent = 'Choose a backup file.'; return; }
-          busy(e.target, true, 'Decrypting…');
           try {
-            const r = await C.open(impPass.value, JSON.parse(await impFile.files[0].text()), 'backup');
-            const data = M.normalize(r.data);
-            const n = M.allSheets(data).length;
-            busy(e.target, false);
-            if (!confirm('Replace ALL current data (' + M.allSheets(st).length + ' sheets) with this backup (' + n + ' sheets, “' + data.project.name + '”)? This cannot be undone.')) return;
-            st = data;
+            const obj = JSON.parse(await impFile.files[0].text());
+            let data;
+            if (obj.fmt === 'pm-backup') {
+              if (!impPass.value) { impErr.textContent = 'This is an old encrypted backup — enter its passphrase.'; return; }
+              data = M.migrate((await C.open(impPass.value, obj, 'backup')).data);
+            } else data = M.readBackup(obj);
             impPass.value = '';
-            await save();
-            toast('Backup imported. It is now encrypted with your current passphrase.');
-            location.hash = '#/';
-            rerender();
-          } catch (ex) {
-            busy(e.target, false);
-            impErr.textContent = ex.code === 'DECRYPT' ? 'Wrong passphrase for this backup (or the file was modified).' : 'Could not import: ' + ex.message;
-          }
-        } }, h('h3', {}, 'Import backup'), field('Backup file', impFile), field('Passphrase used for that backup', impPass), impErr,
-          h('button', { class: 'btn sec', type: 'submit' }, 'Decrypt and import…'))),
-      h('section', { class: 'card' }, h('h2', {}, 'Project'), field('Project name', pn)),
-      h('section', { class: 'card' }, h('h2', {}, 'Staff list'),
-        h('p', { class: 'muted' }, 'Names offered in the Owner dropdowns.'),
-        h('ul', { class: 'plain staff' }, st.staff.map((s) => h('li', {}, h('span', {}, s),
-          h('button', { type: 'button', class: 'btn danger sm', 'aria-label': 'Remove ' + s, onclick: () => { commit(() => M.removeStaff(st, s)); rerender(); } }, 'Remove')))),
-        h('form', { class: 'tpl', onsubmit: (e) => { e.preventDefault(); commit(() => M.addStaff(st, staffIn.value)); rerender(); } }, staffIn, h('button', { class: 'btn sm', type: 'submit' }, 'Add'))),
-      h('section', { class: 'card' }, h('h2', {}, 'Security'),
-        field('Auto-lock after (minutes of inactivity)', al),
-        h('label', { class: 'chk' }, oh, ' Also lock when this tab is hidden or the phone is locked'),
-        h('form', { class: 'stack', onsubmit: async (e) => {
-          e.preventDefault();
-          cpErr.textContent = '';
-          const issues = C.passIssues(n1.value, n2.value);
-          if (issues.length) { cpErr.textContent = issues.join(' '); return; }
-          busy(e.target, true, 'Re-encrypting…');
-          try {
-            await C.open(cur.value, readEnv(), 'vault');
-            await saving;
-            const r = await C.seal(n1.value, st, 'vault');
-            localStorage.setItem(KEY, JSON.stringify(r.env));
-            vk = { key: r.key, salt: r.salt, iter: r.iter };
-            cur.value = n1.value = n2.value = '';
-            busy(e.target, false);
-            toast('Passphrase changed. Older backups still need the old passphrase — export a new backup.');
-          } catch (ex) {
-            busy(e.target, false);
-            cpErr.textContent = ex.code === 'DECRYPT' ? 'Current passphrase is wrong.' : ex.message;
-          }
-        } }, h('h3', {}, 'Change passphrase'), field('Current passphrase', cur), field('New passphrase', n1, 'At least ' + C.MIN_PASS + ' characters'), field('Confirm new passphrase', n2), cpErr,
-          h('button', { class: 'btn sec', type: 'submit' }, 'Change passphrase'))),
-      h('section', { class: 'card' }, h('h2', {}, 'What this protects'),
-        h('ul', {},
-          h('li', {}, 'Everything is encrypted on this device with your passphrase (AES-GCM 256, key from PBKDF2-SHA-256, ' + C.ITER.toLocaleString() + ' rounds, random salt, new IV every save). Nothing is stored in plain text and nothing is sent over the network.'),
-          h('li', {}, 'It protects against someone opening this page or reading browser storage without the passphrase.'),
-          h('li', {}, 'It does NOT protect against clearing browser data, losing the device, or Safari evicting site data after weeks unused — only an exported backup protects against that.'),
-          h('li', {}, 'While unlocked, data is readable on screen and in memory. Lock when stepping away.'),
-          h('li', {}, 'CSV exports are plain text.')),
-        h('button', { type: 'button', class: 'btn danger', onclick: () => {
-          if (prompt('Type ERASE to permanently delete the encrypted project from this browser.') === 'ERASE') { localStorage.removeItem(KEY); lock('All data erased from this browser.'); }
-        } }, 'Erase all data on this device')));
+            if (!confirm('Replace ALL current data (' + M.allSheets(st).length + ' sheets) with this backup (' + M.allSheets(data).length + ' sheets, “' + data.project.name + '”)?')) return;
+            st = data; M.log(st, 'Imported backup'); flush(); closeModal(); closeDrawer(); firstFit = true; renderAll(); toast('Backup imported.');
+          } catch (ex) { impErr.textContent = ex.code === 'DECRYPT' ? 'Wrong passphrase for this backup (or the file was modified).' : 'Could not import: ' + ex.message; }
+        } }, h('h3', {}, 'Import backup'), field('Backup file (v2 JSON, or old encrypted v1 backup)', impFile), field('Passphrase (old encrypted backups only)', impPass), impErr, h('button', { class: 'btn sec', type: 'submit' }, 'Import…'))),
+      hasOld ? h('section', {}, h('h3', {}, 'Old encrypted v1 data'), h('p', { class: 'muted' }, 'An encrypted v1 vault is still stored in this browser.'),
+        h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec', onclick: () => { closeModal(); migrationPanel(true); } }, 'Import it again…'),
+          h('button', { type: 'button', class: 'btn danger', onclick: () => { if (confirm('Delete the old encrypted vault from this browser? Current data is not affected.')) { localStorage.removeItem(OLDKEY); openSettings(); } } }, 'Delete old vault'))) : null,
+      h('section', {}, h('h3', {}, 'Keyboard'), h('ul', { class: 'keys' }, [['/', 'Search'], ['n', 'Add (segment / sheet in the open drawer)'], ['l', 'Toggle Tree / List'], ['t', 'Toggle timeline'], ['f', 'Fit tree to screen'], ['d', 'Light / dark'], ['Esc', 'Close drawer or dialog'], ['Enter', 'Open the focused node or row'], ['↑ ↓', 'Move between rows in the list (Alt+↑↓ in dropdowns)'], ['Arrows, + −', 'Pan / zoom when the tree has focus']].map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v)))),
+      h('section', {}, h('h3', {}, 'Activity log'), h('ol', { class: 'log long' }, st.log.slice(0, 200).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString()), ' ', l.msg)))),
+      h('section', {}, h('h3', {}, 'Danger zone'), h('button', { type: 'button', class: 'btn danger', onclick: () => { if (prompt('Type ERASE to delete all project data in this browser.') === 'ERASE') { localStorage.removeItem(KEY); st = M.newState(); flush(); closeModal(); closeDrawer(); renderAll(); } } }, 'Erase all data')));
+    openModal('Settings, backup & export', body);
+  }
+  /* one-time import of the encrypted v1 vault */
+  function migrationPanel(again) {
+    const p = h('input', { type: 'password', autocomplete: 'current-password', id: 'migPass' });
+    const err = h('p', { class: 'err', role: 'alert' });
+    const btn = h('button', { class: 'btn', type: 'submit' }, 'Unlock & import');
+    const body = h('form', { class: 'stack', onsubmit: async (e) => {
+      e.preventDefault(); btn.disabled = true; btn.textContent = 'Decrypting…';
+      try {
+        const env = safeJSON(localStorage.getItem(OLDKEY));
+        const data = M.migrate((await C.open(p.value, env, 'vault')).data);
+        p.value = '';
+        if (again && !confirm('Replace current data with the old vault contents?')) { btn.disabled = false; btn.textContent = 'Unlock & import'; return; }
+        st = data; flush(); closeModal(); firstFit = true; renderAll(); toast('Imported ' + M.allSheets(st).length + ' sheets from the encrypted v1 data.');
+      } catch (ex) { btn.disabled = false; btn.textContent = 'Unlock & import'; p.value = ''; p.focus(); err.textContent = ex.code === 'DECRYPT' ? 'Wrong passphrase. Try again.' : 'Could not import: ' + ex.message; }
+    } },
+    h('p', {}, 'This browser has project data from the earlier encrypted version. Enter its passphrase once to import it into the new (unencrypted, testing-mode) store. The passphrase is used only here and is not saved.'),
+    field('v1 passphrase', p), err,
+    h('div', { class: 'row' }, btn, again ? null : h('button', { type: 'button', class: 'btn sec', id: 'migSkip', onclick: () => { flush(); closeModal(); toast('Started an empty project. You can import the old data later in Settings.'); } }, 'Start empty instead')));
+    openModal('Import your encrypted v1 data', body);
   }
 
-  showLock();
+  /* ---------- wiring ---------- */
+  $('#modalClose').addEventListener('click', closeModal);
+  $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+  $('#vTree').addEventListener('click', () => { ui.view = 'tree'; saveUI(); renderAll(); });
+  $('#vList').addEventListener('click', () => { ui.view = 'list'; saveUI(); renderAll(); });
+  $('#tlBtn').addEventListener('click', () => { ui.timeline = !ui.timeline; saveUI(); renderAll(); });
+  $('#ppBtn').addEventListener('click', openPP);
+  $('#msBtn').addEventListener('click', openMilestones);
+  $('#staffBtn').addEventListener('click', openStaff);
+  $('#setBtn').addEventListener('click', openSettings);
+  $('#themeBtn').addEventListener('click', () => { ui.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); });
+  $('#zIn').addEventListener('click', () => { const v = $('#viewport'); zoomAt(1.25, v.clientWidth / 2, v.clientHeight / 2); });
+  $('#zOut').addEventListener('click', () => { const v = $('#viewport'); zoomAt(0.8, v.clientWidth / 2, v.clientHeight / 2); });
+  $('#zFit').addEventListener('click', () => fit());
+  $('#xAll').addEventListener('click', () => { for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; for (const g of sub.segments) ui.collapsed['seg:' + g.id] = false; } saveUI(); renderTree(); fit(); });
+  $('#cAll').addEventListener('click', () => { for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; for (const g of sub.segments) ui.collapsed['seg:' + g.id] = true; } saveUI(); renderTree(); fit(); });
+  $('#railBtn').addEventListener('click', () => { const open = !document.body.classList.contains('rail-open'); document.body.classList.toggle('rail-open', open); $('#railBtn').setAttribute('aria-expanded', String(open)); });
+  let qTm;
+  $('#q').addEventListener('input', () => {
+    clearTimeout(qTm);
+    qTm = setTimeout(() => {
+      filt.q = $('#q').value;
+      if (filt.q.trim()) for (const r of M.filterRows(M.allSheets(st), { q: filt.q })) { ui.collapsed['sub:' + r.sub.id] = false; ui.collapsed['seg:' + r.seg.id] = false; }
+      renderAll();
+    }, 120);
+  });
+  for (const [id, k] of [['#fStatus', 'status'], ['#fOwner', 'owner'], ['#fDisc', 'discipline']]) $(id).addEventListener('change', (e) => { filt[k] = e.target.value; renderAll(); });
+  document.addEventListener('keydown', (e) => {
+    const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement && document.activeElement.tagName);
+    if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (sel) closeDrawer(); else if (typing) document.activeElement.blur(); return; }
+    if (typing || e.metaKey || e.ctrlKey || e.altKey || !$('#modal').hidden) return;
+    if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
+    else if (e.key === 'l') { ui.view = ui.view === 'tree' ? 'list' : 'tree'; saveUI(); renderAll(); }
+    else if (e.key === 't') { ui.timeline = !ui.timeline; saveUI(); renderAll(); }
+    else if (e.key === 'f') fit();
+    else if (e.key === 'd') $('#themeBtn').click();
+    else if (e.key === '?') openSettings();
+    else if (e.key === 'n') {
+      e.preventDefault();
+      if (sel && (sel.type === 'seg' || sel.type === 'sheet')) { const id = sel.type === 'seg' ? sel.id : M.findSheet(st, sel.id).seg.id; select_('seg', id); setTimeout(() => $('#addSheetTitle') && $('#addSheetTitle').focus(), 20); }
+      else { select_('sub', sel && sel.type === 'sub' ? sel.id : st.subs[0].id); setTimeout(() => $('#addSegName') && $('#addSegName').focus(), 20); }
+    }
+  });
+  window.addEventListener('resize', () => { if (ui.view === 'tree') applyView(); });
+  window.addEventListener('storage', (e) => { if (e.key === KEY && e.newValue) { st = M.migrate(JSON.parse(e.newValue)); renderAll(); } });
+
+  /* ---------- start ---------- */
+  applyTheme();
+  st = load();
+  const needMigration = !st && !!localStorage.getItem(OLDKEY);
+  if (!st) st = M.newState();
+  renderAll();
+  if (needMigration) migrationPanel(false); else flush();
 })();
