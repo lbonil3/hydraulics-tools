@@ -117,13 +117,16 @@
     }
     return out;
   }
+  /* sheets with no (valid) discipline: SWP3 / erosion / stormwater keywords → SWP3, else Drainage */
+  const SWP3_RX = /swp3|swppp|erosion|storm ?water|sediment|silt fence|\bbmps?\b|pollution prevention/i;
+  function guessDiscipline(title, series) { return SWP3_RX.test(String(title || '') + ' ' + String(series || '')) ? 'SWP3' : 'Drainage'; }
   function segScale(sub, seg) { return seg.scale != null && seg.scale !== '' ? Number(seg.scale) : Number(sub.scale) || 100; }
   function seriesScale(sub, seg, series) { return series.scale != null && series.scale !== '' ? Number(series.scale) : segScale(sub, seg); }
   /* opts.subScale: { [subId]: scale } what-if overrides (not saved) */
   function segPP(st, sub, seg, opts) {
     const len = segLength(seg);
     const out = [];
-    for (const se of st.settings.series.filter((x) => x.enabled)) {
+    for (const se of st.settings.series.filter((x) => x.enabled && (!opts || !opts.discipline || x.discipline === opts.discipline))) {
       let scale = seriesScale(sub, seg, se);
       if (opts && opts.subScale && opts.subScale[sub.id] && (se.scale == null || se.scale === '') && (seg.scale == null || seg.scale === '')) scale = Number(opts.subScale[sub.id]);
       const ft = ftPerSheet(st.settings, scale);
@@ -136,14 +139,16 @@
     const bySub = [];
     for (const sub of st.subs) {
       let subTot = 0, subLen = 0;
+      const disc = {}; for (const d of DISCIPLINES) disc[d] = 0;
       for (const seg of sub.segments) {
         const p = segPP(st, sub, seg, opts);
         subTot += p.total; subLen += p.length;
-        for (const s of p.series) rows.push({ sub, seg, length: p.length, series: s.series, scale: s.scale, ft: s.ft, count: s.count });
+        for (const s of p.series) { rows.push({ sub, seg, length: p.length, series: s.series, discipline: s.series.discipline, scale: s.scale, ft: s.ft, count: s.count }); disc[s.series.discipline] = (disc[s.series.discipline] || 0) + s.count; }
       }
-      bySub.push({ sub, total: subTot, length: subLen });
+      bySub.push({ sub, total: subTot, length: subLen, disc });
     }
-    return { rows, bySub, total: bySub.reduce((a, b) => a + b.total, 0), length: bySub.reduce((a, b) => a + b.length, 0) };
+    const byDisc = {}; for (const d of DISCIPLINES) byDisc[d] = bySub.reduce((a, b) => a + (b.disc[d] || 0), 0);
+    return { rows, bySub, byDisc, total: bySub.reduce((a, b) => a + b.total, 0), length: bySub.reduce((a, b) => a + b.length, 0) };
   }
   function genTitle(series, r) {
     return series.name + ' – Sta ' + formatStation(r.start) + ' to ' + formatStation(r.end) + ' (PP ' + r.idx + ' of ' + r.of + ')';
@@ -153,13 +158,14 @@
       Object.values(sh.qc || {}).some(Boolean) || !!(sh.gen && sh.gen.titleEdited);
   }
   /* Plan (no mutation): which generated sheets to create / update / remove for a segment. */
-  function planGenerate(st, segId) {
+  /* opts.discipline: only that discipline's series (e.g. Drainage → Drainage P&P, SWP3 → SWP3 Layout); other series untouched */
+  function planGenerate(st, segId, opts) {
     const hit = findSeg(st, segId);
     if (!hit) throw new Error('No such segment');
     const { sub, seg } = hit;
     const plan = { create: [], update: [], remove: [], removeTouched: [], unchanged: 0 };
     const enabled = st.settings.series.filter((x) => x.enabled);
-    for (const se of st.settings.series) {
+    for (const se of st.settings.series.filter((x) => !opts || !opts.discipline || x.discipline === opts.discipline)) {
       const existing = seg.sheets.filter((s) => s.gen && s.gen.series === se.id).sort((a, b) => a.gen.idx - b.gen.idx);
       const ranges = enabled.includes(se) ? ppRanges(parseStation(seg.start), parseStation(seg.end), ftPerSheet(st.settings, seriesScale(sub, seg, se)), st.settings.overlapFt) : [];
       ranges.forEach((r, i) => {
@@ -241,7 +247,7 @@
   }
   function newSheet(f) {
     return { id: uid(), title: String(f.title || '').trim() || 'Untitled sheet',
-      discipline: DISCIPLINES.includes(f.discipline) ? f.discipline : 'Drainage',
+      discipline: DISCIPLINES.includes(f.discipline) ? f.discipline : guessDiscipline(f.title, f.series),
       number: f.number || '', series: f.series || '',
       status: STATUSES.includes(f.status) ? f.status : 'Not started',
       owner: String(f.owner || '').trim(), due: f.due || '', pct: 0, hoursBudget: Number(f.hoursBudget) || 0, hoursActual: 0,
@@ -482,10 +488,12 @@
   }
   function ppCSV(st, opts) {
     const S = ppSummary(st, opts);
-    const lines = [['Sub-project', 'Segment', 'Road', 'Start Sta', 'End Sta', 'Length ft', 'Series', 'Scale', 'Ft per sheet', 'Overlap ft', 'PP sheets'].join(',')];
-    for (const r of S.rows) lines.push([r.sub.code, r.seg.name, r.seg.road, formatStation(r.seg.start), formatStation(r.seg.end), r.length, r.series.name, r.scale, r.ft, st.settings.overlapFt, r.count].map(csvCell).join(','));
-    for (const b of S.bySub) lines.push([b.sub.code + ' total', '', '', '', '', b.length, '', '', '', '', b.total].map(csvCell).join(','));
-    lines.push(['Project total', '', '', '', '', S.length, '', '', '', '', S.total].map(csvCell).join(','));
+    const lines = [['Sub-project', 'Discipline', 'Segment', 'Road', 'Start Sta', 'End Sta', 'Length ft', 'Series', 'Scale', 'Ft per sheet', 'Overlap ft', 'PP sheets'].join(',')];
+    for (const r of S.rows) lines.push([r.sub.code, r.discipline, r.seg.name, r.seg.road, formatStation(r.seg.start), formatStation(r.seg.end), r.length, r.series.name, r.scale, r.ft, st.settings.overlapFt, r.count].map(csvCell).join(','));
+    for (const b of S.bySub) for (const d of DISCIPLINES) lines.push([b.sub.code + ' total', d, '', '', '', '', '', '', '', '', '', b.disc[d]].map(csvCell).join(','));
+    for (const b of S.bySub) lines.push([b.sub.code + ' total', 'All', '', '', '', '', b.length, '', '', '', '', b.total].map(csvCell).join(','));
+    for (const d of DISCIPLINES) lines.push(['Project total', d, '', '', '', '', '', '', '', '', '', S.byDisc[d]].map(csvCell).join(','));
+    lines.push(['Project total', 'All', '', '', '', '', S.length, '', '', '', '', S.total].map(csvCell).join(','));
     return lines.join('\r\n') + '\r\n';
   }
 
@@ -521,7 +529,7 @@
       for (const seg of sub.segments) {
         seg.sheets = Array.isArray(seg.sheets) ? seg.sheets : [];
         seg.revs = Array.isArray(seg.revs) ? seg.revs : [];
-        for (const sh of seg.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; }
+        for (const sh of seg.sheets) { if (!DISCIPLINES.includes(sh.discipline)) sh.discipline = guessDiscipline(sh.title, sh.series); const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; }
       }
     }
     /* v2.0 kept prerequisites in sheet.deps (same sub-project only) → convert to 'dep' links */
@@ -676,7 +684,19 @@
     }
     return lines.join('\r\n') + '\r\n';
   }
-  return { SCHEMA, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* one discipline branch of a sub-project (optionally one segment): progress, sheets, PP, flags */
+  function branchStats(st, sub, disc, seg, today) {
+    today = today || todayISO();
+    const segs = seg ? [seg] : sub.segments;
+    const sheets = segs.flatMap((g) => g.sheets.filter((x) => x.discipline === disc));
+    const p = progress(sheets);
+    const pp = segs.reduce((a, g) => a + segPP(st, sub, g, { discipline: disc }).total, 0);
+    const overdue = sheets.filter((x) => isOverdue(x, today)).length;
+    const blocked = sheets.filter((x) => x.status !== 'Done' && blockers(st, { t: 'sheet', id: x.id }).length).length;
+    const update = sheets.filter((x) => needsUpdate(st, { t: 'sheet', id: x.id }).length).length;
+    return { disc, sheets, total: sheets.length, done: p.done, pct: p.pct, pp, overdue, blocked, update, length: segs.reduce((a, g) => a + segLength(g), 0) };
+  }
+  return { SCHEMA, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

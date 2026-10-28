@@ -86,7 +86,7 @@ t('segment scale inherit/override, series scale, totals, what-if', () => {
   st.settings.series[2].scale = 20; // SWP3 at 20 scale: 1550/240 -> 7
   assert.deepStrictEqual(M.segPP(st, A, s1).series.map((x) => x.count), [2, 7]);
   st.settings.overlapFt = 0;
-  assert.match(M.ppCSV(st), /Project total,,,,,2030,,,,,12/);
+  assert.match(M.ppCSV(st), /Project total,All,,,,,2030,,,,,12/);
 });
 t('generate PP sheets: ranges, idempotent regenerate, safe shrink', () => {
   const { st, s1 } = setup();
@@ -357,6 +357,69 @@ t('connectors: migration of v2.0 sheet.deps, pruning, backup round trip', () => 
   assert.strictEqual(M.flags(back).update.length, 2);
   M.deleteSheet(back, sa.id);
   assert.strictEqual(back.links.length, 0);
+});
+
+t('v2.2 disciplines: migration default by title/series keywords', () => {
+  assert.strictEqual(M.guessDiscipline('Erosion Control Plan'), 'SWP3');
+  assert.strictEqual(M.guessDiscipline('Stormwater Pollution Prevention'), 'SWP3');
+  assert.strictEqual(M.guessDiscipline('Sheet 3', 'SWP3 Layout'), 'SWP3');
+  assert.strictEqual(M.guessDiscipline('Storm Sewer Plan & Profile'), 'Drainage');
+  assert.strictEqual(M.guessDiscipline('Culvert Layout'), 'Drainage');
+  const st = M.newState();
+  const g = M.addSegment(st, st.subs[0].id, { name: 'ML', start: '10+00', end: '20+00' }).seg;
+  const a = M.addSheet(st, g.id, { title: 'Erosion control details' });
+  assert.strictEqual(a.discipline, 'SWP3', 'new sheet without discipline guesses SWP3');
+  const old = JSON.parse(JSON.stringify(st));
+  const sh = old.subs[0].segments[0].sheets;
+  sh.push(Object.assign({}, sh[0], { id: 'x1', title: 'Silt fence layout', discipline: undefined }));
+  sh.push(Object.assign({}, sh[0], { id: 'x2', title: 'Drainage area map', discipline: '' }));
+  sh.push(Object.assign({}, sh[0], { id: 'x3', title: 'Keep me', discipline: 'Drainage' }));
+  const m = M.migrate(old);
+  const by = Object.fromEntries(m.subs[0].segments[0].sheets.map((x) => [x.id, x.discipline]));
+  assert.deepStrictEqual([by.x1, by.x2, by.x3, by[a.id]], ['SWP3', 'Drainage', 'Drainage', 'SWP3']);
+  assert.strictEqual(m.subs[0].segments[0].sheets.length, 4, 'no sheets lost');
+});
+t('v2.2 disciplines: per-branch aggregation and PP counts', () => {
+  const st = M.newState();
+  const A = st.subs[0];
+  const g = M.addSegment(st, A.id, { name: 'ML', start: '10+00', end: '25+50' }).seg; // 1550 ft @100: 2 per series
+  const d1 = M.addSheet(st, g.id, { title: 'Culvert', discipline: 'Drainage' });
+  M.addSheet(st, g.id, { title: 'Inlet', discipline: 'Drainage' });
+  const s1 = M.addSheet(st, g.id, { title: 'SW1', discipline: 'SWP3' });
+  M.updateSheet(st, d1.id, { status: 'Done' });
+  M.updateSheet(st, s1.id, { due: '2020-01-01' });
+  const D = M.branchStats(st, A, 'Drainage'), S = M.branchStats(st, A, 'SWP3');
+  assert.deepStrictEqual([D.total, D.done, D.pct, D.pp, D.overdue], [2, 1, 50, 2, 0]);
+  assert.deepStrictEqual([S.total, S.done, S.pct, S.pp, S.overdue], [1, 0, 0, 2, 1]);
+  M.addLink(st, { t: 'sheet', id: s1.id }, { t: 'sheet', id: d1.id }, 'dep');
+  M.updateSheet(st, d1.id, { status: 'In progress' });
+  assert.strictEqual(M.branchStats(st, A, 'Drainage').blocked, 1, 'cross-discipline connector blocks drainage sheet');
+  st.settings.series.find((x) => x.id === 'pp-storm').enabled = true;
+  const P = M.ppSummary(st);
+  assert.deepStrictEqual([P.byDisc.Drainage, P.byDisc.SWP3, P.bySub[0].disc.Drainage, P.total], [4, 2, 4, 6]);
+  assert.strictEqual(M.segPP(st, A, g, { discipline: 'SWP3' }).total, 2);
+  assert.match(M.ppCSV(st), /Project total,Drainage,,,,,,,,,,4/);
+  assert.match(M.ppCSV(st), /A total,SWP3,,,,,,,,,,2/);
+});
+t('v2.2 disciplines: generate PP sheets per discipline only', () => {
+  const st = M.newState();
+  const g = M.addSegment(st, st.subs[0].id, { name: 'ML', start: '10+00', end: '25+50' }).seg;
+  const p1 = M.planGenerate(st, g.id, { discipline: 'SWP3' });
+  assert.ok(p1.create.length === 2 && p1.create.every((c) => c.series.id === 'pp-swp3'));
+  M.applyGenerate(st, g.id, p1);
+  assert.deepStrictEqual(g.sheets.map((x) => x.discipline), ['SWP3', 'SWP3']);
+  assert.strictEqual(M.planGenerate(st, g.id, { discipline: 'SWP3' }).create.length, 0, 'SWP3 up to date');
+  const p2 = M.planGenerate(st, g.id, { discipline: 'Drainage' });
+  assert.ok(p2.create.length === 2 && p2.create.every((c) => c.series.id === 'pp-drain') && !p2.remove.length);
+  M.applyGenerate(st, g.id, p2);
+  assert.strictEqual(g.sheets.length, 4);
+  // station edit shared by both branches: shrinking regenerates per discipline, the other stays pending
+  M.updateSegment(st, g.id, { name: 'ML', start: '10+00', end: '20+00' });
+  const p3 = M.planGenerate(st, g.id, { discipline: 'Drainage' });
+  assert.ok(p3.remove.length === 1 && p3.remove[0].discipline === 'Drainage');
+  M.applyGenerate(st, g.id, p3);
+  assert.strictEqual(M.planGenerate(st, g.id, { discipline: 'SWP3' }).remove.length, 1);
+  assert.strictEqual(g.sheets.filter((x) => x.discipline === 'SWP3').length, 2);
 });
 
 (async () => {
