@@ -422,6 +422,25 @@ t('v2.2 disciplines: generate PP sheets per discipline only', () => {
   assert.strictEqual(g.sheets.filter((x) => x.discipline === 'SWP3').length, 2);
 });
 
+t('v2.3 segments: road only, auto label, migration of names', () => {
+  const st = M.newState();
+  const r = M.addSegment(st, st.subs[0].id, { road: 'FM 1960', start: '10+00', end: '25+50' });
+  assert.strictEqual(r.seg.name, 'FM 1960 Sta 10+00–25+50');
+  assert.throws(() => M.addSegment(st, st.subs[0].id, { road: ' ', start: '30+00', end: '31+00' }), /Road name is required/);
+  M.updateSegment(st, r.seg.id, { road: 'FM 1960 WB', end: '26+00' });
+  assert.strictEqual(r.seg.name, 'FM 1960 WB Sta 10+00–26+00');
+  M.addSegment(st, st.subs[1].id, { road: 'Kuykendahl Rd', start: '1+00', end: '2+00' });
+  assert.deepStrictEqual(M.roads(st), ['FM 1960 WB', 'Kuykendahl Rd']);
+  const old = JSON.parse(JSON.stringify(st));
+  old.subs[0].segments[0].name = 'Mainlane North'; // name + road → keep road
+  old.subs[1].segments[0].road = ''; old.subs[1].segments[0].name = 'Cross Street'; // name only → road
+  const m = M.migrate(old);
+  assert.deepStrictEqual([m.subs[0].segments[0].road, m.subs[0].segments[0].name], ['FM 1960 WB', 'FM 1960 WB Sta 10+00–26+00']);
+  assert.deepStrictEqual([m.subs[1].segments[0].road, m.subs[1].segments[0].name], ['Cross Street', 'Cross Street Sta 1+00–2+00']);
+  assert.strictEqual(m.subs[0].segments[0].sheets.length, 0);
+  assert.deepStrictEqual(M.readBackup(JSON.parse(JSON.stringify(M.backupFile(m)))), JSON.parse(JSON.stringify(m)));
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

@@ -18,7 +18,7 @@
   let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group })); }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -424,7 +424,7 @@
       const gb = M.isDone(st, gref) ? 0 : M.blockers(st, gref).length, gu = M.needsUpdate(st, gref).length;
       const inner = dsheets.map((x) => ({ t: 'sheet', id: x.id }));
       const ib = inner.filter((r) => M.resolve(st, r).sh.status !== 'Done' && M.blockers(st, r).length).length, iu = inner.filter((r) => M.needsUpdate(st, r).length).length;
-      body = [h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.seg.name + (n.seg.road ? ' · ' + n.seg.road : '')),
+      body = [h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.seg.road),
         h('div', { class: 'ns mono' }, M.formatStation(n.seg.start) + ' → ' + M.formatStation(n.seg.end) + ' · ' + fmtFt(pp.length)),
         h('div', { class: 'ns' }, M.segScale(n.sub, n.seg) + ' scale · ', h('b', { title: pp.series.map((x) => x.series.name + ': ' + x.count).join(', ') || 'No enabled ' + n.disc + ' series' }, pp.total + ' ' + DINFO[n.disc].short + ' PP'), ' · ' + plural(dsheets.length, 'sheet')),
         h('div', { class: 'nrow' }, bar(p.pct, 'Progress ' + n.seg.name), od ? h('span', { class: 'flag' }, '⚑ ' + od) : null,
@@ -455,8 +455,8 @@
       onmouseenter: () => hoverLinks(n.key, true), onmouseleave: () => hoverLinks(n.key, false),
       onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id, n.disc); } } },
     body, h('div', { class: 'nacts' },
-      n.type === 'sub' ? addBtn(n, 'Add segment to ' + n.sub.code, () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegName'); if (i) i.focus(); }, 30); }) : null,
-      n.type === 'disc' ? addBtn(n, 'Add segment to ' + n.sub.code + ' (shared by both branches)', () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegName'); if (i) i.focus(); }, 30); }) : null,
+      n.type === 'sub' ? addBtn(n, 'Add segment to ' + n.sub.code, () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegRoad'); if (i) i.focus(); }, 30); }) : null,
+      n.type === 'disc' ? addBtn(n, 'Add segment to ' + n.sub.code + ' (shared by both branches)', () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegRoad'); if (i) i.focus(); }, 30); }) : null,
       n.type === 'seg' ? addBtn(n, 'Add ' + n.disc + ' sheet to ' + n.seg.name, () => { ui.collapsed[n.key] = false; select_('seg', n.seg.id, n.disc); setTimeout(() => { const i = $('#addSheetTitle'); if (i) i.focus(); }, 30); }) : null,
       toggleBtn(n)),
     n.type === 'sheet' || n.type === 'seg' ? h('span', { class: 'handle', role: 'button', tabindex: -1, title: 'Drag onto another sheet or segment: it will depend on this one', 'aria-label': 'Connector handle for ' + nodeLabel(n),
@@ -569,7 +569,7 @@
           const p = g.pct;
           const pp = g.pp;
           const b = h('button', { type: 'button', class: 'tl-seg p' + Math.min(4, Math.floor(p / 25)) + (sel && sel.id === seg.id && (!sel.disc || sel.disc === d) ? ' sel' : ''),
-            title: sub.code + ' · ' + d + ' · ' + seg.name + (seg.road ? ' · ' + seg.road : '') + '\n' + M.formatStation(seg.start) + ' – ' + M.formatStation(seg.end) + ' · ' + fmtFt(seg.end - seg.start) + ' · ' + pp + ' ' + DINFO[d].short + ' PP · ' + g.total + ' sheets · ' + Math.round(p) + '%',
+            title: sub.code + ' · ' + d + ' · ' + seg.name + '\n' + M.formatStation(seg.start) + ' – ' + M.formatStation(seg.end) + ' · ' + fmtFt(seg.end - seg.start) + ' · ' + pp + ' ' + DINFO[d].short + ' PP · ' + g.total + ' sheets · ' + Math.round(p) + '%',
             'aria-label': d + ' segment ' + seg.name + ', ' + Math.round(p) + '% complete',
             onclick: () => { openBranch(sub.id, d); select_('seg', seg.id, d); renderTree(); focusNode('seg:' + seg.id + '@' + d); } }, h('span', {}, seg.name));
           b.style.left = ((seg.start - lo) / span * 100) + '%'; b.style.width = Math.max(0.6, (seg.end - seg.start) / span * 100) + '%';
@@ -728,8 +728,9 @@
   }
   function segFields(sub, seg, onSaved) {
     const ids = seg ? '' : 'addSeg';
-    const name = h('input', { id: ids ? 'addSegName' : null, value: seg ? seg.name : '', placeholder: 'e.g. Mainlane north' });
-    const road = h('input', { value: seg ? seg.road : '', placeholder: 'e.g. FM 1960' });
+    const road = h('input', { id: ids ? 'addSegRoad' : null, value: seg ? seg.road : (ui.lastRoad || ''), placeholder: 'e.g. FM 1960', list: 'roadList', autocomplete: 'off', required: true });
+    const roadList = h('datalist', { id: 'roadList' }, M.roads(st).map((r) => h('option', { value: r })));
+    const label = h('p', { class: 'muted seglabel' });
     const a = h('input', { value: seg ? M.formatStation(seg.start) : '', placeholder: '10+00', autocomplete: 'off', class: 'mono' });
     const b = h('input', { value: seg ? M.formatStation(seg.end) : '', placeholder: '25+50', autocomplete: 'off', class: 'mono' });
     const live = h('div', { class: 'live', 'aria-live': 'polite' });
@@ -737,22 +738,24 @@
     const sp = scalePicker(seg ? seg.scale : null, 'Sub-project default (' + sub.scale + ' scale)', upd);
     function upd() {
       const s1 = M.parseStation(a.value), s2 = M.parseStation(b.value);
+      label.textContent = 'Label: ' + (road.value.trim() || '<Road>') + ' Sta ' + (Number.isFinite(s1) ? M.formatStation(s1) : '…') + '–' + (Number.isFinite(s2) ? M.formatStation(s2) : '…');
       if (!Number.isFinite(s1) || !Number.isFinite(s2) || s2 <= s1) { live.textContent = 'Enter stations like 10+00 and 25+50 to see the PP sheet count.'; return; }
       const tmp = { id: seg ? seg.id : 'tmp', start: s1, end: s2, scale: sp.get() };
       live.replaceChildren(h('span', { class: 'muted' }, 'Live: '), ppLine(sub, tmp));
     }
-    a.addEventListener('input', upd); b.addEventListener('input', upd);
+    a.addEventListener('input', upd); b.addEventListener('input', upd); road.addEventListener('input', upd);
     upd();
     return h('form', { class: 'stack', onsubmit: (e) => {
       e.preventDefault();
-      const f = { name: name.value, road: road.value, start: a.value, end: b.value, scale: sp.get() };
+      const f = { road: road.value, start: a.value, end: b.value, scale: sp.get() };
       try {
         const r = seg ? M.updateSegment(st, seg.id, f) : M.addSegment(st, sub.id, f);
+        ui.lastRoad = r.seg.road; saveUI();
         save();
         toast((seg ? 'Segment saved.' : 'Segment added.') + (r.warns.length ? ' Warning: ' + r.warns.join(' ') : ''));
         onSaved(r.seg);
       } catch (ex) { msg.textContent = ex.message; }
-    } }, h('div', { class: 'g2' }, field('Segment name', name), field('Road', road), field('Start station', a), field('End station', b)), field('Plan scale', sp), live, msg,
+    } }, field('Road name', road), roadList, h('div', { class: 'g2' }, field('Start station', a), field('End station', b)), field('Plan scale', sp), label, live, msg,
     h('button', { class: 'btn', type: 'submit' }, seg ? 'Save segment' : 'Add segment'));
   }
   function subDrawer(sub) {
@@ -806,7 +809,7 @@
         h('span', { class: 'mono' }, M.formatStation(seg.start) + '–' + M.formatStation(seg.end)), h('span', { class: 'grow' }, ' ' + seg.name + ' · ' + g.total + ' sh · ' + g.pct + '%'), h('b', {}, g.pp + ' PP'))); })) : h('p', { class: 'muted' }, 'No segments yet — add one on the sub-project; it appears in both branches.'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', id: 'genBranchBtn', disabled: !sub.segments.length, onclick: () => { let n = 0; for (const seg of sub.segments) { const pl = M.planGenerate(st, seg.id, { discipline: d }); if (pl.create.length + pl.update.length + pl.remove.length + pl.removeTouched.length) { genPP(seg, d); n++; } } if (!n) toast(d + ' PP sheets already up to date.'); } }, 'Generate ' + d + ' PP for all segments'),
-        h('button', { type: 'button', class: 'btn sec', onclick: () => { select_('sub', sub.id); setTimeout(() => { const i = $('#addSegName'); if (i) i.focus(); }, 30); } }, '+ Segment')));
+        h('button', { type: 'button', class: 'btn sec', onclick: () => { select_('sub', sub.id); setTimeout(() => { const i = $('#addSegRoad'); if (i) i.focus(); }, 30); } }, '+ Segment')));
   }
   function segDrawer({ sub, seg }) {
     const p = M.progress(seg.sheets);
@@ -819,7 +822,7 @@
     const plan = M.planGenerate(st, seg.id);
     const pending = plan.create.length + plan.update.length + plan.remove.length + plan.removeTouched.length;
     return h('div', { class: 'dbody' },
-      h('h2', {}, seg.name), h('p', { class: 'mono muted' }, sub.code + ' · Sta ' + M.formatStation(seg.start) + ' to ' + M.formatStation(seg.end) + (seg.road ? ' · ' + seg.road : '')),
+      h('h2', {}, seg.name), h('p', { class: 'mono muted' }, sub.code + ' · Sta ' + M.formatStation(seg.start) + ' to ' + M.formatStation(seg.end) + ''),
       h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, ppLine(sub, seg))),
       h('section', { class: 'box' }, h('h3', {}, 'PP sheets'),
         h('p', { class: 'muted' }, pending ? 'Generate creates ' + plan.create.length + ', updates ' + plan.update.length + ', removes ' + (plan.remove.length + plan.removeTouched.length) + ' generated sheet(s). Your other sheets are never touched.' : 'Generated PP sheets are up to date (' + plan.unchanged + ').'),
@@ -1136,7 +1139,7 @@
     else if (e.key === 'n') {
       e.preventDefault();
       if (sel && (sel.type === 'seg' || sel.type === 'sheet')) { const id = sel.type === 'seg' ? sel.id : M.findSheet(st, sel.id).seg.id; select_('seg', id); setTimeout(() => $('#addSheetTitle') && $('#addSheetTitle').focus(), 20); }
-      else { select_('sub', sel && sel.type === 'sub' ? sel.id : st.subs[0].id); setTimeout(() => $('#addSegName') && $('#addSegName').focus(), 20); }
+      else { select_('sub', sel && sel.type === 'sub' ? sel.id : st.subs[0].id); setTimeout(() => $('#addSegRoad') && $('#addSegRoad').focus(), 20); }
     }
   });
   window.addEventListener('resize', () => { if (ui.view === 'tree') applyView(); });

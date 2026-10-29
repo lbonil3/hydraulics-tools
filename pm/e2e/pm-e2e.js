@@ -1,4 +1,4 @@
-// Headless-Chrome end-to-end test for Project Tracker v2.2 (testing mode, no login).
+// Headless-Chrome end-to-end test for Project Tracker v2.3 (testing mode, no login).
 // Run from anywhere: node pm/e2e/pm-e2e.js [1440x900|1920x1080|iphone]
 // Files are served from this checkout by request interception (no server). Set PM_BASE=https://.../pm/ to test a live site.
 // Needs puppeteer-core and Chrome at /usr/bin/google-chrome.
@@ -64,13 +64,16 @@ async function serve(r) {
   // 2. add segment via + on sub A, live PP count
   const subA = await pg.$$eval('.node.n-sub', (els) => els[0].dataset.key);
   await click('.node[data-key="' + subA + '"] .nbtn.add');
-  await pg.waitForSelector('#addSegName');
+  await pg.waitForSelector('#addSegRoad');
   const form = '#drawer form.stack';
   const ins = async (vals) => { const f = await pg.$$(form + ' input'); for (let i = 0; i < vals.length; i++) await typeInto(f[i], vals[i]); };
-  await ins(['Mainlane North', 'FM 1960', '10+00', '25+50']);
+  ok(!(await pg.$('#drawer form.stack input[placeholder^="e.g. Mainlane"]')) && (await pg.$$eval(form + ' .f > label', (l) => l.map((x) => x.textContent))).join('|').startsWith('Road name|Start station|End station'), 'add-segment form asks only road + stations (+ scale)');
+  await ins(['FM 1960', '10+00', '25+50']);
+  ok(/Label: FM 1960 Sta 10\+00–25\+50/.test(await txt('#drawer .seglabel')), 'auto label preview “<Road> Sta <start>–<end>”');
+  await pg.screenshot({ path: SHOTS + 'v2.3-add-segment-form-' + tag + '.png' });
   const live = (await txt('#drawer .live')).replace(/\s+/g, ' ');
   ok(/1,550 ft/.test(live) && /= 4 PP/.test(live) && /2 Drainage Plan & Profile @100 \(1200 ft\/sh\)/.test(live), 'live PP count while editing: ' + live);
-  const endIn = (await pg.$$(form + ' input'))[3];
+  const endIn = (await pg.$$(form + ' input'))[2];
   await typeInto(endIn, '22+00');
   ok(/1,200 ft/.test(await txt('#drawer .live')) && /= 2 PP/.test(await txt('#drawer .live')), '1,200 ft @100 = 1 sheet per series (live)');
   await typeInto(endIn, '25+50');
@@ -88,12 +91,13 @@ async function serve(r) {
   ok((await pg.$$('.node.n-sheet')).length === 14, 'standard (non-PP) set added: 4 PP + 10 = 14 sheets');
   const subB = await pg.$$eval('.node.n-sub', (els) => els[1].dataset.key);
   await click('.node[data-key="' + subB + '"] .nbtn.add');
-  await pg.waitForSelector('#addSegName');
-  await ins(['Cross Street Outfall', 'Kuykendahl Rd', '100+00', '104+81']);
+  await pg.waitForSelector('#addSegRoad');
+  ok((await pg.$eval('#addSegRoad', (e) => e.value)) === 'FM 1960' && (await pg.$$eval('#roadList option', (o) => o.map((x) => x.value))).includes('FM 1960'), 'road field remembers last road + offers existing roads');
+  await ins(['Kuykendahl Rd', '100+00', '104+81']);
   await pg.select(form + ' .scalepick select', '40');
   await sleep(100);
   ok(/481 ft/.test(await txt('#drawer .live')) && /= 4 PP/.test(await txt('#drawer .live')), '481 ft @40 (480 ft/sheet) = 2 per series');
-  await click(form + ' button[type=submit]');
+  await (await pg.$$(form + ' input'))[2].focus(); await pg.keyboard.press('Enter');
   await pg.waitForSelector('#genBtn');
   await click('#genBtn');
   await sleep(200);
@@ -234,9 +238,9 @@ async function serve(r) {
   await pg.$eval('#connBox details.lkadd summary', (e) => e.click()); await sleep(100);
   await typeInto(await pg.$('#lkSearch'), ids.a0t); await sleep(150);
   const opts = await pg.$$eval('#lkRes button', (bs) => bs.map((b) => b.textContent));
-  ok(opts.length >= 1 && opts.every((t) => /^A/.test(t)) && opts.some((t) => /Mainlane North/.test(t)), 'picker searches other sub-projects (shows sub, segment, sheet)');
+  ok(opts.length >= 1 && opts.every((t) => /^A/.test(t)) && opts.some((t) => /FM 1960 Sta 10\+00–25\+50/.test(t)), 'picker searches other sub-projects (shows sub, segment, sheet)');
   await pg.$$eval('#lkRes button', (bs, t) => bs.find((b) => b.textContent.includes(t)).click(), ids.a0t); await sleep(200);
-  ok(/Depends on/i.test(await txt('#connBox .lklist')) && /Mainlane North/.test(await txt('#connBox .lklist')), 'drawer lists the new cross-project connector');
+  ok(/Depends on/i.test(await txt('#connBox .lklist')) && /FM 1960 Sta/.test(await txt('#connBox .lklist')), 'drawer lists the new cross-project connector');
   ok(/Blocked by 1/.test(await txt('#blockedMsg')), 'drawer shows “Blocked by 1”');
   ok(/Blocked by 1/.test(await txt('.node[data-key="sheet:' + ids.b0 + '"] .fl-blk')), 'tree node flagged ⛓ Blocked by 1');
   ok((await pg.$$('#linkG path.lnk.cross.dep')).length === 1, 'cross-project connector drawn as SVG curve');
@@ -302,7 +306,7 @@ async function serve(r) {
   await click('#depsCsvBtn'); await sleep(700);
   const dcf = fs.readdirSync(DL).find((f) => f.startsWith('pm-dependencies'));
   const dcsv = dcf && fs.readFileSync(DL + '/' + dcf, 'utf8');
-  ok(dcsv && /^\ufeff?Type,From sub/.test(dcsv) && dcsv.trim().split(/\r\n/).length === 3 && /dep,A,Mainlane North/.test(dcsv), 'dependencies CSV exported');
+  ok(dcsv && /^\ufeff?Type,From sub/.test(dcsv) && dcsv.trim().split(/\r\n/).length === 3 && /dep,A,FM 1960 Sta 10\+00–25\+50/.test(dcsv), 'dependencies CSV exported');
   await shot21('settings-order');
   await click('#modalClose'); await sleep(200);
   await pg.keyboard.press('Escape'); await sleep(200);

@@ -71,10 +71,12 @@
     return hund + '+' + String(whole).padStart(2, '0') + (frac ? '.' + String(frac).padStart(2, '0').replace(/0$/, '') : '');
   }
   function segLength(seg) { const a = parseStation(seg.start), b = parseStation(seg.end); return Number.isFinite(a) && Number.isFinite(b) && b > a ? Math.round((b - a) * 100) / 100 : 0; }
+  /* v2.3: segments have no separate name; the label is "<Road> Sta <start>–<end>" */
+  function segLabel(seg) { return String(seg.road || '').trim() + ' Sta ' + formatStation(parseStation(seg.start)) + '–' + formatStation(parseStation(seg.end)); }
   function validateSegment(seg, others) {
     const errs = [];
     const a = parseStation(seg.start), b = parseStation(seg.end);
-    if (!String(seg.name || '').trim()) errs.push('Name is required.');
+    if (!String(seg.road || '').trim()) errs.push('Road name is required.');
     if (Number.isNaN(a)) errs.push('Start station must look like 10+00.');
     if (Number.isNaN(b)) errs.push('End station must look like 25+50.');
     if (!errs.length && b <= a) errs.push('End station must be after start station.');
@@ -219,10 +221,11 @@
   function addSegment(st, subId, f) {
     const sub = findSub(st, subId);
     if (!sub) throw new Error('No such sub-project');
-    const seg = { id: uid(), name: String(f.name || '').trim(), road: String(f.road || '').trim(),
+    const seg = { id: uid(), name: '', road: String(f.road || f.name || '').trim(),
       start: parseStation(f.start), end: parseStation(f.end), scale: f.scale ? Number(f.scale) : null, notes: f.notes || '', revs: [], sheets: [] };
     const v = validateSegment(seg, sub.segments);
     if (v.errs.length) throw new Error(v.errs.join(' '));
+    seg.name = segLabel(seg);
     sub.segments.push(seg);
     sub.segments.sort((x, y) => x.start - y.start);
     log(st, 'Added segment ' + sub.code + ' · ' + seg.name + ' (' + formatStation(seg.start) + '–' + formatStation(seg.end) + ')');
@@ -231,11 +234,13 @@
   function updateSegment(st, segId, f) {
     const hit = findSeg(st, segId);
     if (!hit) throw new Error('No such segment');
+    if (!('road' in f) && f.name && !hit.seg.road) f = { ...f, road: f.name };
     const next = { ...hit.seg, ...f, start: parseStation(f.start != null ? f.start : hit.seg.start), end: parseStation(f.end != null ? f.end : hit.seg.end) };
     if ('scale' in f) next.scale = f.scale === '' || f.scale == null ? null : Number(f.scale);
     const v = validateSegment(next, hit.sub.segments);
     if (v.errs.length) throw new Error(v.errs.join(' '));
-    Object.assign(hit.seg, next, { name: String(next.name).trim(), road: String(next.road || '').trim() });
+    next.road = String(next.road || '').trim();
+    Object.assign(hit.seg, next, { name: segLabel(next) });
     hit.sub.segments.sort((x, y) => x.start - y.start);
     log(st, 'Updated segment ' + hit.sub.code + ' · ' + hit.seg.name);
     return { seg: hit.seg, warns: v.warns };
@@ -529,6 +534,8 @@
       for (const seg of sub.segments) {
         seg.sheets = Array.isArray(seg.sheets) ? seg.sheets : [];
         seg.revs = Array.isArray(seg.revs) ? seg.revs : [];
+        if (!String(seg.road || '').trim()) seg.road = String(seg.name || '').trim() || 'Road';
+        seg.name = segLabel(seg);
         for (const sh of seg.sheets) { if (!DISCIPLINES.includes(sh.discipline)) sh.discipline = guessDiscipline(sh.title, sh.series); const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; }
       }
     }
@@ -696,7 +703,8 @@
     const update = sheets.filter((x) => needsUpdate(st, { t: 'sheet', id: x.id }).length).length;
     return { disc, sheets, total: sheets.length, done: p.done, pct: p.pct, pp, overdue, blocked, update, length: segs.reduce((a, g) => a + segLength(g), 0) };
   }
-  return { SCHEMA, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  function roads(st) { return [...new Set(st.subs.flatMap((s) => s.segments.map((g) => g.road)).filter(Boolean))].sort(); }
+  return { SCHEMA, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,
