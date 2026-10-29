@@ -402,6 +402,30 @@ async function serve(r) {
   await pg.screenshot({ path: SHOTS + 'v2.6-number-ranges-' + tag + '.png' });
   await click('#modalClose'); await sleep(150);
   await pg.keyboard.press('Escape'); await sleep(150);
+  // 10f. v2.7 This-week view
+  await pg.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('pm.data.v2')); const iso = (n) => { const x = new Date(); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+    const sh = d.subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).filter((x) => x.status !== 'Done');
+    sh[0].due = iso(-3); sh[1].due = iso(2); sh[2].due = iso(5);
+    const sw = sh.find((x) => x.discipline === 'SWP3'); sw.due = iso(4);
+    localStorage.setItem('pm.data.v2', JSON.stringify(d));
+  });
+  await pg.reload({ waitUntil: 'networkidle0' });
+  await click('#vWeek'); await pg.waitForSelector('#wk-overdue');
+  const wk = async () => pg.evaluate(() => Object.fromEntries([...document.querySelectorAll('.wkcol')].map((c) => [c.id, c.querySelectorAll('.scard').length])));
+  let w7 = await wk();
+  ok(w7['wk-overdue'] >= 1 && w7['wk-due7'] >= 2, 'week view: overdue + due in 7 days buckets (' + JSON.stringify(w7) + ')');
+  ok(['wk-blocked', 'wk-update', 'wk-ready'].every((k) => k in w7), 'week view: blocked / update / ready buckets shown');
+  await pg.select('#wkDiscipline', 'SWP3'); await sleep(200);
+  ok(await pg.$$eval('.wkcol .scard .chip', (e) => e.length > 0 && e.every((x) => x.textContent === 'SW')), 'week view discipline filter');
+  await pg.select('#wkSub', await pg.$eval('#wkSub option:nth-child(2)', (e) => e.value)); await sleep(200);
+  ok(await pg.$$eval('.wkcol .scard .code', (e) => e.every((x) => x.textContent === 'A')), 'week view sub-project filter');
+  await pg.select('#wkSub', ''); await pg.select('#wkDiscipline', ''); await sleep(200);
+  await pg.screenshot({ path: SHOTS + 'v2.7-this-week-' + tag + '.png' });
+  await click('#wk-overdue .scard'); await pg.waitForSelector('#shNum');
+  ok(true, 'week card opens the sheet drawer');
+  await pg.keyboard.press('Escape'); await sleep(150);
+  await click('#vTree'); await sleep(300);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

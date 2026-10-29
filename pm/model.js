@@ -812,7 +812,25 @@
     for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) if (R[i].from <= R[j].to && R[j].from <= R[i].to) out.push(R[i].label + ' / ' + R[j].label);
     return out;
   }
-  return { SCHEMA, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.7 'This week': open sheets bucketed for a weekly look-ahead. f: { sub, discipline, owner } */
+  function weekView(st, f, today) {
+    today = today || todayISO(); f = f || {};
+    const rows = filterRows(allSheets(st), { sub: f.sub, discipline: f.discipline, owner: f.owner }, today).filter((r) => r.sh.status !== 'Done');
+    const byDue = (a, b) => (a.sh.due || '9999').localeCompare(b.sh.due || '9999');
+    const out = { overdue: [], due7: [], blocked: [], update: [], ready: [] };
+    for (const r of rows) {
+      const ref = { t: 'sheet', id: r.sh.id }, blk = blockers(st, ref);
+      if (isOverdue(r.sh, today)) out.overdue.push(r);
+      else if (isUpcoming(r.sh, today, 7)) out.due7.push(r);
+      if (blk.length) out.blocked.push(Object.assign({ by: blk }, r));
+      const u = needsUpdate(st, ref); if (u.length) out.update.push(Object.assign({ from: u.map((l) => l.src) }, r));
+      const hasDep = linksOf(st, ref).in.some((l) => l.kind === 'dep');
+      if (r.sh.status === 'Not started' && !blk.length && (hasDep || isUpcoming(r.sh, today, 14))) out.ready.push(r);
+    }
+    for (const k in out) out[k].sort(byDue);
+    return out;
+  }
+  return { SCHEMA, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

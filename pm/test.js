@@ -526,6 +526,32 @@ t('v2.6 sheet-number ranges: suggestion, duplicates, out-of-range, auto-number',
   assert.strictEqual(m.settings.numbering.length, M.DEFAULT_NUMBERING.length, 'older data gets default ranges');
 });
 
+t('v2.7 this-week buckets: overdue, due 7, blocked, update, ready + filters', () => {
+  const st = M.newState('W'); const A = st.subs[0], B = st.subs[1];
+  const g = M.addSegment(st, A.id, { road: 'FM 1', start: '0+00', end: '5+00' }).seg;
+  const g2 = M.addSegment(st, B.id, { road: 'FM 2', start: '0+00', end: '5+00' }).seg;
+  const T = '2026-10-28';
+  const a = M.addSheet(st, g.id, { title: 'Late', due: '2026-10-20', owner: 'Ana' });
+  const b = M.addSheet(st, g.id, { title: 'Soon', due: '2026-11-02' });
+  const c = M.addSheet(st, g.id, { title: 'Later', due: '2026-11-30' });
+  const d = M.addSheet(st, g2.id, { title: 'SWP3 Summary & Notes', discipline: 'SWP3', due: '2026-11-04' });
+  const e = M.addSheet(st, g.id, { title: 'Done late', due: '2026-10-01', status: 'Done' });
+  M.addLink(st, { t: 'sheet', id: c.id }, { t: 'sheet', id: b.id }, 'dep');
+  let w = M.weekView(st, {}, T);
+  assert.deepStrictEqual(w.overdue.map((r) => r.sh.title), ['Late']);
+  assert.deepStrictEqual(w.due7.map((r) => r.sh.title), ['Soon', 'SWP3 Summary & Notes']);
+  assert.deepStrictEqual(w.blocked.map((r) => r.sh.title), ['Soon']);
+  assert.ok(w.ready.some((r) => r.sh.title === 'SWP3 Summary & Notes') && !w.ready.some((r) => r.sh.title === 'Soon'));
+  assert.ok(!Object.values(w).flat().some((r) => r.sh === e));
+  assert.deepStrictEqual(M.weekView(st, { discipline: 'SWP3' }, T).due7.map((r) => r.sh.title), ['SWP3 Summary & Notes']);
+  assert.strictEqual(M.weekView(st, { sub: B.id }, T).overdue.length, 0);
+  assert.strictEqual(M.weekView(st, { owner: 'Ana' }, T).overdue.length, 1);
+  M.markRevised(st, { t: 'sheet', id: c.id }, 'x');
+  M.addLink(st, { t: 'sheet', id: c.id }, { t: 'sheet', id: a.id }, 'upd');
+  M.markRevised(st, { t: 'sheet', id: c.id }, 'y');
+  assert.ok(M.weekView(st, {}, T).update.some((r) => r.sh === a));
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

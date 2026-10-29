@@ -28,6 +28,7 @@
   <div class="seg-toggle" role="group" aria-label="View">
     <button type="button" id="vTree" aria-pressed="true">Tree</button>
     <button type="button" id="vList" aria-pressed="false">List</button>
+    <button type="button" id="vWeek" aria-pressed="false" title="This week: overdue, due soon, blocked, update, ready">Week</button>
   </div>
   <div class="tools">
     <button type="button" class="ibtn" id="tlBtn" aria-pressed="true" title="Station timeline (t)">Timeline</button>
@@ -63,6 +64,7 @@
       <div class="legend" aria-hidden="true"><span class="lg st-not-started">Not started</span><span class="lg st-in-progress">In progress</span><span class="lg st-in-review">In review</span><span class="lg st-done">Done</span><span class="chip dr">DR</span>Drainage <span class="chip sw">SW</span>SWP3 <span class="lk lk-cross"></span>Cross-project <span class="lk lk-same"></span>Same <span class="lk lk-upd"></span>Update</div>
     </div>
     <div id="listWrap" class="listwrap" hidden></div>
+    <div id="weekWrap" class="listwrap viewwrap" hidden></div>
     <section id="timeline" class="timeline" aria-label="Station timeline"></section>
   </main>
   <aside id="drawer" aria-label="Details" hidden></aside>

@@ -9,7 +9,7 @@
   const SVGNS = 'http://www.w3.org/2000/svg';
 
   let st = null;
-  const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true, links: true, linkSel: false, branch: 'both', group: '' },
+  const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true, links: true, linkSel: false, branch: 'both', group: '', vf: { sub: '', discipline: '', owner: '' } },
     safeJSON(localStorage.getItem(UIKEY)) || {});
   const filt = { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '', flag: '' };
   let sel = null; // { type, id }
@@ -18,7 +18,7 @@
   let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad })); }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, vf: ui.vf })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -141,14 +141,50 @@
     renderRail();
     $('#treeWrap').hidden = ui.view !== 'tree';
     $('#listWrap').hidden = ui.view !== 'list';
-    $('#vTree').setAttribute('aria-pressed', String(ui.view === 'tree'));
-    $('#vList').setAttribute('aria-pressed', String(ui.view === 'list'));
+    for (const v of VIEWS) { const w = $('#' + v + 'Wrap'); if (w && v !== 'tree' && v !== 'list') w.hidden = ui.view !== v; $('#v' + v[0].toUpperCase() + v.slice(1)).setAttribute('aria-pressed', String(ui.view === v)); }
     $('#tlBtn').setAttribute('aria-pressed', String(ui.timeline));
     for (const [id, v] of [['#bBoth', 'both'], ['#bDr', 'Drainage'], ['#bSw', 'SWP3']]) $(id).setAttribute('aria-pressed', String((ui.branch || 'both') === v));
     $('#timeline').hidden = !ui.timeline;
-    if (ui.view === 'tree') renderTree(); else renderList();
+    if (ui.view === 'tree') renderTree(); else if (ui.view === 'week') renderWeek(); else if (ui.view === 'board') renderBoard(); else renderList();
     if (ui.timeline) renderTimeline();
     renderDrawer();
+  }
+
+  /* ----- v2.7 'This week' + shared view filters (sub-project / discipline / owner) ----- */
+  const VIEWS = ['tree', 'list', 'week'];
+  function ownersList() { return [...new Set(st.staff.map((x) => x.name).concat(M.allSheets(st).map((r) => r.sh.owner).filter(Boolean)))].sort(); }
+  function viewFilters(pfx) {
+    const vf = ui.vf = Object.assign({ sub: '', discipline: '', owner: '' }, ui.vf);
+    if (vf.sub && !st.subs.some((x) => x.id === vf.sub)) vf.sub = '';
+    const mk = (k, label, opts) => { const el = select(opts, vf[k], { id: pfx + k[0].toUpperCase() + k.slice(1), 'aria-label': label }); el.addEventListener('change', () => { vf[k] = el.value; saveUI(); renderAll(); }); return el; };
+    return h('div', { class: 'vfbar' },
+      mk('sub', 'Sub-project', [['', 'All sub-projects']].concat(st.subs.map((x) => [x.id, x.code + ' · ' + x.name]))),
+      mk('discipline', 'Discipline', [['', 'Drainage + SWP3'], 'Drainage', 'SWP3']),
+      mk('owner', 'Owner', [['', 'All owners'], ['(unassigned)', 'Unassigned']].concat(ownersList())),
+      vf.sub || vf.discipline || vf.owner ? h('button', { type: 'button', class: 'btn sec sm', onclick: () => { ui.vf = { sub: '', discipline: '', owner: '' }; saveUI(); renderAll(); } }, 'Clear') : null);
+  }
+  function sheetCard(r, extra, attrs) {
+    const sh = r.sh, today = M.todayISO();
+    return h('button', Object.assign({ type: 'button', class: 'scard st-' + slug(sh.status) + (sel && sel.type === 'sheet' && sel.id === sh.id ? ' sel' : ''), 'data-id': sh.id, onclick: () => select_('sheet', sh.id) }, attrs || {}),
+      h('span', { class: 'sc-top' }, h('span', { class: 'code' }, r.sub.code), h('span', { class: 'chip ' + DINFO[sh.discipline].cls }, DINFO[sh.discipline].short), sh.number ? h('span', { class: 'muted' }, '#' + sh.number) : null),
+      h('span', { class: 'sc-title' }, sh.title),
+      h('span', { class: 'sc-meta muted' }, M.segLabel(r.seg)),
+      h('span', { class: 'sc-meta' }, h('span', { class: 'dot st-' + slug(sh.status) }), sh.status,
+        sh.due ? h('span', { class: M.isOverdue(sh, today) ? 'bad' : '' }, ' · due ' + sh.due) : null, ' · ', sh.owner || h('i', { class: 'muted' }, 'unassigned')),
+      extra ? h('span', { class: 'sc-why' }, extra) : null);
+  }
+  function renderWeek() {
+    const w = M.weekView(st, ui.vf), today = M.todayISO();
+    const lbl = (refs) => refs.map((x) => M.refLabel(st, x)).join(', ');
+    const B = [['overdue', 'Overdue', 'bad', 'Past due and not done', null],
+      ['due7', 'Due in the next 7 days', 'warn', 'Through ' + M.addDays(today, 7), null],
+      ['blocked', 'Blocked', 'bad', 'Waiting on unfinished prerequisites', (r) => '⛓ by ' + lbl(r.by)],
+      ['update', 'Needs update', 'upd', 'A linked sheet was revised', (r) => '⟳ from ' + lbl(r.from)],
+      ['ready', 'Ready to start', 'ok', 'Not started, nothing blocking, prerequisites done or due within 14 days', () => '▶ ready']];
+    $('#weekWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'This week'), h('span', { class: 'muted' }, 'Week of ' + today), viewFilters('wk')),
+      h('div', { class: 'wkgrid' }, B.map(([k, t, cls, sub, why]) => h('section', { class: 'wkcol ' + cls, id: 'wk-' + k },
+        h('h3', {}, t, h('span', { class: 'cnt' }, String(w[k].length))), h('p', { class: 'muted small' }, sub),
+        w[k].length ? w[k].map((r) => sheetCard(r, why && why(r))) : h('p', { class: 'muted empty' }, 'Nothing here 🎉')))));
   }
 
   /* ----- overview rail ----- */
@@ -1165,6 +1201,7 @@
   $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
   $('#vTree').addEventListener('click', () => { ui.view = 'tree'; saveUI(); renderAll(); });
   $('#vList').addEventListener('click', () => { ui.view = 'list'; saveUI(); renderAll(); });
+  $('#vWeek').addEventListener('click', () => { ui.view = 'week'; saveUI(); renderAll(); });
   $('#tlBtn').addEventListener('click', () => { ui.timeline = !ui.timeline; saveUI(); renderAll(); });
   $('#ppBtn').addEventListener('click', openPP);
   $('#msBtn').addEventListener('click', openMilestones);
