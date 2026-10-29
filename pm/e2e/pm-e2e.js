@@ -255,6 +255,7 @@ async function serve(r) {
   ok((await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 1, 'cycle not saved');
   // link via drag from a node's connector handle
   await pg.keyboard.press('Escape'); await sleep(250);
+  if (MOBILE) { await click('#tlBtn'); await sleep(200); }
   await click('#zFit'); await sleep(450); await click('#zOut'); await click('#zOut'); await sleep(200);
   const hp = await pg.$eval('.node[data-key="sheet:' + ids.a1 + '"] .handle', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   const tp = await pg.$eval('.node[data-key="sheet:' + ids.b1 + '"]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
@@ -268,6 +269,7 @@ async function serve(r) {
     await pg.mouse.up();
   }
   await sleep(250);
+  if (MOBILE) { await click('#tlBtn'); await sleep(200); }
   const L = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links);
   ok(L.length === 2 && L[1].src.id === ids.a1 && L[1].dst.id === ids.b1 && L[1].kind === 'dep', 'drag from handle onto another node creates a connector');
   ok((await pg.$$('#linkG path.lnk')).length === 2 && !(await pg.$('#linkG path.lnk.on')), 'two connectors drawn, faded when nothing selected');
@@ -425,6 +427,30 @@ async function serve(r) {
   await click('#wk-overdue .scard'); await pg.waitForSelector('#shNum');
   ok(true, 'week card opens the sheet drawer');
   await pg.keyboard.press('Escape'); await sleep(150);
+  await click('#vTree'); await sleep(300);
+  // 10g. v2.8 status board
+  await click('#vBoard'); await pg.waitForSelector('.bcol[data-status="Not started"] .bcard');
+  const stOf = (id) => pg.evaluate((id) => JSON.parse(localStorage.getItem('pm.data.v2')).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).find((x) => x.id === id).status, id);
+  ok((await pg.$$('.bcol')).length === 4, 'board shows the four status columns');
+  const bid = await pg.$eval('.bcol[data-status="Not started"] .bcard', (e) => e.dataset.id);
+  if (!MOBILE) {
+    const a = await (await pg.$('.bcard[data-id="' + bid + '"] .sc-title')).boundingBox(), t = await (await pg.$('.bcol[data-status="In progress"] h3')).boundingBox();
+    await pg.mouse.move(a.x + 20, a.y + 5); await pg.mouse.down(); await pg.mouse.move(a.x + 60, a.y + 30, { steps: 4 });
+    await pg.mouse.move(t.x + 40, t.y + 60, { steps: 8 });
+    await pg.screenshot({ path: SHOTS + 'v2.8-board-drag-' + tag + '.png' });
+    await pg.mouse.up(); await sleep(300);
+    ok((await stOf(bid)) === 'In progress', 'drag a card to In progress saves the status');
+    ok(!!(await pg.$('.bcol[data-status="In progress"] .bcard[data-id="' + bid + '"]')) && !(await pg.$('#drawer:not([hidden]) #shNum')), 'card moved; drag did not open the drawer');
+  } else {
+    await click('.bcard[data-id="' + bid + '"] .bmove button'); await sleep(300);
+    ok((await stOf(bid)) === 'In progress', 'move button (touch) changes status');
+  }
+  await pg.focus('.bcard[data-id="' + bid + '"] .scard'); await pg.keyboard.down('Alt'); await pg.keyboard.press('ArrowRight'); await pg.keyboard.up('Alt'); await sleep(300);
+  ok((await stOf(bid)) === 'In review', 'Alt+Right moves the card to the next status');
+  await pg.select('#bdDiscipline', 'SWP3'); await sleep(200);
+  ok(await pg.$$eval('.bcol .scard .chip', (e) => e.length > 0 && e.every((x) => x.textContent === 'SW')), 'board discipline filter');
+  await pg.select('#bdDiscipline', ''); await sleep(200);
+  await pg.screenshot({ path: SHOTS + 'v2.8-board-' + tag + '.png' });
   await click('#vTree'); await sleep(300);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');

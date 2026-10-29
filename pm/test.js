@@ -552,6 +552,18 @@ t('v2.7 this-week buckets: overdue, due 7, blocked, update, ready + filters', ()
   assert.ok(M.weekView(st, {}, T).update.some((r) => r.sh === a));
 });
 
+t('v2.8 board: filters by sub/discipline/owner and status moves', () => {
+  const st = M.newState('K'); const g = M.addSegment(st, st.subs[0].id, { road: 'FM 1', start: '0+00', end: '5+00' }).seg;
+  const a = M.addSheet(st, g.id, { title: 'Culvert Layout', owner: 'Ana' }); M.addSheet(st, g.id, { title: 'SWP3 Standard Details', discipline: 'SWP3' });
+  const col = (f, s) => M.filterRows(M.allSheets(st), f).filter((r) => r.sh.status === s).length;
+  assert.strictEqual(col({}, 'Not started'), 2);
+  assert.strictEqual(col({ discipline: 'SWP3' }, 'Not started'), 1);
+  assert.strictEqual(col({ owner: 'Ana', sub: st.subs[0].id }, 'Not started'), 1);
+  M.updateSheet(st, a.id, { status: 'In review' });
+  assert.strictEqual(col({}, 'In review'), 1);
+  assert.throws(() => M.updateSheet(st, a.id, { status: 'Bogus' }));
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

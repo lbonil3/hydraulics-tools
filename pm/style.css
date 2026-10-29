@@ -367,3 +367,18 @@ input.numbad{border-color:var(--bad);box-shadow:0 0 0 2px color-mix(in srgb,var(
 .sc-top{display:flex;align-items:center;gap:6px}.sc-top .code{height:22px;min-width:22px;font-size:12px}
 .sc-title{font-weight:700}.sc-meta{font-size:12px}.sc-why{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:3px}
 @media (max-width:900px){.vfbar{margin-left:0;width:100%}.vfbar select{flex:1 1 30%}.viewwrap{padding:10px}}
+/* v2.8 status board */
+.board{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:12px;align-items:start;overflow-x:auto;padding-bottom:6px}
+.bcol{background:var(--surface2);border:1px solid var(--line);border-top:4px solid var(--ns);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:160px;transition:background .12s}
+.bcol.st-in-progress{border-top-color:var(--ip)}.bcol.st-in-review{border-top-color:var(--ir)}.bcol.st-done{border-top-color:var(--dn)}
+.bcol.over{background:var(--brand-soft);outline:2px dashed var(--brand)}
+.bcards{display:flex;flex-direction:column;gap:8px;min-height:60px}
+.bcard{position:relative;cursor:grab;user-select:none;-webkit-user-select:none}
+.bcard .scard{padding-left:24px;padding-bottom:30px}
+.grip{position:absolute;left:6px;top:8px;z-index:1;color:var(--muted);touch-action:none;font-size:16px;line-height:1;padding:4px 2px;cursor:grab}
+.bmove{position:absolute;right:6px;bottom:5px;display:flex;gap:4px}
+.ibtn.sm{min-width:28px;min-height:24px;padding:0 6px;font-size:15px}
+.bcard.dragging{opacity:.35}
+.bcard.ghost{position:fixed;z-index:50;pointer-events:none;transform:rotate(2deg);opacity:.95}
+@media (max-width:900px){.board{grid-template-columns:repeat(4,minmax(78vw,1fr));scroll-snap-type:x mandatory}.bcol{scroll-snap-align:start}.grip{font-size:22px;padding:8px 6px;top:2px;left:0}.ibtn.sm{min-width:40px;min-height:40px}.bcard .scard{padding-bottom:50px}}
+@media (max-width:900px){.top>.seg-toggle:not(.branch-toggle){order:4;flex-basis:100%;display:flex}.top>.seg-toggle:not(.branch-toggle) button{flex:1;padding:6px 4px}}

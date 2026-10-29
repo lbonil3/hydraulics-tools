@@ -151,7 +151,7 @@
   }
 
   /* ----- v2.7 'This week' + shared view filters (sub-project / discipline / owner) ----- */
-  const VIEWS = ['tree', 'list', 'week'];
+  const VIEWS = ['tree', 'list', 'week', 'board'];
   function ownersList() { return [...new Set(st.staff.map((x) => x.name).concat(M.allSheets(st).map((r) => r.sh.owner).filter(Boolean)))].sort(); }
   function viewFilters(pfx) {
     const vf = ui.vf = Object.assign({ sub: '', discipline: '', owner: '' }, ui.vf);
@@ -186,6 +186,63 @@
         h('h3', {}, t, h('span', { class: 'cnt' }, String(w[k].length))), h('p', { class: 'muted small' }, sub),
         w[k].length ? w[k].map((r) => sheetCard(r, why && why(r))) : h('p', { class: 'muted empty' }, 'Nothing here 🎉')))));
   }
+
+  /* ----- v2.8 status board (kanban) ----- */
+  function moveStatus(id, status) {
+    const hit = M.findSheet(st, id); if (!hit || hit.sh.status === status) return;
+    commit(() => { M.updateSheet(st, id, { status }); M.log(st, hit.sh.title + ' → ' + status); });
+    toast(hit.sh.title + ' → ' + status);
+    setTimeout(() => { const c = document.querySelector('.bcard[data-id="' + id + '"] .scard'); if (c) c.focus(); }, 0);
+  }
+  function renderBoard() {
+    const vf = ui.vf || {};
+    const rows = M.filterRows(M.allSheets(st), { sub: vf.sub, discipline: vf.discipline, owner: vf.owner, q: filt.q });
+    const card = (r) => {
+      const i = M.STATUSES.indexOf(r.sh.status);
+      return h('div', { class: 'bcard', 'data-id': r.sh.id },
+        h('span', { class: 'grip', title: 'Drag to another column', 'aria-hidden': 'true' }, '⠿'),
+        sheetCard(r, null, { 'aria-label': r.sh.title + ', ' + r.sh.status + '. Alt+Left/Right moves status.',
+          onkeydown: (e) => { if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); const j = i + (e.key === 'ArrowLeft' ? -1 : 1); if (j >= 0 && j < 4) moveStatus(r.sh.id, M.STATUSES[j]); } } }),
+        h('span', { class: 'bmove' },
+          i > 0 ? h('button', { type: 'button', class: 'ibtn sm', 'aria-label': 'Move to ' + M.STATUSES[i - 1], title: '← ' + M.STATUSES[i - 1], onclick: () => moveStatus(r.sh.id, M.STATUSES[i - 1]) }, '‹') : null,
+          i < 3 ? h('button', { type: 'button', class: 'ibtn sm', 'aria-label': 'Move to ' + M.STATUSES[i + 1], title: M.STATUSES[i + 1] + ' →', onclick: () => moveStatus(r.sh.id, M.STATUSES[i + 1]) }, '›') : null));
+    };
+    const wrap = $('#boardWrap');
+    wrap.replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Status board'), h('span', { class: 'muted' }, plural(rows.length, 'sheet') + ' · drag a card to change its status'), viewFilters('bd')),
+      h('div', { class: 'board' }, M.STATUSES.map((stt) => { const rs = rows.filter((r) => r.sh.status === stt);
+        return h('section', { class: 'bcol st-' + slug(stt), 'data-status': stt, 'aria-label': stt },
+          h('h3', {}, h('span', { class: 'dot' }), stt, h('span', { class: 'cnt' }, String(rs.length))),
+          h('div', { class: 'bcards' }, rs.length ? rs.map(card) : h('p', { class: 'muted empty' }, 'No sheets'))); })));
+  }
+  /* pointer drag (mouse anywhere on a card; touch via the grip so the board still scrolls) */
+  (function boardDrag() {
+    let d = null;
+    document.addEventListener('pointerdown', (e) => {
+      const c = e.target.closest && e.target.closest('#boardWrap .bcard');
+      if (!c || e.button > 0 || e.target.closest('.bmove')) return;
+      if (e.pointerType !== 'mouse' && !e.target.closest('.grip')) return;
+      d = { id: c.dataset.id, el: c, x: e.clientX, y: e.clientY, on: false };
+      if (e.pointerType !== 'mouse') e.preventDefault();
+    });
+    document.addEventListener('pointermove', (e) => {
+      if (!d) return;
+      if (!d.on && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) return;
+      if (!d.on) { d.on = true; const r = d.el.getBoundingClientRect(); d.g = d.el.cloneNode(true); d.g.classList.add('ghost'); d.g.style.width = r.width + 'px'; d.ox = d.x - r.left; d.oy = d.y - r.top; document.body.append(d.g); d.el.classList.add('dragging'); }
+      d.g.style.left = (e.clientX - d.ox) + 'px'; d.g.style.top = (e.clientY - d.oy) + 'px';
+      const col = colAt(e.clientX, e.clientY);
+      document.querySelectorAll('.bcol.over').forEach((x) => { if (x !== col) x.classList.remove('over'); }); if (col) col.classList.add('over');
+    });
+    const colAt = (x, y) => { const t = document.elementFromPoint(x, y); return t && t.closest ? t.closest('.bcol') : null; };
+    const end = (e) => {
+      if (!d) return; const dd = d; d = null;
+      if (!dd.on) return;
+      dd.g.remove(); dd.el.classList.remove('dragging'); document.querySelectorAll('.bcol.over').forEach((x) => x.classList.remove('over'));
+      const col = e.type === 'pointerup' ? colAt(e.clientX, e.clientY) : null;
+      const stop = (ev) => { ev.stopPropagation(); ev.preventDefault(); }; window.addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => window.removeEventListener('click', stop, true), 50);
+      if (col) moveStatus(dd.id, col.dataset.status);
+    };
+    document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+  })();
 
   /* ----- overview rail ----- */
   function renderRail() {
@@ -1201,6 +1258,7 @@
   $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
   $('#vTree').addEventListener('click', () => { ui.view = 'tree'; saveUI(); renderAll(); });
   $('#vList').addEventListener('click', () => { ui.view = 'list'; saveUI(); renderAll(); });
+  $('#vBoard').addEventListener('click', () => { ui.view = 'board'; saveUI(); renderAll(); });
   $('#vWeek').addEventListener('click', () => { ui.view = 'week'; saveUI(); renderAll(); });
   $('#tlBtn').addEventListener('click', () => { ui.timeline = !ui.timeline; saveUI(); renderAll(); });
   $('#ppBtn').addEventListener('click', openPP);
