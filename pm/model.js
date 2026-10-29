@@ -1099,7 +1099,170 @@
     if (!/^(project|sub:[^:]+|disc:[^:]+:(Drainage|SWP3))$/.test(key)) throw new Error('Bad note key');
     const v = String(text || '').trim(); if (v) st.reportNotes[key] = v; else delete st.reportNotes[key];
   }
-  return { SCHEMA, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* ---- v2.20 CSV import / export ---- */
+  const CSV_FIELDS = [
+    ['sub', 'Sub-project', ['sub', 'subproject', 'sub-project', 'sub project', 'project part', 'part']],
+    ['road', 'Road', ['road', 'road name', 'roadway', 'street', 'segment', 'route']],
+    ['start', 'Start station', ['start', 'start station', 'begin', 'begin station', 'from', 'from station', 'sta start', 'start sta']],
+    ['end', 'End station', ['end', 'end station', 'to', 'to station', 'sta end', 'end sta', 'stop']],
+    ['scale', 'Scale', ['scale', 'plan scale', 'horizontal scale']],
+    ['discipline', 'Discipline', ['discipline', 'disc', 'type', 'branch']],
+    ['title', 'Sheet title', ['sheet title', 'sheet', 'title', 'sheet name', 'name', 'description']],
+    ['series', 'Series', ['series', 'pp series']],
+    ['ppidx', 'PP index', ['pp index', 'pp #', 'pp no', 'pp number']],
+    ['number', 'Sheet number', ['sheet number', 'sheet no', 'sheet #', 'number', 'no', '#']],
+    ['status', 'Status', ['status', 'state']],
+    ['owner', 'Owner', ['owner', 'assigned to', 'assignee', 'designer', 'engineer']],
+    ['due', 'Due date', ['due', 'due date', 'deadline', 'date']],
+    ['notes', 'Notes', ['notes', 'note', 'comments', 'comment', 'remarks']],
+    ['depends', 'Depends on', ['depends on', 'depends', 'prerequisite', 'prerequisites', 'after']],
+  ];
+  function parseCSV(text) {
+    let t = String(text || '').replace(/^\uFEFF/, '');
+    const first = t.split(/\r?\n/)[0] || '';
+    const count = (c) => { let n = 0, q = false; for (const ch of first) { if (ch === '"') q = !q; else if (ch === c && !q) n++; } return n; };
+    const delim = ['\t', ';', ','].map((c) => [c, count(c)]).sort((a, b) => b[1] - a[1])[0];
+    const D = delim[1] ? delim[0] : ',';
+    const rows = []; let row = [], cell = '', q = false;
+    for (let i = 0; i < t.length; i++) {
+      const ch = t[i];
+      if (q) { if (ch === '"') { if (t[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; continue; }
+      if (ch === '"' && cell === '') q = true;
+      else if (ch === D) { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return { delim: D, rows: rows.filter((r) => r.some((c) => String(c).trim() !== '')).map((r) => r.map((c) => String(c).trim().replace(/^'(?=[=+\-@])/, ''))) };
+  }
+  function detectMapping(header) {
+    const norm = (x) => String(x || '').toLowerCase().replace(/[_.]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const H = header.map(norm), map = {}, used = new Set();
+    for (const [k, , al] of CSV_FIELDS) { const i = H.findIndex((h, j) => !used.has(j) && al.includes(h)); if (i >= 0) { map[k] = i; used.add(i); } }
+    for (const [k, , al] of CSV_FIELDS) if (!(k in map)) { const i = H.findIndex((h, j) => !used.has(j) && al.some((a) => a.length > 3 && h.includes(a))); if (i >= 0) { map[k] = i; used.add(i); } }
+    return map;
+  }
+  const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  function parseDate(s) {
+    const t = String(s || '').trim(); if (!t) return '';
+    const p2 = (n) => String(n).padStart(2, '0');
+    const ok = (y, m, d) => { const dt = new Date(Date.UTC(y, m - 1, d)); return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? y + '-' + p2(m) + '-' + p2(d) : null; };
+    let m;
+    if ((m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T].*)?$/.exec(t))) return ok(+m[1], +m[2], +m[3]);
+    if ((m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(t))) { let y = +m[3]; if (y < 100) y += 2000; return ok(y, +m[1], +m[2]); }
+    if ((m = /^(\d{1,2})[ -]([a-z]{3})[a-z]*\.?[ ,-]*(\d{4})$/i.exec(t))) { const mo = MONTHS.indexOf(m[2].toLowerCase()) + 1; return mo ? ok(+m[3], mo, +m[1]) : null; }
+    if ((m = /^([a-z]{3})[a-z]*\.? (\d{1,2}),? (\d{4})$/i.exec(t))) { const mo = MONTHS.indexOf(m[1].toLowerCase()) + 1; return mo ? ok(+m[3], mo, +m[2]) : null; }
+    if (/^\d{5}$/.test(t) && +t > 30000 && +t < 80000) { const d = new Date(Date.UTC(1899, 11, 30) + +t * 864e5); return d.toISOString().slice(0, 10); } /* Excel serial */
+    return null;
+  }
+  function normStatus(s) {
+    const t = String(s || '').trim().toLowerCase().replace(/[_-]+/g, ' '); if (!t) return '';
+    const m = { 'not started': 'Not started', 'todo': 'Not started', 'to do': 'Not started', 'new': 'Not started', 'in progress': 'In progress', 'wip': 'In progress', 'started': 'In progress', 'in review': 'In review', 'review': 'In review', 'qc': 'In review', 'done': 'Done', 'complete': 'Done', 'completed': 'Done', 'final': 'Done' };
+    return m[t] || null;
+  }
+  function normDisc(s) { const t = String(s || '').trim().toLowerCase(); if (!t || t === 'both' || t === 'all') return ''; if (/^(dr|drain|drainage|hydraulics?)$/.test(t)) return 'Drainage'; if (/^(sw|swp3|swppp|erosion|esc)$/.test(t)) return 'SWP3'; return null; }
+  function normScale(s) { const t = String(s == null ? '' : s).trim(); if (!t) return null; const m = /^(?:1"?\s*=\s*)?(\d+(?:\.\d+)?)\s*'?$/.exec(t); return m && +m[1] > 0 ? +m[1] : NaN; }
+  /* plan an import. opts: { mode: 'merge'|'new', defaults: bool (add standard sheets + PP for road rows) } */
+  function planCSV(st, rows, map, opts) {
+    opts = opts || {}; const mode = opts.mode === 'new' ? 'new' : 'merge';
+    const get = (r, k) => (k in map && map[k] != null && map[k] !== '' ? String(r[map[k]] == null ? '' : r[map[k]]).trim() : '');
+    const items = [], groups = new Map(), nums = new Map();
+    for (const sh of allSheets(st)) if (sh.sh.number) nums.set(String(sh.sh.number), 'existing ' + sh.sub.code + ' · ' + sh.sh.title);
+    rows.forEach((r, i) => {
+      const it = { line: i + 1, errors: [], warns: [], raw: r };
+      const subTxt = get(r, 'sub');
+      const sub = subTxt ? st.subs.find((x) => x.code.toLowerCase() === subTxt.toLowerCase() || x.name.toLowerCase() === subTxt.toLowerCase() || ('sub-project ' + x.code).toLowerCase() === subTxt.toLowerCase()) : st.subs[0];
+      if (!sub) it.errors.push('Unknown sub-project “' + subTxt + '” (use A–D).');
+      const road = get(r, 'road'); if (!road) it.errors.push('Road name is required.');
+      const a = parseStation(get(r, 'start')), b = parseStation(get(r, 'end'));
+      if (!Number.isFinite(a)) it.errors.push('Bad start station “' + get(r, 'start') + '”.');
+      if (!Number.isFinite(b)) it.errors.push('Bad end station “' + get(r, 'end') + '”.');
+      if (Number.isFinite(a) && Number.isFinite(b) && b <= a) it.errors.push('End station must be after start.');
+      const scale = normScale(get(r, 'scale')); if (Number.isNaN(scale)) it.errors.push('Bad scale “' + get(r, 'scale') + '”.');
+      const disc = normDisc(get(r, 'discipline')); if (disc === null) it.errors.push('Discipline must be Drainage, SWP3 or Both.');
+      const status = normStatus(get(r, 'status')); if (status === null) it.errors.push('Unknown status “' + get(r, 'status') + '”.');
+      const due = parseDate(get(r, 'due')); if (due === null) it.errors.push('Bad due date “' + get(r, 'due') + '”.');
+      const title = get(r, 'title'), series = get(r, 'series'), ppidx = parseInt(get(r, 'ppidx'), 10);
+      const isPP = !!series && st.settings.series.some((x) => x.id === series) && ppidx > 0;
+      it.kind = isPP ? 'pp' : title ? 'sheet' : 'road';
+      it.f = { sub, road, start: a, end: b, scale, disc, status, due, title, series, ppidx, number: get(r, 'number'), owner: get(r, 'owner'), notes: get(r, 'notes'), depends: get(r, 'depends') };
+      if (it.f.number && it.kind !== 'road') { if (nums.has(it.f.number)) it.warns.push('Duplicate sheet number ' + it.f.number + ' (also ' + nums.get(it.f.number) + ').'); else nums.set(it.f.number, 'row ' + it.line); }
+      if (!it.errors.length) {
+        const key = sub.id + '|' + road.toLowerCase() + '|' + a + '|' + b;
+        let g = groups.get(key);
+        if (!g) {
+          const ex = sub.segments.find((x) => String(x.road).toLowerCase() === road.toLowerCase() && Math.abs(x.start - a) < 0.01 && Math.abs(x.end - b) < 0.01);
+          g = { key, sub, road, start: a, end: b, scale, existing: mode === 'merge' ? ex || null : null, rows: [] };
+          const ov = overlaps({ id: g.existing ? g.existing.id : '_', road, start: a, end: b }, allSegs(st).concat([...groups.values()].filter((x) => !x.existing).map((x) => ({ id: x.key, road: x.road, start: x.start, end: x.end, name: x.road + ' ' + formatStation(x.start) + '–' + formatStation(x.end) }))));
+          g.warns = ov.map((o) => 'Overlaps ' + o.name + '.');
+          groups.set(key, g);
+        }
+        it.group = g; g.rows.push(it); it.warns.push(...(g.rows.length === 1 ? g.warns : []));
+        if (g.existing && it.kind === 'sheet' && g.existing.sheets.some((q) => q.title.toLowerCase() === title.toLowerCase())) { it.warns.push('Sheet “' + title + '” already on ' + g.existing.name + ' — kept as is (not overwritten).'); it.skip = true; }
+        if (g.existing && it.kind === 'road' && scale != null && g.existing.scale !== scale) it.warns.push('Existing road keeps its scale (' + (g.existing.scale || sub.scale) + '); not overwritten.');
+      }
+      items.push(it);
+    });
+    const G = [...groups.values()];
+    const summary = { rows: items.length, errors: items.filter((x) => x.errors.length).length, warnings: items.filter((x) => x.warns.length).length,
+      newRoads: G.filter((g) => !g.existing).length, mergedRoads: G.filter((g) => g.existing).length,
+      sheets: items.filter((x) => !x.errors.length && !x.skip && x.kind === 'sheet').length, ppRows: items.filter((x) => !x.errors.length && x.kind === 'pp').length,
+      skipped: items.filter((x) => x.skip).length };
+    return { items, groups: G, summary, opts: { mode, defaults: !!opts.defaults } };
+  }
+  function applyCSV(st, plan, opts) {
+    const bad = plan.items.filter((x) => x.errors.length);
+    if (bad.length && !(opts && opts.skipBad)) throw new Error(bad.length + ' row(s) have errors. Fix them or choose “Skip rows with errors”.');
+    const L0 = st.log.slice(), made = { roads: 0, sheets: 0, pp: 0, links: 0 }, byTitle = [];
+    for (const g of plan.groups) {
+      const rows = g.rows.filter((x) => !x.errors.length); if (!rows.length) continue;
+      let seg = g.existing;
+      if (!seg) { seg = addSegment(st, g.sub.id, { road: g.road, start: g.start, end: g.end, scale: g.scale || undefined }).seg; made.roads++; }
+      const wantPP = rows.some((x) => x.kind === 'pp') || (plan.opts.defaults && rows.some((x) => x.kind === 'road'));
+      const pre = new Set(seg.sheets.map((q) => q.id));
+      if (plan.opts.defaults) for (const x of rows.filter((y) => y.kind === 'road')) made.sheets += bulkAddTemplates(st, seg.id, { discipline: x.f.disc || undefined }).length;
+      if (wantPP) { const pl = planGenerate(st, seg.id); applyGenerate(st, seg.id, pl, { removeTouched: false }); made.pp += pl.create.length; }
+      for (const x of rows) {
+        const f = x.f, fields = {};
+        if (f.status) fields.status = f.status; if (f.owner) fields.owner = f.owner; if (f.due) fields.due = f.due; if (f.notes) fields.notes = f.notes; if (f.number) fields.number = f.number;
+        let sh = null;
+        if (x.kind === 'pp') { sh = seg.sheets.find((q) => q.gen && q.gen.series === f.series && q.gen.idx === f.ppidx); if (sh && Object.keys(fields).length) updateSheet(st, sh.id, fields); }
+        else if (x.kind === 'sheet' && !x.skip && (sh = seg.sheets.find((q) => !pre.has(q.id) && !q.gen && q.title.toLowerCase() === f.title.toLowerCase()))) { if (Object.keys(fields).length) updateSheet(st, sh.id, fields); if (f.disc && sh.discipline !== f.disc) updateSheet(st, sh.id, { discipline: f.disc }); }
+        else if (x.kind === 'sheet' && !x.skip) { sh = addSheet(st, seg.id, Object.assign({ title: f.title, discipline: f.disc || guessDiscipline(f.title, f.series), series: f.series }, fields)); if (fields.status || fields.number) updateSheet(st, sh.id, fields); made.sheets++; }
+        if (sh) { byTitle.push({ sh, sub: g.sub, seg, depends: f.depends }); if (f.owner) addStaff(st, f.owner); }
+      }
+    }
+    const pool = byTitle.slice();
+    for (const g of plan.groups) { const sg = g.existing || null; if (sg) for (const q of sg.sheets) if (!pool.some((y) => y.sh === q)) pool.push({ sh: q, sub: g.sub, seg: sg }); }
+    for (const x of byTitle) if (x.depends) for (const name of x.depends.split(/[;|]/).map((q) => q.trim().toLowerCase()).filter(Boolean)) {
+      const cand = pool.filter((y) => y.sh.title.toLowerCase() === name).sort((p, q) => (p.seg === x.seg ? 0 : p.sub === x.sub ? 1 : 2) - (q.seg === x.seg ? 0 : q.sub === x.sub ? 1 : 2))[0];
+      if (cand && cand.sh !== x.sh) { try { addLink(st, { t: 'sheet', id: cand.sh.id }, { t: 'sheet', id: x.sh.id }, 'dep'); made.links++; } catch (e) { /* duplicate / cycle: skip */ } }
+    }
+    st.log = L0; log(st, 'CSV import: ' + made.roads + ' new roads, ' + made.sheets + ' sheets, ' + made.pp + ' PP sheets, ' + made.links + ' links' + (bad.length ? ', ' + bad.length + ' rows skipped' : ''));
+    return made;
+  }
+  function csvLine(a) { return a.map(csvCell).join(','); }
+  const CSV_HEAD = ['Sub-project', 'Road', 'Start station', 'End station', 'Scale', 'Discipline', 'Sheet title', 'Series', 'PP index', 'Sheet number', 'Status', 'Owner', 'Due date', 'Notes', 'Depends on'];
+  function exportImportCSV(st) {
+    const L = [csvLine(CSV_HEAD)];
+    for (const sub of st.subs) for (const g of sub.segments) {
+      const base = [sub.code, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale];
+      L.push(csvLine(base.concat(['Both', '', '', '', '', '', '', '', g.notes || '', ''])));
+      for (const sh of g.sheets) {
+        const deps = linksOf(st, { t: 'sheet', id: sh.id }).in.filter((l) => l.kind === 'dep' && l.src.t === 'sheet').map((l) => { const r = resolve(st, l.src); return r ? r.sh.title : ''; }).filter(Boolean).join('; ');
+        L.push(csvLine(base.concat([sh.discipline, sh.gen ? '' : sh.title, sh.gen ? sh.gen.series : sh.series || '', sh.gen ? sh.gen.idx : '', sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps])));
+      }
+    }
+    return '\uFEFF' + L.join('\r\n') + '\r\n';
+  }
+  function csvTemplate() {
+    return '\uFEFF' + [csvLine(CSV_HEAD),
+      csvLine(['A', 'FM 1960', '10+00', '34+00', '100', 'Both', '', '', '', '', '', '', '', 'Road row: adds the standard sheet set + PP sheets when “Apply default sheet list” is on', '']),
+      csvLine(['A', 'FM 1960', '10+00', '34+00', '100', 'Drainage', 'Culvert Layout', '', '', '72', 'In progress', 'Ana Ruiz', '11/15/2026', 'Sheet row', '']),
+      csvLine(['A', 'FM 1960', '10+00', '34+00', '100', 'Drainage', 'Cross Culvert Profile', '', '', '', 'Not started', 'Ana Ruiz', '2026-11-30', '', 'Culvert Layout']),
+      csvLine(['B', 'Kuykendahl Rd', '1000', '1480', '40', 'SWP3', 'SWP3 Summary & Notes', '', '', '', '', '', 'Dec 5, 2026', 'Stations as 1000 / 10+00 / 10+00.50 all work', ''])].join('\r\n') + '\r\n';
+  }
+  return { SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

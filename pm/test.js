@@ -727,6 +727,44 @@ t('v2.19 report narrative: project + sub-project + discipline text, notes kept s
   void ms;
 });
 
+t('v2.20 CSV: parser (quotes/BOM/CRLF/semicolon/TSV), mapping, dates, validation, merge vs new, round trip', () => {
+  const P = M.parseCSV('\uFEFFRoad;Start;End\r\n"FM ""1960"" ; main";10+00;"2,400"\r\n');
+  assert.strictEqual(P.delim, ';'); assert.deepStrictEqual(P.rows[1], ['FM "1960" ; main', '10+00', '2,400']);
+  assert.deepStrictEqual(M.parseCSV('a\tb\n1\t2').rows, [['a', 'b'], ['1', '2']]);
+  assert.deepStrictEqual(M.parseCSV('a,b\n"x\ny",2\n').rows[1], ['x\ny', '2'], 'newline inside quotes');
+  const map = M.detectMapping(['Sub Project', 'ROAD NAME', 'Begin Station', 'End_Station', 'Scale', 'Discipline', 'Sheet Title', 'Sheet No', 'Status', 'Assigned To', 'Due Date', 'Comments', 'Depends On']);
+  assert.deepStrictEqual(map, { sub: 0, road: 1, start: 2, end: 3, scale: 4, discipline: 5, title: 6, number: 7, status: 8, owner: 9, due: 10, notes: 11, depends: 12 });
+  for (const [x, y] of [['2026-11-05', '2026-11-05'], ['11/5/2026', '2026-11-05'], ['11/5/26', '2026-11-05'], ['5-Nov-2026', '2026-11-05'], ['Nov 5, 2026', '2026-11-05'], ['46331', '2026-11-05'], ['', '']]) assert.strictEqual(M.parseDate(x), y, x);
+  assert.strictEqual(M.parseDate('2/30/2026'), null);
+  const st = M.newState('C'); const A = st.subs[0];
+  const ex = M.addSegment(st, A.id, { road: 'FM 1960', start: '10+00', end: '34+00' }).seg; M.addSheet(st, ex.id, { title: 'Culvert Layout', number: '72' });
+  const rows = M.parseCSV(M.csvTemplate()).rows; const m2 = M.detectMapping(rows[0]);
+  rows.push(['E', 'X', '1+00', '2+00', '', '', '', '', '', '', '', '', '', '', '']);
+  rows.push(['A', 'SH 6', '5+00', '1+00', '', 'Both', '', '', '', '', 'Bogus', '', '13/45/2026', '', '']);
+  let plan = M.planCSV(st, rows.slice(1), m2, { mode: 'merge', defaults: true });
+  assert.strictEqual(plan.summary.errors, 2);
+  assert.match(plan.items[4].errors.join(' '), /Unknown sub-project/); assert.match(plan.items[5].errors.join(' '), /End station must be after start/); assert.match(plan.items[5].errors.join(' '), /Unknown status/);
+  assert.ok(plan.items[1].skip && /not overwritten/.test(plan.items[1].warns.join(' ')), 'existing sheet not overwritten');
+  assert.ok(plan.items[1].warns.some((w) => /Duplicate sheet number 72/.test(w)));
+  assert.strictEqual(plan.summary.mergedRoads, 1); assert.strictEqual(plan.summary.newRoads, 1);
+  assert.throws(() => M.applyCSV(st, plan), /have errors/);
+  const before = JSON.stringify(st);
+  const made = M.applyCSV(st, plan, { skipBad: true });
+  assert.strictEqual(A.segments.length, 1, 'merged into existing FM 1960'); assert.ok(made.links === 1 && made.pp > 0);
+  assert.ok(ex.sheets.filter((q) => q.title === 'Culvert Layout').length === 1);
+  const kk = st.subs[1].segments[0]; assert.strictEqual(kk.start, 1000); assert.strictEqual(kk.scale, 40); assert.strictEqual(kk.sheets[0].due, '2026-12-05');
+  assert.strictEqual(M.planCSV(st, rows.slice(1, 2), m2, { mode: 'new' }).summary.newRoads, 1, 'add-as-new creates a new road');
+  assert.ok(M.planCSV(st, rows.slice(1, 2), m2, { mode: 'new' }).items[0].warns.some((w) => /Overlaps/.test(w)));
+  /* round trip */
+  M.updateSheet(st, ex.sheets.find((q) => q.gen).id, { status: 'In review', owner: 'Bo' });
+  const out = M.exportImportCSV(st);
+  const st2 = M.newState('C2'); const R2 = M.parseCSV(out).rows;
+  M.applyCSV(st2, M.planCSV(st2, R2.slice(1), M.detectMapping(R2[0]), { mode: 'merge' }));
+  const norm = (t) => t.replace(/^\uFEFF/, '');
+  assert.strictEqual(norm(M.exportImportCSV(st2)), norm(out), 'export → import → export is identical');
+  assert.ok(before !== JSON.stringify(st));
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {
