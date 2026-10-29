@@ -9,7 +9,8 @@ const today = '2026-10-28';
 t('parse/format stations', () => {
   assert.strictEqual(M.parseStation('10+00'), 1000);
   assert.strictEqual(M.parseStation('0+05.5'), 5.5);
-  for (const bad of ['', '10', '10+5', '10+100', 'a+00', '-1+00']) assert(Number.isNaN(M.parseStation(bad)), bad);
+  assert.strictEqual(M.parseStation('1000'), 1000); assert.strictEqual(M.parseStation('10+00.50'), 1000.5); assert.strictEqual(M.parseStation('Sta 12+34'), 1234);
+  for (const bad of ['', '10+5', '10+100', 'a+00', '-1+00']) assert(Number.isNaN(M.parseStation(bad)), bad);
   for (const s of ['10+00', '0+05.5', '125+99.25', '3+07']) assert.strictEqual(M.formatStation(M.parseStation(s)), s);
   assert.strictEqual(M.formatStation(1099.999), '11+00');
 });
@@ -605,6 +606,33 @@ t('v2.11 collapse maps: show to level and focus branch', () => {
   assert.ok(!F['sub:' + A.id] && !F['disc:' + A.id + ':Drainage'] && !F['seg:' + g.id + '@Drainage']);
   assert.ok(F['sub:' + B.id] && F['disc:' + A.id + ':SWP3'] && F['seg:' + g2.id]);
   assert.strictEqual(M.TREE_LEVELS.length, 5);
+});
+
+t('v2.12 stations: preview, regenerate keeping edits, shift, reverse, overlap, table rows + TSV', () => {
+  const st = M.newState('S'); const A = st.subs[0], B = st.subs[1];
+  const g = M.addSegment(st, A.id, { road: 'FM 1960', start: '10+00', end: '34+00' }).seg;
+  M.applyGenerate(st, g.id, M.planGenerate(st, g.id));
+  const dr = () => g.sheets.filter((x) => x.gen && x.discipline === 'Drainage');
+  assert.strictEqual(dr().length, 2);
+  const pv = M.previewStations(st, g.id, { end: '1000+00'.replace('1000', '58') });
+  assert.strictEqual(pv.length, 4800); assert.strictEqual(pv.pp.Drainage, 4); assert.strictEqual(pv.plan.create.length, 4);
+  assert.strictEqual(dr().length, 2, 'preview does not change data');
+  assert.ok(M.previewStations(st, g.id, { end: '5+00' }).errs.length);
+  dr()[1].owner = 'Ana'; /* user-edited */
+  const r = M.setStations(st, g.id, { end: '20+00' });
+  assert.strictEqual(g.end, 2000); assert.ok(r.gen); assert.ok(dr().some((x) => x.owner === 'Ana'), 'edited PP sheet kept');
+  M.shiftStations(st, g.id, 500);
+  assert.strictEqual(g.start, 1500); assert.strictEqual(g.end, 2500);
+  assert.throws(() => M.shiftStations(st, g.id, -5000), /negative/);
+  M.setStations(st, g.id, { end: '40+00' }); M.setStations(st, g.id, { reverse: true });
+  const pp = dr().filter((x) => x.gen.idx === 1)[0]; assert.ok(pp.gen.start > 1500, 'reverse: PP 1 at the high end');
+  const w = M.addSegment(st, B.id, { road: 'fm 1960', start: '30+00', end: '45+00' });
+  assert.ok(w.warns.some((x) => /Overlaps/.test(x)), 'overlap warning across sub-projects on the same road');
+  const rows = M.parseTSV('SH 6\t0+00\t1200\t40\r\nSH 6\t12+00\t20+00\t\n');
+  assert.deepStrictEqual(rows[0], ['SH 6', '0+00', '1200', '40']);
+  const o = M.applyStationRows(st, [{ subId: A.id, road: rows[0][0], start: rows[0][1], end: rows[0][2], scale: rows[0][3] }, { segId: g.id, start: '15+00', end: '41+00' }]);
+  assert.strictEqual(o.added, 1); assert.strictEqual(o.updated, 1); assert.strictEqual(g.end, 4100);
+  assert.throws(() => M.applyStationRows(st, [{ segId: g.id, start: 'x' }]), /Row 1/);
 });
 
 (async () => {

@@ -66,7 +66,9 @@
   /* ---- stations (feet; 10+00 = 1000 ft) ---- */
   function parseStation(s) {
     if (typeof s === 'number') return Number.isFinite(s) && s >= 0 ? s : NaN;
-    const m = String(s == null ? '' : s).trim().match(/^(\d+)\s*\+\s*(\d{2}(?:\.\d+)?)$/);
+    const t = String(s == null ? '' : s).trim().replace(/^sta\.?\s*/i, '').replace(/,/g, '');
+    if (/^\d+(?:\.\d+)?$/.test(t)) return parseFloat(t); /* plain feet: 1000 → 10+00 */
+    const m = t.match(/^(\d+)\s*\+\s*(\d{2}(?:\.\d+)?)$/);
     if (!m) return NaN;
     const ft = parseFloat(m[2]);
     if (ft >= 100) return NaN;
@@ -89,8 +91,8 @@
     const errs = [];
     const a = parseStation(seg.start), b = parseStation(seg.end);
     if (!String(seg.road || '').trim()) errs.push('Road name is required.');
-    if (Number.isNaN(a)) errs.push('Start station must look like 10+00.');
-    if (Number.isNaN(b)) errs.push('End station must look like 25+50.');
+    if (Number.isNaN(a)) errs.push('Start station must look like 10+00, 1000 or 10+00.50.');
+    if (Number.isNaN(b)) errs.push('End station must look like 25+50, 2550 or 25+50.50.');
     if (!errs.length && b <= a) errs.push('End station must be after start station.');
     if (seg.scale != null && seg.scale !== '' && !(Number(seg.scale) > 0)) errs.push('Scale must be a positive number.');
     const warns = [];
@@ -181,7 +183,8 @@
     const enabled = st.settings.series.filter((x) => x.enabled);
     for (const se of st.settings.series.filter((x) => !opts || !opts.discipline || x.discipline === opts.discipline)) {
       const existing = seg.sheets.filter((s) => s.gen && s.gen.series === se.id).sort((a, b) => a.gen.idx - b.gen.idx);
-      const ranges = enabled.includes(se) ? ppRanges(parseStation(seg.start), parseStation(seg.end), ftPerSheet(st.settings, seriesScale(sub, seg, se)), st.settings.overlapFt) : [];
+      let ranges = enabled.includes(se) ? ppRanges(parseStation(seg.start), parseStation(seg.end), ftPerSheet(st.settings, seriesScale(sub, seg, se)), st.settings.overlapFt) : [];
+      if (seg.reverse) ranges = ranges.slice().reverse().map((r, i) => Object.assign({}, r, { idx: i + 1 })); /* v2.12: PP 1 at the high-station end */
       ranges.forEach((r, i) => {
         const title = genTitle(se, r);
         const ex = existing.find((s) => s.gen.idx === r.idx);
@@ -235,7 +238,7 @@
     if (!sub) throw new Error('No such sub-project');
     const seg = { id: uid(), name: '', road: String(f.road || f.name || '').trim(),
       start: parseStation(f.start), end: parseStation(f.end), scale: f.scale ? Number(f.scale) : null, notes: f.notes || '', revs: [], sheets: [] };
-    const v = validateSegment(seg, sub.segments);
+    const v = validateSegment(seg, allSegs(st));
     if (v.errs.length) throw new Error(v.errs.join(' '));
     seg.name = segLabel(seg);
     sub.segments.push(seg);
@@ -249,7 +252,7 @@
     if (!('road' in f) && f.name && !hit.seg.road) f = { ...f, road: f.name };
     const next = { ...hit.seg, ...f, start: parseStation(f.start != null ? f.start : hit.seg.start), end: parseStation(f.end != null ? f.end : hit.seg.end) };
     if ('scale' in f) next.scale = f.scale === '' || f.scale == null ? null : Number(f.scale);
-    const v = validateSegment(next, hit.sub.segments);
+    const v = validateSegment(next, allSegs(st));
     if (v.errs.length) throw new Error(v.errs.join(' '));
     next.road = String(next.road || '').trim();
     Object.assign(hit.seg, next, { name: segLabel(next) });
@@ -879,7 +882,53 @@
     if (p.seg) { for (const d of (p.disc ? [p.disc] : DISCIPLINES)) { c['disc:' + p.sub + ':' + d] = false; c['seg:' + p.seg + '@' + d] = false; } }
     return c;
   }
-  return { SCHEMA, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.12 stations */
+  function allSegs(st) { return st.subs.flatMap((s) => s.segments); }
+  /* preview a station / scale / direction change: validation, live length, PP per discipline, what regenerating would do */
+  function previewStations(st, segId, f) {
+    const c = clone(st), hit = findSeg(c, segId); if (!hit) throw new Error('No such segment');
+    const next = Object.assign({}, hit.seg, f, { start: parseStation(f.start != null ? f.start : hit.seg.start), end: parseStation(f.end != null ? f.end : hit.seg.end) });
+    if ('scale' in f) next.scale = f.scale === '' || f.scale == null ? null : Number(f.scale);
+    const v = validateSegment(next, allSegs(c));
+    if (v.errs.length) return { errs: v.errs, warns: [] };
+    Object.assign(hit.seg, next);
+    const pp = Object.fromEntries(DISCIPLINES.map((d) => [d, segPP(c, hit.sub, hit.seg, { discipline: d }).total]));
+    const plan = planGenerate(c, segId);
+    const hasGen = hit.seg.sheets.some((x) => x.gen);
+    return { errs: [], warns: v.warns, length: segLength(hit.seg), pp, hasGen,
+      plan: { create: plan.create.map((x) => x.title), update: plan.update.map((x) => x.sheet.title + ' → ' + x.title), remove: plan.remove.map((x) => x.title), keep: plan.removeTouched.map((x) => x.title) } };
+  }
+  /* apply a station change and (if the segment has generated PP sheets) regenerate them, keeping user-edited extras */
+  function setStations(st, segId, f, opts) {
+    const r = updateSegment(st, segId, f);
+    if ('reverse' in f) r.seg.reverse = !!f.reverse;
+    let gen = null;
+    if ((!opts || opts.regen !== false) && r.seg.sheets.some((x) => x.gen)) gen = applyGenerate(st, segId, planGenerate(st, segId), { removeTouched: false });
+    return { seg: r.seg, warns: r.warns, gen };
+  }
+  function shiftStations(st, segId, offset, opts) {
+    const hit = findSeg(st, segId), d = Number(offset);
+    if (!hit) throw new Error('No such segment'); if (!Number.isFinite(d) || !d) throw new Error('Offset must be a non-zero number of feet.');
+    if (hit.seg.start + d < 0) throw new Error('Shift would make the start station negative.');
+    const r = setStations(st, segId, { start: hit.seg.start + d, end: hit.seg.end + d }, opts);
+    for (const sh of hit.seg.sheets) if (sh.gen && !r.gen) { sh.gen.start += d; sh.gen.end += d; }
+    log(st, 'Shifted ' + hit.seg.name + ' by ' + (d > 0 ? '+' : '') + d + ' ft');
+    return r;
+  }
+  /* rows: [{ segId?, subId?, road, start, end, scale }] from the table / clipboard. All-or-nothing. */
+  function applyStationRows(st, rows) {
+    const out = { updated: 0, added: 0, warns: [] };
+    rows.forEach((r, i) => {
+      try {
+        const f = {}; for (const k of ['road', 'start', 'end', 'scale']) if (r[k] != null && r[k] !== '') f[k] = k === 'scale' ? Number(String(r[k]).replace(/^1"\s*=\s*|'$/g, '')) : r[k];
+        const x = r.segId ? updateSegment(st, r.segId, f) : addSegment(st, r.subId, f);
+        r.segId ? out.updated++ : out.added++; out.warns.push(...x.warns);
+      } catch (e) { throw new Error('Row ' + (i + 1) + ': ' + e.message); }
+    });
+    return out;
+  }
+  function parseTSV(text) { return String(text || '').replace(/\r/g, '').split('\n').filter((l) => l.trim() !== '').map((l) => l.split('\t').map((c) => c.trim())); }
+  return { SCHEMA, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

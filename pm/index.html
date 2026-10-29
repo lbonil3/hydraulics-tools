@@ -30,11 +30,11 @@
     <button type="button" id="vList" aria-pressed="false">List</button>
     <button type="button" id="vWeek" aria-pressed="false" title="This week: overdue, due soon, blocked, update, ready">Week</button>
     <button type="button" id="vBoard" aria-pressed="false" title="Status board: drag sheets between statuses">Board</button>
+    <button type="button" id="vStations" aria-pressed="false" title="Stations table: edit start/end/scale of every road">Stations</button>
   </div>
   <div class="tools">
     <button type="button" class="ibtn" id="undoBtn" title="Undo (Ctrl/Cmd+Z)" aria-label="Undo" disabled>&#8630;</button>
     <button type="button" class="ibtn" id="redoBtn" title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo" disabled>&#8631;</button>
-    <button type="button" class="ibtn" id="tlBtn" aria-pressed="true" title="Station timeline (t)">Timeline</button>
     <button type="button" class="ibtn" id="idxBtn" title="Project sheet index">Sheet index</button>
     <button type="button" class="ibtn" id="ppBtn" title="PP sheet calculator">PP calc</button>
     <button type="button" class="ibtn" id="msBtn" title="Milestones">Milestones</button>
@@ -71,7 +71,7 @@
     <div id="listWrap" class="listwrap" hidden></div>
     <div id="weekWrap" class="listwrap viewwrap" hidden></div>
     <div id="boardWrap" class="listwrap viewwrap" hidden></div>
-    <section id="timeline" class="timeline" aria-label="Station timeline"></section>
+    <div id="stationsWrap" class="listwrap viewwrap" hidden></div>
   </main>
   <aside id="drawer" aria-label="Details" hidden></aside>
 </div>

@@ -255,7 +255,6 @@ async function serve(r) {
   ok((await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 1, 'cycle not saved');
   // link via drag from a node's connector handle
   await pg.keyboard.press('Escape'); await sleep(250);
-  if (MOBILE) { await click('#tlBtn'); await sleep(200); }
   await click('#zFit'); await sleep(450); await click('#zOut'); await click('#zOut'); await sleep(200);
   const hp = await pg.$eval('.node[data-key="sheet:' + ids.a1 + '"] .handle', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   const tp = await pg.$eval('.node[data-key="sheet:' + ids.b1 + '"]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
@@ -269,7 +268,6 @@ async function serve(r) {
     await pg.mouse.up();
   }
   await sleep(250);
-  if (MOBILE) { await click('#tlBtn'); await sleep(200); }
   const L = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links);
   ok(L.length === 2 && L[1].src.id === ids.a1 && L[1].dst.id === ids.b1 && L[1].kind === 'dep', 'drag from handle onto another node creates a connector');
   ok((await pg.$$('#linkG path.lnk')).length === 2 && !(await pg.$('#linkG path.lnk.on')), 'two connectors drawn, faded when nothing selected');
@@ -327,7 +325,7 @@ async function serve(r) {
   ok(/DR \d+%/.test(await txt('.node[data-key="sub:' + D.A + '"]')) && /SW \d+%/.test(await txt('.node[data-key="sub:' + D.A + '"]')), 'sub-project node aggregates both disciplines');
   ok(/\d+ PP/.test(await txt('.node[data-key="disc:' + D.A + ':SWP3"]')) && !!(await pg.$('.node[data-key="disc:' + D.A + ':SWP3"] svg')), 'branch node: progress ring, sheet + PP counts');
   ok((await pg.$$('#rail .discline')).length === 8, 'overview: progress per discipline per sub-project');
-  ok((await pg.$$('#timeline .tl-row.lane')).length === 8, 'station timeline: Drainage + SWP3 lane per sub-project');
+  ok(!(await pg.$('#timeline')) && !(await pg.$('#tlBtn')), 'station timeline removed');
   ok(await pg.$$eval('#linkG path.lnk', (ps) => ps.length === 2 && ps.every((p) => p.dataset.a.startsWith('sheet:') && p.dataset.b.startsWith('sheet:'))), 'connectors still attach to sheet nodes across branches');
   await shot22('tree');
   // collapse one branch: its sheets hide, the other branch stays; arrows re-attach to the branch node
@@ -337,7 +335,7 @@ async function serve(r) {
   await click('.node[data-key="disc:' + D.A + ':Drainage"] .nbtn.tog'); await sleep(200);
   // branch visibility
   await click('#bDr'); await sleep(200);
-  ok((await pg.$$('.node.n-disc')).length === 4 && !(await pg.$('.node.n-sheet.d-sw')) && (await pg.$$('#timeline .tl-row.lane')).length === 4, 'show only Drainage branch');
+  ok((await pg.$$('.node.n-disc')).length === 4 && !(await pg.$('.node.n-sheet.d-sw')), 'show only Drainage branch');
   await shot22('drainage-only');
   await click('#bSw'); await sleep(200);
   ok((await pg.$$('.node.n-disc.d-sw')).length === 4 && !(await pg.$('.node.n-sheet.d-dr')), 'show only SWP3 branch');
@@ -519,6 +517,30 @@ async function serve(r) {
   await click('#xAll'); await sleep(300);
   ok((await pg.$$('.node.n-sheet')).length > 20, 'Expand all');
   await pg.keyboard.press('Escape'); await sleep(150);
+  // 10k. v2.12 stations editor + table
+  const D12 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
+  const seg12 = (await D12()).subs[0].segments[0];
+  await click('.node[data-key="seg:' + seg12.id + '@Drainage"]'); await pg.waitForSelector('#stBox');
+  await setVal('#stEnd', 'abc'); await sleep(150);
+  ok(/must look like/.test(await txt('#stLive')) && await pg.$eval('#stSave', (e) => e.disabled), 'live validation of stations');
+  await setVal('#stEnd', '4600'); await sleep(150);
+  ok(/3,600 ft/.test(await txt('#stLive')) && /PP/.test(await txt('#stLive')), 'plain feet accepted; live length + PP per discipline');
+  ok(/Create \d+/.test(await txt('#stPlan')), 'preview lists PP sheets that will be created');
+  await click('#stSave'); await sleep(400);
+  ok((await D12()).subs[0].segments[0].end === 4600 && (await D12()).subs[0].segments[0].sheets.filter((x) => x.gen && x.discipline === 'Drainage').length >= 3, 'save (confirmed) updates stations and regenerates PP sheets');
+  await pg.screenshot({ path: SHOTS + 'v2.12-stations-editor-' + tag + '.png' });
+  await setVal('#stOff', '+100'); await click('#stShift'); await sleep(400);
+  ok((await D12()).subs[0].segments[0].start === seg12.start + 100, 'shift road by an offset');
+  await pg.keyboard.press('Escape'); await sleep(150);
+  await click('#vStations'); await pg.waitForSelector('#stTable');
+  ok((await pg.$$('#stTable tbody tr')).length === 2, 'Stations table lists every segment');
+  await pg.$eval('#stTable .scell[data-r="0"][data-c="2"]', (e) => { e.focus(); const dt = new DataTransfer(); dt.setData('text/plain', '50+00\t40\n'); e.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); }); await sleep(400);
+  const s12 = (await D12()).subs[0].segments[0];
+  ok(s12.end === 5000 && s12.scale === 40, 'paste TSV row into the table (end + scale)');
+  await pg.screenshot({ path: SHOTS + 'v2.12-stations-table-' + tag + '.png' });
+  for (let i = 0; i < 3; i++) { await click('#undoBtn'); await sleep(250); }
+  ok((await D12()).subs[0].segments[0].end === seg12.end, 'station edits are undoable');
+  await click('#vTree'); await sleep(300); await pg.keyboard.press('Escape'); await sleep(150);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

@@ -163,16 +163,13 @@
     $('#treeWrap').hidden = ui.view !== 'tree';
     $('#listWrap').hidden = ui.view !== 'list';
     for (const v of VIEWS) { const w = $('#' + v + 'Wrap'); if (w && v !== 'tree' && v !== 'list') w.hidden = ui.view !== v; $('#v' + v[0].toUpperCase() + v.slice(1)).setAttribute('aria-pressed', String(ui.view === v)); }
-    $('#tlBtn').setAttribute('aria-pressed', String(ui.timeline));
     for (const [id, v] of [['#bBoth', 'both'], ['#bDr', 'Drainage'], ['#bSw', 'SWP3']]) $(id).setAttribute('aria-pressed', String((ui.branch || 'both') === v));
-    $('#timeline').hidden = !ui.timeline;
-    if (ui.view === 'tree') renderTree(); else if (ui.view === 'week') renderWeek(); else if (ui.view === 'board') renderBoard(); else renderList();
-    if (ui.timeline) renderTimeline();
+    if (ui.view === 'tree') renderTree(); else if (ui.view === 'week') renderWeek(); else if (ui.view === 'board') renderBoard(); else if (ui.view === 'stations') renderStations(); else renderList();
     renderDrawer();
   }
 
   /* ----- v2.7 'This week' + shared view filters (sub-project / discipline / owner) ----- */
-  const VIEWS = ['tree', 'list', 'week', 'board'];
+  const VIEWS = ['tree', 'list', 'week', 'board', 'stations'];
   function ownersList() { return [...new Set(st.staff.map((x) => x.name).concat(M.allSheets(st).map((r) => r.sh.owner).filter(Boolean)))].sort(); }
   function viewFilters(pfx) {
     const vf = ui.vf = Object.assign({ sub: '', discipline: '', owner: '' }, ui.vf);
@@ -715,34 +712,6 @@
     });
   })();
 
-  /* ----- station timeline ----- */
-  function renderTimeline() {
-    const segs = st.subs.flatMap((sub) => sub.segments.map((seg) => ({ sub, seg })));
-    const box = $('#timeline');
-    if (!segs.length) { box.replaceChildren(h('div', { class: 'tl-empty muted' }, 'Station timeline — add segments to see them by station range.')); return; }
-    const lo = Math.floor(Math.min(...segs.map((x) => x.seg.start)) / 500) * 500;
-    const hi = Math.ceil(Math.max(...segs.map((x) => x.seg.end)) / 500) * 500 || lo + 500;
-    const span = hi - lo || 1;
-    const stepRaw = span / 8;
-    const step = [100, 200, 500, 1000, 2000, 5000, 10000].find((v) => v >= stepRaw) || 20000;
-    const axis = h('div', { class: 'tl-axis' });
-    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) { const t = h('span', { class: 'tick' }, M.formatStation(v)); t.style.left = ((v - lo) / span * 100) + '%'; axis.append(t); }
-    box.replaceChildren(...[h('div', { class: 'tl-head' }, h('b', {}, 'Station timeline'), h('span', { class: 'muted' }, ' colour = progress · click a segment')),
-      h('div', { class: 'tl-row' }, h('span', { class: 'tl-lbl' }), axis),
-      st.subs.flatMap((sub) => shownDiscs().map((d, di) => h('div', { class: 'tl-row lane ' + DINFO[d].cls + (di ? ' lane2' : '') }, h('span', { class: 'tl-lbl' }, di ? null : h('span', { class: 'code' }, sub.code), h('span', { class: 'chip ' + DINFO[d].cls, title: d }, DINFO[d].short)),
-        h('div', { class: 'tl-track' }, sub.segments.map((seg) => {
-          const g = M.branchStats(st, sub, d, seg);
-          const p = g.pct;
-          const pp = g.pp;
-          const b = h('button', { type: 'button', class: 'tl-seg p' + Math.min(4, Math.floor(p / 25)) + (sel && sel.id === seg.id && (!sel.disc || sel.disc === d) ? ' sel' : ''),
-            title: sub.code + ' · ' + d + ' · ' + seg.name + '\n' + M.formatStation(seg.start) + ' – ' + M.formatStation(seg.end) + ' · ' + fmtFt(seg.end - seg.start) + ' · ' + pp + ' ' + DINFO[d].short + ' PP · ' + g.total + ' sheets · ' + Math.round(p) + '%',
-            'aria-label': d + ' segment ' + seg.name + ', ' + Math.round(p) + '% complete',
-            onclick: () => { openBranch(sub.id, d); select_('seg', seg.id, d); renderTree(); focusNode('seg:' + seg.id + '@' + d); } }, h('span', {}, seg.name));
-          b.style.left = ((seg.start - lo) / span * 100) + '%'; b.style.width = Math.max(0.6, (seg.end - seg.start) / span * 100) + '%';
-          return b;
-        })))))].flat());
-  }
-
   /* ----- list (dense table) ----- */
   const COLS = [
     { k: 'sub', l: 'Sub', get: (r) => r.sub.code },
@@ -797,7 +766,7 @@
     const sc = COLS.find((c) => c.k === ui.sort.key) || COLS[0];
     rows = M.sortRows(rows, sc.k, ui.sort.dir, (r) => sc.get(r));
     const wrap = $('#listWrap');
-    const refresh = () => { renderRail(); if (ui.timeline) renderTimeline(); renderDrawer(); };
+    const refresh = () => { renderRail(); renderDrawer(); };
     const thead = h('thead', {}, h('tr', {}, cols.map((c) => {
       const on = ui.sort.key === c.k;
       return h('th', { scope: 'col', class: c.wide ? 'wide' : '', 'aria-sort': on ? (ui.sort.dir === 'asc' ? 'ascending' : 'descending') : 'none' },
@@ -925,6 +894,85 @@
     } }, field('Road name', road), roadList, h('div', { class: 'g2' }, field('Start station', a), field('End station', b)), field('Plan scale', sp), label, live, msg,
     h('button', { class: 'btn', type: 'submit' }, seg ? 'Save segment' : 'Add segment'));
   }
+  /* v2.12 Stations editor: inline start/end, live validation/length/PP, regenerate preview + confirm, shift, reverse */
+  function planText(pv) {
+    const P = pv.plan, L = [];
+    if (P.create.length) L.push('Create ' + P.create.length + ': ' + P.create.join('; '));
+    if (P.update.length) L.push('Update ' + P.update.length + ': ' + P.update.join('; '));
+    if (P.remove.length) L.push('Remove ' + P.remove.length + ' (unedited): ' + P.remove.join('; '));
+    if (P.keep.length) L.push('Keep ' + P.keep.length + ' extra edited sheet(s): ' + P.keep.join('; '));
+    return L;
+  }
+  function stationsBox(sub, seg) {
+    const road = h('input', { id: 'stRoad', value: seg.road, list: 'roadList2', autocomplete: 'off' });
+    const a = h('input', { id: 'stStart', class: 'mono', value: M.formatStation(seg.start), autocomplete: 'off', placeholder: '10+00 or 1000' });
+    const b = h('input', { id: 'stEnd', class: 'mono', value: M.formatStation(seg.end), autocomplete: 'off', placeholder: '25+50' });
+    const rev = h('input', { type: 'checkbox', id: 'stRev', checked: !!seg.reverse });
+    const sp = scalePicker(seg.scale, 'Sub-project default (' + sub.scale + ' scale)', upd);
+    const live = h('div', { class: 'live', id: 'stLive', 'aria-live': 'polite' }), warn = h('div', { id: 'stWarn' }), btn = h('button', { class: 'btn', type: 'submit', id: 'stSave' }, 'Save stations');
+    const f = () => ({ road: road.value, start: a.value, end: b.value, scale: sp.get(), reverse: rev.checked });
+    let pv = null;
+    function upd() {
+      try { pv = M.previewStations(st, seg.id, f()); } catch (e) { pv = { errs: [e.message] }; }
+      [a, b].forEach((x) => x.classList.toggle('numbad', !Number.isFinite(M.parseStation(x.value))));
+      if (pv.errs.length) { live.replaceChildren(h('p', { class: 'err' }, pv.errs.join(' '))); warn.replaceChildren(); btn.disabled = true; return; }
+      const changed = M.parseStation(a.value) !== seg.start || M.parseStation(b.value) !== seg.end || road.value.trim() !== seg.road || rev.checked !== !!seg.reverse || String(sp.get() == null ? '' : sp.get()) !== String(seg.scale == null ? '' : seg.scale);
+      btn.disabled = !changed;
+      live.replaceChildren(h('div', {}, h('b', {}, fmtFt(pv.length)), ' · ', DISCS.map((d, i) => [i ? ' · ' : '', h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), ' ', h('b', {}, String(pv.pp[d])), ' PP'])),
+        changed && pv.hasGen ? h('ul', { class: 'small plan', id: 'stPlan' }, planText(pv).length ? planText(pv).map((x) => h('li', {}, x)) : h('li', {}, 'Generated PP sheets stay the same.')) : null);
+      warn.replaceChildren(...pv.warns.map((w) => h('p', { class: 'warnbox' }, '⚠ ' + w)));
+    }
+    [a, b, road].forEach((x) => x.addEventListener('input', upd)); rev.addEventListener('change', upd);
+    setTimeout(upd, 0);
+    const off = h('input', { id: 'stOff', class: 'mono', placeholder: '+100 or -50', 'aria-label': 'Shift offset (feet)', autocomplete: 'off' });
+    return h('section', { class: 'box', id: 'stBox' }, h('h3', {}, 'Stations'),
+      h('form', { class: 'stack', onsubmit: (e) => {
+        e.preventDefault(); upd(); if (!pv || pv.errs.length) return;
+        const L = pv.hasGen ? planText(pv) : [];
+        if (L.length && !confirm('Update stations and regenerate PP sheets?\n\n' + L.join('\n') + '\n\nSheets you edited are kept.')) return;
+        const r = commit(() => M.setStations(st, seg.id, f(), { regen: !!L.length }));
+        if (r) { ui.lastRoad = r.seg.road; saveUI(); toast('Stations saved: ' + r.seg.name + (r.gen ? ' · PP ' + r.gen.created + ' new, ' + r.gen.updated + ' updated, ' + r.gen.removed + ' removed' : '') + (r.warns.length ? ' · ⚠ ' + r.warns[0] : '')); }
+      } }, field('Road', road), h('datalist', { id: 'roadList2' }, M.roads(st).map((r) => h('option', { value: r }))),
+        h('div', { class: 'g2' }, field('Start station', a, '10+00, 1000 or 10+00.50'), field('End station', b)),
+        field('Plan scale', sp), h('label', { class: 'chk' }, rev, ' Reverse direction (PP 1 starts at the end station)'), live, warn, btn),
+      h('form', { class: 'addrow', onsubmit: (e) => {
+        e.preventDefault(); const d = Number(String(off.value).replace(/\s/g, '')); if (!Number.isFinite(d) || !d) return toast('Enter an offset in feet, e.g. +100 or -50.');
+        if (!confirm('Shift ' + seg.name + ' by ' + (d > 0 ? '+' : '') + d + ' ft? Generated PP sheet ranges shift too.')) return;
+        commit(() => M.shiftStations(st, seg.id, d)); toast('Shifted by ' + (d > 0 ? '+' : '') + d + ' ft.');
+      } }, off, h('button', { type: 'submit', class: 'btn sec', id: 'stShift' }, 'Shift road')));
+  }
+  /* v2.12 Stations table view (Excel-like: Tab/Enter navigation, paste TSV rows) */
+  const SCOLS = ['road', 'start', 'end', 'scale'];
+  function renderStations() {
+    const segs = st.subs.flatMap((sub) => sub.segments.map((seg) => ({ sub, seg })));
+    const wrap = $('#stationsWrap');
+    const save1 = (seg, k, v) => { const r = commit(() => M.applyStationRows(st, [{ segId: seg.id, [k]: v }])); if (r && r.warns.length) toast('⚠ ' + r.warns[0]); };
+    const cell = (x, k, ri, ci) => {
+      const v = k === 'road' ? x.seg.road : k === 'scale' ? (x.seg.scale == null ? '' : x.seg.scale) : M.formatStation(x.seg[k]);
+      const inp = h('input', { class: 'scell' + (k !== 'road' ? ' mono' : ''), value: String(v), 'data-r': ri, 'data-c': ci, 'aria-label': x.sub.code + ' ' + x.seg.name + ' ' + k, placeholder: k === 'scale' ? String(x.sub.scale) : '' });
+      inp.addEventListener('change', () => { const val = inp.value.trim(); if (k !== 'scale' && !val) { inp.value = String(v); return; } if (k !== 'road' && k !== 'scale' && !Number.isFinite(M.parseStation(val))) { inp.classList.add('numbad'); toast('Station must look like 10+00, 1000 or 10+00.50'); return; } save1(x.seg, k, k === 'scale' && !val ? null : val); });
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); inp.dispatchEvent(new Event('change')); const n = wrap.querySelector('.scell[data-r="' + (ri + (e.shiftKey ? -1 : 1)) + '"][data-c="' + ci + '"]'); setTimeout(() => { const m = $('#stationsWrap .scell[data-r="' + (ri + (e.shiftKey ? -1 : 1)) + '"][data-c="' + ci + '"]'); if (m) { m.focus(); m.select(); } }, 0); } });
+      inp.addEventListener('paste', (e) => {
+        const t = (e.clipboardData || window.clipboardData).getData('text'); if (!/[\t\n]/.test(t)) return;
+        e.preventDefault(); const rows = M.parseTSV(t);
+        const out = rows.map((cols, i) => { const tgt = segs[ri + i]; const o = tgt ? { segId: tgt.seg.id } : { subId: (segs[ri] || segs[segs.length - 1]).sub.id }; cols.forEach((c, j) => { const kk = SCOLS[ci + j]; if (kk) o[kk] = c; }); return o; });
+        const added = out.filter((o) => !o.segId).length;
+        if (added && !confirm('Paste ' + rows.length + ' rows: update ' + (rows.length - added) + ' and add ' + added + ' new segment(s)?')) return;
+        const r = commit(() => M.applyStationRows(st, out)); if (r) toast('Pasted: ' + r.updated + ' updated, ' + r.added + ' added' + (r.warns.length ? ' · ⚠ ' + r.warns[0] : '') + '. Undo with Ctrl+Z.');
+      });
+      return h('td', {}, inp);
+    };
+    wrap.replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Stations'), h('span', { class: 'muted' }, 'Edit cells directly · Tab / Enter to move · paste rows from Excel (Road, Start, End, Scale)')),
+      segs.length ? h('div', { class: 'tablewrap' }, h('table', { class: 'grid stable', id: 'stTable' },
+        h('thead', {}, h('tr', {}, ['Sub', 'Road', 'Start', 'End', 'Scale', 'Length', 'DR PP', 'SW PP', ''].map((x) => h('th', { scope: 'col' }, x)))),
+        h('tbody', {}, segs.map((x, ri) => { const pl = M.planGenerate(st, x.seg.id), pend = pl.create.length + pl.update.length + pl.remove.length; const ov = M.overlaps(x.seg, M.allSegs(st));
+          return h('tr', { class: ov.length ? 'ovl' : '' }, h('td', {}, h('span', { class: 'code' }, x.sub.code)), SCOLS.map((k, ci) => cell(x, k, ri, ci)),
+            h('td', { class: 'mono' }, fmtFt(M.segLength(x.seg))), DISCS.map((d) => h('td', {}, String(M.segPP(st, x.sub, x.seg, { discipline: d }).total))),
+            h('td', {}, ov.length ? h('span', { class: 'warn', title: 'Overlaps ' + ov.map((o) => o.name).join(', ') }, '⚠ overlap ') : null,
+              x.seg.sheets.some((q) => q.gen) && pend ? h('button', { type: 'button', class: 'btn sec sm', onclick: () => genPP(x.seg, null) }, '⟳ Regenerate PP') : null,
+              h('button', { type: 'button', class: 'link', onclick: () => { select_('seg', x.seg.id); } }, 'Open'))); })))) :
+        h('p', { class: 'muted empty' }, 'No segments yet. Add a road on a sub-project (Tree → sub-project → +).'));
+  }
   function subDrawer(sub) {
     const name = h('input', { value: sub.name, 'aria-label': 'Sub-project name' });
     name.addEventListener('change', () => commit(() => { sub.name = name.value.trim() || sub.name; }));
@@ -998,8 +1046,8 @@
           DISCS.map((d) => { const pl = M.planGenerate(st, seg.id, { discipline: d }); const n = pl.create.length + pl.update.length + pl.remove.length + pl.removeTouched.length;
             return h('button', { type: 'button', class: 'btn sec ' + DINFO[d].cls, id: 'gen' + DINFO[d].short, disabled: !n, title: n ? n + ' change(s) for ' + d + ' series' : d + ' PP sheets up to date', onclick: () => genPP(seg, d) }, DINFO[d].short + ' only' + (n ? ' (' + n + ')' : ' ✓'));
           }))),
-      h('details', {}, h('summary', {}, 'Edit segment (stations, scale)'), segFields(sub, seg, () => renderAll()),
-        h('button', { type: 'button', class: 'btn danger sm', onclick: () => { if (confirm('Delete segment “' + seg.name + '” and its ' + seg.sheets.length + ' sheets?')) { commit(() => M.deleteSegment(st, seg.id)); closeDrawer(); } } }, 'Delete segment')),
+      stationsBox(sub, seg),
+      h('button', { type: 'button', class: 'btn danger sm', onclick: () => { if (confirm('Delete segment “' + seg.name + '” and its ' + seg.sheets.length + ' sheets?')) { commit(() => M.deleteSegment(st, seg.id)); closeDrawer(); } } }, 'Delete segment'),
       h('section', { class: 'box' }, h('h3', {}, 'Add sheets'),
         h('form', { class: 'g2', onsubmit: (e) => { e.preventDefault(); const a = commit(() => M.bulkAddTemplates(st, seg.id, { discipline: bd.value, owner: bo.value, due: bdue.value, milestone: bm.value })) || []; toast(a.length ? 'Added ' + a.length + ' standard sheets.' : 'Standard sheets already on this segment.'); } },
           bd, bo, bm, bdue, h('button', { class: 'btn sec', type: 'submit' }, 'Add standard set')),
@@ -1298,7 +1346,7 @@
       hasOld ? h('section', {}, h('h3', {}, 'Old encrypted v1 data'), h('p', { class: 'muted' }, 'An encrypted v1 vault is still stored in this browser.'),
         h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec', onclick: () => { closeModal(); migrationPanel(true); } }, 'Import it again…'),
           h('button', { type: 'button', class: 'btn danger', onclick: () => { if (confirm('Delete the old encrypted vault from this browser? Current data is not affected.')) { localStorage.removeItem(OLDKEY); openSettings(); } } }, 'Delete old vault'))) : null,
-      h('section', {}, h('h3', {}, 'Keyboard'), h('ul', { class: 'keys' }, [['/', 'Search'], ['n', 'Add (segment / sheet in the open drawer)'], ['l', 'Toggle Tree / List'], ['t', 'Toggle timeline'], ['f', 'Fit tree to screen'], ['c', 'Show / hide connectors'], ['d', 'Light / dark'], ['Esc', 'Close drawer or dialog'], ['Enter', 'Open the focused node or row'], ['↑ ↓', 'Move between rows in the list (Alt+↑↓ in dropdowns)'], ['Arrows, + −', 'Pan / zoom when the tree has focus']].map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v)))),
+      h('section', {}, h('h3', {}, 'Keyboard'), h('ul', { class: 'keys' }, [['/', 'Search'], ['n', 'Add (segment / sheet in the open drawer)'], ['l', 'Toggle Tree / List'], ['f', 'Fit tree to screen'], ['c', 'Show / hide connectors'], ['d', 'Light / dark'], ['Esc', 'Close drawer or dialog'], ['Enter', 'Open the focused node or row'], ['↑ ↓', 'Move between rows in the list (Alt+↑↓ in dropdowns)'], ['Arrows, + −', 'Pan / zoom when the tree has focus']].map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v)))),
       h('section', {}, h('h3', {}, 'Activity log'), h('ol', { class: 'log long' }, st.log.slice(0, 200).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString()), ' ', l.msg)))),
       h('section', {}, h('h3', {}, 'Danger zone'), h('button', { type: 'button', class: 'btn danger', onclick: () => { if (prompt('Type ERASE to delete all project data in this browser.') === 'ERASE') { localStorage.removeItem(KEY); st = M.newState(); flush(); closeModal(); closeDrawer(); renderAll(); } } }, 'Erase all data')));
     openModal('Settings, backup & export', body);
@@ -1331,9 +1379,9 @@
   $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
   $('#vTree').addEventListener('click', () => { ui.view = 'tree'; saveUI(); renderAll(); });
   $('#vList').addEventListener('click', () => { ui.view = 'list'; saveUI(); renderAll(); });
+  $('#vStations').addEventListener('click', () => { ui.view = 'stations'; saveUI(); renderAll(); });
   $('#vBoard').addEventListener('click', () => { ui.view = 'board'; saveUI(); renderAll(); });
   $('#vWeek').addEventListener('click', () => { ui.view = 'week'; saveUI(); renderAll(); });
-  $('#tlBtn').addEventListener('click', () => { ui.timeline = !ui.timeline; saveUI(); renderAll(); });
   $('#ppBtn').addEventListener('click', openPP);
   $('#msBtn').addEventListener('click', openMilestones);
   $('#staffBtn').addEventListener('click', openStaff);
@@ -1376,7 +1424,6 @@
     if (typing || e.metaKey || e.ctrlKey || e.altKey || !$('#modal').hidden) return;
     if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
     else if (e.key === 'l') { ui.view = ui.view === 'tree' ? 'list' : 'tree'; saveUI(); renderAll(); }
-    else if (e.key === 't') { ui.timeline = !ui.timeline; saveUI(); renderAll(); }
     else if (e.key === 'f') fit();
     else if (e.key === 'c') $('#lkBtn').click();
     else if (e.key === 'd') $('#themeBtn').click();
