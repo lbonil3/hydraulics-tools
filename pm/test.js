@@ -510,6 +510,48 @@ t('v3.1 sub-project rename: trim, empty/duplicate blocked, ids/order/links uncha
   void pA; void pB; void B;
 });
 
+t('v3.2 road branches + per-sheet station ranges: computed, live, override, warn, CSV, upgrade', () => {
+  const { st, A, pA, r1 } = setup();
+  M.syncPP(st);
+  let shs = () => M.sheetsOfGroup(A, pA, M.roadGroups(A, pA)[0]);
+  assert.deepStrictEqual(shs().map((x) => M.rangeText(M.sheetRange(x))), ['Sta 10+00 – 22+00', 'Sta 22+00 – 25+50'], '100 scale = 1200 ft, last partial');
+  M.updateRoad(st, r1.id, { scale: 50 }); M.syncPP(st);
+  assert.deepStrictEqual(shs().map((x) => [M.sheetRange(x).start, M.sheetRange(x).end]), [[1000, 1600], [1600, 2200], [2200, 2550]], '50 scale = 600 ft');
+  for (const [sc, ft] of [[20, 240], [40, 480], [100, 1200]]) { M.updateRoad(st, r1.id, { scale: sc }); M.syncPP(st); const r = shs().map((x) => M.sheetRange(x)); assert.strictEqual(r[0].end - r[0].start, Math.min(ft, 1550)); assert.strictEqual(r[r.length - 1].end, 2550); for (let i = 1; i < r.length; i++) assert.strictEqual(r[i].start, r[i - 1].end, 'no gaps/overlap'); }
+  M.updateRoad(st, r1.id, { scale: 50 }); M.syncPP(st);
+  const p2 = shs()[1];
+  M.setSheetRange(st, p2.id, '16+50', '22+00');
+  assert.ok(p2.sta && M.sheetRange(p2).manual && /16\+50 to 22\+00/.test(p2.title), 'manual override + title');
+  M.syncPP(st); assert.strictEqual(M.sheetRange(p2).start, 1650, 'sync keeps the override');
+  assert.ok(M.rangeWarnings(st, A, pA).some((w) => /manual range/.test(w.msg)));
+  M.updateRoad(st, r1.id, { end: '15+00' }); const t2 = M.syncPP(st);
+  assert.ok(shs().includes(p2) && t2.keptTouched >= 1, 'overridden extra sheet is kept, not overwritten');
+  assert.ok(M.rangeWarnings(st, A, pA).some((w) => /past the computed count/.test(w.msg)), 'and warned about');
+  M.resetSheetRange(st, p2.id); assert.ok(!p2.sta);
+  M.updateRoad(st, r1.id, { end: '25+50' }); M.syncPP(st);
+  /* same road name twice → one group; manual sheet tagged with the road joins it; others → Other */
+  M.addRoad(st, pA.id, { road: 'fm 1960', start: '40+00', end: '45+00' }); M.syncPP(st);
+  M.addSheet(st, pA.id, { title: 'FM 1960 typical section', road: 'FM 1960' }); M.addSheet(st, pA.id, { title: 'Loose sheet' });
+  assert.strictEqual(M.roadGroups(A, pA).length, 1); assert.strictEqual(M.roadGroups(A, pA)[0].entries.length, 2);
+  assert.strictEqual(shs().length, 5); assert.strictEqual(M.otherSheets(A, pA).map((x) => x.title).join(), 'Loose sheet');
+  assert.ok(!M.sheetRange(shs()[4]), 'manual sheet has no range');
+  const lv = M.collapseLevel(st, 4); assert.strictEqual(lv[M.roadGroups(A, pA)[0].key], true); assert.strictEqual(lv['seg:' + pA.id], false);
+  /* CSV: sheet stations exported, override survives a round trip */
+  M.setSheetRange(st, shs()[0].id, '10+00', '15+50');
+  const csv = M.exportImportCSV(st); assert.match(csv, /Sheet start station,Sheet end station/); assert.match(csv, /,10\+00,15\+50\r\n/);
+  const rows = M.parseCSV(csv).rows; const st2 = M.newState('R'); const plan = M.planCSV(st2, rows.slice(1), M.detectMapping(rows[0]), { mode: 'merge' });
+  assert.strictEqual(plan.summary.errors, 0); M.applyCSV(st2, plan); M.syncPP(st2);
+  const A2 = st2.subs[0], s2 = M.secOf(A2, 'dr-pp'); const g2 = M.sheetsOfGroup(A2, s2, M.roadGroups(A2, s2)[0]);
+  assert.strictEqual(g2[0].sta.end, 1550); assert.ok(!g2[1].sta, 'unchanged ranges stay computed');
+  /* upgrade from v3.1 data: ranges computed, flag set once */
+  const old = JSON.parse(JSON.stringify(st)); delete old.v32; old.subs[0].segments.find((g) => g.key === 'dr-pp').sheets.find((x) => x.gen && x.gen.idx === 2).gen.start = 1;
+  const st3 = M.migrate(old); const info = M.upgrade32(st3);
+  assert.ok(info && info.pp >= 4 && st3.v32.at); assert.strictEqual(M.upgrade32(st3), null);
+  const f = st3.subs[0].segments.find((g) => g.key === 'dr-pp').sheets.find((x) => x.gen && x.gen.idx === 2 && x.gen.road === r1.id); assert.strictEqual(f.gen.start, 1600);
+  assert.strictEqual(M.upgrade32(M.newState()), null, 'new projects need no upgrade');
+  assert.ok(M.narrativeText ? /FM 1960 sheets: PP 1 10\+00–15\+50/.test(JSON.stringify(M.narrative(st))) : true, 'report lists sheet ranges');
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {
