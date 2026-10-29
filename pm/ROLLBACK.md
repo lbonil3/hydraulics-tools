@@ -19,7 +19,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.8` / `pm-v2.8-final` | Status board |
 | `pm-v2.9` / `pm-v2.9-final` | Undo / redo |
 | `pm-v2.10` / `pm-v2.10-final` | Print status report |
-| `pm-v2.11` | Collapse branches |
+| `pm-v2.11` / `pm-v2.11-final` | Collapse branches |
+| `pm-v2.12` | Stations editor |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -233,3 +234,12 @@ No data changes.
 
 Undo: `git revert --no-edit 46569d2` and push, or `git checkout pm-v2.10-final -- pm`, commit, push.
 No data changes; collapse state stays in pm.ui.v2.collapsed (adds 'root' key).
+
+## v2.12
+
+| Commit | Change |
+|---|---|
+| f8a5389 | Stations editor |
+
+Undo: `git revert --no-edit f8a5389` and push, or `git checkout pm-v2.11-final -- pm`, commit, push.
+Adds optional seg.reverse; station parser also accepts plain feet (1000). Timeline UI removed, no data removed.
