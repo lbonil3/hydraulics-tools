@@ -467,3 +467,44 @@ textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size
 #csvPreview tr.cerr td{background:color-mix(in srgb,var(--bad) 8%,transparent)}
 #csvPreview tr.cwarn td{background:color-mix(in srgb,var(--warn) 8%,transparent)}
 #csvPreview td{white-space:normal}
+/* v3 sections tree: Project → discipline → sub-project → section → sheets */
+.node.n-dtop{display:flex;align-items:center;gap:10px;padding:10px 12px;border-left:6px solid var(--dr);background:color-mix(in srgb,var(--dr) 6%,var(--surface))}
+.node.n-dtop.d-sw{border-left:6px dashed var(--sw);background:color-mix(in srgb,var(--sw) 6%,var(--surface))}
+.dicon.lg{width:42px;height:42px;font-size:24px;border-radius:12px}
+.node.n-seg{padding:7px 10px}
+.node.n-seg .nt.sm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node.n-seg.empty{opacity:.72;border-style:dashed}
+.node.n-seg.empty.sel,.node.n-seg.empty:hover,.node.n-seg.empty:focus-visible{opacity:1}
+.node.n-pp .nt.sm::after{content:' · P&P';font-size:10px;font-weight:700;color:var(--muted)}
+.roadsmini{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
+.dlist.secs .rowbtn.empty{opacity:.65}
+.dlist.secs .rowbtn{gap:6px}
+.roadtab input.scell{width:100%;min-width:64px;padding:4px 6px;min-height:30px}
+.roadtab td:first-child input.scell{min-width:120px}
+.roadtab th,.roadtab td{padding:3px 4px}
+#roadsBox .addrow input{flex:1;min-width:0}
+#addSheetForm input{flex:1;min-width:0}
+.secedit{margin:6px 0 12px}
+.secedit h4{margin:6px 0;display:flex;align-items:center;gap:6px}
+.secrow{display:flex;align-items:center;gap:6px;margin:3px 0}
+.secrow input:not([type=checkbox]){flex:1;min-width:0}
+.secrow .num{width:22px;text-align:right}
+.nsecs{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.nsecs li{border-left:2px solid var(--line2);padding-left:8px}
+.nsecs li .gen{display:block;margin-bottom:4px;line-height:1.45}
+.nsecs textarea.rnote{min-height:32px}
+.ndtop.sw h3 .chip{border-style:dashed}
+@media print{.rsecs{margin:2px 0 4px;padding-left:16px}.rsecs li{margin:1px 0}}
+@media (max-width:900px){.secrow{flex-wrap:wrap}.secrow input:not([type=checkbox]){flex-basis:100%}}
+.node.n-dtop,.node.n-disc{padding-right:30px}
+.node.n-seg{padding-right:26px}
+.roadtab{table-layout:fixed;width:100%}
+.roadtab th:nth-child(1){width:auto}.roadtab th:nth-child(2),.roadtab th:nth-child(3){width:74px}.roadtab th:nth-child(4){width:50px}.roadtab th:nth-child(5){width:30px}.roadtab th:nth-child(6){width:40px}
+.roadtab td:first-child input.scell{min-width:0}
+.roadtab input.scell{min-width:0;font-size:12.5px}
+.node.n-dtop .nacts,.node.n-disc .nacts,.node.n-root .nacts{right:-34px}
+.roadtab td:first-child input.scell{min-width:0!important}
+.roadtab input.scell{min-width:0!important}
+@media (max-width:700px){.roadtab th:nth-child(1){width:28%}.roadtab th:nth-child(2),.roadtab th:nth-child(3){width:21%}.roadtab th:nth-child(4){width:14%}.roadtab th:nth-child(5){width:7%}.roadtab th:nth-child(6){width:12%}.roadtab input.scell{font-size:14px;padding:4px 3px}}
+@media (max-width:700px){.roadtab th:nth-child(1){width:34%}.roadtab th:nth-child(2),.roadtab th:nth-child(3){width:19%}.roadtab th:nth-child(4){width:12%}.roadtab th:nth-child(5){width:6%}.roadtab th:nth-child(6){width:10%}.roadtab input.scell{font-size:13px;padding:4px 2px}.roadtab th,.roadtab td{padding:3px 2px}.roadtab td:last-child a,.roadtab td:last-child button{font-size:12px}}
+@media (max-width:700px){.tablewrap:has(.roadtab){overflow-x:auto}.roadtab{min-width:470px}}
