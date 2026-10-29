@@ -29,6 +29,7 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.18` / `pm-v2.18-final` | Shortcut help + empty-state hints |
 | `pm-v2.19` / `pm-v2.19-final` | Report narrative + notes |
 | `pm-v2.20` | PM v2.20 CSV import |
+| `pm-v3.2` / `pm-v3.2-final` | Roads as tree branches, sheets with station ranges (before: `pm-v3.2-pre` = `pm-v3.1-final`) |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -353,3 +354,17 @@ Tags: pm-v3.0-final (before), pm-v3.1, pm-v3.1-final.
 
 Undo (code): `git checkout pm-v3.0-final -- pm`, commit, push (no force).
 Data: no schema change. Names live in the existing subs[].name field of pm.data.v3; v3.0 shows the custom names too. id, letter (code) and order are never changed by a rename.
+
+## v3.2 (roads and sheet station ranges in the tree)
+
+Tags: pm-v3.2-pre (= pm-v3.1-final, before), pm-v3.2, pm-v3.2-final.
+
+| Commit | Change |
+|---|---|
+| 20c7b6f | pm v3.2 (part 4): e2e for road branches, ranges, overrides and v3.1→v3.2 migration |
+| 513bb8c | pm v3.2 (part 3): road/sheet level styles and tree level options |
+| 219f029 | pm v3.2 (part 2): road and sheet-range branches, drawers, palette, list/board ranges, migration notice |
+| b87198e | pm v3.2 (part 1): road groups, per-sheet station ranges, overrides, warnings, upgrade, CSV stations, tests |
+
+Undo (code): `git checkout pm-v3.1-final -- pm`, commit, push (no force).
+Data: same key pm.data.v3. Before the upgrade the untouched v3.1 data is copied to pm.data.v3.pre-v3.2-backup (download from the notice or Settings). To go back fully, restore the code and put the backup back: `localStorage.setItem('pm.data.v3', localStorage.getItem('pm.data.v3.pre-v3.2-backup'))`. v3.1 code ignores the new `sta` / `v32` fields, so keeping v3.2 data also works.
