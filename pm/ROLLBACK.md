@@ -323,3 +323,17 @@ Adds st.reportNotes {} (filled on load); generated text never stored.
 
 Undo: `git revert --no-edit e74b1eb` and push, or `git checkout pm-v2.19-final -- pm`, commit, push.
 No data migration; import is local only
+
+## v3.0 (sections restructure)
+
+Tags: pm-v3-pre (last v2 state), pm-v3.0, pm-v3.0-final.
+
+| Commit | Change |
+|---|---|
+| a4d0e6a | pm v3.0 (part 4): e2e for v3 from a v2 fixture |
+| 1669693 | pm v3.0 (part 3): v3 styles and labels |
+| 75a69cf | pm v3.0 (part 2): app UI for sections, roads, migration notice, settings editor |
+| 51152d2 | pm v3.0 (part 1): sections model, road entries, v2→v3 migration, tests |
+
+Undo (code): `git checkout pm-v3-pre -- pm`, commit, push (no force).
+Data: v3 writes pm.data.v3 / pm.ui.v3 only. pm.data.v2 is never modified, and a copy is kept in pm.data.v2.pre-v3-backup, so the v2 app reopens with the old data. Edits made in v3 are not carried back to v2. Settings → Old v2 data can download the v2 JSON.
