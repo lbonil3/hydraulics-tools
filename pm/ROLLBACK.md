@@ -17,7 +17,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.6` / `pm-v2.6-final` | Sheet-number ranges |
 | `pm-v2.7` / `pm-v2.7-final` | This-week view |
 | `pm-v2.8` / `pm-v2.8-final` | Status board |
-| `pm-v2.9` | Undo / redo |
+| `pm-v2.9` / `pm-v2.9-final` | Undo / redo |
+| `pm-v2.10` | Print status report |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -213,3 +214,12 @@ No schema change; status moves are normal sheet edits (logged).
 
 Undo: `git revert --no-edit f88f29b` and push, or `git checkout pm-v2.8-final -- pm`, commit, push.
 No schema change; history is in memory only (cleared on reload).
+
+## v2.10
+
+| Commit | Change |
+|---|---|
+| 5f76fb7 | Print status report |
+
+Undo: `git revert --no-edit 5f76fb7` and push, or `git checkout pm-v2.9-final -- pm`, commit, push.
+No data changes.
