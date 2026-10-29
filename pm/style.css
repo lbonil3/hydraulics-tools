@@ -345,3 +345,7 @@ body.linking,body.linking *{cursor:crosshair!important}
 .legend{pointer-events:none}
 .zoombar .ibtn,.zoombar button{white-space:nowrap}
 .settings>section{min-width:0;overflow-x:auto}
+.idxrow{display:flex;align-items:center;gap:8px;margin:4px 0}
+.idxrow input{flex:1;min-width:0}
+.idxrow select{flex:0 0 120px}
+.dlist.idx{max-height:46vh;overflow:auto;padding-right:4px}

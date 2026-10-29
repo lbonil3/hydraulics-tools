@@ -966,6 +966,37 @@
     draw();
     openModal('PP sheet calculator', body);
   }
+  function openIndex() {
+    const nt = h('input', { placeholder: 'Sheet title (e.g. Utility Conflict Sheet)', 'aria-label': 'New sheet index title', id: 'idxNew' });
+    const nd = select([['', 'Discipline: auto']].concat(M.DISCIPLINES), '', { 'aria-label': 'New sheet index discipline' });
+    const scope = select([['', 'Both disciplines'], ['Drainage', 'Drainage only'], ['SWP3', 'SWP3 only']], '', { 'aria-label': 'Apply which disciplines', id: 'idxScope' });
+    const err = h('p', { class: 'err', role: 'alert' });
+    const info = h('p', { class: 'muted', id: 'idxPlan' });
+    const upd = () => { const P = M.planIndex(st, { discipline: scope.value || null }); info.textContent = P.count ? 'Apply adds ' + plural(P.count, 'sheet') + ' across ' + plural(P.segments, 'segment') + '. Sheets a segment already has (same title) are skipped.' : 'Every segment already has these sheets.'; };
+    scope.addEventListener('change', upd);
+    const segs = st.subs.reduce((a, x) => a + x.segments.length, 0);
+    const body = h('div', { class: 'stack' },
+      h('p', { class: 'muted' }, 'One sheet list for the whole project. Apply it to every road segment in A–D at once; it never removes or duplicates sheets. PP sheets come from the length-based series (Generate PP).'),
+      h('ol', { class: 'dlist idx' }, st.index.map((t, i) => {
+        const ti = h('input', { value: t.title, 'aria-label': 'Index sheet title ' + (i + 1) }); ti.addEventListener('change', () => { try { M.updateIndexItem(st, t.id, { title: ti.value }); save(); } catch (e) { err.textContent = e.message; } });
+        const di = select(M.DISCIPLINES, t.discipline, { 'aria-label': 'Index sheet discipline ' + (i + 1) }); di.addEventListener('change', () => { commit(() => M.updateIndexItem(st, t.id, { discipline: di.value }), { render: false }); openIndex(); });
+        return h('li', { class: 'idxrow' }, h('span', { class: 'chip ' + (t.discipline === 'SWP3' ? 'sw' : 'dr') }, t.discipline === 'SWP3' ? 'SW' : 'DR'), ti, di,
+          h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + t.title + ' up', disabled: !i, onclick: () => { commit(() => M.moveIndexItem(st, t.id, -1), { render: false }); openIndex(); } }, '↑'),
+          h('button', { type: 'button', class: 'ibtn danger', 'aria-label': 'Remove ' + t.title + ' from index', onclick: () => { commit(() => M.removeIndexItem(st, t.id), { render: false }); openIndex(); } }, '×'));
+      })),
+      h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); err.textContent = ''; try { M.addIndexItem(st, { title: nt.value, discipline: nd.value }); save(); openIndex(); setTimeout(() => $('#idxNew') && $('#idxNew').focus(), 30); } catch (ex) { err.textContent = ex.message; } } }, nt, nd, h('button', { class: 'btn sec', type: 'submit' }, 'Add')),
+      err,
+      h('div', { class: 'box' }, h('h3', {}, 'Apply to all roads / sub-projects'), h('div', { class: 'row' }, scope,
+        h('button', { type: 'button', class: 'btn', id: 'applyIdxBtn', disabled: !segs, onclick: () => {
+          const P = M.planIndex(st, { discipline: scope.value || null });
+          if (!P.count) { toast('Nothing to add — every segment already has these sheets.'); return; }
+          if (!confirm('Add ' + plural(P.count, 'sheet') + ' to ' + plural(P.segments, 'segment') + '? Existing sheets are skipped.')) return;
+          const n = commit(() => M.applyIndex(st, { discipline: scope.value || null })); toast('Added ' + plural(n || 0, 'sheet') + ' from the sheet index.'); openIndex();
+        } }, 'Apply to all segments')), info,
+        h('button', { type: 'button', class: 'btn sec sm', id: 'idxTplBtn', onclick: () => { if (confirm('Replace every sub-project’s standard sheet set (used by “Add standard set”) with this index? Existing sheets are not touched.')) { commit(() => M.indexToTemplates(st)); toast('Index copied to all sub-projects.'); } } }, 'Use as every sub-project’s standard set')));
+    upd();
+    openModal('Project sheet index', body);
+  }
   function openStaff() {
     const S = M.summary(st);
     const nn = h('input', { placeholder: 'Name', 'aria-label': 'New staff name' });
@@ -1124,6 +1155,7 @@
     }, 120);
   });
   for (const [id, v] of [['#bBoth', 'both'], ['#bDr', 'Drainage'], ['#bSw', 'SWP3']]) $(id).addEventListener('click', () => { ui.branch = v; saveUI(); renderAll(); });
+  $('#idxBtn').addEventListener('click', openIndex);
   $('#lkBtn').addEventListener('click', () => { ui.links = !ui.links; saveUI(); renderTree(); });
   $('#lkSelBtn').addEventListener('click', () => { ui.linkSel = !ui.linkSel; if (ui.linkSel) ui.links = true; saveUI(); renderTree(); });
   for (const [id, k] of [['#fStatus', 'status'], ['#fOwner', 'owner'], ['#fDisc', 'discipline'], ['#fFlag', 'flag']]) $(id).addEventListener('change', (e) => { filt[k] = e.target.value; renderAll(); });

@@ -371,6 +371,18 @@ async function serve(r) {
   await pg.select('#groupSel', ''); await sleep(100);
   await pg.select('#fDisc', ''); await sleep(150);
   await click('#vTree'); await sleep(200);
+  // 10d. v2.5 project sheet index
+  await click('#idxBtn'); await pg.waitForSelector('#applyIdxBtn');
+  const before25 = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs.map((s) => s.segments.map((g) => g.sheets.length)));
+  await typeInto(await pg.$('#idxNew'), 'Utility Conflict Sheet'); await pg.keyboard.press('Enter'); await sleep(200);
+  ok(/Utility Conflict Sheet/.test(await pg.$$eval('#modalBody .idx input', (i) => i.map((x) => x.value).join('|'))), 'add a sheet to the project index');
+  ok(/Apply adds 13 sheets across 2 segments/.test(await txt('#idxPlan')), 'plan preview: ' + await txt('#idxPlan'));
+  await pg.screenshot({ path: SHOTS + 'v2.5-sheet-index-' + tag + '.png' });
+  await click('#applyIdxBtn'); await sleep(300);
+  const after25 = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs.map((s) => s.segments.map((g) => g.sheets.length)));
+  ok(after25[0][0] === before25[0][0] + 1 && after25[1][0] === before25[1][0] + 12, 'bulk-apply adds index sheets to every segment, skipping existing (' + JSON.stringify(after25) + ')');
+  ok(/Every segment already has/.test(await txt('#idxPlan')), 're-apply would add nothing');
+  await click('#modalClose'); await sleep(200);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

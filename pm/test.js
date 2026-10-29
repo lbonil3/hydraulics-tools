@@ -459,6 +459,33 @@ t('v2.4 default sheet templates; reset only on request; user data untouched', ()
   assert.strictEqual(M.bulkAddTemplates(m, g.id, { discipline: 'SWP3' }).length, 2);
 });
 
+t('v2.5 project sheet index: edit once, bulk-apply to every segment, skip existing', () => {
+  const st = M.newState();
+  assert.strictEqual(st.index.length, M.DEFAULT_TEMPLATES.length);
+  const g1 = M.addSegment(st, st.subs[0].id, { road: 'FM 1960', start: '10+00', end: '20+00' }).seg;
+  const g2 = M.addSegment(st, st.subs[2].id, { road: 'SH 249', start: '0+00', end: '5+00' }).seg;
+  M.addSheet(st, g1.id, { title: 'drainage area map', discipline: 'Drainage' });
+  const it = M.addIndexItem(st, { title: 'Utility Conflict Sheet' });
+  assert.strictEqual(it.discipline, 'Drainage');
+  assert.throws(() => M.addIndexItem(st, { title: 'Utility conflict sheet' }), /already/);
+  M.updateIndexItem(st, it.id, { discipline: 'SWP3' });
+  M.moveIndexItem(st, it.id, -1);
+  assert.strictEqual(st.index[st.index.length - 2].id, it.id);
+  const n = st.index.length;
+  const P = M.planIndex(st);
+  assert.deepStrictEqual([P.count, P.segments], [2 * n - 1, 2]);
+  assert.strictEqual(M.applyIndex(st), 2 * n - 1);
+  assert.strictEqual(g1.sheets.length, n, 'existing “Drainage Area Map” skipped (case-insensitive)');
+  assert.strictEqual(M.applyIndex(st), 0, 'second apply adds nothing');
+  assert.strictEqual(g2.sheets.filter((x) => x.discipline === 'SWP3').length, 3);
+  M.removeIndexItem(st, it.id);
+  assert.strictEqual(g1.sheets.length, n, 'removing from index never deletes sheets');
+  M.indexToTemplates(st);
+  assert.deepStrictEqual(st.subs[3].templates.map((x) => x.title), st.index.map((x) => x.title));
+  const m = M.migrate(Object.assign(JSON.parse(JSON.stringify(st)), { index: undefined }));
+  assert.strictEqual(m.index.length, M.DEFAULT_TEMPLATES.length, 'older data gets the default index');
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

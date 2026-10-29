@@ -43,6 +43,7 @@
       project: { name: projectName || 'PSE Drainage & SWP3 Project' },
       subs: ['A', 'B', 'C', 'D'].map((code) => ({ id: uid(), code, name: 'Sub-project ' + code, order: ['A', 'B', 'C', 'D'].indexOf(code) + 1, scale: 100, templates: defaultTemplates(), segments: [] })),
       staff: [],
+      index: defaultTemplates(),
       settings: { scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES) },
       milestones: DEFAULT_MILESTONES.map((name) => ({ id: uid(), name, date: '' })),
       links: [],
@@ -528,6 +529,7 @@
     st.milestones = Array.isArray(st.milestones) ? st.milestones : [];
     st.views = Array.isArray(st.views) ? st.views : [];
     st.links = Array.isArray(st.links) ? st.links : [];
+    st.index = Array.isArray(st.index) ? st.index : defaultTemplates();
     st.log = Array.isArray(st.log) ? st.log : [];
     for (const sub of st.subs) {
       sub.scale = Number(sub.scale) || 100;
@@ -707,7 +709,42 @@
     return { disc, sheets, total: sheets.length, done: p.done, pct: p.pct, pp, overdue, blocked, update, length: segs.reduce((a, g) => a + segLength(g), 0) };
   }
   function roads(st) { return [...new Set(st.subs.flatMap((s) => s.segments.map((g) => g.road)).filter(Boolean))].sort(); }
-  return { SCHEMA, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* ---- v2.5 project sheet index: one list for the whole project, bulk-applied to every segment (skips titles a segment already has) ---- */
+  function addIndexItem(st, f) {
+    const title = String((f && f.title) || '').trim();
+    if (!title) throw new Error('Sheet title is required.');
+    if (st.index.some((x) => x.title.toLowerCase() === title.toLowerCase())) throw new Error('“' + title + '” is already in the sheet index.');
+    const it = { id: uid(), title, discipline: DISCIPLINES.includes(f.discipline) ? f.discipline : guessDiscipline(title) };
+    st.index.push(it); return it;
+  }
+  function updateIndexItem(st, id, f) {
+    const it = st.index.find((x) => x.id === id); if (!it) throw new Error('Not found');
+    if (f.title != null) { const t = String(f.title).trim(); if (!t) throw new Error('Sheet title is required.'); it.title = t; }
+    if (DISCIPLINES.includes(f.discipline)) it.discipline = f.discipline;
+    return it;
+  }
+  function removeIndexItem(st, id) { st.index = st.index.filter((x) => x.id !== id); }
+  function moveIndexItem(st, id, d) { const i = st.index.findIndex((x) => x.id === id), j = i + d; if (i < 0 || j < 0 || j >= st.index.length) return; [st.index[i], st.index[j]] = [st.index[j], st.index[i]]; }
+  function planIndex(st, opts) {
+    const out = [];
+    for (const sub of st.subs) {
+      if (opts && opts.subIds && !opts.subIds.includes(sub.id)) continue;
+      for (const seg of sub.segments) {
+        const have = new Set(seg.sheets.map((x) => x.title.toLowerCase()));
+        const items = st.index.filter((t) => (!opts || !opts.discipline || t.discipline === opts.discipline) && !have.has(t.title.toLowerCase()));
+        if (items.length) out.push({ sub, seg, items });
+      }
+    }
+    return { rows: out, count: out.reduce((a, r) => a + r.items.length, 0), segments: out.length };
+  }
+  function applyIndex(st, opts) {
+    const plan = planIndex(st, opts);
+    for (const r of plan.rows) for (const t of r.items) r.seg.sheets.push(newSheet({ title: t.title, discipline: t.discipline }));
+    log(st, 'Applied project sheet index: ' + plan.count + ' sheet(s) added to ' + plan.segments + ' segment(s)');
+    return plan.count;
+  }
+  function indexToTemplates(st) { for (const sub of st.subs) sub.templates = st.index.map((t) => ({ id: uid(), title: t.title, discipline: t.discipline })); log(st, 'Sheet index copied to every sub-project’s standard set'); }
+  return { SCHEMA, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,
