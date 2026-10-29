@@ -657,6 +657,33 @@ async function serve(r) {
   await pg.keyboard.press('3'); await sleep(250);
   ok(!!(await pg.$('#wk-overdue')), 'number key 3 opens This week');
   await pg.keyboard.press('1'); await sleep(250);
+  // 10s. v2.20 CSV import
+  const D20 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
+  const n20 = (await D20()).subs.reduce((a, x) => a + x.segments.length, 0);
+  await click('#csvBtn'); await pg.waitForSelector('#csvDrop');
+  await click('#csvTpl'); await sleep(600);
+  const tplF = fs.readdirSync(DL).find((f) => f.startsWith('pm-import-template'));
+  ok(!!tplF && /Sub-project,Road,Start station/.test(fs.readFileSync(DL + '/' + tplF, 'utf8')), 'CSV template downloads');
+  const csv20 = 'sub;road name;begin station;end station;scale;discipline;sheet title;status;assigned to;due date;depends on\r\nC;SH 249;0+00;2400;40;Both;;;;;\r\nC;SH 249;0+00;2400;40;Drainage;Outfall Plan;In progress;Ana Ruiz;11/20/2026;\r\nC;SH 249;0+00;2400;40;Drainage;Outfall Profile;;;Dec 1, 2026;Outfall Plan\r\nE;Bad Rd;5+00;1+00;;;;;;;\r\n';
+  await pg.$eval('#csvDrop', (el, t) => { const dt = new DataTransfer(); dt.items.add(new File([t], 'roads.csv', { type: 'text/csv' })); el.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); }, csv20);
+  await pg.waitForSelector('#csvPreview'); await sleep(200);
+  ok((await pg.$$('#csvPreview tbody tr')).length === 4 && (await pg.$$('#csvPreview tr.cerr')).length === 1, 'drag-and-drop CSV (semicolons) → preview with per-row validation');
+  ok(/Unknown sub-project/.test(await txt('#csvPreview')) && /End station must be after start/.test(await txt('#csvPreview')), 'bad rows explained');
+  ok((await pg.$eval('#csvMap select[data-field="start"]', (e) => e.selectedOptions[0].textContent)) === 'begin station', 'columns auto-detected');
+  ok(/1 new roads/.test(await txt('#csvSummary')), 'summary of what will be created');
+  await sleep(200); await pg.screenshot({ path: SHOTS + 'v2.20-csv-import-' + tag + '.png' });
+  await click('#csvImport'); await sleep(600);
+  const c20 = (await D20()).subs[2].segments;
+  ok(c20.length === 1 && c20[0].start === 0 && c20[0].end === 2400 && c20[0].scale === 40, 'road imported (stations 0+00 / 2400)');
+  const op = c20[0].sheets.find((q) => q.title === 'Outfall Plan');
+  ok(op && op.status === 'In progress' && op.owner === 'Ana Ruiz' && op.due === '2026-11-20' && c20[0].sheets.some((q) => q.gen) && c20[0].sheets.length > 10, 'sheet rows + default sheet list + PP generated');
+  ok((await D20()).links.some((l) => l.src.id === op.id), 'Depends-on creates a connector');
+  await click('#undoBtn'); await sleep(400);
+  ok((await D20()).subs.reduce((a, x) => a + x.segments.length, 0) === n20, 'whole import undone in one step');
+  await click('#csvBtn'); await pg.waitForSelector('#csvExport'); await click('#csvExport'); await sleep(600);
+  const exF = fs.readdirSync(DL).find((f) => f.startsWith('pm-roads-sheets'));
+  ok(!!exF && fs.readFileSync(DL + '/' + exF, 'utf8').split('\n').length > 10, 'current data exports as importable CSV');
+  await click('#modalClose'); await sleep(150);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

@@ -308,7 +308,7 @@
     const A = [
       ['Go to Tree', go('tree'), 'view'], ['Go to List', go('list'), 'view table'], ['Go to This week', go('week'), 'view overdue due'], ['Go to Status board', go('board'), 'view kanban'], ['Go to Stations table', go('stations'), 'view edit stations'], ['Go to Report (narrative)', go('report'), 'summary write-up notes'], ['Copy report narrative', () => copyText(M.narrativeText(st)), 'clipboard summary'],
       ['Undo', () => travel(-1), 'ctrl z'], ['Redo', () => travel(1), 'ctrl shift z'], ['Print status report', () => $('#printBtn').click(), 'pdf'],
-      ['Open Settings', () => openSettings(), 'backup export import'], ['Sheet index', openIndex, ''], ['PP sheet calculator', openPP, ''], ['Milestones', openMilestones, ''], ['Staff & workload', openStaff, 'owners'],
+      ['Open Settings', () => openSettings(), 'backup export import'], ['Import CSV (roads / sheets)', () => openCSV(), 'upload excel spreadsheet populate'], ['Download CSV template', () => download('pm-import-template.csv', M.csvTemplate(), 'text/csv'), 'import'], ['Sheet index', openIndex, ''], ['PP sheet calculator', openPP, ''], ['Milestones', openMilestones, ''], ['Staff & workload', openStaff, 'owners'],
       ['Expand all', () => { ui.view = 'tree'; renderAll(); $('#xAll').click(); }, 'tree'], ['Collapse all', () => { ui.view = 'tree'; renderAll(); $('#cAll').click(); }, 'tree'], ['Toggle dark mode', () => $('#themeBtn').click(), 'theme light'],
       ['Keyboard shortcuts', () => openKeys(), 'help ?']].map(([label, run, kw]) => ({ label, run, kw, kind: 'Action', rank: 2 }));
     for (const sub of st.subs) {
@@ -400,6 +400,52 @@
         h('section', { class: 'npart', id: 'narrProject' }, h('h3', {}, 'Project summary'), h('p', { class: 'gen' }, N.project), noteBox('project', N.note, 'the project')),
         N.subs.map((x) => h('section', { class: 'npart', 'data-sub': x.sub.code }, h('h3', {}, h('span', { class: 'code' }, x.sub.code), ' ' + x.sub.name), h('p', { class: 'gen' }, x.text), noteBox('sub:' + x.sub.id, x.note, 'sub-project ' + x.sub.code),
           x.sub.segments.length ? x.discs.map((d) => h('div', { class: 'ndisc ' + DINFO[d.disc].cls }, h('h4', {}, h('span', { class: 'chip ' + DINFO[d.disc].cls }, DINFO[d.disc].short), ' ' + d.disc), h('p', { class: 'gen' }, d.text.replace(/^\w+: /, '')), noteBox('disc:' + x.sub.id + ':' + d.disc, d.note, x.sub.code + ' ' + d.disc))) : null))));
+  }
+
+  /* ----- v2.20 CSV import (file, drag-and-drop or pasted TSV) ----- */
+  function openCSV(initial) {
+    const S = { text: initial || '', header: true, map: null, mode: 'merge', defaults: true, skipBad: true };
+    const ta = h('textarea', { id: 'csvText', rows: 4, placeholder: 'Paste rows from Excel here (with the header row), or choose / drop a .csv file', 'aria-label': 'CSV or TSV text' });
+    ta.value = S.text;
+    const file = h('input', { type: 'file', id: 'csvFile', accept: '.csv,.tsv,.txt,text/csv', 'aria-label': 'CSV file' });
+    const out = h('div', { id: 'csvOut' });
+    const readFile = (f) => { const r = new FileReader(); r.onload = () => { ta.value = S.text = String(r.result); S.map = null; draw(); }; r.readAsText(f); };
+    file.addEventListener('change', () => { if (file.files[0]) readFile(file.files[0]); });
+    ta.addEventListener('input', () => { S.text = ta.value; S.map = null; clearTimeout(ta.tm); ta.tm = setTimeout(draw, 250); });
+    const drop = h('div', { class: 'dropzone', id: 'csvDrop', ondragover: (e) => { e.preventDefault(); drop.classList.add('over'); }, ondragleave: () => drop.classList.remove('over'), ondrop: (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) readFile(f); } },
+      h('b', {}, 'Drop a CSV here'), ' or ', file);
+    function draw() {
+      const P = M.parseCSV(S.text);
+      if (!P.rows.length) { out.replaceChildren(h('p', { class: 'muted' }, 'Columns recognised: ' + M.CSV_FIELDS.map((f) => f[1]).join(', ') + '. One row = a road (no sheet title) or a sheet on that road; rows with the same road + stations form one segment.')); return; }
+      const head = S.header ? P.rows[0] : P.rows[0].map((_, i) => 'Column ' + (i + 1));
+      if (!S.map) S.map = S.header ? M.detectMapping(head) : {};
+      const body = S.header ? P.rows.slice(1) : P.rows;
+      const plan = M.planCSV(st, body, S.map, { mode: S.mode, defaults: S.defaults });
+      const mapUI = h('div', { class: 'csvmap', id: 'csvMap' }, M.CSV_FIELDS.map(([k, label]) => { const e = select([['', '— not used —']].concat(head.map((x, i) => [String(i), x || 'Column ' + (i + 1)])), k in S.map ? String(S.map[k]) : '', { 'aria-label': 'Column for ' + label, 'data-field': k });
+        e.addEventListener('change', () => { if (e.value === '') delete S.map[k]; else S.map[k] = Number(e.value); draw(); }); return h('label', { class: 'f' }, h('span', {}, label), e); }));
+      const opt = (id, label, key, val) => { const i = h('input', { type: key === 'mode' ? 'radio' : 'checkbox', name: key === 'mode' ? 'csvMode' : null, id, checked: key === 'mode' ? S.mode === val : !!S[key] }); i.addEventListener('change', () => { if (key === 'mode') S.mode = val; else S[key] = i.checked; if (key === 'header') S.map = null; draw(); }); return h('label', { class: 'chk' }, i, ' ' + label); };
+      const sm = plan.summary;
+      const rowsUI = h('div', { class: 'tablewrap csvprev' }, h('table', { class: 'grid compact', id: 'csvPreview' }, h('thead', {}, h('tr', {}, ['#', 'Result', 'Sub', 'Road', 'Stations', 'Sheet', 'Status / owner / due', 'Checks'].map((x) => h('th', {}, x)))),
+        h('tbody', {}, plan.items.map((it) => h('tr', { class: it.errors.length ? 'cerr' : it.warns.length ? 'cwarn' : '' }, h('td', {}, String(it.line)),
+          h('td', {}, it.errors.length ? (S.skipBad ? 'skip' : 'error') : it.skip ? 'keep existing' : it.kind === 'road' ? (it.group.existing ? 'merge road' : 'new road') : it.kind === 'pp' ? 'PP sheet' : 'sheet'),
+          h('td', {}, it.f.sub ? it.f.sub.code : '?'), h('td', {}, it.f.road), h('td', { class: 'mono' }, (Number.isFinite(it.f.start) ? M.formatStation(it.f.start) : '?') + '–' + (Number.isFinite(it.f.end) ? M.formatStation(it.f.end) : '?')),
+          h('td', {}, it.f.title || (it.kind === 'pp' ? it.f.series + ' #' + it.f.ppidx : '')), h('td', {}, [it.f.status, it.f.owner, it.f.due].filter(Boolean).join(' · ')),
+          h('td', { class: 'small' }, it.errors.map((x) => h('div', { class: 'err' }, '✖ ' + x)), it.warns.map((x) => h('div', { class: 'warn' }, '⚠ ' + x))))))));
+      const btn = h('button', { type: 'button', class: 'btn', id: 'csvImport', disabled: (!S.skipBad && sm.errors) || sm.rows === sm.errors, onclick: () => {
+        const made = commit(() => M.applyCSV(st, plan, { skipBad: S.skipBad }));
+        if (made) { closeModal(); for (const x of st.subs) ui.collapsed['sub:' + x.id] = false; saveUI(); renderAll(); toast('Imported: ' + made.roads + ' new roads, ' + made.sheets + ' sheets, ' + made.pp + ' PP sheets, ' + made.links + ' links. Undo with Ctrl+Z.'); }
+      } }, 'Import ' + (sm.rows - (S.skipBad ? sm.errors : 0)) + ' rows');
+      out.replaceChildren(h('div', { class: 'row' }, opt('csvHeader', 'First row is a header', 'header'), opt('csvMerge', 'Merge into matching existing roads', 'mode', 'merge'), opt('csvNew', 'Add as new roads', 'mode', 'new'), opt('csvDefaults', 'Apply default sheet list + PP to road rows', 'defaults'), opt('csvSkip', 'Skip rows with errors', 'skipBad')),
+        h('details', { open: !S.header || Object.keys(S.map).length < 3 }, h('summary', {}, 'Column mapping (' + Object.keys(S.map).length + ' of ' + M.CSV_FIELDS.length + ' matched)'), mapUI),
+        h('p', { id: 'csvSummary', class: sm.errors ? 'warnbox' : 'muted' }, sm.rows + ' rows: ' + sm.newRoads + ' new roads, ' + sm.mergedRoads + ' merged into existing, ' + sm.sheets + ' sheets' + (sm.ppRows ? ', ' + sm.ppRows + ' PP rows' : '') + (sm.skipped ? ', ' + sm.skipped + ' existing sheets kept as is' : '') + ' · ' + sm.errors + ' with errors, ' + sm.warnings + ' with warnings. Nothing existing is overwritten.'),
+        rowsUI, h('div', { class: 'row' }, btn));
+    }
+    openModal('Import CSV', h('div', { class: 'stack csvimp' },
+      h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec sm', id: 'csvTpl', onclick: () => download('pm-import-template.csv', M.csvTemplate(), 'text/csv') }, '⤓ Download template'),
+        h('button', { type: 'button', class: 'btn sec sm', id: 'csvExport', onclick: () => download('pm-roads-sheets-' + M.todayISO() + '.csv', M.exportImportCSV(st), 'text/csv') }, '⤓ Current data as importable CSV'),
+        h('span', { class: 'muted small' }, 'Stays on this device — nothing is uploaded.')),
+      drop, ta, out));
+    draw();
   }
 
   /* ----- overview rail ----- */
@@ -1559,6 +1605,9 @@
   });
   for (const [id, v] of [['#bBoth', 'both'], ['#bDr', 'Drainage'], ['#bSw', 'SWP3']]) $(id).addEventListener('click', () => { ui.branch = v; saveUI(); renderAll(); });
   $('#idxBtn').addEventListener('click', openIndex);
+  $('#csvBtn').addEventListener('click', () => openCSV());
+  window.addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+  window.addEventListener('drop', (e) => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (!f || !/\.(csv|tsv|txt)$/i.test(f.name) || e.defaultPrevented) return; e.preventDefault(); const r = new FileReader(); r.onload = () => openCSV(String(r.result)); r.readAsText(f); });
   $('#lkBtn').addEventListener('click', () => { ui.links = !ui.links; saveUI(); renderTree(); });
   $('#lkSelBtn').addEventListener('click', () => { ui.linkSel = !ui.linkSel; if (ui.linkSel) ui.links = true; saveUI(); renderTree(); });
   for (const [id, k] of [['#fStatus', 'status'], ['#fOwner', 'owner'], ['#fDisc', 'discipline'], ['#fFlag', 'flag']]) $(id).addEventListener('change', (e) => { filt[k] = e.target.value; renderAll(); });
