@@ -344,3 +344,4 @@ body.linking,body.linking *{cursor:crosshair!important}
 @media (max-width:900px){.branch-toggle{order:5}.discline{padding-left:8px}}
 .legend{pointer-events:none}
 .zoombar .ibtn,.zoombar button{white-space:nowrap}
+.settings>section{min-width:0;overflow-x:auto}

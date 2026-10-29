@@ -441,6 +441,24 @@ t('v2.3 segments: road only, auto label, migration of names', () => {
   assert.deepStrictEqual(M.readBackup(JSON.parse(JSON.stringify(M.backupFile(m)))), JSON.parse(JSON.stringify(m)));
 });
 
+t('v2.4 default sheet templates; reset only on request; user data untouched', () => {
+  const st = M.newState();
+  const titles = st.subs[0].templates.map((x) => x.title);
+  assert.ok(['Drainage Area Map', 'Hydrologic / Hydraulic Data Sheet', 'Inlet / Manhole Schedule', 'Culvert Layout', 'Cross Culvert Profile', 'Ditch / Channel Details', 'Outfall / Detention / Pond Layout', 'Standard & Miscellaneous Drainage Details', 'Culvert & Storm Sewer Quantity Summary', 'SWP3 Summary & Notes', 'SWP3 Standard Details'].every((x) => titles.includes(x)));
+  assert.deepStrictEqual(st.settings.series.map((x) => [x.id, x.discipline, x.enabled]), [['pp-drain', 'Drainage', true], ['pp-storm', 'Drainage', false], ['pp-swp3', 'SWP3', true]]);
+  const old = JSON.parse(JSON.stringify(st));
+  old.subs[0].templates = [{ id: 't1', title: 'My custom sheet', discipline: 'Drainage' }];
+  const m = M.migrate(old);
+  assert.deepStrictEqual(m.subs[0].templates.map((x) => x.title), ['My custom sheet'], 'existing templates untouched');
+  M.resetTemplates(m, m.subs[0].id);
+  assert.strictEqual(m.subs[0].templates.length, M.DEFAULT_TEMPLATES.length);
+  m.subs[1].templates = [];
+  M.resetAllTemplates(m);
+  assert.ok(m.subs.every((s) => s.templates.length === M.DEFAULT_TEMPLATES.length));
+  const g = M.addSegment(m, m.subs[0].id, { road: 'SH 249', start: '0+00', end: '5+00' }).seg;
+  assert.strictEqual(M.bulkAddTemplates(m, g.id, { discipline: 'SWP3' }).length, 2);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

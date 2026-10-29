@@ -88,7 +88,7 @@ async function serve(r) {
   ok(await pg.$eval('#genBtn', (e) => e.disabled), 'regenerate is a no-op when up to date (idempotent)');
   await click('#drawer .box form.g2 button[type=submit]');
   await sleep(200);
-  ok((await pg.$$('.node.n-sheet')).length === 14, 'standard (non-PP) set added: 4 PP + 10 = 14 sheets');
+  ok((await pg.$$('.node.n-sheet')).length === 15 && (await pg.$$eval('.node.n-sheet .nt', (e) => e.map((x) => x.textContent))).includes('Outfall / Detention / Pond Layout'), 'v2.4 standard set added: 4 PP + 11 = 15 sheets');
   const subB = await pg.$$eval('.node.n-sub', (els) => els[1].dataset.key);
   await click('.node[data-key="' + subB + '"] .nbtn.add');
   await pg.waitForSelector('#addSegRoad');
@@ -153,7 +153,7 @@ async function serve(r) {
   // 6. list view
   await click('#vList');
   await pg.waitForSelector('table.grid tbody tr');
-  ok((await pg.$$('table.grid tbody tr')).length === 18, 'list toggle shows all 18 sheets');
+  ok((await pg.$$('table.grid tbody tr')).length === 19, 'list toggle shows all 19 sheets');
   ok(await pg.$eval('table.grid thead th', (e) => getComputedStyle(e).position === 'sticky'), 'sticky table header');
   const dueIdx = await pg.$$eval('table.grid thead th', (ths) => ths.findIndex((t) => /Due/.test(t.textContent)));
   await pg.$$eval('table.grid thead th .sort', (bs, i) => bs[i].click(), dueIdx); await sleep(100);
@@ -204,6 +204,8 @@ async function serve(r) {
   await shot('settings');
   await setVal('#modalBody input[aria-label="Feet per sheet at 100 scale"]', '800');
   await sleep(200);
+  ok(!!(await pg.$('#resetAllTpl')), 'settings offers “Reset all templates to defaults”');
+  await pg.screenshot({ path: SHOTS + 'v2.4-settings-templates-' + tag + '.png' });
   await click('#modalClose');
   ok(/4 PP @ 100/.test(await txt('.node[data-key="' + subA + '"]')), 'A still 4 PP at 800 ft/sheet (1,550 → 2 per series)');
   await click('.node[data-key="' + segKey + '"]'); await pg.waitForSelector('#genBtn');
@@ -253,7 +255,7 @@ async function serve(r) {
   ok((await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 1, 'cycle not saved');
   // link via drag from a node's connector handle
   await pg.keyboard.press('Escape'); await sleep(250);
-  await click('#zFit'); await sleep(450);
+  await click('#zFit'); await sleep(450); await click('#zOut'); await click('#zOut'); await sleep(200);
   const hp = await pg.$eval('.node[data-key="sheet:' + ids.a1 + '"] .handle', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   const tp = await pg.$eval('.node[data-key="sheet:' + ids.b1 + '"]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   if (MOBILE) { /* finger drag */

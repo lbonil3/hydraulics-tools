@@ -10,22 +10,24 @@
   const DISCIPLINES = ['Drainage', 'SWP3'];
   const DEFAULT_SCALES = [{ scale: 20, ft: 240 }, { scale: 40, ft: 480 }, { scale: 50, ft: 600 }, { scale: 100, ft: 1200 }];
   const DEFAULT_QC = ['Design check', 'Drafting check', 'QC review', 'Back-check'];
+  /* v2.4 TxDOT-style PS&E sheet set (non-PP sheets). Length-based PP series (Drainage P&P, Storm Sewer P&P, SWP3 Layout) are in DEFAULT_SERIES. */
   const DEFAULT_TEMPLATES = [
     ['Drainage Area Map', 'Drainage'],
     ['Hydrologic / Hydraulic Data Sheet', 'Drainage'],
-    ['Storm Sewer Hydraulic Computations', 'Drainage'],
-    ['Inlet Calculations', 'Drainage'],
+    ['Inlet / Manhole Schedule', 'Drainage'],
     ['Culvert Layout', 'Drainage'],
-    ['Culvert Hydraulic Data', 'Drainage'],
-    ['Drainage Standard Details', 'Drainage'],
-    ['SWP3 Summary Sheet', 'SWP3'],
-    ['Erosion Control Plan', 'SWP3'],
-    ['SWP3 / EC Standard Details', 'SWP3'],
+    ['Cross Culvert Profile', 'Drainage'],
+    ['Ditch / Channel Details', 'Drainage'],
+    ['Outfall / Detention / Pond Layout', 'Drainage'],
+    ['Standard & Miscellaneous Drainage Details', 'Drainage'],
+    ['Culvert & Storm Sewer Quantity Summary', 'Drainage'],
+    ['SWP3 Summary & Notes', 'SWP3'],
+    ['SWP3 Standard Details', 'SWP3'],
   ];
   const DEFAULT_SERIES = [
     { id: 'pp-drain', name: 'Drainage Plan & Profile', discipline: 'Drainage', enabled: true, scale: null },
     { id: 'pp-storm', name: 'Storm Sewer Plan & Profile', discipline: 'Drainage', enabled: false, scale: null },
-    { id: 'pp-swp3', name: 'SWP3 Layout', discipline: 'SWP3', enabled: true, scale: null },
+    { id: 'pp-swp3', name: 'SWP3 Layout (Erosion & Sediment Control)', discipline: 'SWP3', enabled: true, scale: null },
   ];
   const DEFAULT_MILESTONES = ['30% submittal', '60% submittal', '90% submittal', 'Final PS&E'];
   let seq = 0;
@@ -353,7 +355,8 @@
     sub.templates.splice(i + 1, 0, c);
     return c;
   }
-  function resetTemplates(st, subId) { findSub(st, subId).templates = defaultTemplates(); }
+  function resetTemplates(st, subId) { const sub = findSub(st, subId); sub.templates = defaultTemplates(); log(st, sub.code + ' sheet templates reset to defaults'); }
+  function resetAllTemplates(st) { for (const sub of st.subs) sub.templates = defaultTemplates(); log(st, 'All sheet templates reset to defaults'); }
   /* staff: [{ name, role }] */
   function addStaff(st, name, role) {
     const n = String(name || '').trim();
@@ -708,7 +711,7 @@
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,
-    bulkAddTemplates, addTemplate, updateTemplate, deleteTemplate, duplicateTemplate, resetTemplates, addStaff, removeStaff,
+    bulkAddTemplates, addTemplate, updateTemplate, deleteTemplate, duplicateTemplate, resetTemplates, resetAllTemplates, DEFAULT_TEMPLATES, addStaff, removeStaff,
     setScale, removeScale, addMilestone, sortMilestones, removeMilestone,
     allSheets, todayISO, addDays, isOverdue, isUpcoming, progress, summary, filterRows, sortRows, saveView, csvCell, toCSV, ppCSV,
     migrate, normalize, backupFile, readBackup };

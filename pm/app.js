@@ -403,7 +403,7 @@
       body = [h('span', { class: 'code lg' }, n.sub.code, h('small', { class: 'ord', title: 'Build order' }, '#' + (M.orderedSubs(st).indexOf(n.sub) + 1))), h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.sub.name),
         h('div', { class: 'ns' }, plural(n.sub.segments.length, 'segment') + ' · ' + fmtFt(pp.length)),
         h('div', { class: 'ns' }, pp.total + ' PP @ ' + n.sub.scale + ' scale'),
-        h('div', { class: 'ns dmix' }, DISCS.map((d) => { const b = M.branchStats(st, n.sub, d); return h('span', { class: 'dm ' + DINFO[d].cls, title: d + ': ' + b.pct + '% · ' + b.total + ' sheets · ' + b.pp + ' PP' }, DINFO[d].short + ' ' + b.pct + '%'); }),
+        h('div', { class: 'ns dmix' }, DISCS.map((d) => { const b = M.branchStats(st, n.sub, d); return h('span', { class: 'dm ' + DINFO[d].cls, title: d + ': ' + Math.round(b.pct) + '% · ' + b.total + ' sheets · ' + b.pp + ' PP' }, DINFO[d].short + ' ' + Math.round(b.pct) + '%'); }),
           od ? h('span', { class: 'flag' }, '⚑ ' + od) : null)), ring(p.pct, 46)];
     } else if (n.type === 'disc') {
       const b = M.branchStats(st, n.sub, n.disc, null, today);
@@ -639,7 +639,7 @@
     })));
     if (ui.group) rows = rows.map((r, i) => ({ r, i })).sort((a, b) => M.subOrder(st, a.r.sub) - M.subOrder(st, b.r.sub) || DISCS.indexOf(a.r.sh.discipline) - DISCS.indexOf(b.r.sh.discipline) || a.i - b.i).map((x) => x.r);
     const grpRow = (r) => { const g = rows.filter((x) => x.sub === r.sub && x.sh.discipline === r.sh.discipline); const p = M.progress(g.map((x) => x.sh));
-      return h('tr', { class: 'grp ' + DINFO[r.sh.discipline].cls }, h('th', { colspan: cols.length, scope: 'rowgroup' }, h('span', { class: 'code' }, r.sub.code), ' ', h('span', { class: 'chip ' + DINFO[r.sh.discipline].cls }, DINFO[r.sh.discipline].short), ' ' + r.sub.name + ' · ' + r.sh.discipline + ' — ' + plural(g.length, 'sheet') + ' · ' + p.pct + '%')); };
+      return h('tr', { class: 'grp ' + DINFO[r.sh.discipline].cls }, h('th', { colspan: cols.length, scope: 'rowgroup' }, h('span', { class: 'code' }, r.sub.code), ' ', h('span', { class: 'chip ' + DINFO[r.sh.discipline].cls }, DINFO[r.sh.discipline].short), ' ' + r.sub.name + ' · ' + r.sh.discipline + ' — ' + plural(g.length, 'sheet') + ' · ' + Math.round(p.pct) + '%')); };
     const tbody = h('tbody', {}, rows.map((r, i) => [ui.group && (!i || rows[i - 1].sub !== r.sub || rows[i - 1].sh.discipline !== r.sh.discipline) ? grpRow(r) : null, h('tr', { tabindex: 0, 'data-id': r.sh.id, class: (M.isOverdue(r.sh, M.todayISO()) ? 'od ' : '') + (sel && sel.id === r.sh.id ? 'sel' : ''),
       onkeydown: (e) => { if (e.key === 'Enter' && e.target.tagName === 'TR') { e.preventDefault(); select_('sheet', r.sh.id); } } },
     cols.map((c, ci) => h('td', { class: c.wide ? 'wide' : '' , 'data-col': ci }, c.edit ? cellEditor(c, r, refresh) : c.k === 'title' ? null : (c.show ? c.show(r) : c.get(r))) ),
@@ -806,7 +806,7 @@
         h('div', {}, [b.overdue ? '⚑ ' + b.overdue + ' overdue' : '', b.blocked ? '⛓ ' + b.blocked + ' blocked' : '', b.update ? '⟳ ' + b.update + ' need update' : ''].filter(Boolean).join(' · ')))),
       h('h3', {}, 'Segments (shared with the ' + (d === 'SWP3' ? 'Drainage' : 'SWP3') + ' branch)'),
       sub.segments.length ? h('ul', { class: 'dlist' }, sub.segments.map((seg) => { const g = M.branchStats(st, sub, d, seg); return h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: () => { select_('seg', seg.id, d); focusNode('seg:' + seg.id + '@' + d); } },
-        h('span', { class: 'mono' }, M.formatStation(seg.start) + '–' + M.formatStation(seg.end)), h('span', { class: 'grow' }, ' ' + seg.name + ' · ' + g.total + ' sh · ' + g.pct + '%'), h('b', {}, g.pp + ' PP'))); })) : h('p', { class: 'muted' }, 'No segments yet — add one on the sub-project; it appears in both branches.'),
+        h('span', { class: 'mono' }, M.formatStation(seg.start) + '–' + M.formatStation(seg.end)), h('span', { class: 'grow' }, ' ' + seg.name + ' · ' + g.total + ' sh · ' + Math.round(g.pct) + '%'), h('b', {}, g.pp + ' PP'))); })) : h('p', { class: 'muted' }, 'No segments yet — add one on the sub-project; it appears in both branches.'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', id: 'genBranchBtn', disabled: !sub.segments.length, onclick: () => { let n = 0; for (const seg of sub.segments) { const pl = M.planGenerate(st, seg.id, { discipline: d }); if (pl.create.length + pl.update.length + pl.remove.length + pl.removeTouched.length) { genPP(seg, d); n++; } } if (!n) toast(d + ' PP sheets already up to date.'); } }, 'Generate ' + d + ' PP for all segments'),
         h('button', { type: 'button', class: 'btn sec', onclick: () => { select_('sub', sub.id); setTimeout(() => { const i = $('#addSegRoad'); if (i) i.focus(); }, 30); } }, '+ Segment')));
@@ -1041,6 +1041,8 @@
             h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + sub.code + ' earlier', disabled: i === 0, onclick: () => move(-1) }, '↑'),
             h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + sub.code + ' later', disabled: i === arr.length - 1, onclick: () => move(1) }, '↓'));
         }))),
+      h('section', {}, h('h3', {}, 'Standard sheet templates'), h('p', { class: 'muted' }, 'Each sub-project has its own editable list (open a sub-project → “Standard (non-PP) sheet set”). Resetting changes the template lists only — sheets already on segments are not touched.'),
+        h('button', { type: 'button', class: 'btn sec', id: 'resetAllTpl', onclick: () => { if (confirm('Reset the standard sheet templates of ALL sub-projects to the defaults?\n\nExisting sheets on segments are not changed.')) { commit(() => M.resetAllTemplates(st)); toast('Templates reset to defaults.'); } } }, 'Reset all templates to defaults')),
       h('section', {}, h('h3', {}, 'QC checklist steps'), qc),
       h('section', {}, h('h3', {}, 'Backup & export'),
         h('p', {}, 'Last backup: ', h('b', { id: 'lastBackup' }, st.lastBackup ? new Date(st.lastBackup).toLocaleString() : 'never')),
