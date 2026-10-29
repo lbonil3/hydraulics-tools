@@ -928,7 +928,48 @@
     return out;
   }
   function parseTSV(text) { return String(text || '').replace(/\r/g, '').split('\n').filter((l) => l.trim() !== '').map((l) => l.split('\t').map((c) => c.trim())); }
-  return { SCHEMA, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.13 split / merge */
+  function splitSegment(st, segId, station, opts) {
+    const hit = findSeg(st, segId); if (!hit) throw new Error('No such segment');
+    const { sub, seg } = hit, x = parseStation(station);
+    if (!Number.isFinite(x)) throw new Error('Split station must look like 10+00, 1000 or 10+00.50.');
+    if (!(x > seg.start && x < seg.end)) throw new Error('Split station must be between ' + formatStation(seg.start) + ' and ' + formatStation(seg.end) + '.');
+    const b = { id: uid(), name: '', road: seg.road, start: x, end: seg.end, scale: seg.scale, reverse: !!seg.reverse, notes: seg.notes || '', revs: [], sheets: [] };
+    b.name = segLabel(b);
+    /* generated PP sheets whose range starts at/after the split move to the new part; other sheets stay (or are copied) */
+    const moving = seg.sheets.filter((sh) => sh.gen && sh.gen.start >= x);
+    seg.sheets = seg.sheets.filter((sh) => !moving.includes(sh));
+    b.sheets = moving;
+    let copied = 0;
+    if (opts && opts.copy) for (const sh of seg.sheets.filter((q) => !q.gen)) { b.sheets.push({ ...clone(sh), id: uid(), status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], number: '' }); copied++; }
+    seg.end = x; seg.name = segLabel(seg);
+    sub.segments.push(b); sub.segments.sort((p, q) => p.start - q.start);
+    for (const g of [seg, b]) if (g.sheets.some((q) => q.gen) || (g === b && seg.sheets.some((q) => q.gen))) applyGenerate(st, g.id, planGenerate(st, g.id), { removeTouched: false });
+    log(st, 'Split ' + seg.road + ' at ' + formatStation(x) + ' → ' + seg.name + ' + ' + b.name);
+    return { a: seg, b, moved: moving.length, copied };
+  }
+  function touching(st, segId) {
+    const hit = findSeg(st, segId); if (!hit) return [];
+    const r = String(hit.seg.road).trim().toLowerCase();
+    return hit.sub.segments.filter((o) => o !== hit.seg && String(o.road).trim().toLowerCase() === r && (Math.abs(o.start - hit.seg.end) < 0.01 || Math.abs(o.end - hit.seg.start) < 0.01));
+  }
+  function mergeSegments(st, aId, bId) {
+    const A = findSeg(st, aId), B = findSeg(st, bId);
+    if (!A || !B) throw new Error('No such segment');
+    if (A.sub !== B.sub) throw new Error('Segments are in different sub-projects.');
+    if (!touching(st, aId).includes(B.seg)) throw new Error('Segments must be on the same road and touch end-to-start.');
+    const [a, b] = A.seg.start < B.seg.start ? [A.seg, B.seg] : [B.seg, A.seg];
+    const off = Math.max(0, ...a.sheets.filter((q) => q.gen).map((q) => q.gen.idx));
+    for (const sh of b.sheets) { if (sh.gen) sh.gen.idx += off; a.sheets.push(sh); }
+    for (const l of st.links) for (const e of [l.src, l.dst]) if (e.t === 'seg' && e.id === b.id) e.id = a.id;
+    st.links = st.links.filter((l) => !(l.src.t === l.dst.t && l.src.id === l.dst.id));
+    a.end = b.end; a.name = segLabel(a);
+    A.sub.segments = A.sub.segments.filter((g) => g !== b);
+    if (a.sheets.some((q) => q.gen)) applyGenerate(st, a.id, planGenerate(st, a.id), { removeTouched: false });
+    log(st, 'Merged into ' + a.name);
+    return a;
+  }
+  return { SCHEMA, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

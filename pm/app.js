@@ -939,7 +939,25 @@
         e.preventDefault(); const d = Number(String(off.value).replace(/\s/g, '')); if (!Number.isFinite(d) || !d) return toast('Enter an offset in feet, e.g. +100 or -50.');
         if (!confirm('Shift ' + seg.name + ' by ' + (d > 0 ? '+' : '') + d + ' ft? Generated PP sheet ranges shift too.')) return;
         commit(() => M.shiftStations(st, seg.id, d)); toast('Shifted by ' + (d > 0 ? '+' : '') + d + ' ft.');
-      } }, off, h('button', { type: 'submit', class: 'btn sec', id: 'stShift' }, 'Shift road')));
+      } }, off, h('button', { type: 'submit', class: 'btn sec', id: 'stShift' }, 'Shift road')),
+      splitMerge(sub, seg));
+  }
+  function splitMerge(sub, seg) {
+    const at = h('input', { id: 'spAt', class: 'mono', placeholder: 'Split at e.g. ' + M.formatStation(Math.round((seg.start + seg.end) / 200) * 100), 'aria-label': 'Split at station', autocomplete: 'off' });
+    const nb = M.touching(st, seg.id);
+    return h('div', { class: 'stack' },
+      h('form', { class: 'addrow', onsubmit: (e) => {
+        e.preventDefault(); const x = M.parseStation(at.value);
+        if (!(x > seg.start && x < seg.end)) return toast('Split station must be between ' + M.formatStation(seg.start) + ' and ' + M.formatStation(seg.end) + '.');
+        const others = seg.sheets.filter((q) => !q.gen).length;
+        const copy = others ? confirm('Split ' + seg.name + ' at ' + M.formatStation(x) + '.\n\nGenerated PP sheets go to the part that contains them. ' + others + ' other sheet(s) stay on the first part.\n\nOK = also copy those ' + others + ' sheet(s) to the second part (as Not started). Cancel = keep them on the first part only.') : false;
+        if (!others && !confirm('Split ' + seg.name + ' at ' + M.formatStation(x) + '?')) return;
+        const r = commit(() => M.splitSegment(st, seg.id, x, { copy })); if (r) { setSeg(r.b.id, false); saveUI(); toast('Split into ' + r.a.name + ' and ' + r.b.name + (r.copied ? ' · ' + r.copied + ' sheets copied' : '') + '. Undo with Ctrl+Z.'); }
+      } }, at, h('button', { type: 'submit', class: 'btn sec', id: 'spBtn' }, '✂ Split')),
+      nb.length ? h('div', { class: 'row' }, nb.map((o) => h('button', { type: 'button', class: 'btn sec sm mergebtn', onclick: () => {
+        if (!confirm('Merge ' + seg.name + ' with ' + o.name + '? Sheets of both are combined and PP sheets renumbered.')) return;
+        const a = commit(() => M.mergeSegments(st, seg.id, o.id)); if (a) { select_('seg', a.id); toast('Merged into ' + a.name + '. Undo with Ctrl+Z.'); }
+      } }, '⇔ Merge with ' + M.formatStation(o.start) + '–' + M.formatStation(o.end)))) : null);
   }
   /* v2.12 Stations table view (Excel-like: Tab/Enter navigation, paste TSV rows) */
   const SCOLS = ['road', 'start', 'end', 'scale'];

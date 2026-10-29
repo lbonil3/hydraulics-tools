@@ -541,6 +541,22 @@ async function serve(r) {
   for (let i = 0; i < 3; i++) { await click('#undoBtn'); await sleep(250); }
   ok((await D12()).subs[0].segments[0].end === seg12.end, 'station edits are undoable');
   await click('#vTree'); await sleep(300); await pg.keyboard.press('Escape'); await sleep(150);
+  // 10l. v2.13 split / merge
+  const D13 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
+  const g13 = (await D13()).subs[0].segments[0];
+  await click('.node[data-key="seg:' + g13.id + '@Drainage"]'); await pg.waitForSelector('#spAt');
+  await setVal('#spAt', '18+00'); await click('#spBtn'); await sleep(500);
+  const a13 = (await D13()).subs[0].segments;
+  ok(a13.length === 2 && a13[0].end === 1800 && a13[1].start === 1800 && a13[1].end === g13.end, 'split a road segment at a station');
+  ok(a13[1].sheets.some((q) => q.gen) && a13[0].sheets.length + a13[1].sheets.length >= g13.sheets.length, 'PP sheets follow their station range; other sheets kept');
+  await click('.node[data-key="seg:' + a13[0].id + '@Drainage"]'); await pg.waitForSelector('.mergebtn');
+  await pg.screenshot({ path: SHOTS + 'v2.13-split-merge-' + tag + '.png' });
+  await click('.mergebtn'); await sleep(500);
+  const m13 = (await D13()).subs[0].segments;
+  ok(m13.length === 1 && m13[0].start === g13.start && m13[0].end === g13.end, 'merge two touching segments of the same road');
+  for (let i = 0; i < 2; i++) { await click('#undoBtn'); await sleep(250); }
+  ok((await D13()).subs[0].segments.length === 1 && (await D13()).subs[0].segments[0].id === g13.id, 'split + merge undoable');
+  await pg.keyboard.press('Escape'); await sleep(150);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

@@ -635,6 +635,27 @@ t('v2.12 stations: preview, regenerate keeping edits, shift, reverse, overlap, t
   assert.throws(() => M.applyStationRows(st, [{ segId: g.id, start: 'x' }]), /Row 1/);
 });
 
+t('v2.13 split at a station and merge touching segments', () => {
+  const st = M.newState('X'); const A = st.subs[0];
+  const g = M.addSegment(st, A.id, { road: 'FM 1960', start: '10+00', end: '34+00' }).seg;
+  M.applyGenerate(st, g.id, M.planGenerate(st, g.id));
+  const other = M.addSheet(st, g.id, { title: 'Culvert Layout' });
+  const drn = (x) => x.sheets.filter((q) => q.gen && q.discipline === 'Drainage');
+  assert.throws(() => M.splitSegment(st, g.id, '40+00'), /between/);
+  const r = M.splitSegment(st, g.id, '22+00', { copy: true });
+  assert.strictEqual(r.a.end, 2200); assert.strictEqual(r.b.start, 2200); assert.strictEqual(r.b.end, 3400);
+  assert.strictEqual(drn(r.a).length, 1); assert.strictEqual(drn(r.b).length, 1);
+  assert.ok(r.a.sheets.includes(other) && r.b.sheets.some((q) => q.title === 'Culvert Layout' && q.id !== other.id), 'other sheets stay, copy on request');
+  assert.deepStrictEqual(M.touching(st, r.a.id).map((x) => x.id), [r.b.id]);
+  M.addLink(st, { t: 'seg', id: r.b.id }, { t: 'sheet', id: other.id }, 'upd');
+  const m = M.mergeSegments(st, r.b.id, r.a.id);
+  assert.strictEqual(m.start, 1000); assert.strictEqual(m.end, 3400); assert.strictEqual(A.segments.length, 1);
+  assert.strictEqual(drn(m).length, 2); assert.deepStrictEqual(drn(m).map((q) => q.gen.idx).sort(), [1, 2]);
+  assert.strictEqual(st.links[0].src.id, m.id, 'links re-pointed');
+  const far = M.addSegment(st, A.id, { road: 'FM 1960', start: '50+00', end: '60+00' }).seg;
+  assert.throws(() => M.mergeSegments(st, m.id, far.id), /touch/);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {
