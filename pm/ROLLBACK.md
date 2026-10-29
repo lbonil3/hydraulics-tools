@@ -24,7 +24,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.13` / `pm-v2.13-final` | Split / merge segments |
 | `pm-v2.14` / `pm-v2.14-final` | Copy road to sub-project |
 | `pm-v2.15` / `pm-v2.15-final` | Quick-add + command palette |
-| `pm-v2.16` | Multi-select + bulk edit |
+| `pm-v2.16` / `pm-v2.16-final` | Multi-select + bulk edit |
+| `pm-v2.17` | Recently changed + remembered filters |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -283,3 +284,12 @@ No schema change; adds ui pref lastScale.
 
 Undo: `git revert --no-edit 1daff27` and push, or `git checkout pm-v2.15-final -- pm`, commit, push.
 No schema change.
+
+## v2.17
+
+| Commit | Change |
+|---|---|
+| cad65df | Recently changed + remembered filters |
+
+Undo: `git revert --no-edit cad65df` and push, or `git checkout pm-v2.16-final -- pm`, commit, push.
+Log entries gain an optional ref {t,id}; ui pref gains filt.
