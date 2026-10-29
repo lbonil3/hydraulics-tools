@@ -508,3 +508,20 @@ textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size
 @media (max-width:700px){.roadtab th:nth-child(1){width:28%}.roadtab th:nth-child(2),.roadtab th:nth-child(3){width:21%}.roadtab th:nth-child(4){width:14%}.roadtab th:nth-child(5){width:7%}.roadtab th:nth-child(6){width:12%}.roadtab input.scell{font-size:14px;padding:4px 3px}}
 @media (max-width:700px){.roadtab th:nth-child(1){width:34%}.roadtab th:nth-child(2),.roadtab th:nth-child(3){width:19%}.roadtab th:nth-child(4){width:12%}.roadtab th:nth-child(5){width:6%}.roadtab th:nth-child(6){width:10%}.roadtab input.scell{font-size:13px;padding:4px 2px}.roadtab th,.roadtab td{padding:3px 2px}.roadtab td:last-child a,.roadtab td:last-child button{font-size:12px}}
 @media (max-width:700px){.tablewrap:has(.roadtab){overflow-x:auto}.roadtab{min-width:470px}}
+/* v3.1 sub-project rename */
+.node.n-disc .nt{display:flex;align-items:center;gap:4px;min-width:0}
+.node.n-disc .nt .ntx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.nren{border:0;background:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 3px;line-height:1;opacity:0;border-radius:4px}
+.node:hover .nren,.node:focus-within .nren,.node.sel .nren{opacity:1}
+.nren:hover,.nren:focus-visible{color:var(--brand);background:var(--brand-soft);opacity:1}
+@media (hover:none){.nren{opacity:.8;font-size:15px;padding:2px 6px}}
+.subname-ed{display:inline-flex;flex-direction:column;gap:2px;width:100%;min-width:0}
+.subname-in{width:100%;min-width:0;font:inherit;padding:3px 6px;border:1px solid var(--line2);border-radius:6px;background:var(--surface);color:inherit}
+.subname-in[aria-invalid]{border-color:#dc2626;outline-color:#dc2626}
+.subname-err:empty{display:none}
+.subname-err{color:#dc2626;font-size:11.5px;font-weight:600;white-space:normal}
+.node .nt.editing .subname-in{font-size:13px;padding:2px 5px}
+.ordrow .grow .subname-in{max-width:280px}
+.nren{display:none;opacity:1}
+.node.n-disc:hover .nren,.node.n-disc.sel .nren,.node.n-disc:focus-within .nren{display:inline-block}
+@media (hover:none){.node.n-disc:hover .nren{display:none}.node.n-disc.sel .nren{display:inline-block}}
