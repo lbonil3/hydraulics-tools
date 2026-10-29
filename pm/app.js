@@ -5,12 +5,13 @@
 (function () {
   'use strict';
   const C = window.PMCrypto, M = window.PMModel;
-  const KEY = 'pm.data.v3', UIKEY = 'pm.ui.v3', OLDKEY = 'pm.vault.v1', V2KEY = 'pm.data.v2', V2BAK = 'pm.data.v2.pre-v3-backup', V2UI = 'pm.ui.v2';
+  const KEY = 'pm.data.v3', UIKEY = 'pm.ui.v3', OLDKEY = 'pm.vault.v1', V2KEY = 'pm.data.v2', V2BAK = 'pm.data.v2.pre-v3-backup', V2UI = 'pm.ui.v2', V31BAK = 'pm.data.v3.pre-v3.2-backup';
   const BACKUP_DAYS = 14;
   const $ = (s, r) => (r || document).querySelector(s);
   const SVGNS = 'http://www.w3.org/2000/svg';
 
   let st = null;
+  let pendingMig32 = null; /* { raw, info } while the v3.1 → v3.2 notice is open: nothing is written until Continue */
   let pendingMig = null; /* { raw, info } while the v2 → v3 migration notice is open: nothing is written until it is acknowledged */
   const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true, links: true, linkSel: false, branch: 'both', group: '', vf: { sub: '', discipline: '', owner: '' } },
     (() => { const u = safeJSON(localStorage.getItem(UIKEY)); if (u) return u; const o = safeJSON(localStorage.getItem(V2UI)); if (!o) return {}; delete o.collapsed; if (Array.isArray(o.cols)) o.cols = o.cols.flatMap((k) => (k === 'seg' ? ['section', 'road'] : [k])); if (o.sort && o.sort.key === 'seg') o.sort.key = 'section'; if (o.filt) o.filt.q = ''; return o; })());
@@ -90,7 +91,18 @@
   /* ---------- persistence ---------- */
   function load() {
     const raw = safeJSON(localStorage.getItem(KEY));
-    if (raw) { try { return M.migrate(raw); } catch (e) { toast('Stored data could not be read: ' + e.message); } }
+    if (raw) {
+      try {
+        const need32 = raw.schema === 3 && !raw.v32;
+        const s3 = M.migrate(raw);
+        if (need32) {
+          const rawStr = localStorage.getItem(KEY);
+          if (!localStorage.getItem(V31BAK)) localStorage.setItem(V31BAK, rawStr); /* untouched copy of the v3.1 data */
+          const info = M.upgrade32(s3); if (info) pendingMig32 = { raw: rawStr, info };
+        }
+        return s3;
+      } catch (e) { toast('Stored data could not be read: ' + e.message); }
+    }
     const old = localStorage.getItem(V2KEY);
     if (old && safeJSON(old)) {
       try {
@@ -111,7 +123,7 @@
   }
   function flush() {
     clearTimeout(saveTm);
-    if (!st || pendingMig) return;
+    if (!st || pendingMig || pendingMig32) return;
     dirty = false;
     const json = JSON.stringify(st);
     track(json);
@@ -143,6 +155,7 @@
   function commit(fn, opts) {
     let r;
     try { r = fn(); } catch (e) { toast(e.message); return undefined; }
+    try { M.syncPP(st); } catch (e) { /* keep the edit even if a recount fails */ }
     hardEdit = true;
     save();
     if (!opts || opts.render !== false) renderAll();
@@ -203,7 +216,7 @@
       onclick: (e) => { if (e.shiftKey || e.ctrlKey || e.metaKey || (msel.size && ui.view === 'board')) { pickSheet(sh.id, e.shiftKey ? 'range' : 'toggle', [...document.querySelectorAll('.scard[data-id]')].map((x) => x.dataset.id)); return; } select_('sheet', sh.id); } }, attrs || {}),
       h('span', { class: 'sc-top' }, h('span', { class: 'code', title: M.subName(r.sub) }, r.sub.code), h('span', { class: 'chip ' + DINFO[sh.discipline].cls }, DINFO[sh.discipline].short), sh.number ? h('span', { class: 'muted' }, '#' + sh.number) : null),
       h('span', { class: 'sc-title' }, sh.title),
-      h('span', { class: 'sc-meta muted' }, r.seg.title + (rowRoad(r) ? ' · ' + rowRoad(r) : '')),
+      h('span', { class: 'sc-meta muted' }, r.seg.title + (rowRoad(r) ? ' · ' + rowRoad(r) : '') + (M.sheetRange(sh) ? ' · Sta ' + staTxt(M.sheetRange(sh)) : '')),
       h('span', { class: 'sc-meta' }, h('span', { class: 'dot st-' + slug(sh.status) }), sh.status,
         sh.due ? h('span', { class: M.isOverdue(sh, today) ? 'bad' : '' }, ' · due ' + sh.due) : null, ' · ', sh.owner || h('i', { class: 'muted' }, 'unassigned')),
       extra ? h('span', { class: 'sc-why' }, extra) : null);
@@ -336,8 +349,8 @@
           const pp = M.isPPSec(seg);
           A.push({ label: M.subTag(sub) + ' · ' + seg.title, hint: d + ' section · ' + plural(seg.sheets.length, 'sheet') + (pp ? ' · ' + M.segPP(st, sub, seg).total + ' PP' : ''), kind: 'Section', rank: 1, run: toTree(sub.id, d, seg.id, () => { select_('seg', seg.id); focusNode('seg:' + seg.id); }) });
           if (pp) A.push({ label: 'Add road to ' + M.subTag(sub) + ' · ' + seg.title, kind: 'Action', kw: 'new road entry', run: toTree(sub.id, d, seg.id, () => { select_('seg', seg.id); focusAdd('addRoadName'); }) });
-          for (const road of pp ? M.roadsOf(sub, seg) : []) A.push({ label: road.name, hint: M.subTag(sub) + ' · ' + seg.title + (M.hasSta(road) ? ' · ' + fmtFt(M.segLength(road)) + ' · ' + M.segPP(st, sub, road).total + ' PP' : ' · no stations yet'), kind: 'Road', rank: 1, run: toTree(sub.id, d, seg.id, () => { select_('road', road.id); focusNode('seg:' + seg.id); }) });
-          for (const sh of seg.sheets) { const rd = M.sheetRoad(st, sub, sh); A.push({ label: sh.title, hint: M.subTag(sub) + ' · ' + seg.title + (rd && !sh.gen ? ' · ' + rd : '') + (sh.number ? ' · #' + sh.number : '') + ' · ' + sh.status, kw: sh.owner + ' ' + rd, kind: 'Sheet', run: () => { select_('sheet', sh.id); if (ui.view === 'tree') revealSheet({ sub, seg, sh }); } }); }
+          for (const road of pp ? M.roadsOf(sub, seg) : []) A.push({ label: road.name, hint: M.subTag(sub) + ' · ' + seg.title + (M.hasSta(road) ? ' · ' + fmtFt(M.segLength(road)) + ' · ' + M.segPP(st, sub, road).total + ' PP' : ' · no stations yet'), kind: 'Road', rank: 1, kw: M.hasSta(road) ? 'sta ' + M.formatStation(road.start) + ' ' + M.formatStation(road.end) : '', run: toTree(sub.id, d, seg.id, () => { select_('road', road.id); focusNode(M.rgKey(seg, road.road)); }) });
+          for (const sh of seg.sheets) { const rd = M.sheetRoad(st, sub, sh); A.push({ label: sh.title, hint: M.subTag(sub) + ' · ' + seg.title + (rd ? ' · ' + rd : '') + (M.sheetRange(sh) ? ' · ' + staTxt(M.sheetRange(sh)) : '') + (sh.number ? ' · #' + sh.number : '') + ' · ' + sh.status, kw: sh.owner + ' ' + rd + (M.sheetRange(sh) ? ' sta ' + M.formatStation(M.sheetRange(sh).start) + ' ' + M.formatStation(M.sheetRange(sh).end) + ' ' + M.rangeText(M.sheetRange(sh)) : ''), kind: 'Sheet', run: () => { select_('sheet', sh.id); if (ui.view === 'tree') revealSheet({ sub, seg, sh }); } }); }
         }
       }
     }
@@ -524,10 +537,11 @@
   function revealRef(ref) {
     const r = M.resolve(st, ref);
     if (!r) return;
-    openBranch(r.sub.id, r.seg.discipline, r.t === 'sheet' ? r.seg.id : null); saveUI();
+    const bk = r.t === 'sheet' ? sheetBranchKey(r.sub, r.seg, r.sh) : r.t === 'road' ? M.rgKey(r.seg, r.road.road) : null;
+    openBranch(r.sub.id, r.seg.discipline, r.t === 'sheet' || r.t === 'road' ? r.seg.id : null, r.t === 'sheet' ? bk : null); saveUI();
     if (ui.view !== 'tree') { ui.view = 'tree'; saveUI(); }
     renderAll(); select_(r.t, ref.id);
-    setTimeout(() => focusNode(r.t === 'sheet' ? 'sheet:' + ref.id : 'seg:' + r.seg.id), 20);
+    setTimeout(() => focusNode(r.t === 'sheet' ? 'sheet:' + ref.id : bk || 'seg:' + r.seg.id), 20);
   }
   function refPanel(title, items, cls, flag) {
     return h('section', { class: 'panel', 'data-panel': flag }, h('h3', {}, title + ' (' + items.length + ')'),
@@ -542,9 +556,9 @@
   }
 
   /* ----- tree (v3): Project → Drainage / SWP3 → sub-projects A–D → sections → sheets. Road entries are data inside P&P sections, not nodes. ----- */
-  const COLX = [0, 280, 560, 860, 1200];
-  const W = { root: 250, dtop: 250, disc: 270, seg: 310, sheet: 320 };
-  const H = { root: 112, dtop: 100, disc: 92, seg: 70, segpp: 104, sheet: 56 };
+  const COLX = [0, 280, 560, 860, 1200, 1530];
+  const W = { root: 250, dtop: 250, disc: 270, seg: 310, sheet: 320, road: 290, oth: 290 };
+  const H = { root: 112, dtop: 100, disc: 92, seg: 70, segpp: 104, sheet: 56, road: 88, oth: 56 };
   const GAP = 10;
   function isCollapsed(key, def) { return key in ui.collapsed ? ui.collapsed[key] : def; }
   const DISCS = ['Drainage', 'SWP3'];
@@ -552,11 +566,17 @@
   function shownDiscs() { return ui.branch === 'Drainage' || ui.branch === 'SWP3' ? [ui.branch] : DISCS; }
   function setSeg(id, v) { ui.collapsed['seg:' + id] = v; }
   /* open the path to a sub-project branch (and optionally one section) */
-  function openBranch(subId, d, secId) { ui.collapsed.root = false; ui.collapsed['dtop:' + d] = false; ui.collapsed['disc:' + subId + ':' + d] = false; if (secId) ui.collapsed['seg:' + secId] = false; if (!shownDiscs().includes(d)) ui.branch = 'both'; }
+  function openBranch(subId, d, secId, rgk) { ui.collapsed.root = false; ui.collapsed['dtop:' + d] = false; ui.collapsed['disc:' + subId + ':' + d] = false; if (secId) ui.collapsed['seg:' + secId] = false; if (rgk) ui.collapsed[rgk] = false; if (!shownDiscs().includes(d)) ui.branch = 'both'; }
   function keyQuery(key) { return '.node[data-key="' + key + '"]'; }
   function rowRoad(r) { return M.sheetRoad(st, r.sub, r.sh); }
+  /* v3.2: tree key of the road branch (or "Other sheets") a sheet of a road section hangs under; null for other sections */
+  function sheetBranchKey(sub, seg, sh) { if (!M.isPPSec(seg)) return null; const g = M.sheetGroupSlug(sub, seg, sh); return g ? 'rd:' + seg.id + ':' + g : 'oth:' + seg.id; }
+  function roadBranchKey(hit) { return hit && hit.sec ? M.rgKey(hit.sec, hit.road.road) : null; }
+  function staTxt(rg) { return rg ? M.formatStation(rg.start) + ' – ' + M.formatStation(rg.end) : 'no range'; }
+  function bigProject() { return M.allSheets(st).length > 80; }
   function buildTree() {
     const root = { key: 'root', type: 'root', depth: 0, kids: [], collapsed: isCollapsed('root', false) };
+    const big = bigProject();
     for (const d of shownDiscs()) {
       const tn = { key: 'dtop:' + d, type: 'dtop', disc: d, depth: 1, kids: [], collapsed: isCollapsed('dtop:' + d, false) };
       for (const sub of M.orderedSubs(st)) {
@@ -565,7 +585,16 @@
         for (const seg of M.sectionsOf(sub, d)) {
           const gn = { key: 'seg:' + seg.id, type: 'seg', sub, seg, disc: d, depth: 3, kids: [], pp: M.isPPSec(seg) };
           gn.collapsed = isCollapsed(gn.key, true);
-          for (const sh of seg.sheets) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
+          if (gn.pp) {
+            for (const g of M.roadGroups(sub, seg)) {
+              const rn = { key: g.key, type: 'road', sub, seg, g, disc: d, depth: 4, kids: [] };
+              rn.collapsed = isCollapsed(g.key, big);
+              for (const sh of M.sheetsOfGroup(sub, seg, g)) rn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, g, disc: d, depth: 5, kids: [] });
+              gn.kids.push(rn);
+            }
+            const oth = M.otherSheets(sub, seg);
+            if (oth.length) { const on = { key: 'oth:' + seg.id, type: 'oth', sub, seg, disc: d, depth: 4, kids: [] }; on.collapsed = isCollapsed(on.key, big); for (const sh of oth) on.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 5, kids: [] }); gn.kids.push(on); }
+          } else for (const sh of seg.sheets) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
           dn.kids.push(gn);
         }
         tn.kids.push(dn);
@@ -589,6 +618,8 @@
   function nodeRows(n) {
     if (n.type === 'sheet') return [{ sub: n.sub, seg: n.seg, sh: n.sh }];
     if (n.type === 'seg') return n.seg.sheets.map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
+    if (n.type === 'road') return M.sheetsOfGroup(n.sub, n.seg, n.g).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
+    if (n.type === 'oth') return M.otherSheets(n.sub, n.seg).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'disc') return M.sectionsOf(n.sub, n.disc).flatMap((seg) => seg.sheets.map((sh) => ({ sub: n.sub, seg, sh })));
     if (n.type === 'dtop') return M.allSheets(st).filter((r) => r.seg.discipline === n.disc);
     return M.allSheets(st);
@@ -599,7 +630,7 @@
     const any = rows.some(sheetMatches);
     const q = filt.q.trim().toLowerCase();
     const roadTxt = n.type === 'seg' ? M.roadsOf(n.sub, n.seg).map((r) => r.name).join(' ') : '';
-    const selfHit = !!q && (n.type === 'dtop' ? n.disc.toLowerCase().includes(q) : n.type === 'disc' ? (M.subLabel(n.sub) + ' ' + n.disc).toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.title + ' ' + roadTxt).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
+    const selfHit = !!q && (n.type === 'dtop' ? n.disc.toLowerCase().includes(q) : n.type === 'disc' ? (M.subLabel(n.sub) + ' ' + n.disc).toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.title + ' ' + roadTxt).toLowerCase().includes(q) : n.type === 'road' ? (n.g.name + ' ' + n.g.entries.map((r) => r.name).join(' ')).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
     const onlyQ = !filt.status && !filt.owner && !filt.discipline && !filt.flag;
     return { dim: !(any || (selfHit && onlyQ)), hit: selfHit && (n.type !== 'sheet' || any) };
   }
@@ -643,7 +674,8 @@
     const r = M.resolve(st, ref);
     if (!r) return null;
     const d = r.seg.discipline;
-    return (r.t === 'sheet' && map.get('sheet:' + r.sh.id)) || map.get('seg:' + r.seg.id) || map.get('disc:' + r.sub.id + ':' + d) || map.get('dtop:' + d) || map.get('root') || null;
+    const bk = r.t === 'sheet' ? sheetBranchKey(r.sub, r.seg, r.sh) : r.t === 'road' ? M.rgKey(r.seg, r.road.road) : null;
+    return (r.t === 'sheet' && map.get('sheet:' + r.sh.id)) || (bk && map.get(bk)) || map.get('seg:' + r.seg.id) || map.get('disc:' + r.sub.id + ':' + d) || map.get('dtop:' + d) || map.get('root') || null;
   }
   function selKey() { return sel ? (sel.type === 'root' ? 'root' : sel.type + ':' + sel.id) : null; }
   function drawLinks(nodes, maxX, maxY) {
@@ -735,15 +767,15 @@
     else if (sel.type === 'sub') p = { sub: sel.id };
     else if (sel.type === 'disc') { const [sid, d] = sel.id.split(':'); p = { sub: sid, disc: d }; }
     else if (sel.type === 'seg') { const r = M.findSeg(st, sel.id); p = r && { sub: r.sub.id, seg: sel.id, disc: r.seg.discipline }; }
-    else if (sel.type === 'road') { const r = M.findRoad(st, sel.id); p = r && { sub: r.sub.id, seg: r.sec.id, disc: r.sec.discipline }; }
-    else if (sel.type === 'sheet') { const r = M.findSheet(st, sel.id); p = r && { sub: r.sub.id, seg: r.seg.id, disc: r.seg.discipline }; }
+    else if (sel.type === 'road') { const r = M.findRoad(st, sel.id); p = r && { sub: r.sub.id, seg: r.sec.id, disc: r.sec.discipline, rg: roadBranchKey(r) }; }
+    else if (sel.type === 'sheet') { const r = M.findSheet(st, sel.id); p = r && { sub: r.sub.id, seg: r.seg.id, disc: r.seg.discipline, rg: sheetBranchKey(r.sub, r.seg, r.sh) }; }
     if (!p) return;
     ui.collapsed = M.focusBranch(st, p); if (p.disc && !shownDiscs().includes(p.disc)) ui.branch = 'both';
     if (ui.view !== 'tree') ui.view = 'tree';
     saveUI(); renderAll(); fit(); toast('Focused this branch · others collapsed');
   }
   function addBtn(n, label, fn) { return h('button', { type: 'button', class: 'nbtn add', 'aria-label': label, title: label, onclick: (e) => { e.stopPropagation(); fn(); } }, '+'); }
-  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'dtop' ? n.disc + ' branch' : n.type === 'disc' ? n.disc + ' sub-project ' + M.subTag(n.sub) : n.type === 'seg' ? M.subTag(n.sub) + ' ' + n.disc + ' section ' + n.seg.title : 'sheet ' + n.sh.title; }
+  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'dtop' ? n.disc + ' branch' : n.type === 'disc' ? n.disc + ' sub-project ' + M.subTag(n.sub) : n.type === 'seg' ? M.subTag(n.sub) + ' ' + n.disc + ' section ' + n.seg.title : n.type === 'road' ? 'road ' + n.g.name + ' in ' + n.seg.title : n.type === 'oth' ? 'other sheets in ' + n.seg.title : 'sheet ' + n.sh.title + (n.depth === 5 ? ' ' + staTxt(M.sheetRange(n.sh)) : ''); }
   function flagRow(b, extra) {
     return h('div', { class: 'nrow' }, b.overdue ? h('span', { class: 'flag', title: 'Overdue' }, '⚑ ' + b.overdue) : null,
       b.blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked sheets' }, '⛓ ' + b.blocked) : null,
@@ -783,6 +815,18 @@
           gb || b.blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked items' }, '⛓' + (gb ? ' sec' : '') + (b.blocked ? ' ' + b.blocked : '')) : null,
           gu || b.update ? h('span', { class: 'fl fl-upd', title: 'Items needing update' }, '⟳' + (gu ? ' sec' : '') + (b.update ? ' ' + b.update : '')) : null,
           h('span', { class: 'avs' }, owners.slice(0, 3).map((o) => h('span', { class: 'av', title: o }, initials(o))))))];
+    } else if (n.type === 'road') {
+      const shs = n.kids.map((k) => k.sh), p = M.progress(shs), es = n.g.entries;
+      const pp = es.reduce((a, r) => a + (M.hasSta(r) ? M.segPP(st, n.sub, r).total : 0), 0), len = es.reduce((a, r) => a + M.segLength(r), 0);
+      const scales = [...new Set(es.map((r) => M.segScale(n.sub, r)))];
+      const warns = M.rangeWarnings(st, n.sub, n.seg).filter((w) => shs.some((x) => x.id === w.sheet));
+      body = [h('span', { class: 'rdicon', 'aria-hidden': 'true' }, '⛕'), h('div', { class: 'nb' }, h('div', { class: 'nt sm', title: n.g.name }, n.g.name),
+        h('div', { class: 'ns' }, h('b', {}, pp + ' PP'), ' · ' + (len ? fmtFt(len) + ' · ' : '') + scales.map((x) => x + ' scale').join('/') + (es.length > 1 ? ' · ' + es.length + ' ranges' : '')),
+        h('div', { class: 'ns rranges mono', title: es.map((r) => r.name).join('\n') }, es.map((r) => M.hasSta(r) ? M.formatStation(r.start) + '–' + M.formatStation(r.end) : 'no stations yet').join(', ')),
+        h('div', { class: 'nrow' }, shs.length ? bar(p.pct, 'Progress ' + n.g.name) : h('span', { class: 'ns' }, 'No sheets yet'), warns.length ? h('span', { class: 'fl fl-upd', title: warns.map((w) => w.msg).join('\n') }, '⚠ ' + warns.length) : null)), ring(p.pct, 40)];
+    } else if (n.type === 'oth') {
+      const shs = n.kids.map((k) => k.sh), p = M.progress(shs);
+      body = [h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, 'Other sheets'), h('div', { class: 'ns' }, plural(shs.length, 'sheet') + ' · no road · ' + p.done + ' done'))];
     } else {
       const sh = n.sh;
       const od = M.isOverdue(sh, today);
@@ -792,6 +836,11 @@
       const nl = M.linksOf(st, ref);
       const road = M.sheetRoad(st, n.sub, sh);
       body = [h('span', { class: 'chip ' + DINFO[n.disc].cls, title: n.disc }, DINFO[n.disc].short),
+        n.depth === 5 ? (() => { const rg = M.sheetRange(sh), sc = M.sheetScale(st, n.sub, sh);
+          return h('div', { class: 'nb' }, h('div', { class: 'nt sm' + (rg ? ' sta' : ''), title: sh.title }, sh.gen ? 'PP ' + sh.gen.idx + ': ' + (rg ? 'STA ' + staTxt(rg) : 'no range') + (rg && rg.manual ? ' ✎' : '') : sh.title),
+            h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.number ? ' · #' + sh.number : '') + (sh.gen ? '' : ' · ' + (rg ? 'STA ' + staTxt(rg) : 'no range')) + (sc ? ' · ' + sc + ' scale' : '') + (sh.due ? ' · ' + sh.due : '')),
+            blocked || upd ? h('div', { class: 'nflags' }, blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked by ' + blocked + ' unfinished prerequisite(s)' }, '⛓ Blocked by ' + blocked) : null,
+              upd ? h('span', { class: 'fl fl-upd', title: 'An upstream item changed' }, '⟳ Update needed') : null) : null); })() :
         h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, sh.title),
           h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.pct && sh.status !== 'Done' ? ' · ' + sh.pct + '%' : '') + (sh.due ? ' · ' + sh.due : '') + (sh.gen ? ' · PP' : road ? ' · ' + road : '')),
           blocked || upd ? h('div', { class: 'nflags' }, blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked by ' + blocked + ' unfinished prerequisite(s)' }, '⛓ Blocked by ' + blocked) : null,
@@ -800,13 +849,14 @@
         od ? h('span', { class: 'flag', title: 'Overdue' }, '⚑') : null,
         sh.owner ? h('span', { class: 'av', title: sh.owner }, initials(sh.owner)) : h('span', { class: 'av none', title: 'Unassigned' }, '–')];
     }
-    const id = n.type === 'root' ? 'root' : n.type === 'dtop' ? n.disc : n.type === 'disc' ? n.sub.id + ':' + n.disc : n.type === 'seg' ? n.seg.id : n.sh.id;
-    const selected = sel && ((sel.type === n.type && sel.id === id) || (n.type === 'seg' && sel.type === 'road' && (M.findRoad(st, sel.id) || {}).sec === n.seg));
+    const id = n.type === 'root' ? 'root' : n.type === 'dtop' ? n.disc : n.type === 'disc' ? n.sub.id + ':' + n.disc : n.type === 'seg' || n.type === 'oth' ? n.seg.id : n.type === 'road' ? n.g.entries[0].id : n.sh.id;
+    const stype = n.type === 'oth' ? 'seg' : n.type;
+    const selected = sel && ((n.type !== 'oth' && sel.type === n.type && sel.id === id) || (n.type === 'road' && sel.type === 'road' && n.g.entries.some((r) => r.id === sel.id)));
     const el = h('div', { class: 'node n-' + n.type + (n.pp ? ' n-pp' : '') + (n.collapsed && n.kids.length ? ' collapsed' : '') + (n.disc ? ' d-' + DINFO[n.disc].cls : '') + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) : '') + (n.type === 'seg' && !n.seg.sheets.length && !(n.pp && M.roadsOf(n.sub, n.seg).length) ? ' empty' : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
       tabindex: 0, role: 'button', 'data-key': n.key, 'aria-label': nodeLabel(n),
-      onclick: () => select_(n.type, id),
+      onclick: () => select_(stype, id),
       onmouseenter: () => hoverLinks(n.key, true), onmouseleave: () => hoverLinks(n.key, false),
-      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id); }
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(stype, id); }
         else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && n.kids.length && !e.altKey) { e.preventDefault(); e.stopPropagation(); if ((e.key === 'ArrowLeft') !== !!n.collapsed) toggleNode(n, e.key === 'ArrowLeft'); } } },
     body, h('div', { class: 'nacts' },
       n.type === 'disc' ? addBtn(n, 'Add a sheet to ' + M.subTag(n.sub) + ' ' + n.disc + ' (pick the section)', () => { select_('disc', id); focusAdd('qaTitle'); }) : null,
@@ -846,7 +896,7 @@
     el.focus({ preventScroll: true });
   }
   function revealSheet(r) {
-    openBranch(r.sub.id, r.seg.discipline, r.seg.id); saveUI();
+    openBranch(r.sub.id, r.seg.discipline, r.seg.id, sheetBranchKey(r.sub, r.seg, r.sh)); saveUI();
     renderAll();
     setTimeout(() => focusNode('sheet:' + r.sh.id), 20);
   }
@@ -912,7 +962,7 @@
     { k: 'number', l: 'No.', get: (r) => r.sh.number, edit: 'text' },
     { k: 'title', l: 'Sheet', get: (r) => r.sh.title, edit: 'text', wide: true },
     { k: 'series', l: 'Series', get: (r) => r.sh.series },
-    { k: 'range', l: 'Sheet stations', get: (r) => (r.sh.gen ? r.sh.gen.start : -1), show: (r) => (r.sh.gen ? M.formatStation(r.sh.gen.start) + '–' + M.formatStation(r.sh.gen.end) : '') },
+    { k: 'range', l: 'Station range', get: (r) => { const g = M.sheetRange(r.sh); return g ? g.start : -1; }, show: (r) => { const g = M.sheetRange(r.sh); return g ? M.formatStation(g.start) + '–' + M.formatStation(g.end) + (g.manual ? ' ✎' : '') : ''; } },
     { k: 'status', l: 'Status', get: (r) => M.STATUSES.indexOf(r.sh.status), edit: 'status' },
     { k: 'pct', l: '%', get: (r) => Number(r.sh.pct) || 0, edit: 'num' },
     { k: 'owner', l: 'Owner', get: (r) => r.sh.owner, edit: 'owner' },
@@ -1028,7 +1078,7 @@
     renderDrawer();
     document.querySelectorAll('.node.sel, .grid tr.sel, .tl-seg.sel').forEach((e) => e.classList.remove('sel'));
     let key = type === 'root' ? 'root' : type + ':' + id;
-    if (type === 'road') { const r = M.findRoad(st, id); if (r && r.sec) key = 'seg:' + r.sec.id; }
+    if (type === 'road') { const r = M.findRoad(st, id); if (r && r.sec) key = roadBranchKey(r); }
     document.querySelectorAll(keyQuery(key)).forEach((n) => n.classList.add('sel'));
     if (impactKey && impactKey !== type + ':' + id) impactKey = null;
     if (ui.view === 'tree' && lastNodes.length) drawLinks(lastNodes, Number($('#stage').dataset.w), Number($('#stage').dataset.h));
@@ -1208,8 +1258,8 @@
         h('button', { type: 'button', class: 'btn sec', id: 'genBranchBtn', onclick: () => genAll(d, [sub]) }, 'Generate ' + d + ' PP')));
   }
   /* road entries of a P&P section: one row each, inline road / start / end / scale editing */
-  function roadTable(sub, sec) {
-    const rs = M.roadsOf(sub, sec);
+  function roadTable(sub, sec, only) {
+    const rs = M.roadsOf(sub, sec).filter((r) => !only || only.includes(r));
     const save1 = (road, k, v, inp) => { const r = commit(() => M.applyStationRows(st, [{ roadId: road.id, [k]: v }])); if (!r && inp) inp.classList.add('numbad'); else if (r && r.warns.length) toast('⚠ ' + r.warns[0]); };
     const cell = (road, k) => {
       const v = k === 'road' ? road.road : k === 'scale' ? (road.scale == null ? '' : road.scale) : M.formatStation(road[k]);
@@ -1355,19 +1405,50 @@
         const a = commit(() => M.mergeSegments(st, seg.id, o.id)); if (a) { select_('road', a.id); toast('Merged into ' + a.name + '. Undo with Ctrl+Z.'); }
       } }, '⇔ Merge with ' + M.formatStation(o.start) + '–' + M.formatStation(o.end)))) : null);
   }
+  /* v3.2: per-sheet station ranges of one road branch — computed from the road, editable, reset to computed */
+  function staEditor(sh, opts) {
+    const rg = M.sheetRange(sh), c = M.computedRange(sh);
+    const a = h('input', { class: 'scell mono', value: rg ? M.formatStation(rg.start) : '', placeholder: c ? M.formatStation(c.start) : '10+00', 'aria-label': 'Start station of ' + sh.title, 'data-k': 'a', id: opts && opts.ids ? 'shStaA' : null });
+    const b = h('input', { class: 'scell mono', value: rg ? M.formatStation(rg.end) : '', placeholder: c ? M.formatStation(c.end) : '22+00', 'aria-label': 'End station of ' + sh.title, 'data-k': 'b', id: opts && opts.ids ? 'shStaB' : null });
+    const go = () => {
+      const va = a.value.trim(), vb = b.value.trim();
+      if (!!va !== !!vb) { toast('Now enter the ' + (va ? 'end' : 'start') + ' station.'); return; }
+      if (rg && va === M.formatStation(rg.start) && vb === M.formatStation(rg.end)) return;
+      const r = commit(() => M.setSheetRange(st, sh.id, va, vb));
+      if (r) toast((va ? 'Station range ' + va + ' – ' + vb : 'Station range cleared') + (r.warns.length ? ' · ⚠ ' + r.warns[0].replace(/\.$/, '') : '') + '. Undo with Ctrl+Z.');
+    };
+    [a, b].forEach((x) => { x.addEventListener('change', go); x.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } }); });
+    const reset = rg && rg.manual && c ? h('button', { type: 'button', class: 'btn sec sm', id: opts && opts.ids ? 'shStaReset' : null, title: 'Back to the computed range ' + M.formatStation(c.start) + ' – ' + M.formatStation(c.end), onclick: () => { commit(() => M.resetSheetRange(st, sh.id)); toast('Reset to computed ' + M.formatStation(c.start) + ' – ' + M.formatStation(c.end) + '.'); } }, '↺ Reset to computed') : null;
+    return { a, b, reset, rg, c };
+  }
+  function sheetRangesBox(sub, sec, sheets) {
+    const W2 = M.rangeWarnings(st, sub, sec).filter((w) => sheets.some((x) => x.id === w.sheet));
+    return h('section', { class: 'box', id: 'rgBox' }, h('h3', {}, 'Sheets on this road (' + sheets.length + ')'),
+      h('p', { class: 'muted small' }, 'Each PP sheet starts where the previous one ends: ' + st.settings.scales.map((x) => x.scale + ' scale = ' + x.ft + ' ft').join(', ') + '. The last sheet is shorter. Type a range to override one sheet; ↺ puts it back.'),
+      sheets.length ? h('div', { class: 'tablewrap' }, h('table', { class: 'grid compact rgtab', id: 'rgTable' },
+        h('thead', {}, h('tr', {}, ['Sheet', 'Start', 'End', ''].map((x) => h('th', { scope: 'col' }, x)))),
+        h('tbody', {}, sheets.map((sh) => { const e = staEditor(sh); return h('tr', { 'data-sheet': sh.id, class: 'st-' + slug(sh.status) + (e.rg && e.rg.manual ? ' manual' : '') },
+          h('td', {}, h('button', { type: 'button', class: 'link', onclick: () => select_('sheet', sh.id) }, sh.gen ? 'PP ' + sh.gen.idx : sh.title), h('span', { class: 'stpill' }, sh.status)),
+          h('td', {}, e.a), h('td', {}, e.b), h('td', {}, e.reset || (e.rg ? h('span', { class: 'muted small' }, e.rg.manual ? 'manual' : 'computed') : h('span', { class: 'muted small' }, 'no range')))); })))) : h('p', { class: 'muted' }, 'No sheets yet. Enter the road stations and the PP sheets appear here.'),
+      W2.length ? h('div', { id: 'rgWarn' }, W2.map((w) => h('p', { class: 'warnbox' }, '⚠ ' + w.msg))) : null);
+  }
   function roadDrawer({ sub, road, sec }) {
     const pl = M.planGenerate(st, road.id), pend = M.pendingCount(pl);
     const gen = sec.sheets.filter((x) => x.gen && x.gen.road === road.id);
+    const grp = M.roadGroups(sub, sec).find((g) => g.entries.includes(road));
+    const gsheets = grp ? M.sheetsOfGroup(sub, sec, grp) : gen;
     return h('div', { class: 'dbody' },
       crumb([[sec.discipline, () => select_('dtop', sec.discipline)], [M.subTag(sub), toDisc(sub, sec.discipline)], [sec.title, toSeg(sec)]]),
-      h('h2', {}, road.name), h('div', { class: 'statrow' }, h('div', {}, ppLine(sub, road))),
+      h('h2', {}, grp ? grp.name : road.name), h('div', { class: 'statrow' }, h('div', {}, ppLine(sub, road))),
+      h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, grp && grp.entries.length > 1 ? 'Station ranges of this road (' + grp.entries.length + ')' : 'Road entry'),
+        roadTable(sub, sec, grp ? grp.entries : [road]),
+        grp && grp.entries.length > 1 ? h('div', { class: 'row' }, grp.entries.map((r) => h('button', { type: 'button', class: 'btn sm ' + (r === road ? '' : 'sec'), 'aria-pressed': String(r === road), onclick: () => select_('road', r.id) }, r.name))) : null),
+      sheetRangesBox(sub, sec, gsheets),
       h('section', { class: 'box' }, h('h3', {}, 'PP sheets'),
         h('p', { class: 'muted' }, !M.hasSta(road) ? 'Enter stations to count and generate PP sheets.' : pend ? 'Generate creates ' + pl.create.length + ', updates ' + pl.update.length + ', removes ' + (pl.remove.length + pl.removeTouched.length) + ' generated sheet(s). Other sheets are never touched.' : 'Generated PP sheets are up to date (' + pl.unchanged + ').'),
         h('button', { type: 'button', class: 'btn', id: 'genRoadBtn', disabled: !pend, onclick: () => genRoad(road) }, 'Generate PP sheets for this road')),
       stationsBox(sub, road),
       connectorsBox({ t: 'road', id: road.id }),
-      h('h3', {}, 'Generated sheets (' + gen.length + ')'),
-      gen.length ? h('ul', { class: 'dlist' }, gen.map((sh) => h('li', {}, h('button', { type: 'button', class: 'rowbtn st-' + slug(sh.status), onclick: () => select_('sheet', sh.id) }, h('span', { class: 'grow' }, sh.title), h('span', { class: 'stpill' }, sh.status))))) : h('p', { class: 'muted' }, 'None yet.'),
       h('button', { type: 'button', class: 'btn danger sm', id: 'delRoad', onclick: () => { if (confirm('Delete road entry “' + road.name + '”' + (gen.length ? ' and its ' + plural(gen.length, 'generated PP sheet') : '') + '? Other sheets are kept.')) { commit(() => M.deleteRoad(st, road.id)); select_('seg', sec.id); } } }, 'Delete road entry'));
   }
   let pickState = { key: null, q: '', open: false, kind: 'dep', dir: 'in' };
@@ -1455,7 +1536,12 @@
     return h('div', { class: 'dbody' },
       crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subTag(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]].concat(groad ? [[groad.road.name, () => select_('road', groad.road.id)]] : [])),
       field('Title', inp('title')),
-      sh.gen ? h('p', { class: 'pill' }, 'Generated PP sheet ' + sh.gen.idx + ' of ' + sh.gen.of + ' · Sta ' + M.formatStation(sh.gen.start) + ' to ' + M.formatStation(sh.gen.end) + ' (' + fmtFt(sh.gen.end - sh.gen.start) + ')') : null,
+      sh.gen ? h('p', { class: 'pill' }, 'Generated PP sheet ' + sh.gen.idx + ' of ' + sh.gen.of + (M.sheetScale(st, sub, sh) ? ' · ' + M.sheetScale(st, sub, sh) + ' scale' : '')) : null,
+      M.isPPSec(seg) ? (() => { const e = staEditor(sh, { ids: true }); const ws = M.rangeWarnings(st, sub, seg).filter((w) => w.sheet === sh.id);
+        return h('section', { class: 'box', id: 'shStaBox' }, h('h3', {}, 'Station range'),
+          h('div', { class: 'g2' }, field('Start station', e.a), field('End station', e.b)),
+          h('p', { class: 'muted small', id: 'shStaHint' }, e.rg ? (e.rg.manual ? 'Manual range' + (e.c ? ' (computed ' + M.formatStation(e.c.start) + ' – ' + M.formatStation(e.c.end) + ')' : '') : 'Computed from the road stations and scale') + ' · ' + fmtFt(e.rg.end - e.rg.start) : 'No range' + (sh.gen ? '' : ' — optional for sheets you added yourself'), ' ', e.reset),
+          ws.map((w) => h('p', { class: 'warnbox' }, '⚠ ' + w.msg))); })() : null,
       blocked.length ? h('p', { class: 'warnbox', id: 'blockedMsg' }, '⛓ Blocked by ' + blocked.length + ': ' + blocked.map((r) => M.refLabel(st, r)).join(', ')) : null,
       h('div', { class: 'g2' }, field('Status', status), field('Owner', owner), field('Due date', inp('due', { type: 'date' })), field('Milestone', ms),
         field('Section', secSel), field('Road', roadIn), h('datalist', { id: 'roadList4' }, M.roads(st).map((r) => h('option', { value: r }))),
@@ -1516,7 +1602,7 @@
     $('#modal').hidden = false;
     setTimeout(() => { const f = $('#modalBody').querySelector('input,select,button,textarea'); (f || $('#modalClose')).focus(); }, 20);
   }
-  function closeModal() { pendingImport = false; if (pendingMig && migrationNotice.done) { migrationNotice.done(); return; } $('#modal').hidden = true; $('#modalBody').replaceChildren(); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+  function closeModal() { pendingImport = false; if (pendingMig && migrationNotice.done) { migrationNotice.done(); return; } if (pendingMig32 && migrationNotice32.done) { migrationNotice32.done(); return; } $('#modal').hidden = true; $('#modalBody').replaceChildren(); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
   function openPP() {
     const what = {};
     const body = h('div', {});
@@ -1720,6 +1806,7 @@
       hasOld ? h('section', {}, h('h3', {}, 'Old encrypted v1 data'), h('p', { class: 'muted' }, 'An encrypted v1 vault is still stored in this browser.'),
         h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec', onclick: () => { closeModal(); migrationPanel(true); } }, 'Import it again…'),
           h('button', { type: 'button', class: 'btn danger', onclick: () => { if (confirm('Delete the old encrypted vault from this browser? Current data is not affected.')) { localStorage.removeItem(OLDKEY); openSettings(); } } }, 'Delete old vault'))) : null,
+      localStorage.getItem(V31BAK) ? h('section', { id: 'v31Sec' }, h('h3', {}, 'v3.1 data (before roads in the tree)'), h('p', { class: 'muted' }, 'Kept untouched in pm.data.v3.pre-v3.2-backup' + (st.v32 && st.v32.at ? ' (upgraded ' + new Date(st.v32.at).toLocaleString() + ')' : '') + '.'), h('button', { type: 'button', class: 'btn sec', id: 'v31Dl', onclick: v31Download }, '⤓ Download v3.1 data')) : null,
       localStorage.getItem(V2BAK) || localStorage.getItem(V2KEY) ? h('section', { id: 'v2Sec' }, h('h3', {}, 'Old v2 data'), h('p', { class: 'muted' }, 'The data from before v3 (road-based tree) is kept untouched in this browser (pm.data.v2, copy in pm.data.v2.pre-v3-backup). v3 never changes it.' + (st.migration ? ' Converted ' + new Date(st.migration.at).toLocaleString() + ': ' + st.migration.sheets + ' sheets, ' + st.migration.roads + ' road entries, ' + st.migration.other + ' sheets to “Other”.' : '')),
         h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec', id: 'v2Dl', onclick: v2Download }, '⤓ Download old v2 data'))) : null,
       h('section', {}, h('h3', {}, 'Keyboard'), h('ul', { class: 'keys' }, KEYS.map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v)))),
@@ -1770,6 +1857,23 @@
     migrationNotice.done = done;
   }
 
+  /* v3.1 → v3.2: roads become tree branches and every PP sheet gets its station range. Same key; the v3.1 data is copied to pm.data.v3.pre-v3.2-backup first. */
+  function v31Download() { const raw = (pendingMig32 && pendingMig32.raw) || localStorage.getItem(V31BAK); if (!raw) return toast('No v3.1 backup found.'); download('pm-v3.1-data-before-v3.2-' + M.todayISO() + '.json', raw, 'application/json'); toast('v3.1 data downloaded.'); }
+  function migrationNotice32() {
+    const I = pendingMig32.info || {};
+    const done = () => { if (!pendingMig32) return; pendingMig32 = null; hardEdit = true; flush(); closeModal(); renderAll(); toast('v3.2 is ready. Your v3.1 data is kept as a backup in this browser (Settings → v3.1 data).'); };
+    const body = h('div', { class: 'stack', id: 'migV32' },
+      h('p', {}, 'In the Plan & Profile sections (and any section with road entries) each road is now its own branch, with its sheets and their station ranges under it. Nothing was deleted.'),
+      h('ul', {}, h('li', {}, plural(I.groups || 0, 'road') + ' (' + plural(I.roads || 0, 'road entry') + ') became tree branches.'),
+        h('li', {}, plural(I.pp || 0, 'PP sheet') + ' now show their station range (start at the road start, one sheet length each, last one shorter)' + (I.updated ? '; ' + I.updated + ' had an out-of-date range and were refreshed' : '') + '. Status, owner, dates, notes and links are kept.'),
+        I.created || I.removed ? h('li', {}, 'PP count brought in line with the road stations: ' + (I.created || 0) + ' added, ' + (I.removed || 0) + ' unedited extra removed (edited ones are always kept).') : null,
+        h('li', {}, (((I.manualInRoad || 0) + (I.manualOther || 0)) === 1 ? '1 sheet you added yourself' : ((I.manualInRoad || 0) + (I.manualOther || 0)) + ' sheets you added yourselves') + ' in road sections: ' + (I.manualInRoad || 0) + ' sit under their road (tagged with the road name), ' + (I.manualOther || 0) + ' under “Other sheets”. They have no range until you type one.')),
+      h('p', { class: 'warnbox' }, 'Before continuing you can download the v3.1 data. It is also kept in this browser (pm.data.v3.pre-v3.2-backup).'),
+      h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec', id: 'mig32Dl', onclick: v31Download }, '⤓ Download v3.1 data (JSON)'), h('button', { type: 'button', class: 'btn', id: 'mig32Go', onclick: done }, 'Continue')));
+    openModal('Project Tracker v3.2: roads in the tree', body);
+    migrationNotice32.done = done;
+  }
+
   /* ---------- wiring ---------- */
   $('#modalClose').addEventListener('click', closeModal);
   $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
@@ -1789,7 +1893,7 @@
   $('#zIn').addEventListener('click', () => { const v = $('#viewport'); zoomAt(1.25, v.clientWidth / 2, v.clientHeight / 2); });
   $('#zOut').addEventListener('click', () => { const v = $('#viewport'); zoomAt(0.8, v.clientWidth / 2, v.clientHeight / 2); });
   $('#zFit').addEventListener('click', () => fit());
-  $('#xAll').addEventListener('click', () => { ui.collapsed = M.collapseLevel(st, 4); saveUI(); renderTree(); fit(); });
+  $('#xAll').addEventListener('click', () => { ui.collapsed = M.collapseLevel(st, 5); saveUI(); renderTree(); fit(); });
   $('#cAll').addEventListener('click', () => setLevel(2));
   $('#lvlSel').addEventListener('change', (e) => { if (e.target.value !== '') setLevel(Number(e.target.value)); e.target.value = ''; });
   $('#railBtn').addEventListener('click', () => { const open = !document.body.classList.contains('rail-open'); document.body.classList.toggle('rail-open', open); $('#railBtn').setAttribute('aria-expanded', String(open)); });
@@ -1856,5 +1960,5 @@
   if (!st) st = M.newState();
   $('#q').value = filt.q || '';
   renderAll();
-  if (pendingMig) migrationNotice(); else if (needMigration) migrationPanel(false); else flush();
+  if (pendingMig) migrationNotice(); else if (pendingMig32) migrationNotice32(); else if (needMigration) migrationPanel(false); else flush();
 })();
