@@ -11,7 +11,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2` / `pm-v2-final` | Testing mode (no login, plain JSON), tree UI, PP sheet counts (last version before connectors) |
 | `pm-v2.1` / `pm-v2.1-final` | + Connectors between sheets/segments in any sub-project, build order, update-needed, blocked/ready, impact |
 | `pm-v2.2` / `pm-v2.2-final` | + Drainage / SWP3 branches under each sub-project |
-| `pm-v2.3` | + Add segment with road + stations only (auto label) |
+| `pm-v2.3` / `pm-v2.3-final` | + Add segment with road + stations only (auto label) |
+| `pm-v2.4` | + Updated default sheet templates (Drainage + SWP3), Reset all templates |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -153,3 +154,12 @@ Undo: `git revert --no-edit 8811171` and push, or `git checkout pm-v2.2-final --
 Data note: on first load v2.3 rewrites each segment's `name` to the auto label (a segment with only a
 name gets it as its road). v2.2 still opens this data; segment titles then show the auto label.
 Export a backup first if you want the old names.
+
+## v2.4
+
+| Commit | Change |
+|---|---|
+| b901a56 | + Updated default sheet templates (Drainage + SWP3), Reset all templates |
+
+Undo: `git revert --no-edit b901a56` and push, or `git checkout pm-v2.3-final -- pm`, commit, push.
+Data note: only new projects and template resets get the new list; existing templates and sheets are untouched.
