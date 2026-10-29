@@ -98,6 +98,38 @@ function v2Fixture() {
   ok(await has('.node[data-key="dtop:Drainage"]') && await has('.node[data-key="dtop:SWP3"]'), 'tree starts with Drainage and SWP3');
   ok((await pg.$$('.node.n-disc')).length === 8, 'each discipline has 4 sub-projects');
   await shot('02-tree-top');
+
+  /* 2b. v3.1 rename sub-projects: tree (✎ / double-click), Enter saves, Esc cancels, empty/duplicate blocked, undo, Settings */
+  const C0 = (await data()).subs[2]; const order0 = (await data()).subs.map((x) => x.id + x.order).join();
+  const ntSel = '.node[data-key="disc:' + C0.id + ':Drainage"] .nt';
+  await click(ntSel + ' .nren'); ok(await has(ntSel + ' .subname-in'), 'pencil opens an inline name box on the tree');
+  await pg.$eval(ntSel + ' .subname-in', (e) => { e.focus(); e.select(); }); await pg.keyboard.type('Zzz'); await pg.keyboard.press('Escape'); await sleep(200);
+  ok((await data()).subs[2].name === C0.name && !(await has(ntSel + ' .subname-in')), 'Esc cancels the rename');
+  await pg.$eval(ntSel, (e) => e.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))); await sleep(150);
+  ok(await has(ntSel + ' .subname-in'), 'double-click opens the name box');
+  await pg.$eval(ntSel + ' .subname-in', (e) => { e.focus(); e.select(); }); await pg.keyboard.press('Backspace'); await pg.keyboard.type('   '); await pg.keyboard.press('Enter'); await sleep(150);
+  ok(/empty/i.test(await txt(ntSel + ' .subname-err')) && (await data()).subs[2].name === C0.name, 'empty name is rejected');
+  await pg.$eval(ntSel + ' .subname-in', (e) => { e.select(); }); await pg.keyboard.type('sub-project b'); await pg.keyboard.press('Enter'); await sleep(150);
+  ok(/already uses/.test(await txt(ntSel + ' .subname-err')) && (await data()).subs[2].name === C0.name, 'duplicate name is blocked');
+  await pg.$eval(ntSel + ' .subname-in', (e) => { e.select(); }); await pg.keyboard.type('  North Segment (FM 1960) '); await pg.keyboard.press('Enter'); await sleep(250);
+  const C1 = (await data()).subs[2];
+  ok(C1.name === 'North Segment (FM 1960)' && C1.code === 'C' && C1.id === C0.id, 'Enter saves the trimmed name; id and letter kept');
+  ok((await data()).subs.map((x) => x.id + x.order).join() === order0, 'build order unchanged by rename');
+  ok((await pg.$$eval('.node.n-disc .ntx', (es) => es.filter((e) => e.textContent === 'North Segment (FM 1960)').length)) === 2, 'new name shown on both Drainage and SWP3 boxes');
+  await shot('02b-renamed');
+  await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(250);
+  ok((await data()).subs[2].name === C0.name, 'undo restores the old name');
+  await pg.keyboard.down('Control'); await pg.keyboard.down('Shift'); await pg.keyboard.press('z'); await pg.keyboard.up('Shift'); await pg.keyboard.up('Control'); await sleep(250);
+  ok((await data()).subs[2].name === 'North Segment (FM 1960)', 'redo renames again');
+  await click('#setBtn'); await sleep(200);
+  const dIn = '#orderSec .ordrow:nth-child(4) .subname-in';
+  await pg.$eval(dIn, (e) => { e.focus(); e.select(); }); await pg.keyboard.type('South Segment'); await pg.keyboard.press('Enter'); await sleep(250);
+  ok((await data()).subs[3].name === 'South Segment' && (await data()).subs[3].code === 'D', 'rename from Settings');
+  await click('#modalClose'); await sleep(150);
+  await click('#vList'); await sleep(200);
+  ok(await pg.$$eval('select', (ss) => ss.some((s) => [...s.options].some((o) => o.textContent === 'C · North Segment (FM 1960)'))), 'filters list the new name');
+  ok(/North Segment \(FM 1960\)/.test(await pg.evaluate(() => document.body.innerText)), 'list shows the name');
+  await click('#vTree'); await sleep(200);
   const A = D0.subs[0];
   const secA = (key) => A.segments.find((g) => g.key === key);
   await click('.node[data-key="disc:' + A.id + ':Drainage"] .nbtn.tog'); await sleep(150);
@@ -163,7 +195,7 @@ function v2Fixture() {
   ok(/Culvert Layout/.test(await pg.$eval('#drawer input', (e) => e.value)) && await has('#shSec') && await has('#shRoad'), 'palette opens the sheet; drawer has Section and Road');
   ok((await pg.$eval('#shRoad', (e) => e.value)) === 'FM 1960', 'road tag kept from the v2 segment');
   ok(/Needed first by/i.test(await txt('#connBox')) && /Bridge Deck Drain Summary/.test(await txt('#connBox')), 'cross-project connector kept (A → B)');
-  ok((await pg.$eval('#shNum', (e) => e.value)) === '72' && /Done/.test(await pg.$eval('.stsel', (e) => e.value)), 'number and status kept');
+  ok((await pg.$eval('#shNum', (e) => e.value)) === '72' && /Done/.test(await pg.$eval('#drawer .stsel', (e) => e.value)), 'number and status kept');
   await setVal('#shSec', D.subs[0].segments.find((g) => g.key === 'dr-std').id); await sleep(200);
   ok((await data()).subs[0].segments.find((g) => g.key === 'dr-std').sheets.some((s) => s.id === cul.id), 'Section select moves the sheet');
   await shot('06-sheet-drawer');
@@ -247,6 +279,12 @@ function v2Fixture() {
   ok(!(await pg.$('#migV3')), 'migration notice only once');
   ok((await data()).subs[3].roads.length === 2, 'data persists after reload');
   ok(await pg.evaluate((j) => localStorage.getItem('pm.data.v2') === j, v2json), 'pm.data.v2 still untouched');
+  await click('#vReport'); await sleep(250);
+  ok(/North Segment \(FM 1960\)/.test(await pg.evaluate(() => document.body.innerText)) && /South Segment/.test(await pg.evaluate(() => document.body.innerText)), 'report uses the sub-project names');
+  await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await sleep(150);
+  await pg.keyboard.type('north segment'); await sleep(150);
+  ok(/North Segment/.test(await txt('#cmdk')), 'Ctrl+K finds the sub-project by its new name');
+  await pg.keyboard.press('Escape'); await sleep(100); await click('#vTree'); await sleep(200);
   await click('#cAll'); await click('#zFit'); await shot('13-final');
   if (MOBILE) { await click('#railBtn'); await sleep(200); await shot('14-rail'); await click('#railBtn'); }
   ok(!ext.length, 'no external requests (' + ext.join(', ') + ')');
