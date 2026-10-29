@@ -337,3 +337,19 @@ Tags: pm-v3-pre (last v2 state), pm-v3.0, pm-v3.0-final.
 
 Undo (code): `git checkout pm-v3-pre -- pm`, commit, push (no force).
 Data: v3 writes pm.data.v3 / pm.ui.v3 only. pm.data.v2 is never modified, and a copy is kept in pm.data.v2.pre-v3-backup, so the v2 app reopens with the old data. Edits made in v3 are not carried back to v2. Settings → Old v2 data can download the v2 JSON.
+
+## v3.1 (rename sub-projects)
+
+Tags: pm-v3.0-final (before), pm-v3.1, pm-v3.1-final.
+
+| Commit | Change |
+|---|---|
+| 2fb5b5e | pm v3.1: e2e for sub-project rename |
+| 0acb564 | pm v3.1: rename styles |
+| 2332ec4 | pm v3.1: rename sub-projects on the tree, in the details panel and in Settings |
+| 6d1f1aa | pm v3.1: sub-project display names (renameSub, checks, names in logs/CSV/report), tests |
+| 0abeba2 | Bid Estimator: ROLLBACK note for plot appendix |
+| d3da100 | Bid Estimator: print report appendix with per-item plots (B/W-safe), reference line, Include plot appendix toggle |
+
+Undo (code): `git checkout pm-v3.0-final -- pm`, commit, push (no force).
+Data: no schema change. Names live in the existing subs[].name field of pm.data.v3; v3.0 shows the custom names too. id, letter (code) and order are never changed by a rename.
