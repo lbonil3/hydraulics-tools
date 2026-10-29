@@ -53,7 +53,7 @@
       subs: ['A', 'B', 'C', 'D'].map((code) => ({ id: uid(), code, name: 'Sub-project ' + code, order: ['A', 'B', 'C', 'D'].indexOf(code) + 1, scale: 100, templates: defaultTemplates(), segments: [] })),
       staff: [],
       index: defaultTemplates(),
-      settings: { scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES), numbering: clone(DEFAULT_NUMBERING) },
+      reportNotes: {}, settings: { scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES), numbering: clone(DEFAULT_NUMBERING) },
       milestones: DEFAULT_MILESTONES.map((name) => ({ id: uid(), name, date: '' })),
       links: [],
       views: [],
@@ -541,6 +541,7 @@
     st.milestones = Array.isArray(st.milestones) ? st.milestones : [];
     if (!Array.isArray(st.settings.numbering)) st.settings.numbering = clone(DEFAULT_NUMBERING);
     st.views = Array.isArray(st.views) ? st.views : [];
+    st.reportNotes = st.reportNotes && typeof st.reportNotes === 'object' && !Array.isArray(st.reportNotes) ? st.reportNotes : {};
     st.links = Array.isArray(st.links) ? st.links : [];
     st.index = Array.isArray(st.index) ? st.index : defaultTemplates();
     st.log = Array.isArray(st.log) ? st.log : [];
@@ -1022,7 +1023,83 @@
     }
     return out;
   }
-  return { SCHEMA, recentChanges, bulkUpdate, bulkDelete, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.19 written narrative for the report: deterministic sentences from the data. Notes (st.reportNotes) are kept separately. */
+  function listing(a, max) { max = max || 4; const x = a.slice(0, max); const more = a.length - x.length; const s = x.length < 2 ? x.join('') : x.slice(0, -1).join(', ') + ' and ' + x[x.length - 1]; return more > 0 ? s + ' (+' + more + ' more)' : s; }
+  function pl(n, w, ws) { return n + ' ' + (n === 1 ? w : ws || w + 's'); }
+  function pctTxt(p) { return Math.round(p) + '%'; }
+  function topOwners(sheets) {
+    const c = {}; for (const x of sheets) if (x.status !== 'Done') { const k = x.owner || 'unassigned'; c[k] = (c[k] || 0) + 1; }
+    return Object.entries(c).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 2).map(([k, v]) => k + ' (' + v + ' open)');
+  }
+  function narrative(st, today) {
+    today = today || todayISO();
+    const R = report(st, today), all = allSheets(st), notes = st.reportNotes || {};
+    const lab = (ref) => refLabel(st, ref);
+    const nextMs = R.milestones.filter((m) => m.m.date && m.m.date >= today && m.pct < 100)[0];
+    const lateMs = R.milestones.filter((m) => m.late);
+    let P;
+    if (!all.length && !allSegs(st).length) P = (st.project.name || 'This project') + ' has no roads or sheets yet. Add a road on a sub-project to start tracking PS&E progress.';
+    else {
+      const risks = [];
+      if (R.overdue.length) risks.push(pl(R.overdue.length, 'overdue sheet'));
+      if (R.blocked.length) risks.push(pl(R.blocked.length, 'blocked sheet'));
+      const upd = flags(st).update.length; if (upd) risks.push(pl(upd, 'item') + ' needing an update after a linked revision');
+      if (lateMs.length) risks.push('late milestone' + (lateMs.length > 1 ? 's ' : ' ') + listing(lateMs.map((m) => m.m.name)));
+      const unassigned = all.filter((r) => r.sh.status !== 'Done' && !r.sh.owner).length; if (unassigned) risks.push(pl(unassigned, 'open sheet') + ' without an owner');
+      P = (st.project.name || 'The project') + ' is ' + pctTxt(R.overall.pct) + ' complete (weighted), with ' + R.overall.done + ' of ' + pl(R.overall.total, 'sheet') + ' done, ' + R.counts['In review'] + ' in review and ' + R.counts['In progress'] + ' in progress. ' +
+        'It covers ' + pl(allSegs(st).length, 'road segment') + ' totalling ' + Math.round(allSegs(st).reduce((a, g) => a + segLength(g), 0)).toLocaleString('en-US') + ' ft and needs ' + pl(R.pp.total, 'plan & profile sheet') + ' (' + R.pp.byDisc.Drainage + ' Drainage, ' + R.pp.byDisc.SWP3 + ' SWP3). ' +
+        (R.overdue.length || R.blocked.length ? 'There ' + (R.overdue.length === 1 ? 'is ' : 'are ') + pl(R.overdue.length, 'overdue sheet') + ' and ' + pl(R.blocked.length, 'blocked sheet') + '. ' : 'Nothing is overdue or blocked. ') +
+        (nextMs ? 'The next milestone is ' + nextMs.m.name + ' on ' + nextMs.m.date + ' (' + pctTxt(nextMs.pct) + ' of its ' + pl(nextMs.total, 'sheet') + ' done). ' : R.milestones.length ? 'No upcoming dated milestone. ' : 'No milestones are set. ') +
+        (risks.length ? 'Biggest risks: ' + listing(risks, 5) + '.' : 'No significant risks flagged.');
+    }
+    const subs = R.subs.map((x) => {
+      const sub = x.sub, segs = sub.segments;
+      let text;
+      if (!segs.length) text = 'Sub-project ' + sub.code + (sub.name && sub.name !== 'Sub-project ' + sub.code ? ' (' + sub.name + ')' : '') + ' has no roads yet.';
+      else {
+        const nm = sub.name && sub.name !== 'Sub-project ' + sub.code ? ' (' + sub.name + ')' : '';
+        const roads = segs.map((g) => g.road + ' from Sta ' + formatStation(g.start) + ' to ' + formatStation(g.end) + ' (' + Math.round(segLength(g)).toLocaleString('en-US') + ' ft at 1"=' + segScale(sub, g) + "')");
+        text = 'Sub-project ' + sub.code + nm + ' covers ' + listing(roads, 5) + '. It is ' + pctTxt(x.pct) + ' complete and needs ' + pl(x.pp, 'PP sheet') + '.';
+      }
+      const discs = x.discs.map((b) => {
+        const d = b.disc, sh = b.sheets;
+        if (!segs.length) return { disc: d, text: '', note: notes['disc:' + sub.id + ':' + d] || '' };
+        if (!sh.length) return { disc: d, text: d + ': no sheets yet' + (b.pp ? ' (' + pl(b.pp, 'PP sheet') + ' would be generated)' : '') + '.', note: notes['disc:' + sub.id + ':' + d] || '' };
+        const done = sh.filter((q) => q.status === 'Done').map((q) => q.title), prog = sh.filter((q) => q.status === 'In progress' || q.status === 'In review').map((q) => q.title + (q.status === 'In review' ? ' (in review)' : ''));
+        const rows = all.filter((r) => r.sub === sub && r.sh.discipline === d);
+        const od = rows.filter((r) => isOverdue(r.sh, today)).map((r) => r.sh.title + ' (due ' + r.sh.due + ')');
+        const bl = rows.filter((r) => r.sh.status !== 'Done' && blockers(st, { t: 'sheet', id: r.sh.id }).length).map((r) => r.sh.title + ' waiting on ' + listing(blockers(st, { t: 'sheet', id: r.sh.id }).map(lab), 2));
+        const up = rows.filter((r) => needsUpdate(st, { t: 'sheet', id: r.sh.id }).length).map((r) => r.sh.title);
+        const nx = rows.filter((r) => isUpcoming(r.sh, today, 7)).map((r) => r.sh.title + ' (' + r.sh.due + (r.sh.owner ? ', ' + r.sh.owner : '') + ')');
+        const own = topOwners(sh);
+        const parts = [d + ': ' + pctTxt(b.pct) + ' complete, ' + b.done + ' of ' + pl(b.total, 'sheet') + ' done, ' + pl(b.pp, 'PP sheet') + '.'];
+        if (done.length) parts.push('Done: ' + listing(done) + '.');
+        if (prog.length) parts.push('In progress / review: ' + listing(prog) + '.');
+        if (od.length) parts.push('Overdue: ' + listing(od) + '.');
+        if (bl.length) parts.push('Blocked: ' + listing(bl, 3) + '.');
+        if (up.length) parts.push('Needs update: ' + listing(up) + '.');
+        if (own.length) parts.push('Most open sheets: ' + listing(own) + '.');
+        parts.push(nx.length ? 'Next 7 days: ' + listing(nx) + '.' : 'Nothing due in the next 7 days.');
+        return { disc: d, text: parts.join(' '), note: notes['disc:' + sub.id + ':' + d] || '' };
+      });
+      return { sub, text, note: notes['sub:' + sub.id] || '', discs };
+    });
+    return { today, project: P, note: notes.project || '', subs };
+  }
+  function narrativeText(st, today) {
+    const N = narrative(st, today), L = [(st.project.name || 'Project') + ' — status summary as of ' + N.today, '', N.project];
+    if (N.note) L.push('Notes: ' + N.note);
+    for (const x of N.subs) {
+      L.push('', 'Sub-project ' + x.sub.code + ' · ' + x.sub.name, x.text); if (x.note) L.push('Notes: ' + x.note);
+      for (const d of x.discs) { if (d.text) L.push('  ' + d.text); if (d.note) L.push('  ' + d.disc + ' notes: ' + d.note); }
+    }
+    return L.join('\n') + '\n';
+  }
+  function setReportNote(st, key, text) {
+    if (!/^(project|sub:[^:]+|disc:[^:]+:(Drainage|SWP3))$/.test(key)) throw new Error('Bad note key');
+    const v = String(text || '').trim(); if (v) st.reportNotes[key] = v; else delete st.reportNotes[key];
+  }
+  return { SCHEMA, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

@@ -471,6 +471,19 @@ async function serve(r) {
   await click('#redoBtn'); await click('#undoBtn'); await sleep(200); await click('#undoBtn'); await sleep(300);
   ok((await cnt29()) === n0 && await pg.$eval('#redoBtn', (e) => !e.disabled), 'redo/undo buttons step through history');
   await pg.screenshot({ path: SHOTS + 'v2.9-undo-' + tag + '.png' });
+  // 10r. v2.19 report narrative + notes
+  await click('#vReport'); await pg.waitForSelector('#narrProject');
+  const g19 = await txt('#narrProject .gen');
+  ok(/is \d+% complete/.test(g19) && /plan & profile sheets/.test(g19) && /(risks|No significant)/.test(g19), 'project summary paragraph generated');
+  ok((await pg.$$('.npart[data-sub]')).length === 4 && (await pg.$$('.ndisc')).length >= 2 && /Drainage|SWP3/.test(await txt('.npart[data-sub="A"]')), 'paragraph per sub-project with Drainage / SWP3 parts');
+  await pg.type('.npart[data-sub="A"] textarea.rnote', 'Outfall survey pending from TxDOT.'); await sleep(500);
+  await pg.reload({ waitUntil: 'networkidle0' }); await pg.waitForSelector('#narrProject');
+  ok((await pg.$eval('.npart[data-sub="A"] textarea.rnote', (e) => e.value)) === 'Outfall survey pending from TxDOT.' && (await txt('#narrProject .gen')) === g19, 'notes saved separately; generated text unchanged');
+  await pg.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (t) => { window.__clip = t; return Promise.resolve(); } } }); });
+  await click('#copyNarr'); await sleep(200);
+  ok(/Outfall survey pending/.test(await pg.evaluate(() => window.__clip || '')) && /Sub-project A/.test(await pg.evaluate(() => window.__clip || '')), 'Copy narrative (with notes) to clipboard');
+  await sleep(300); await pg.screenshot({ path: SHOTS + 'v2.19-report-view-' + tag + '.png' });
+  await click('#vTree'); await sleep(250);
   // 10i. v2.10 printable status report
   await pg.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
   await pg.evaluate(() => document.querySelector('#printBtn').click()); await sleep(200);
@@ -483,7 +496,7 @@ async function serve(r) {
   if (!MOBILE) {
     const pdf = await pg.pdf({ format: 'letter', printBackground: true });
     const pages = (Buffer.from(pdf).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
-    ok(pages === 1, 'report prints on one Letter page (' + pages + ')');
+    ok(pages === 2, 'report prints as summary page + narrative page (' + pages + ')');
     fs.writeFileSync(SHOTS + 'v2.10-status-report-' + tag + '.pdf', pdf);
   }
   await pg.screenshot({ path: SHOTS + 'v2.10-status-report-' + tag + '.png', fullPage: true });

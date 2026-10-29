@@ -700,6 +700,33 @@ t('v2.17 recently changed from the activity log', () => {
   assert.ok(!M.recentChanges(st).some((x) => x.ref.id === b.id), 'deleted items drop out');
 });
 
+t('v2.19 report narrative: project + sub-project + discipline text, notes kept separately', () => {
+  const e = M.newState('Empty Job');
+  assert.match(M.narrative(e).project, /no roads or sheets yet/);
+  assert.match(M.narrative(e).subs[0].text, /has no roads yet/);
+  const st = M.newState('Job'); const A = st.subs[0];
+  const g = M.addSegment(st, A.id, { road: 'FM 1960', start: '10+00', end: '34+00' }).seg;
+  M.applyGenerate(st, g.id, M.planGenerate(st, g.id));
+  const a = M.addSheet(st, g.id, { title: 'Culvert Layout', due: '2026-10-20', owner: 'Ana' }), b = M.addSheet(st, g.id, { title: 'Inlet / Manhole Schedule', due: '2026-11-01' });
+  M.addLink(st, { t: 'sheet', id: a.id }, { t: 'sheet', id: b.id }, 'dep');
+  M.updateSheet(st, g.sheets[0].id, { status: 'Done' });
+  const ms = M.addMilestone(st, '60% PS&E', '2026-11-15');
+  const N = M.narrative(st, '2026-10-28');
+  assert.match(N.project, /^Job is \d+% complete/); assert.match(N.project, /4 plan & profile sheets \(2 Drainage, 2 SWP3\)/);
+  assert.match(N.project, /next milestone is 60% PS&E on 2026-11-15/); assert.match(N.project, /Biggest risks: 1 overdue sheet, 1 blocked sheet/);
+  assert.match(N.subs[0].text, /FM 1960 from Sta 10\+00 to 34\+00 \(2,400 ft at 1"=100'\)/);
+  const dr = N.subs[0].discs[0].text;
+  assert.match(dr, /^Drainage: /); assert.match(dr, /Overdue: Culvert Layout \(due 2026-10-20\)/); assert.match(dr, /Blocked: Inlet \/ Manhole Schedule waiting on/); assert.match(dr, /Next 7 days: Inlet/); assert.match(dr, /Most open sheets: unassigned/);
+  assert.strictEqual(N.subs[1].discs[0].text, '');
+  M.setReportNote(st, 'sub:' + A.id, 'Waiting on survey for the outfall.'); M.setReportNote(st, 'project', 'Client review Nov 20.');
+  const N2 = M.narrative(st, '2026-10-28'); assert.strictEqual(N2.subs[0].note, 'Waiting on survey for the outfall.'); assert.strictEqual(N2.subs[0].text, N.subs[0].text, 'generated text unaffected by notes');
+  const T = M.narrativeText(st, '2026-10-28'); assert.match(T, /Notes: Client review Nov 20\./); assert.match(T, /Sub-project A · /);
+  assert.deepStrictEqual(M.narrative(st, '2026-10-28'), M.narrative(st, '2026-10-28'), 'deterministic');
+  assert.throws(() => M.setReportNote(st, 'bogus', 'x')); M.setReportNote(st, 'project', ''); assert.ok(!('project' in st.reportNotes));
+  assert.deepStrictEqual(M.migrate(JSON.parse(JSON.stringify(Object.assign({}, st, { reportNotes: undefined })))).reportNotes, {});
+  void ms;
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

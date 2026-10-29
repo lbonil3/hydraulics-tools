@@ -442,3 +442,18 @@ ul.plan{margin:6px 0 0;padding-left:16px;color:var(--muted)}
 kbd{font:12px var(--mono);background:var(--surface2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:1px 5px}
 #keysHelp .keys{columns:2;column-gap:24px;padding-left:0;list-style:none}#keysHelp li{break-inside:avoid;margin:4px 0}
 @media (max-width:900px){#keysHelp .keys{columns:1}}
+/* v2.19 report narrative */
+.narr{max-width:920px;display:flex;flex-direction:column;gap:14px}
+.npart{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.npart h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;font-size:15px}
+.npart h4{margin:10px 0 4px;font-size:13px;display:flex;align-items:center;gap:6px}
+.npart p.gen{margin:0 0 6px;line-height:1.55}
+.ndisc{border-left:3px solid var(--dr);padding-left:10px;margin-top:8px}.ndisc.sw{border-left-color:var(--sw)}
+textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size:13px;background:var(--surface2)}
+.offscreen{position:fixed;left:-9999px;top:0}
+@media print{
+  .rnarr{break-before:page;page-break-before:always;font-size:10px;line-height:1.45}
+  .rnarr h3{font-size:11px;margin:8px 0 2px}.rnarr p{margin:2px 0}.rdisc{padding-left:10px}.rnotep{font-style:italic}
+  .rsub{break-inside:avoid}
+}
+@media (max-width:900px){.top>.seg-toggle:not(.branch-toggle){overflow-x:auto}.top>.seg-toggle:not(.branch-toggle) button{flex:none;padding:6px 10px}}
