@@ -27,7 +27,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.16` / `pm-v2.16-final` | Multi-select + bulk edit |
 | `pm-v2.17` / `pm-v2.17-final` | Recently changed + remembered filters |
 | `pm-v2.18` / `pm-v2.18-final` | Shortcut help + empty-state hints |
-| `pm-v2.19` | Report narrative + notes |
+| `pm-v2.19` / `pm-v2.19-final` | Report narrative + notes |
+| `pm-v2.20` | PM v2.20 CSV import |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -313,3 +314,12 @@ No data changes.
 
 Undo: `git revert --no-edit 42d957d` and push, or `git checkout pm-v2.18-final -- pm`, commit, push.
 Adds st.reportNotes {} (filled on load); generated text never stored.
+
+## v2.20
+
+| Commit | Change |
+|---|---|
+| e74b1eb | PM v2.20 CSV import |
+
+Undo: `git revert --no-edit e74b1eb` and push, or `git checkout pm-v2.19-final -- pm`, commit, push.
+No data migration; import is local only
