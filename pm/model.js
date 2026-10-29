@@ -975,7 +975,7 @@
   }
   function allRefs(st) {
     const out = [];
-    for (const sub of st.subs) for (const seg of sub.segments) { out.push({ t: 'seg', id: seg.id }); for (const sh of seg.sheets) out.push({ t: 'sheet', id: sh.id }); }
+    for (const sub of st.subs) for (const seg of sub.segments) { out.push({ t: 'seg', id: seg.id }); for (const r of sub.roads) if (r.sec === seg.id) out.push({ t: 'road', id: r.id }); for (const sh of seg.sheets) out.push({ t: 'sheet', id: sh.id }); }
     return out;
   }
   function flags(st) {
