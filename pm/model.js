@@ -849,7 +849,16 @@
     };
     return H;
   }
-  return { SCHEMA, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.10 one-page status report data */
+  function report(st, today) {
+    today = today || todayISO();
+    const S = summary(st, today), PP = ppSummary(st), w = weekView(st, {}, today);
+    const subs = st.subs.map((sub) => ({ sub, pct: S.subs.find((x) => x.sub === sub).pct, discs: DISCIPLINES.map((d) => branchStats(st, sub, d, null, today)), pp: PP.bySub.find((b) => b.sub === sub).total }));
+    const counts = Object.fromEntries(STATUSES.map((x) => [x, allSheets(st).filter((r) => r.sh.status === x).length]));
+    const mil = S.milestones.map((m) => Object.assign({ late: !!m.m.date && m.m.date < today && m.pct < 100 }, m));
+    return { today, project: st.project, overall: S.overall, counts, subs, pp: { total: PP.total, byDisc: PP.byDisc }, overdue: S.overdue, blocked: w.blocked, due7: w.due7, milestones: mil };
+  }
+  return { SCHEMA, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

@@ -39,6 +39,7 @@
     <button type="button" class="ibtn" id="ppBtn" title="PP sheet calculator">PP calc</button>
     <button type="button" class="ibtn" id="msBtn" title="Milestones">Milestones</button>
     <button type="button" class="ibtn" id="staffBtn" title="Staff &amp; workload">Staff</button>
+    <button type="button" class="ibtn" id="printBtn" title="Print one-page status report">Print report</button>
     <button type="button" class="ibtn" id="setBtn" title="Settings, backup, export">Settings</button>
     <button type="button" class="ibtn" id="themeBtn" aria-label="Toggle dark mode" title="Light / dark">&#9681;</button>
   </div>
@@ -74,6 +75,7 @@
   <aside id="drawer" aria-label="Details" hidden></aside>
 </div>
 <div id="modal" class="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button type="button" class="ibtn" id="modalClose" aria-label="Close">&times;</button></div><div id="modalBody" class="modal-body"></div></div></div>
+<section id="report" class="report" aria-label="Printable status report"></section>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="crypto.js"></script>
 <script src="model.js"></script>

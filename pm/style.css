@@ -383,3 +383,24 @@ input.numbad{border-color:var(--bad);box-shadow:0 0 0 2px color-mix(in srgb,var(
 @media (max-width:900px){.board{grid-template-columns:repeat(4,minmax(78vw,1fr));scroll-snap-type:x mandatory}.bcol{scroll-snap-align:start}.grip{font-size:22px;padding:8px 6px;top:2px;left:0}.ibtn.sm{min-width:40px;min-height:40px}.bcard .scard{padding-bottom:50px}}
 @media (max-width:900px){.top>.seg-toggle:not(.branch-toggle){order:4;flex-basis:100%;display:flex}.top>.seg-toggle:not(.branch-toggle) button{flex:1;padding:6px 4px}}
 @media (max-width:900px){.tools{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none}.tools .ibtn{flex:none;white-space:nowrap}}
+
+/* v2.10 printable status report (hidden on screen) */
+.report{display:none}
+@media print{
+  @page{size:letter;margin:0.45in}
+  html,body{background:#fff!important;color:#000!important;overflow:visible!important;height:auto!important;display:block!important}
+  body>*:not(.report){display:none!important}
+  .report{display:block;font:10px/1.35 var(--font);color:#000}
+  .report header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:8px}
+  .report h1{margin:0;font-size:17px}.report h2{font-size:11.5px;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+  .rdate{font-weight:700}.rm{color:#555}
+  .rkpis{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+  .rkpis>div{border:1px solid #bbb;border-radius:6px;padding:4px;text-align:center}.rkpis b{display:block;font-size:14px}.rkpis span{font-size:8.5px;color:#444}
+  .rbad,.rbad b{color:#b91c1c}
+  .rtab{width:100%;border-collapse:collapse}.rtab th,.rtab td{border-bottom:1px solid #ccc;padding:2px 4px;text-align:left}.rtab th{background:#eee;font-size:9px}
+  .rbar{display:inline-block;width:40px;height:6px;border:1px solid #888;margin-right:4px;vertical-align:middle}.rbar i{display:block;height:100%;background:#555;width:0}
+  .rcols{display:grid;grid-template-columns:1fr 1fr;gap:16px}.rcols ul{margin:0;padding-left:14px}.rcols li{margin:1px 0}
+  .report footer{margin-top:10px;border-top:1px solid #ccc;padding-top:3px;font-size:8.5px}
+  .report *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.rbar i.w0{width:0%}.rbar i.w10{width:10%}.rbar i.w20{width:20%}.rbar i.w30{width:30%}.rbar i.w40{width:40%}.rbar i.w50{width:50%}.rbar i.w60{width:60%}.rbar i.w70{width:70%}.rbar i.w80{width:80%}.rbar i.w90{width:90%}.rbar i.w100{width:100%}

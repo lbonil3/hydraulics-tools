@@ -579,6 +579,21 @@ t('v2.9 undo/redo history: steps, coalescing, cap, redo cleared on new edit', ()
   assert.strictEqual(M.history().step(-1), null);
 });
 
+t('v2.10 status report data: progress, A–D by discipline, PP, overdue/blocked, milestones', () => {
+  const st = M.newState('R'); const g = M.addSegment(st, st.subs[0].id, { road: 'FM 1', start: '0+00', end: '20+00' }).seg;
+  M.applyGenerate(st, g.id, M.planGenerate(st, g.id));
+  const a = M.addSheet(st, g.id, { title: 'Late', due: '2026-10-01' }), b = M.addSheet(st, g.id, { title: 'Wait' });
+  M.addLink(st, { t: 'sheet', id: a.id }, { t: 'sheet', id: b.id }, 'dep');
+  const m = M.addMilestone(st, '60% PS&E', '2026-10-15'); M.updateSheet(st, a.id, { milestone: m.id });
+  const R = M.report(st, '2026-10-28');
+  assert.strictEqual(R.subs.length, 4); assert.deepStrictEqual(R.subs[0].discs.map((d) => d.disc), ['Drainage', 'SWP3']);
+  assert.ok(R.pp.total > 0 && R.subs[0].pp === R.pp.total);
+  assert.deepStrictEqual(R.overdue.map((r) => r.sh.title), ['Late']);
+  assert.deepStrictEqual(R.blocked.map((r) => r.sh.title), ['Wait']);
+  assert.ok(R.milestones[0].late);
+  assert.strictEqual(Object.values(R.counts).reduce((x, y) => x + y, 0), R.overall.total);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

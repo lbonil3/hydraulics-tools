@@ -473,6 +473,23 @@ async function serve(r) {
   await click('#redoBtn'); await click('#undoBtn'); await sleep(200); await click('#undoBtn'); await sleep(300);
   ok((await cnt29()) === n0 && await pg.$eval('#redoBtn', (e) => !e.disabled), 'redo/undo buttons step through history');
   await pg.screenshot({ path: SHOTS + 'v2.9-undo-' + tag + '.png' });
+  // 10i. v2.10 printable status report
+  await pg.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+  await pg.evaluate(() => document.querySelector('#printBtn').click()); await sleep(200);
+  ok((await pg.evaluate(() => window.__printed)) === 1, 'Print report button opens the print dialog');
+  const rep = await txt('#report');
+  ok(/weighted progress/i.test(rep) && /Sub-projects by discipline/i.test(rep) && /PP sheets/i.test(rep) && /Overdue \(/i.test(rep) && /Blocked \(/i.test(rep) && /Milestones/i.test(rep), 'report has progress, A–D by discipline, PP, overdue/blocked, milestones');
+  ok(await pg.$eval('#report', (e) => getComputedStyle(e).display === 'none'), 'report hidden on screen');
+  await pg.emulateMediaType('print');
+  ok(await pg.$eval('#report', (e) => getComputedStyle(e).display !== 'none') && await pg.$eval('#layout', (e) => getComputedStyle(e).display === 'none'), 'print stylesheet shows only the report');
+  if (!MOBILE) {
+    const pdf = await pg.pdf({ format: 'letter', printBackground: true });
+    const pages = (Buffer.from(pdf).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+    ok(pages === 1, 'report prints on one Letter page (' + pages + ')');
+    fs.writeFileSync(SHOTS + 'v2.10-status-report-' + tag + '.pdf', pdf);
+  }
+  await pg.screenshot({ path: SHOTS + 'v2.10-status-report-' + tag + '.png', fullPage: true });
+  await pg.emulateMediaType('screen'); await sleep(150);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);
