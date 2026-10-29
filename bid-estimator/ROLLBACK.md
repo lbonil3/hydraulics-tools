@@ -54,3 +54,9 @@ git push origin main
 
 To go back to before the Bid Estimator existed at all, revert its commits:
 `git revert --no-edit <newest-sha> ... 9728237` (newest first).
+
+## Print plot appendix (d3da100)
+
+Tags: be-pre-appendix (before), be-v-appendix (after).
+Undo: `git revert --no-edit d3da100` and push, or `git checkout be-pre-appendix -- bid-estimator`, commit, push.
+No data changes. Adds optional setting printAppx (bidEstimator.settings.v1), ignored by older versions.
