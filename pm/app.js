@@ -192,7 +192,7 @@
     if (vf.sub && !st.subs.some((x) => x.id === vf.sub)) vf.sub = '';
     const mk = (k, label, opts) => { const el = select(opts, vf[k], { id: pfx + k[0].toUpperCase() + k.slice(1), 'aria-label': label }); el.addEventListener('change', () => { vf[k] = el.value; saveUI(); renderAll(); }); return el; };
     return h('div', { class: 'vfbar' },
-      mk('sub', 'Sub-project', [['', 'All sub-projects']].concat(st.subs.map((x) => [x.id, x.code + ' · ' + x.name]))),
+      mk('sub', 'Sub-project', [['', 'All sub-projects']].concat(st.subs.map((x) => [x.id, M.subLabel(x)]))),
       mk('discipline', 'Discipline', [['', 'Drainage + SWP3'], 'Drainage', 'SWP3']),
       mk('owner', 'Owner', [['', 'All owners'], ['(unassigned)', 'Unassigned']].concat(ownersList())),
       vf.sub || vf.discipline || vf.owner ? h('button', { type: 'button', class: 'btn sec sm', onclick: () => { ui.vf = { sub: '', discipline: '', owner: '' }; saveUI(); renderAll(); } }, 'Clear') : null);
@@ -201,7 +201,7 @@
     const sh = r.sh, today = M.todayISO();
     return h('button', Object.assign({ type: 'button', class: 'scard st-' + slug(sh.status) + (sel && sel.type === 'sheet' && sel.id === sh.id ? ' sel' : '') + (msel.has(sh.id) ? ' msel' : ''), 'data-id': sh.id, 'aria-pressed': msel.size ? String(msel.has(sh.id)) : null,
       onclick: (e) => { if (e.shiftKey || e.ctrlKey || e.metaKey || (msel.size && ui.view === 'board')) { pickSheet(sh.id, e.shiftKey ? 'range' : 'toggle', [...document.querySelectorAll('.scard[data-id]')].map((x) => x.dataset.id)); return; } select_('sheet', sh.id); } }, attrs || {}),
-      h('span', { class: 'sc-top' }, h('span', { class: 'code' }, r.sub.code), h('span', { class: 'chip ' + DINFO[sh.discipline].cls }, DINFO[sh.discipline].short), sh.number ? h('span', { class: 'muted' }, '#' + sh.number) : null),
+      h('span', { class: 'sc-top' }, h('span', { class: 'code', title: M.subName(r.sub) }, r.sub.code), h('span', { class: 'chip ' + DINFO[sh.discipline].cls }, DINFO[sh.discipline].short), sh.number ? h('span', { class: 'muted' }, '#' + sh.number) : null),
       h('span', { class: 'sc-title' }, sh.title),
       h('span', { class: 'sc-meta muted' }, r.seg.title + (rowRoad(r) ? ' · ' + rowRoad(r) : '')),
       h('span', { class: 'sc-meta' }, h('span', { class: 'dot st-' + slug(sh.status) }), sh.status,
@@ -282,7 +282,7 @@
   /* ----- v2.10 printable one-page status report ----- */
   function renderReport() {
     const R = M.report(st), MAX = 8;
-    const lst = (rows, why) => rows.length ? h('ul', {}, rows.slice(0, MAX).map((r) => h('li', {}, h('b', {}, r.sub.code + ' · ' + DINFO[r.sh.discipline].short), ' ', (r.sh.number ? '#' + r.sh.number + ' ' : '') + r.sh.title, h('span', { class: 'rm' }, ' — ' + why(r)))),
+    const lst = (rows, why) => rows.length ? h('ul', {}, rows.slice(0, MAX).map((r) => h('li', {}, h('b', {}, M.subTag(r.sub) + ' · ' + DINFO[r.sh.discipline].short), ' ', (r.sh.number ? '#' + r.sh.number + ' ' : '') + r.sh.title, h('span', { class: 'rm' }, ' — ' + why(r)))),
       rows.length > MAX ? h('li', { class: 'rm' }, '+ ' + (rows.length - MAX) + ' more') : null) : h('p', { class: 'rm' }, 'None');
     const pct = (x) => Math.round(x) + '%';
     $('#report').replaceChildren(
@@ -296,7 +296,7 @@
         h('div', { class: R.blocked.length ? 'rbad' : '' }, h('b', {}, String(R.blocked.length)), h('span', {}, 'blocked'))),
       h('h2', {}, 'Sub-projects by discipline'),
       h('table', { class: 'rtab' }, h('thead', {}, h('tr', {}, ['Sub-project', 'Overall', 'Drainage done', 'Drainage %', 'SWP3 done', 'SWP3 %', 'PP sheets', 'Overdue', 'Blocked'].map((x) => h('th', {}, x)))),
-        h('tbody', {}, R.subs.map((x) => { const [d, w] = x.discs; return h('tr', {}, h('td', {}, x.sub.code + ' · ' + x.sub.name), h('td', {}, pct(x.pct)),
+        h('tbody', {}, R.subs.map((x) => { const [d, w] = x.discs; return h('tr', {}, h('td', {}, M.subLabel(x.sub)), h('td', {}, pct(x.pct)),
           h('td', {}, d.done + ' / ' + d.total), h('td', {}, h('span', { class: 'rbar' }, h('i', { style: null, 'data-w': Math.round(d.pct) })), pct(d.pct)),
           h('td', {}, w.done + ' / ' + w.total), h('td', {}, h('span', { class: 'rbar' }, h('i', { 'data-w': Math.round(w.pct) })), pct(w.pct)),
           h('td', {}, String(x.pp)), h('td', {}, String(d.overdue + w.overdue)), h('td', {}, String(d.blocked + w.blocked))); }))),
@@ -310,7 +310,7 @@
       (() => { const N = M.narrative(st); const nt = (t) => t ? h('p', { class: 'rnotep' }, h('b', {}, 'Notes: '), t) : null;
         return h('section', { class: 'rnarr' }, h('h2', {}, 'Project summary'), h('p', {}, N.project), nt(N.note),
           N.discs.map((D) => h('div', { class: 'rsub' }, h('h3', {}, D.disc), h('p', {}, D.text), nt(D.note),
-            D.subs.filter((x) => x.text || x.note).map((x) => h('div', { class: 'rdisc' }, h('p', {}, h('b', {}, x.sub.code + ' · ' + x.sub.name + ': '), x.text.replace(/^[^—]*— \w+: /, '')), nt(x.note),
+            D.subs.filter((x) => x.text || x.note).map((x) => h('div', { class: 'rdisc' }, h('p', {}, h('b', {}, M.subLabel(x.sub) + ': '), x.text.replace(/^[^—]*— \w+: /, '')), nt(x.note),
               x.secs.length ? h('ul', { class: 'rsecs' }, x.secs.map((y) => h('li', {}, y.text || y.sec.title, y.note ? h('span', { class: 'rnotep' }, ' Notes: ' + y.note) : null))) : null))))); })());
     /* bar widths via CSS classes (CSP: no inline styles needed) */
     document.querySelectorAll('#report .rbar i').forEach((i) => { i.className = 'w' + Math.round(Number(i.dataset.w) / 10) * 10; });
@@ -328,16 +328,16 @@
     const toTree = (subId, d, secId, sel1) => () => { ui.view = 'tree'; if (subId) openBranch(subId, d, secId); else { ui.collapsed.root = false; ui.collapsed['dtop:' + d] = false; } saveUI(); renderAll(); sel1(); };
     for (const d of DISCS) A.push({ label: d, hint: 'discipline · A–D', kind: 'Discipline', rank: 1, run: toTree(null, d, null, () => { select_('dtop', d); focusNode('dtop:' + d); }) });
     for (const sub of st.subs) {
-      A.push({ label: 'Sub-project ' + sub.code + ' · ' + sub.name, kind: 'Sub-project', run: () => select_('sub', sub.id) });
+      A.push({ label: M.subLabel(sub), kind: 'Sub-project', run: () => select_('sub', sub.id) });
       for (const d of DISCS) {
-        A.push({ label: sub.code + ' · ' + d, hint: sub.name, kind: 'Branch', run: toTree(sub.id, d, null, () => { select_('disc', sub.id + ':' + d); focusNode('disc:' + sub.id + ':' + d); }) });
-        A.push({ label: 'Add sheet to ' + sub.code + ' · ' + d, kind: 'Action', kw: 'new quick add', run: toTree(sub.id, d, null, () => { select_('disc', sub.id + ':' + d); focusAdd('qaTitle'); }) });
+        A.push({ label: M.subTag(sub) + ' · ' + d, hint: M.subName(sub), kind: 'Branch', run: toTree(sub.id, d, null, () => { select_('disc', sub.id + ':' + d); focusNode('disc:' + sub.id + ':' + d); }) });
+        A.push({ label: 'Add sheet to ' + M.subTag(sub) + ' · ' + d, kind: 'Action', kw: 'new quick add', run: toTree(sub.id, d, null, () => { select_('disc', sub.id + ':' + d); focusAdd('qaTitle'); }) });
         for (const seg of M.sectionsOf(sub, d)) {
           const pp = M.isPPSec(seg);
-          A.push({ label: sub.code + ' · ' + seg.title, hint: d + ' section · ' + plural(seg.sheets.length, 'sheet') + (pp ? ' · ' + M.segPP(st, sub, seg).total + ' PP' : ''), kind: 'Section', rank: 1, run: toTree(sub.id, d, seg.id, () => { select_('seg', seg.id); focusNode('seg:' + seg.id); }) });
-          if (pp) A.push({ label: 'Add road to ' + sub.code + ' · ' + seg.title, kind: 'Action', kw: 'new road entry', run: toTree(sub.id, d, seg.id, () => { select_('seg', seg.id); focusAdd('addRoadName'); }) });
-          for (const road of pp ? M.roadsOf(sub, seg) : []) A.push({ label: road.name, hint: sub.code + ' · ' + seg.title + (M.hasSta(road) ? ' · ' + fmtFt(M.segLength(road)) + ' · ' + M.segPP(st, sub, road).total + ' PP' : ' · no stations yet'), kind: 'Road', rank: 1, run: toTree(sub.id, d, seg.id, () => { select_('road', road.id); focusNode('seg:' + seg.id); }) });
-          for (const sh of seg.sheets) { const rd = M.sheetRoad(st, sub, sh); A.push({ label: sh.title, hint: sub.code + ' · ' + seg.title + (rd && !sh.gen ? ' · ' + rd : '') + (sh.number ? ' · #' + sh.number : '') + ' · ' + sh.status, kw: sh.owner + ' ' + rd, kind: 'Sheet', run: () => { select_('sheet', sh.id); if (ui.view === 'tree') revealSheet({ sub, seg, sh }); } }); }
+          A.push({ label: M.subTag(sub) + ' · ' + seg.title, hint: d + ' section · ' + plural(seg.sheets.length, 'sheet') + (pp ? ' · ' + M.segPP(st, sub, seg).total + ' PP' : ''), kind: 'Section', rank: 1, run: toTree(sub.id, d, seg.id, () => { select_('seg', seg.id); focusNode('seg:' + seg.id); }) });
+          if (pp) A.push({ label: 'Add road to ' + M.subTag(sub) + ' · ' + seg.title, kind: 'Action', kw: 'new road entry', run: toTree(sub.id, d, seg.id, () => { select_('seg', seg.id); focusAdd('addRoadName'); }) });
+          for (const road of pp ? M.roadsOf(sub, seg) : []) A.push({ label: road.name, hint: M.subTag(sub) + ' · ' + seg.title + (M.hasSta(road) ? ' · ' + fmtFt(M.segLength(road)) + ' · ' + M.segPP(st, sub, road).total + ' PP' : ' · no stations yet'), kind: 'Road', rank: 1, run: toTree(sub.id, d, seg.id, () => { select_('road', road.id); focusNode('seg:' + seg.id); }) });
+          for (const sh of seg.sheets) { const rd = M.sheetRoad(st, sub, sh); A.push({ label: sh.title, hint: M.subTag(sub) + ' · ' + seg.title + (rd && !sh.gen ? ' · ' + rd : '') + (sh.number ? ' · #' + sh.number : '') + ' · ' + sh.status, kw: sh.owner + ' ' + rd, kind: 'Sheet', run: () => { select_('sheet', sh.id); if (ui.view === 'tree') revealSheet({ sub, seg, sh }); } }); }
         }
       }
     }
@@ -422,8 +422,8 @@
       h('article', { class: 'narr' },
         h('section', { class: 'npart', id: 'narrProject' }, h('h3', {}, 'Project summary'), h('p', { class: 'gen' }, N.project), noteBox('project', N.note, 'the project')),
         N.discs.map((D) => h('section', { class: 'npart ndtop ' + DINFO[D.disc].cls, 'data-disc': D.disc }, h('h3', {}, h('span', { class: 'chip ' + DINFO[D.disc].cls }, DINFO[D.disc].short), ' ' + D.disc), h('p', { class: 'gen' }, D.text), noteBox('dtop:' + D.disc, D.note, D.disc),
-          D.subs.map((x) => h('div', { class: 'ndisc ' + DINFO[D.disc].cls, 'data-sub': x.sub.code }, h('h4', {}, h('span', { class: 'code' }, x.sub.code), ' ' + x.sub.name + ' · ' + D.disc), h('p', { class: 'gen' }, x.text.replace(/^[^—]*— \w+: /, '')), noteBox(x.key, x.note, x.sub.code + ' ' + D.disc),
-            x.secs.length ? h('ul', { class: 'nsecs' }, x.secs.map((y) => h('li', { 'data-sec': y.sec.key }, h('span', { class: 'gen' }, y.text || y.sec.title + ': no sheets yet.'), noteBox('sec:' + y.sec.id, y.note, x.sub.code + ' · ' + y.sec.title)))) : null))))));
+          D.subs.map((x) => h('div', { class: 'ndisc ' + DINFO[D.disc].cls, 'data-sub': x.sub.code }, h('h4', {}, h('span', { class: 'code', title: M.subName(x.sub) }, x.sub.code), ' ' + M.subName(x.sub) + ' · ' + D.disc), h('p', { class: 'gen' }, x.text.replace(/^[^—]*— \w+: /, '')), noteBox(x.key, x.note, M.subTag(x.sub) + ' ' + D.disc),
+            x.secs.length ? h('ul', { class: 'nsecs' }, x.secs.map((y) => h('li', { 'data-sec': y.sec.key }, h('span', { class: 'gen' }, y.text || y.sec.title + ': no sheets yet.'), noteBox('sec:' + y.sec.id, y.note, M.subTag(x.sub) + ' · ' + y.sec.title)))) : null))))));
   }
 
   /* ----- v2.20 CSV import (file, drag-and-drop or pasted TSV) ----- */
@@ -452,7 +452,7 @@
       const rowsUI = h('div', { class: 'tablewrap csvprev' }, h('table', { class: 'grid compact', id: 'csvPreview' }, h('thead', {}, h('tr', {}, ['#', 'Result', 'Sub', 'Section', 'Road', 'Stations', 'Sheet', 'Status / owner / due', 'Checks'].map((x) => h('th', {}, x)))),
         h('tbody', {}, plan.items.map((it) => h('tr', { class: it.errors.length ? 'cerr' : it.warns.length ? 'cwarn' : '' }, h('td', {}, String(it.line)),
           h('td', {}, it.errors.length ? (S.skipBad ? 'skip' : 'error') : it.skip ? 'keep existing' : it.kind === 'road' ? (it.groups.every((g) => g.existing) ? 'existing road' : 'new road' + (it.groups.length > 1 ? ' ×' + it.groups.length : '')) : it.kind === 'pp' ? 'PP sheet' : 'sheet'),
-          h('td', {}, it.f.sub ? it.f.sub.code : '?'), h('td', { class: 'small' }, it.groups && it.groups.length > 1 ? it.groups.map((g) => g.sdef.title).join(' + ') : it.f.sec ? it.f.sec.title : ''), h('td', {}, it.f.road), h('td', { class: 'mono' }, Number.isFinite(it.f.start) ? M.formatStation(it.f.start) + '–' + M.formatStation(it.f.end) : ''),
+          h('td', {}, it.f.sub ? M.subTag(it.f.sub) : '?'), h('td', { class: 'small' }, it.groups && it.groups.length > 1 ? it.groups.map((g) => g.sdef.title).join(' + ') : it.f.sec ? it.f.sec.title : ''), h('td', {}, it.f.road), h('td', { class: 'mono' }, Number.isFinite(it.f.start) ? M.formatStation(it.f.start) + '–' + M.formatStation(it.f.end) : ''),
           h('td', {}, it.f.title || (it.kind === 'pp' ? it.f.series + ' #' + it.f.ppidx : '')), h('td', {}, [it.f.status, it.f.owner, it.f.due].filter(Boolean).join(' · ')),
           h('td', { class: 'small' }, it.errors.map((x) => h('div', { class: 'err' }, '✖ ' + x)), it.warns.map((x) => h('div', { class: 'warn' }, '⚠ ' + x))))))));
       const btn = h('button', { type: 'button', class: 'btn', id: 'csvImport', disabled: (!S.skipBad && sm.errors) || sm.rows === sm.errors, onclick: () => {
@@ -500,11 +500,11 @@
             h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), h('span', { class: 'grow' }, h('span', { class: 'nm' }, d), bar(D.pct, 'Progress ' + d)),
             h('span', { class: 'pp', title: 'PP sheets' }, D.pp + ' PP')),
             M.orderedSubs(st).map((sub) => { const b = M.branchStats(st, sub, d); return h('button', { type: 'button', class: 'discline ' + DINFO[d].cls, 'data-disc': d, 'data-sub': sub.code, onclick: () => { openBranch(sub.id, d); saveUI(); renderTree(); select_('disc', sub.id + ':' + d); focusNode('disc:' + sub.id + ':' + d); } },
-              h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, bar(b.pct, sub.code + ' ' + d + ' progress')), h('span', { class: 'muted' }, b.total + ' sh · ' + b.pp + ' PP')); }));
+              h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, bar(b.pct, M.subTag(sub) + ' ' + d + ' progress')), h('span', { class: 'muted' }, b.total + ' sh · ' + b.pp + ' PP')); }));
         })),
       h('section', { class: 'panel' }, h('h3', {}, 'Build order'),
         h('div', { class: 'chain', id: 'buildChain' }, M.orderedSubs(st).map((sub, i) => [i ? h('span', { class: 'arr', 'aria-hidden': 'true' }, '→') : null,
-          h('button', { type: 'button', class: 'code', title: sub.name + ' (built #' + (i + 1) + ')', onclick: () => select_('sub', sub.id) }, sub.code)]).flat().filter(Boolean)),
+          h('button', { type: 'button', class: 'code', title: M.subName(sub) + ' (built #' + (i + 1) + ')', onclick: () => select_('sub', sub.id) }, sub.code)]).flat().filter(Boolean)),
         h('button', { type: 'button', class: 'link', onclick: () => openSettings('order') }, 'Change build order')),
       refPanel('Needs update', F.update.map((x) => ({ ref: x.ref, why: 'from ' + x.from.map((r) => M.refLabel(st, r)).join(', ') })), 'upd', 'update'),
       refPanel('Blocked', F.blocked.map((x) => ({ ref: x.ref, why: 'by ' + x.by.map((r) => M.refLabel(st, r)).join(', ') })), 'bad', 'blocked'),
@@ -517,7 +517,7 @@
         h('button', { type: 'button', class: 'link', onclick: openMilestones }, 'Manage milestones')),
       (() => { const rc = M.recentChanges(st, 6); return h('section', { class: 'panel', id: 'recentPanel' }, h('h3', {}, 'Recently changed'),
         rc.length ? h('ul', { class: 'mini' }, rc.map((x) => h('li', {}, h('button', { type: 'button', class: 'link', onclick: () => { if (x.ref.t === 'sheet') { select_('sheet', x.ref.id); revealSheet(x.r); } else revealRef(x.ref); } },
-          (x.r.sub ? x.r.sub.code + ' · ' : '') + (x.ref.t === 'sheet' ? x.r.sh.title : x.ref.t === 'road' ? x.r.name : x.r.seg.title)), h('small', { class: 'muted' }, ' ' + new Date(x.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · ' + x.msg.replace(/^.*?: /, ''))))) : h('p', { class: 'muted' }, 'Edits to sheets, sections and roads will show here.')); })(),
+          (x.r.sub ? M.subTag(x.r.sub) + ' · ' : '') + (x.ref.t === 'sheet' ? x.r.sh.title : x.ref.t === 'road' ? x.r.name : x.r.seg.title)), h('small', { class: 'muted' }, ' ' + new Date(x.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · ' + x.msg.replace(/^.*?: /, ''))))) : h('p', { class: 'muted' }, 'Edits to sheets, sections and roads will show here.')); })(),
       h('section', { class: 'panel' }, h('h3', {}, 'Recent activity'),
         st.log.length ? h('ol', { class: 'log' }, st.log.slice(0, 8).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })), ' ', l.msg))) : h('p', { class: 'muted' }, 'Nothing yet.'))].filter(Boolean));
   }
@@ -538,7 +538,7 @@
   function listPanel(title, rows, cls) {
     return h('section', { class: 'panel' }, h('h3', {}, title + ' (' + rows.length + ')'),
       rows.length ? h('ul', { class: 'mini' }, rows.slice(0, 6).map((r) => h('li', {}, h('button', { type: 'button', class: 'link ' + cls, onclick: () => { select_('sheet', r.sh.id); revealSheet(r); } },
-        r.sub.code + ' · ' + r.sh.title), h('small', { class: 'muted' }, ' ' + r.sh.due + (r.sh.owner ? ' · ' + r.sh.owner : ''))))) : h('p', { class: 'muted' }, 'None'));
+        M.subTag(r.sub) + ' · ' + r.sh.title), h('small', { class: 'muted' }, ' ' + r.sh.due + (r.sh.owner ? ' · ' + r.sh.owner : ''))))) : h('p', { class: 'muted' }, 'None'));
   }
 
   /* ----- tree (v3): Project → Drainage / SWP3 → sub-projects A–D → sections → sheets. Road entries are data inside P&P sections, not nodes. ----- */
@@ -599,7 +599,7 @@
     const any = rows.some(sheetMatches);
     const q = filt.q.trim().toLowerCase();
     const roadTxt = n.type === 'seg' ? M.roadsOf(n.sub, n.seg).map((r) => r.name).join(' ') : '';
-    const selfHit = !!q && (n.type === 'dtop' ? n.disc.toLowerCase().includes(q) : n.type === 'disc' ? (n.sub.code + ' ' + n.sub.name + ' ' + n.disc).toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.title + ' ' + roadTxt).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
+    const selfHit = !!q && (n.type === 'dtop' ? n.disc.toLowerCase().includes(q) : n.type === 'disc' ? (M.subLabel(n.sub) + ' ' + n.disc).toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.title + ' ' + roadTxt).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
     const onlyQ = !filt.status && !filt.owner && !filt.discipline && !filt.flag;
     return { dim: !(any || (selfHit && onlyQ)), hit: selfHit && (n.type !== 'sheet' || any) };
   }
@@ -743,7 +743,7 @@
     saveUI(); renderAll(); fit(); toast('Focused this branch · others collapsed');
   }
   function addBtn(n, label, fn) { return h('button', { type: 'button', class: 'nbtn add', 'aria-label': label, title: label, onclick: (e) => { e.stopPropagation(); fn(); } }, '+'); }
-  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'dtop' ? n.disc + ' branch' : n.type === 'disc' ? n.disc + ' sub-project ' + n.sub.code : n.type === 'seg' ? n.sub.code + ' ' + n.disc + ' section ' + n.seg.title : 'sheet ' + n.sh.title; }
+  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'dtop' ? n.disc + ' branch' : n.type === 'disc' ? n.disc + ' sub-project ' + M.subTag(n.sub) : n.type === 'seg' ? M.subTag(n.sub) + ' ' + n.disc + ' section ' + n.seg.title : 'sheet ' + n.sh.title; }
   function flagRow(b, extra) {
     return h('div', { class: 'nrow' }, b.overdue ? h('span', { class: 'flag', title: 'Overdue' }, '⚑ ' + b.overdue) : null,
       b.blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked sheets' }, '⛓ ' + b.blocked) : null,
@@ -766,7 +766,8 @@
         flagRow(b)), ring(b.pct, 46)];
     } else if (n.type === 'disc') {
       const b = M.branchStats(st, n.sub, n.disc, null, today);
-      body = [h('span', { class: 'code lg' }, n.sub.code, h('small', { class: 'ord', title: 'Build order' }, '#' + (M.orderedSubs(st).indexOf(n.sub) + 1))), h('div', { class: 'nb' }, h('div', { class: 'nt' }, n.sub.name),
+      body = [h('span', { class: 'code lg' }, n.sub.code, h('small', { class: 'ord', title: 'Build order' }, '#' + (M.orderedSubs(st).indexOf(n.sub) + 1))), h('div', { class: 'nb' }, h('div', { class: 'nt', title: M.subName(n.sub) + ' — double-click to rename', ondblclick: (e) => { e.stopPropagation(); startTreeRename(e.currentTarget, n.sub); } }, h('span', { class: 'ntx' }, M.subName(n.sub)),
+        h('button', { type: 'button', class: 'nren', title: 'Rename sub-project ' + n.sub.code, 'aria-label': 'Rename sub-project ' + n.sub.code, onclick: (e) => { e.stopPropagation(); startTreeRename(e.currentTarget.parentNode, n.sub); } }, '✎')),
         h('div', { class: 'ns' }, plural(b.total, 'sheet') + ' · ', h('b', {}, b.pp + ' PP'), b.roads ? ' · ' + plural(b.roads, 'road') : ''),
         flagRow(b)), ring(b.pct, 44)];
     } else if (n.type === 'seg') {
@@ -808,8 +809,8 @@
       onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id); }
         else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && n.kids.length && !e.altKey) { e.preventDefault(); e.stopPropagation(); if ((e.key === 'ArrowLeft') !== !!n.collapsed) toggleNode(n, e.key === 'ArrowLeft'); } } },
     body, h('div', { class: 'nacts' },
-      n.type === 'disc' ? addBtn(n, 'Add a sheet to ' + n.sub.code + ' ' + n.disc + ' (pick the section)', () => { select_('disc', id); focusAdd('qaTitle'); }) : null,
-      n.type === 'seg' ? addBtn(n, n.pp ? 'Add a road to ' + n.sub.code + ' · ' + n.seg.title + ' (road name only)' : 'Add a sheet to ' + n.sub.code + ' · ' + n.seg.title, () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', n.seg.id); focusAdd(n.pp ? 'addRoadName' : 'addSheetTitle'); }) : null,
+      n.type === 'disc' ? addBtn(n, 'Add a sheet to ' + M.subTag(n.sub) + ' ' + n.disc + ' (pick the section)', () => { select_('disc', id); focusAdd('qaTitle'); }) : null,
+      n.type === 'seg' ? addBtn(n, n.pp ? 'Add a road to ' + M.subTag(n.sub) + ' · ' + n.seg.title + ' (road name only)' : 'Add a sheet to ' + M.subTag(n.sub) + ' · ' + n.seg.title, () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', n.seg.id); focusAdd(n.pp ? 'addRoadName' : 'addSheetTitle'); }) : null,
       toggleBtn(n)),
     n.type === 'sheet' || n.type === 'seg' ? h('span', { class: 'handle', role: 'button', tabindex: -1, title: 'Drag onto another sheet or section: it will depend on this one', 'aria-label': 'Connector handle for ' + nodeLabel(n),
       onpointerdown: (e) => startLinkDrag(e, n, { t: n.type, id }), _link: { n, ref: { t: n.type, id } }, onclick: (e) => { e.stopPropagation(); select_(n.type, id); focusAdd('lkSearch'); } }) : null);
@@ -904,7 +905,7 @@
   /* ----- list (dense table) ----- */
   const secIndex = (r) => r.sub.segments.indexOf(r.seg);
   const COLS = [
-    { k: 'sub', l: 'Sub', get: (r) => r.sub.code },
+    { k: 'sub', l: 'Sub', get: (r) => M.subTag(r.sub) },
     { k: 'discipline', l: 'Disc.', get: (r) => r.sh.discipline, edit: 'disc' },
     { k: 'section', l: 'Section', get: (r) => DISCS.indexOf(r.seg.discipline) * 1000 + secIndex(r), show: (r) => r.seg.title, edit: 'sec' },
     { k: 'road', l: 'Road', get: (r) => rowRoad(r), edit: 'road' },
@@ -972,7 +973,7 @@
     })));
     if (ui.group) rows = rows.map((r, i) => ({ r, i })).sort((a, b) => DISCS.indexOf(a.r.seg.discipline) - DISCS.indexOf(b.r.seg.discipline) || M.subOrder(st, a.r.sub) - M.subOrder(st, b.r.sub) || secIndex(a.r) - secIndex(b.r) || a.i - b.i).map((x) => x.r);
     const grpRow = (r) => { const g = rows.filter((x) => x.seg === r.seg); const p = M.progress(g.map((x) => x.sh)); const d = r.seg.discipline;
-      return h('tr', { class: 'grp ' + DINFO[d].cls }, h('th', { colspan: cols.length + 1, scope: 'rowgroup' }, h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), ' ', h('span', { class: 'code' }, r.sub.code), ' ' + r.seg.title + (M.isPPSec(r.seg) ? ' · ' + M.segPP(st, r.sub, r.seg).total + ' PP · roads: ' + (M.roadsOf(r.sub, r.seg).map((x) => x.road).join(', ') || 'none') : '') + ' — ' + plural(g.length, 'sheet') + ' · ' + Math.round(p.pct) + '%')); };
+      return h('tr', { class: 'grp ' + DINFO[d].cls }, h('th', { colspan: cols.length + 1, scope: 'rowgroup' }, h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), ' ', h('span', { class: 'code' }, r.sub.code), ' ' + (M.subCustom(r.sub) ? M.subName(r.sub) + ' · ' : '') + r.seg.title + (M.isPPSec(r.seg) ? ' · ' + M.segPP(st, r.sub, r.seg).total + ' PP · roads: ' + (M.roadsOf(r.sub, r.seg).map((x) => x.road).join(', ') || 'none') : '') + ' — ' + plural(g.length, 'sheet') + ' · ' + Math.round(p.pct) + '%')); };
     const tbody = h('tbody', {}, rows.map((r, i) => [ui.group && (!i || rows[i - 1].seg !== r.seg) ? grpRow(r) : null, h('tr', { tabindex: 0, 'data-id': r.sh.id, class: (M.isOverdue(r.sh, M.todayISO()) ? 'od ' : '') + (msel.has(r.sh.id) ? 'msel ' : '') + (sel && sel.id === r.sh.id ? 'sel' : ''),
       onkeydown: (e) => { if (e.key === 'Enter' && e.target.tagName === 'TR') { e.preventDefault(); select_('sheet', r.sh.id); } } },
     h('td', { class: 'selcol' }, h('input', { type: 'checkbox', class: 'rsel', 'aria-label': 'Select ' + r.sh.title, checked: msel.has(r.sh.id), onclick: (e) => { e.stopPropagation(); pickSheet(r.sh.id, e.shiftKey ? 'range' : 'toggle', visIds); } })),
@@ -999,7 +1000,7 @@
     const fsel = (k, opts, lab) => { const e = select(opts, filt[k], { 'aria-label': lab, 'data-f': k }); e.addEventListener('change', () => { filt[k] = e.value; if (k === 'discipline') { const sd = filt.section && M.secDef(st, filt.section); if (filt.discipline && sd && sd.discipline !== filt.discipline) filt.section = ''; renderAll(); } else renderList(); }); return e; };
     wrap.replaceChildren(...[
       h('div', { class: 'listbar' },
-        fsel('sub', [['', 'All sub-projects']].concat(st.subs.map((x) => [x.id, x.code + ' · ' + x.name])), 'Sub-project'),
+        fsel('sub', [['', 'All sub-projects']].concat(st.subs.map((x) => [x.id, M.subLabel(x)])), 'Sub-project'),
         fsel('discipline', [['', 'Drainage + SWP3'], ['Drainage', 'Drainage only'], ['SWP3', 'SWP3 only']], 'Discipline'),
         (() => { const g = select([['', 'No grouping'], ['subdisc', 'Group: discipline › sub-project › section']], ui.group, { 'aria-label': 'Grouping', id: 'groupSel' }); g.addEventListener('change', () => { ui.group = g.value; saveUI(); renderList(); }); return g; })(),
         fsel('section', [['', 'All sections']].concat(secKeyOpts(filt.discipline || null)), 'Section'),
@@ -1068,7 +1069,7 @@
       h('h3', {}, 'Disciplines'),
       h('ul', { class: 'dlist' }, DISCS.map((d) => { const b = M.discStats(st, d); return h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: () => select_('dtop', d) }, h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), h('span', { class: 'grow' }, ' ' + d + ' · ' + b.total + ' sh · ' + Math.round(b.pct) + '%'), h('b', {}, b.pp + ' PP'))); })),
       h('h3', {}, 'Sub-projects'),
-      h('ul', { class: 'dlist' }, M.orderedSubs(st).map((sub) => h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: () => select_('sub', sub.id) }, h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, ' ' + sub.name), h('b', {}, M.ppSummary(st).bySub.find((b) => b.sub === sub).total + ' PP'))))),
+      h('ul', { class: 'dlist' }, M.orderedSubs(st).map((sub) => h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: () => select_('sub', sub.id) }, h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, ' ' + M.subName(sub)), h('b', {}, M.ppSummary(st).bySub.find((b) => b.sub === sub).total + ' PP'))))),
       h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec', onclick: openPP }, 'PP sheet calculator'), h('button', { type: 'button', class: 'btn sec', onclick: () => openSettings('secs') }, 'Edit section lists')));
   }
   /* PP line for a section (sum of its roads) or one road entry */
@@ -1087,7 +1088,7 @@
       h('div', { class: 'statrow' }, ring(b.pct, 54), h('div', {}, h('div', {}, plural(b.total, 'sheet') + ' · ' + b.done + ' done'), h('div', {}, h('b', {}, b.pp + ' PP sheets'), ' from ' + plural(b.roads, 'road entry')),
         h('div', {}, [b.overdue ? '⚑ ' + b.overdue + ' overdue' : '', b.blocked ? '⛓ ' + b.blocked + ' blocked' : '', b.update ? '⟳ ' + b.update + ' need update' : ''].filter(Boolean).join(' · ')))),
       h('h3', {}, 'Sub-projects'),
-      h('ul', { class: 'dlist' }, M.orderedSubs(st).map((sub) => { const x = M.branchStats(st, sub, d); return h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: toDisc(sub, d) }, h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, ' ' + sub.name + ' · ' + x.total + ' sh · ' + Math.round(x.pct) + '%'), h('b', {}, x.pp + ' PP'))); })),
+      h('ul', { class: 'dlist' }, M.orderedSubs(st).map((sub) => { const x = M.branchStats(st, sub, d); return h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: toDisc(sub, d) }, h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, ' ' + M.subName(sub) + ' · ' + x.total + ' sh · ' + Math.round(x.pct) + '%'), h('b', {}, x.pp + ' PP'))); })),
       h('h3', {}, 'Sections (A–D combined)'),
       h('div', { class: 'tablewrap' }, h('table', { class: 'grid compact', id: 'dtopSecs' }, h('thead', {}, h('tr', {}, ['Section', 'Sheets', 'Done', 'PP', 'Roads'].map((x) => h('th', { scope: 'col' }, x)))),
         h('tbody', {}, defs.map((def) => { const xs = st.subs.map((sub) => M.secOf(sub, def.key)).filter(Boolean); const sh = xs.flatMap((g) => g.sheets);
@@ -1098,19 +1099,46 @@
         h('button', { type: 'button', class: 'btn sec', onclick: () => genAll(d) }, 'Generate ' + d + ' PP for A–D'),
         h('button', { type: 'button', class: 'btn sec', onclick: () => openSettings('secs') }, 'Edit ' + d + ' sections')));
   }
+  /* v3.1: rename a sub-project (display name only; id, letter and build order unchanged). Enter saves, Esc cancels. */
+  function subNameEditor(sub, opts) {
+    opts = opts || {};
+    const inp = h('input', { value: M.subName(sub), maxlength: 60, class: 'subname-in' + (opts.cls ? ' ' + opts.cls : ''), 'aria-label': 'Name of sub-project ' + sub.code, spellcheck: 'false' });
+    const err = h('span', { class: 'err small subname-err', role: 'alert' });
+    let done = false;
+    const check = () => { const c = M.checkSubName(st, sub.id, inp.value); err.textContent = c.ok ? '' : c.error; inp.toggleAttribute('aria-invalid', !c.ok); return c; };
+    const save = () => {
+      if (done) return true;
+      const c = check(); if (!c.ok) { inp.focus(); return false; }
+      done = true;
+      if (c.name !== M.subName(sub)) { const old = M.subName(sub); commit(() => M.renameSub(st, sub.id, c.name)); toast('Renamed ' + old + ' → ' + c.name + '. Undo with Ctrl+Z.'); }
+      else if (opts.onCancel) opts.onCancel();
+      return true;
+    };
+    const cancel = () => { done = true; inp.value = M.subName(sub); err.textContent = ''; inp.removeAttribute('aria-invalid'); if (opts.onCancel) opts.onCancel(); };
+    inp.addEventListener('focus', () => { done = false; });
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); save(); } else if (e.key === 'Escape') { e.preventDefault(); cancel(); if (opts.blurOnCancel) inp.blur(); } });
+    inp.addEventListener('input', check);
+    inp.addEventListener('blur', () => { if (!done && !save()) cancel(); });
+    ['click', 'dblclick', 'pointerdown'].forEach((t) => inp.addEventListener(t, (e) => e.stopPropagation()));
+    return { inp, err, el: h('span', { class: 'subname-ed' }, inp, err) };
+  }
+  function startTreeRename(nt, sub) {
+    const ed = subNameEditor(sub, { onCancel: () => renderTree() });
+    nt.replaceChildren(ed.el); nt.classList.add('editing'); ed.inp.focus(); ed.inp.select();
+  }
   function subDrawer(sub) {
-    const name = h('input', { value: sub.name, 'aria-label': 'Sub-project name' });
-    name.addEventListener('change', () => commit(() => { sub.name = name.value.trim() || sub.name; }));
-    const sp = scalePicker(sub.scale, null, (v) => { if (v) commit(() => { sub.scale = v; M.log(st, sub.code + ' default scale → ' + v); }); });
+    const ned = subNameEditor(sub, { blurOnCancel: true }); ned.inp.id = 'subName';
+    const name = ned.el;
+    const sp = scalePicker(sub.scale, null, (v) => { if (v) commit(() => { sub.scale = v; M.log(st, M.subTag(sub) + ' default scale → ' + v); }); });
     const pp = M.ppSummary(st).bySub.find((b) => b.sub === sub);
     const p = M.progress(sub.segments.flatMap((g) => g.sheets));
     return h('div', { class: 'dbody' },
-      h('h2', {}, h('span', { class: 'code' }, sub.code), ' ', sub.name),
+      h('h2', {}, h('span', { class: 'code' }, sub.code), ' ', M.subName(sub)),
       h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, h('div', {}, plural(sub.roads.length, 'road entry') + ' · ' + fmtFt(pp.length)), h('div', {}, h('b', {}, pp.total + ' PP sheets'), ' at current scales'))),
-      field('Name', name), field('Default plan scale for road entries', sp, 'Road entries use this unless they set their own scale.'),
+      field('Name', name, 'Shown everywhere instead of “Sub-project ' + sub.code + '”. The letter ' + sub.code + ' and the build order stay the same. Enter saves, Esc cancels.'), field('Default plan scale for road entries', sp, 'Road entries use this unless they set their own scale.'),
       h('h3', {}, 'Branches'),
-      h('ul', { class: 'dlist' }, DISCS.map((d) => { const b = M.branchStats(st, sub, d); return h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: toDisc(sub, d) }, h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), h('span', { class: 'grow' }, ' ' + sub.code + ' · ' + d + ' · ' + b.total + ' sh · ' + Math.round(b.pct) + '%'), h('b', {}, b.pp + ' PP'))); })),
-      h('details', { class: 'tpls' }, h('summary', {}, 'Standard (non-PP) sheet set for ' + sub.code + ' (' + sub.templates.length + ')'),
+      h('ul', { class: 'dlist' }, DISCS.map((d) => { const b = M.branchStats(st, sub, d); return h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: toDisc(sub, d) }, h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), h('span', { class: 'grow' }, ' ' + M.subTag(sub) + ' · ' + d + ' · ' + b.total + ' sh · ' + Math.round(b.pct) + '%'), h('b', {}, b.pp + ' PP'))); })),
+      h('details', { class: 'tpls' }, h('summary', {}, 'Standard (non-PP) sheet set for ' + M.subTag(sub) + ' (' + sub.templates.length + ')'),
         h('p', { class: 'muted small' }, '“+ Standard sheets” adds each of these to its section (skipping titles the section already has).'),
         h('ul', { class: 'dlist' }, sub.templates.map((t) => {
           const ti = h('input', { value: t.title, 'aria-label': 'Template title' }); ti.addEventListener('change', () => commit(() => M.updateTemplate(st, sub.id, t.id, { title: ti.value })));
@@ -1121,8 +1149,8 @@
         })),
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn sec sm', onclick: () => commit(() => M.addTemplate(st, sub.id, { title: 'New sheet', sec: 'dr-std' })) }, '+ Template'),
-          h('button', { type: 'button', class: 'btn sec sm', onclick: () => { if (confirm('Reset ' + sub.code + ' templates to defaults?')) commit(() => M.resetTemplates(st, sub.id)); } }, 'Reset defaults'),
-          h('button', { type: 'button', class: 'btn sm', id: 'subStd', onclick: () => { const a = commit(() => M.addStandardSet(st, sub.id)) || []; toast(a.length ? 'Added ' + plural(a.length, 'sheet') + ' to ' + sub.code + '.' : 'Every section already has these sheets.'); } }, '+ Standard sheets for ' + sub.code))));
+          h('button', { type: 'button', class: 'btn sec sm', onclick: () => { if (confirm('Reset ' + M.subTag(sub) + ' templates to defaults?')) commit(() => M.resetTemplates(st, sub.id)); } }, 'Reset defaults'),
+          h('button', { type: 'button', class: 'btn sm', id: 'subStd', onclick: () => { const a = commit(() => M.addStandardSet(st, sub.id)) || []; toast(a.length ? 'Added ' + plural(a.length, 'sheet') + ' to ' + M.subTag(sub) + '.' : 'Every section already has these sheets.'); } }, '+ Standard sheets for ' + sub.code))));
   }
   /* generate PP sheets: one road entry, one section, or a whole discipline */
   function askTouched(pl) { return pl.removeTouched.length ? confirm(pl.removeTouched.length + ' generated PP sheet(s) beyond the new count have your edits (status, owner, notes…):\n\n' + pl.removeTouched.map((x) => '• ' + x.title).join('\n') + '\n\nOK = delete them too. Cancel = keep them.') : false; }
@@ -1160,8 +1188,8 @@
     const guess = () => { const k = M.mapSection(st, qt.value || '', d), def = M.secDef(st, k); hint.textContent = qt.value.trim() ? (qs.value ? '' : '→ goes to ' + (def ? def.title : (d === 'SWP3' ? 'Other SWP3' : 'Other Drainage'))) : ''; };
     qt.addEventListener('input', guess); qs.addEventListener('change', guess);
     return h('div', { class: 'dbody' },
-      crumb([[d, () => select_('dtop', d)], [sub.code + ' · ' + sub.name, () => select_('sub', sub.id)]]),
-      h('h2', {}, h('span', { class: 'dicon ' + DINFO[d].cls }, DINFO[d].icon), ' ' + sub.code + ' · ' + d),
+      crumb([[d, () => select_('dtop', d)], [M.subLabel(sub), () => select_('sub', sub.id)]]),
+      h('h2', {}, h('span', { class: 'dicon ' + DINFO[d].cls }, DINFO[d].icon), ' ' + M.subTag(sub) + ' · ' + d),
       h('div', { class: 'statrow' }, ring(b.pct, 54), h('div', {}, h('div', {}, plural(b.total, 'sheet') + ' · ' + b.done + ' done'), h('div', {}, h('b', {}, b.pp + ' PP sheets'), ' from ' + plural(b.roads, 'road entry')),
         h('div', {}, [b.overdue ? '⚑ ' + b.overdue + ' overdue' : '', b.blocked ? '⛓ ' + b.blocked + ' blocked' : '', b.update ? '⟳ ' + b.update + ' need update' : ''].filter(Boolean).join(' · ')))),
       h('section', { class: 'box' }, h('h3', {}, 'Quick add sheet'),
@@ -1236,7 +1264,7 @@
     const tpls = sub.templates.filter((t) => t.sec === seg.key);
     const P = pp ? M.planSection(st, seg.id) : null, pending = P ? M.pendingCount(P) : 0;
     return h('div', { class: 'dbody' },
-      crumb([[d, () => select_('dtop', d)], [sub.code + ' · ' + sub.name, toDisc(sub, d)]]),
+      crumb([[d, () => select_('dtop', d)], [M.subLabel(sub), toDisc(sub, d)]]),
       h('h2', {}, seg.title),
       h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, h('div', {}, plural(seg.sheets.length, 'sheet') + ' · ' + p.done + ' done'), pp ? h('div', { id: 'secPPLine' }, ppLine(sub, seg)) : null)),
       pp ? h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, 'Roads in this section'),
@@ -1305,11 +1333,11 @@
       M.hasSta(seg) ? splitMerge(sub, seg) : null, copyBox(sub, seg));
   }
   function copyBox(sub, seg) {
-    const to = select(st.subs.filter((x) => x !== sub).map((x) => [x.id, 'to ' + x.code + ' · ' + x.name]), '', { id: 'cpTo', 'aria-label': 'Copy to sub-project' });
+    const to = select(st.subs.filter((x) => x !== sub).map((x) => [x.id, 'to ' + M.subLabel(x)]), '', { id: 'cpTo', 'aria-label': 'Copy to sub-project' });
     const ws = h('input', { type: 'checkbox', id: 'cpSheets', checked: true });
     return h('form', { class: 'addrow cprow', onsubmit: (e) => {
       e.preventDefault(); const r = commit(() => M.copySegment(st, seg.id, to.value, { sheets: ws.checked }));
-      if (r) { const tsub = M.findSub(st, to.value); const hit = M.findRoad(st, r.road.id); openBranch(tsub.id, hit.sec.discipline, hit.sec.id); saveUI(); renderTree(); toast('Copied to ' + tsub.code + ' · ' + hit.sec.title + (r.sheets ? ' with ' + r.sheets + ' PP sheets (Not started)' : '') + (r.warns.length ? ' · ⚠ ' + r.warns[0] : '.')); }
+      if (r) { const tsub = M.findSub(st, to.value); const hit = M.findRoad(st, r.road.id); openBranch(tsub.id, hit.sec.discipline, hit.sec.id); saveUI(); renderTree(); toast('Copied to ' + M.subTag(tsub) + ' · ' + hit.sec.title + (r.sheets ? ' with ' + r.sheets + ' PP sheets (Not started)' : '') + (r.warns.length ? ' · ⚠ ' + r.warns[0] : '.')); }
     } }, to, h('label', { class: 'chk' }, ws, ' with PP sheets'), h('button', { type: 'submit', class: 'btn sec', id: 'cpBtn' }, '⧉ Copy road'));
   }
   function splitMerge(sub, seg) {
@@ -1331,7 +1359,7 @@
     const pl = M.planGenerate(st, road.id), pend = M.pendingCount(pl);
     const gen = sec.sheets.filter((x) => x.gen && x.gen.road === road.id);
     return h('div', { class: 'dbody' },
-      crumb([[sec.discipline, () => select_('dtop', sec.discipline)], [sub.code, toDisc(sub, sec.discipline)], [sec.title, toSeg(sec)]]),
+      crumb([[sec.discipline, () => select_('dtop', sec.discipline)], [M.subTag(sub), toDisc(sub, sec.discipline)], [sec.title, toSeg(sec)]]),
       h('h2', {}, road.name), h('div', { class: 'statrow' }, h('div', {}, ppLine(sub, road))),
       h('section', { class: 'box' }, h('h3', {}, 'PP sheets'),
         h('p', { class: 'muted' }, !M.hasSta(road) ? 'Enter stations to count and generate PP sheets.' : pend ? 'Generate creates ' + pl.create.length + ', updates ' + pl.update.length + ', removes ' + (pl.remove.length + pl.removeTouched.length) + ' generated sheet(s). Other sheets are never touched.' : 'Generated PP sheets are up to date (' + pl.unchanged + ').'),
@@ -1369,13 +1397,13 @@
     const fill = () => {
       const t = q.value.trim().toLowerCase();
       const cand = M.allRefs(st).filter((r) => M.rk(r) !== key).map((r) => ({ r, x: M.resolve(st, r) })).filter(({ x }) => x)
-        .filter(({ x }) => !t || (x.sub.code + ' ' + x.sub.name + ' ' + x.seg.discipline + ' ' + x.seg.title + ' ' + refText(x)).toLowerCase().includes(t));
+        .filter(({ x }) => !t || (M.subLabel(x.sub) + ' ' + x.seg.discipline + ' ' + x.seg.title + ' ' + refText(x)).toLowerCase().includes(t));
       res.replaceChildren(...cand.slice(0, 40).map(({ r, x }) => h('li', {}, h('button', { type: 'button', class: 'rowbtn', role: 'option', onclick: () => {
         const [a, b] = dir.value === 'in' ? [r, ref] : [ref, r];
         const out = commit(() => M.addLink(st, a, b, kind.value));
         if (out) toast('Connector added.' + (out.warns.length ? ' ⚠ ' + out.warns.join(' ') : ''));
         setTimeout(() => { const i = $('#lkSearch'); if (i) i.focus(); }, 20);
-      } }, h('span', { class: 'code' }, x.sub.code), h('span', { class: 'grow' }, ' ' + x.seg.title + (x.t === 'sheet' ? ' · ' + x.sh.title : x.t === 'road' ? ' · road ' + x.name : ' (whole section)')),
+      } }, h('span', { class: 'code', title: M.subName(x.sub) }, x.sub.code), h('span', { class: 'grow' }, ' ' + x.seg.title + (x.t === 'sheet' ? ' · ' + x.sh.title : x.t === 'road' ? ' · road ' + x.name : ' (whole section)')),
         x.t === 'sheet' ? h('span', { class: 'stpill' }, x.sh.status) : null))));
       if (cand.length > 40) res.append(h('li', { class: 'muted' }, (cand.length - 40) + ' more — keep typing'));
     };
@@ -1425,7 +1453,7 @@
     const blocked = sh.status === 'Done' ? [] : M.blockers(st, { t: 'sheet', id: sh.id });
     const groad = sh.gen && M.findRoad(st, sh.gen.road);
     return h('div', { class: 'dbody' },
-      crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [sub.code, toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]].concat(groad ? [[groad.road.name, () => select_('road', groad.road.id)]] : [])),
+      crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subTag(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]].concat(groad ? [[groad.road.name, () => select_('road', groad.road.id)]] : [])),
       field('Title', inp('title')),
       sh.gen ? h('p', { class: 'pill' }, 'Generated PP sheet ' + sh.gen.idx + ' of ' + sh.gen.of + ' · Sta ' + M.formatStation(sh.gen.start) + ' to ' + M.formatStation(sh.gen.end) + ' (' + fmtFt(sh.gen.end - sh.gen.start) + ')') : null,
       blocked.length ? h('p', { class: 'warnbox', id: 'blockedMsg' }, '⛓ Blocked by ' + blocked.length + ': ' + blocked.map((r) => M.refLabel(st, r)).join(', ')) : null,
@@ -1451,7 +1479,7 @@
     const save1 = (seg, k, v) => { const r = commit(() => M.applyStationRows(st, [{ roadId: seg.id, [k]: v }])); if (r && r.warns.length) toast('⚠ ' + r.warns[0]); };
     const cell = (x, k, ri, ci) => {
       const v = k === 'road' ? x.seg.road : k === 'scale' ? (x.seg.scale == null ? '' : x.seg.scale) : M.formatStation(x.seg[k]);
-      const inp = h('input', { class: 'scell' + (k !== 'road' ? ' mono' : ''), value: String(v), 'data-r': ri, 'data-c': ci, 'aria-label': x.sub.code + ' ' + x.sec.title + ' ' + x.seg.name + ' ' + k, placeholder: k === 'scale' ? String(x.sub.scale) : '' });
+      const inp = h('input', { class: 'scell' + (k !== 'road' ? ' mono' : ''), value: String(v), 'data-r': ri, 'data-c': ci, 'aria-label': M.subTag(x.sub) + ' ' + x.sec.title + ' ' + x.seg.name + ' ' + k, placeholder: k === 'scale' ? String(x.sub.scale) : '' });
       inp.addEventListener('change', () => { const val = inp.value.trim(); if (k === 'road' && !val) { inp.value = String(v); return; } if ((k === 'start' || k === 'end') && val && !Number.isFinite(M.parseStation(val))) { inp.classList.add('numbad'); toast('Station must look like 10+00, 1000 or 10+00.50'); return; }
         if (k === 'start' || k === 'end') { const o = inp.closest('tr').querySelector('.scell[data-c="' + (k === 'start' ? 2 : 1) + '"]').value.trim(); if (!!val !== !!o) { toast('Now enter the ' + (k === 'start' ? 'end' : 'start') + ' station.'); return; }
           const r = commit(() => M.applyStationRows(st, [{ roadId: x.seg.id, start: k === 'start' ? val : o, end: k === 'end' ? val : o }])); if (r && r.warns.length) toast('⚠ ' + r.warns[0]); return; }
@@ -1471,7 +1499,7 @@
       segs.length ? h('div', { class: 'tablewrap' }, h('table', { class: 'grid stable', id: 'stTable' },
         h('thead', {}, h('tr', {}, ['Sub', 'Section', 'Road', 'Start', 'End', 'Scale', 'Length', 'PP', ''].map((x) => h('th', { scope: 'col' }, x)))),
         h('tbody', {}, segs.map((x, ri) => { const pend = M.hasSta(x.seg) ? M.pendingCount(M.planGenerate(st, x.seg.id)) : 0; const ov = M.hasSta(x.seg) ? M.overlaps(x.seg, segs.filter((o) => o.sec.key === x.sec.key).map((o) => o.seg)) : [];
-          return h('tr', { class: ov.length ? 'ovl' : '' }, h('td', {}, h('span', { class: 'code' }, x.sub.code)), h('td', { class: 'small' }, h('span', { class: 'chip ' + DINFO[x.sec.discipline].cls }, DINFO[x.sec.discipline].short), ' ' + x.sec.title), SCOLS.map((k, ci) => cell(x, k, ri, ci)),
+          return h('tr', { class: ov.length ? 'ovl' : '' }, h('td', {}, h('span', { class: 'code', title: M.subName(x.sub) }, x.sub.code)), h('td', { class: 'small' }, h('span', { class: 'chip ' + DINFO[x.sec.discipline].cls }, DINFO[x.sec.discipline].short), ' ' + x.sec.title), SCOLS.map((k, ci) => cell(x, k, ri, ci)),
             h('td', { class: 'mono' }, M.hasSta(x.seg) ? fmtFt(M.segLength(x.seg)) : '—'), h('td', {}, M.hasSta(x.seg) ? String(M.segPP(st, x.sub, x.seg).total) : '—'),
             h('td', {}, ov.length ? h('span', { class: 'warn', title: 'Overlaps ' + ov.map((o) => o.name).join(', ') }, '⚠ overlap ') : null,
               pend ? h('button', { type: 'button', class: 'btn sec sm', onclick: () => genRoad(x.seg) }, '⟳ Generate PP') : null,
@@ -1499,20 +1527,20 @@
         h('p', { class: 'muted' }, 'PP sheets = ceil(road length ÷ feet per sheet)' + (st.settings.overlapFt ? ' with ' + st.settings.overlapFt + ' ft overlap' : ', no overlap') + ', for every road entry in the Plan & Profile sections (' + ppDefs.map((x) => x.title).join(', ') + '). Feet per sheet: ' + st.settings.scales.map((r) => r.scale + ' = ' + r.ft.toLocaleString()).join(', ') + '. What-if changes are not saved unless you apply them.'),
         h('div', { class: 'tablewrap' }, h('table', { class: 'grid compact', id: 'ppTable' }, h('thead', {}, h('tr', {}, ['Sub-project', 'Roads', 'Length', 'Default scale', 'What-if scale', 'DR PP', 'SW PP', 'PP now', 'PP what-if'].map((x) => h('th', { scope: 'col' }, x)))),
           h('tbody', {}, st.subs.map((sub, i) => {
-            const ws = select([['', 'same (' + sub.scale + ')']].concat(scaleOpts(false)), what[sub.id] || '', { 'aria-label': 'What-if scale for ' + sub.code });
+            const ws = select([['', 'same (' + sub.scale + ')']].concat(scaleOpts(false)), what[sub.id] || '', { 'aria-label': 'What-if scale for ' + M.subTag(sub) });
             ws.addEventListener('change', () => { if (ws.value) what[sub.id] = Number(ws.value); else delete what[sub.id]; draw(); });
             const a = cur.bySub[i].total, b = W.bySub[i].total;
-            return h('tr', {}, h('th', { scope: 'row' }, sub.code + ' · ' + sub.name), h('td', {}, sub.roads.length), h('td', {}, fmtFt(cur.bySub[i].length)), h('td', {}, sub.scale), h('td', {}, ws),
+            return h('tr', {}, h('th', { scope: 'row' }, M.subLabel(sub)), h('td', {}, sub.roads.length), h('td', {}, fmtFt(cur.bySub[i].length)), h('td', {}, sub.scale), h('td', {}, ws),
               h('td', { class: 'dr-c' }, cur.bySub[i].disc.Drainage), h('td', { class: 'sw-c' }, cur.bySub[i].disc.SWP3), h('td', {}, a), h('td', { class: b !== a ? 'chg' : '' }, b, b !== a ? ' (' + (b > a ? '+' : '') + (b - a) + ')' : ''));
           })),
           h('tfoot', {}, h('tr', {}, h('th', { scope: 'row' }, 'Project'), h('td', {}, M.allRoads(st).length), h('td', {}, fmtFt(cur.length)), h('td', {}), h('td', {}), h('td', { id: 'ppDr' }, h('b', {}, cur.byDisc.Drainage)), h('td', { id: 'ppSw' }, h('b', {}, cur.byDisc.SWP3)), h('td', {}, h('b', {}, cur.total)), h('td', {}, h('b', { id: 'ppWhatIf' }, W.total)))))),
         h('h3', {}, 'By section'),
-        h('div', { class: 'tablewrap' }, h('table', { class: 'grid compact', id: 'ppSecTable' }, h('thead', {}, h('tr', {}, ['Section'].concat(st.subs.map((x) => x.code), ['Total']).map((x) => h('th', { scope: 'col' }, x)))),
+        h('div', { class: 'tablewrap' }, h('table', { class: 'grid compact', id: 'ppSecTable' }, h('thead', {}, h('tr', {}, ['Section'].concat(st.subs.map((x) => M.subTag(x)), ['Total']).map((x) => h('th', { scope: 'col' }, x)))),
           h('tbody', {}, ppDefs.map((def) => { const n = st.subs.map((sub) => { const g = M.secOf(sub, def.key); return g ? M.segPP(st, sub, g, { subScale: what }).total : 0; });
             return h('tr', {}, h('th', { scope: 'row' }, h('span', { class: 'chip ' + DINFO[def.discipline].cls }, DINFO[def.discipline].short), ' ' + def.title), n.map((x) => h('td', {}, String(x))), h('td', {}, h('b', {}, String(n.reduce((a, b) => a + b, 0))))); })))),
         h('p', { class: 'muted' }, 'Road entries with their own scale are not changed by the what-if.'),
         h('div', { class: 'row' },
-          h('button', { type: 'button', class: 'btn', disabled: !Object.keys(what).length, onclick: () => { commit(() => { for (const [id, v] of Object.entries(what)) { const sub = M.findSub(st, id); sub.scale = v; M.log(st, sub.code + ' default scale → ' + v + ' (from calculator)'); } }); toast('Default scales applied. Use “Generate PP sheets” in the P&P sections to update sheet entries.'); openPP(); } }, 'Apply what-if scales'),
+          h('button', { type: 'button', class: 'btn', disabled: !Object.keys(what).length, onclick: () => { commit(() => { for (const [id, v] of Object.entries(what)) { const sub = M.findSub(st, id); sub.scale = v; M.log(st, M.subTag(sub) + ' default scale → ' + v + ' (from calculator)'); } }); toast('Default scales applied. Use “Generate PP sheets” in the P&P sections to update sheet entries.'); openPP(); } }, 'Apply what-if scales'),
           h('button', { type: 'button', class: 'btn sec', onclick: () => download('pm-pp-summary-' + M.todayISO() + '.csv', '\ufeff' + M.ppCSV(st, { subScale: what }), 'text/csv') }, 'Export PP summary CSV'),
           h('button', { type: 'button', class: 'btn sec', onclick: () => { closeModal(); openSettings(); } }, 'Edit scale table')));
     };
@@ -1624,7 +1652,7 @@
       h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); try { M.addRange(st, nt.value, nf.value, nto.value); save(); openSettings('nums'); } catch (ex) { toast(ex.message); } } }, nt, nf, nto, h('button', { class: 'btn sec', type: 'submit' }, 'Add range')),
       h('datalist', { id: 'tplList2' }, (st.index || []).map((t) => h('option', { value: t.title }))),
       ov.length ? h('p', { class: 'warnbox' }, 'Overlapping ranges: ' + ov.join('; ')) : null,
-      h('p', { class: iss.length ? 'err' : 'muted', id: 'numIssues' }, iss.length ? '⚠ ' + plural(iss.length, 'sheet') + ' with number issues: ' + iss.slice(0, 5).map((x) => x.r.sub.code + ' ' + x.r.sh.title + ' (' + x.r.sh.number + ')').join(', ') + (iss.length > 5 ? '…' : '') : 'No duplicate or out-of-range numbers.'),
+      h('p', { class: iss.length ? 'err' : 'muted', id: 'numIssues' }, iss.length ? '⚠ ' + plural(iss.length, 'sheet') + ' with number issues: ' + iss.slice(0, 5).map((x) => M.subTag(x.r.sub) + ' ' + x.r.sh.title + ' (' + x.r.sh.number + ')').join(', ') + (iss.length > 5 ? '…' : '') : 'No duplicate or out-of-range numbers.'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn sec', id: 'fillNums', onclick: () => { const n = commit(() => M.autoNumber(st)); toast('Numbered ' + plural(n || 0, 'sheet') + '.'); openSettings('nums'); } }, 'Fill empty numbers'),
         h('button', { type: 'button', class: 'btn sec', id: 'renumAll', onclick: () => { if (confirm('Renumber ALL sheets from the ranges (in build order and station order)? This replaces existing sheet numbers.')) { const n = commit(() => M.autoNumber(st, { all: true })); toast('Renumbered ' + plural(n || 0, 'sheet') + '.'); openSettings('nums'); } } }, 'Renumber all')));
@@ -1651,16 +1679,16 @@
         h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); commit(() => M.setScale(st, sc.value, ft.value || Number(sc.value) * 12)); openSettings(); } }, sc, ft, h('button', { class: 'btn sec', type: 'submit' }, 'Add / update scale')),
         field('Overlap between consecutive PP sheets (ft)', ov, '0 = no match-line overlap (sheet count = ceil(length ÷ ft per sheet)).')),
       sectionsSection(),
-      h('section', { id: 'orderSec' }, h('h3', {}, 'Build order'),
+      h('section', { id: 'orderSec' }, h('h3', {}, 'Build order'), h('p', { class: 'muted small' }, 'Rename a sub-project here or on the tree (double-click its name or ✎). Enter saves, Esc cancels. The letter and build position do not change.'),
         h('p', { class: 'muted' }, 'Sub-projects are built in this order. A connector pointing from a later sub-project to an earlier one is flagged “upstream”.'),
         h('ol', { class: 'dlist order' }, M.orderedSubs(st).map((sub, i, arr) => {
           const ids = arr.map((x) => x.id);
           const move = (d) => { const j = i + d; if (j < 0 || j >= ids.length) return; [ids[i], ids[j]] = [ids[j], ids[i]]; commit(() => M.setOrder(st, ids)); openSettings('order'); };
-          const num = h('input', { type: 'number', min: 1, max: arr.length, value: i + 1, class: 'num', 'aria-label': 'Build position of ' + sub.code, onchange: (e) => {
+          const num = h('input', { type: 'number', min: 1, max: arr.length, value: i + 1, class: 'num', 'aria-label': 'Build position of ' + M.subTag(sub), onchange: (e) => {
             const to = Math.max(1, Math.min(arr.length, Number(e.target.value) || i + 1)) - 1; ids.splice(i, 1); ids.splice(to, 0, sub.id); commit(() => M.setOrder(st, ids)); openSettings('order'); } });
-          return h('li', { class: 'ordrow' }, num, h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, ' ' + sub.name),
-            h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + sub.code + ' earlier', disabled: i === 0, onclick: () => move(-1) }, '↑'),
-            h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + sub.code + ' later', disabled: i === arr.length - 1, onclick: () => move(1) }, '↓'));
+          return h('li', { class: 'ordrow' }, num, h('span', { class: 'code' }, sub.code), h('span', { class: 'grow' }, subNameEditor(sub, { blurOnCancel: true }).el),
+            h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + M.subTag(sub) + ' earlier', disabled: i === 0, onclick: () => move(-1) }, '↑'),
+            h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + M.subTag(sub) + ' later', disabled: i === arr.length - 1, onclick: () => move(1) }, '↓'));
         }))),
       h('section', {}, h('h3', {}, 'Standard sheet templates'), h('p', { class: 'muted' }, 'Each sub-project has its own editable list (open a sub-project → “Standard (non-PP) sheet set”). Each template belongs to a section. Resetting changes the template lists only — sheets already in sections are not touched.'),
         h('button', { type: 'button', class: 'btn sec', id: 'resetAllTpl', onclick: () => { if (confirm('Reset the standard sheet templates of ALL sub-projects to the defaults?\n\nExisting sheets are not changed.')) { commit(() => M.resetAllTemplates(st)); toast('Templates reset to defaults.'); } } }, 'Reset all templates to defaults')),
