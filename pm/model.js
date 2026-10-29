@@ -969,7 +969,21 @@
     log(st, 'Merged into ' + a.name);
     return a;
   }
-  return { SCHEMA, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.14 copy a road segment (optionally with its sheets, reset to Not started) to another sub-project */
+  function copySegment(st, segId, toSubId, opts) {
+    const hit = findSeg(st, segId), to = findSub(st, toSubId);
+    if (!hit) throw new Error('No such segment'); if (!to) throw new Error('No such sub-project');
+    const r = addSegment(st, toSubId, { road: hit.seg.road, start: hit.seg.start, end: hit.seg.end, scale: hit.seg.scale, notes: hit.seg.notes });
+    r.seg.reverse = !!hit.seg.reverse;
+    if (opts && opts.sheets) for (const sh of hit.seg.sheets) {
+      const c = { ...clone(sh), id: uid(), status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], number: '' };
+      if (c.gen) c.gen = { ...c.gen, titleEdited: !!sh.gen.titleEdited };
+      r.seg.sheets.push(c); c.number = suggestNumber(st, c) || '';
+    }
+    log(st, 'Copied ' + hit.seg.name + ' from ' + hit.sub.code + ' to ' + to.code + (opts && opts.sheets ? ' with ' + hit.seg.sheets.length + ' sheets' : ''));
+    return r;
+  }
+  return { SCHEMA, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

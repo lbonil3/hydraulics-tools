@@ -557,6 +557,21 @@ async function serve(r) {
   for (let i = 0; i < 2; i++) { await click('#undoBtn'); await sleep(250); }
   ok((await D13()).subs[0].segments.length === 1 && (await D13()).subs[0].segments[0].id === g13.id, 'split + merge undoable');
   await pg.keyboard.press('Escape'); await sleep(150);
+  // 10m. v2.14 copy road to another sub-project + duplicate sheet
+  const D14 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
+  const g14 = (await D14()).subs[0].segments[0];
+  await click('.node[data-key="seg:' + g14.id + '@Drainage"]'); await pg.waitForSelector('#cpBtn');
+  await pg.select('#cpTo', (await D14()).subs[2].id); await click('#cpBtn'); await sleep(500);
+  const c14 = (await D14()).subs[2].segments;
+  ok(c14.length === 1 && c14[0].road === g14.road && c14[0].sheets.length === g14.sheets.length && c14[0].sheets.every((q) => q.status === 'Not started'), 'copy road with sheets to sub-project C');
+  await pg.screenshot({ path: SHOTS + 'v2.14-copy-road-' + tag + '.png' });
+  await click('#undoBtn'); await sleep(300);
+  ok((await D14()).subs[2].segments.length === 0, 'copy undone');
+  const sh14 = g14.sheets.find((q) => !q.gen);
+  await click('.node[data-key="sheet:' + sh14.id + '"]'); await pg.waitForSelector('#shNum');
+  await pg.$$eval('#drawer button', (bs) => bs.find((b) => b.textContent === 'Duplicate').click()); await sleep(400);
+  ok((await D14()).subs[0].segments[0].sheets.some((q) => q.title === sh14.title + ' (copy)'), 'duplicate a sheet');
+  await click('#undoBtn'); await sleep(300); await pg.keyboard.press('Escape'); await sleep(150);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

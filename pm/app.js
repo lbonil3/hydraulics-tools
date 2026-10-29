@@ -940,7 +940,15 @@
         if (!confirm('Shift ' + seg.name + ' by ' + (d > 0 ? '+' : '') + d + ' ft? Generated PP sheet ranges shift too.')) return;
         commit(() => M.shiftStations(st, seg.id, d)); toast('Shifted by ' + (d > 0 ? '+' : '') + d + ' ft.');
       } }, off, h('button', { type: 'submit', class: 'btn sec', id: 'stShift' }, 'Shift road')),
-      splitMerge(sub, seg));
+      splitMerge(sub, seg), copyBox(sub, seg));
+  }
+  function copyBox(sub, seg) {
+    const to = select(st.subs.filter((x) => x !== sub).map((x) => [x.id, 'to ' + x.code + ' · ' + x.name]), '', { id: 'cpTo', 'aria-label': 'Copy to sub-project' });
+    const ws = h('input', { type: 'checkbox', id: 'cpSheets', checked: true });
+    return h('form', { class: 'addrow cprow', onsubmit: (e) => {
+      e.preventDefault(); const r = commit(() => M.copySegment(st, seg.id, to.value, { sheets: ws.checked }));
+      if (r) { const tsub = M.findSub(st, to.value); ui.collapsed['sub:' + tsub.id] = false; saveUI(); renderTree(); toast('Copied to ' + tsub.code + (ws.checked ? ' with ' + r.seg.sheets.length + ' sheets (Not started)' : '') + (r.warns.length ? ' · ⚠ ' + r.warns[0] : '.')); }
+    } }, to, h('label', { class: 'chk' }, ws, ' with sheets'), h('button', { type: 'submit', class: 'btn sec', id: 'cpBtn' }, '⧉ Copy road'));
   }
   function splitMerge(sub, seg) {
     const at = h('input', { id: 'spAt', class: 'mono', placeholder: 'Split at e.g. ' + M.formatStation(Math.round((seg.start + seg.end) / 200) * 100), 'aria-label': 'Split at station', autocomplete: 'off' });

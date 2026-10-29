@@ -656,6 +656,19 @@ t('v2.13 split at a station and merge touching segments', () => {
   assert.throws(() => M.mergeSegments(st, m.id, far.id), /touch/);
 });
 
+t('v2.14 copy segment to another sub-project, with or without sheets', () => {
+  const st = M.newState('Y'); const A = st.subs[0], C = st.subs[2];
+  const g = M.addSegment(st, A.id, { road: 'SH 6', start: '0+00', end: '12+00', scale: 40 }).seg;
+  M.applyGenerate(st, g.id, M.planGenerate(st, g.id)); const s0 = M.addSheet(st, g.id, { title: 'Culvert Layout', status: 'Done', owner: 'Ana' });
+  const r1 = M.copySegment(st, g.id, C.id);
+  assert.strictEqual(r1.seg.sheets.length, 0); assert.strictEqual(r1.seg.scale, 40); assert.ok(r1.warns.some((w) => /Overlaps/.test(w)));
+  const r2 = M.copySegment(st, g.id, st.subs[3].id, { sheets: true });
+  assert.strictEqual(r2.seg.sheets.length, g.sheets.length);
+  const c = r2.seg.sheets.find((q) => q.title === 'Culvert Layout'); assert.ok(c.id !== s0.id && c.status === 'Not started' && c.owner === 'Ana');
+  assert.strictEqual(M.planGenerate(st, r2.seg.id).create.length, 0, 'copied PP sheets stay recognised as generated');
+  const d = M.duplicateSheet(st, s0.id); assert.ok(d.id !== s0.id && /copy/.test(d.title));
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {
