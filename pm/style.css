@@ -430,3 +430,9 @@ ul.plan{margin:6px 0 0;padding-left:16px;color:var(--muted)}
 .cmdi .ck{grid-row:span 2;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;padding-top:2px}
 .cmdi .cl{font-weight:600}.cmdi .ch{font-size:12px}
 .cmdk-foot{margin:2px 4px}
+/* v2.16 multi-select */
+.selcol{width:34px;text-align:center}
+.grid tr.msel td{background:var(--brand-soft)}
+.scard.msel{outline:2px solid var(--brand);background:var(--brand-soft)}
+.bulkbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--brand);border-radius:14px;padding:8px 12px;box-shadow:var(--shadow-lg,0 10px 30px rgba(0,0,0,.2));max-width:96vw}
+@media (max-width:900px){.bulkbar{left:6px;right:6px;transform:none;bottom:6px}.bulkbar select,.bulkbar input{flex:1 1 40%}}

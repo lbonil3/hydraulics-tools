@@ -996,7 +996,21 @@
     });
     return out.sort((a, b) => b.sc - a.sc || a.i - b.i).slice(0, limit || 40).map((x) => x.it);
   }
-  return { SCHEMA, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.16 bulk edits (all-or-nothing) */
+  function bulkUpdate(st, ids, f) {
+    const g = {}; for (const k of ['status', 'owner', 'due', 'discipline']) if (f[k] != null) g[k] = f[k];
+    if (!Object.keys(g).length) throw new Error('Nothing to change.');
+    const before = clone(st), L0 = st.log.slice(); const n = ids.length;
+    try { for (const id of ids) updateSheet(st, id, g); } catch (e) { Object.assign(st, before); throw e; }
+    st.log = L0; log(st, 'Bulk edit ' + n + ' sheets: ' + Object.entries(g).map(([k, v]) => k + ' → ' + (v || '(none)')).join(', '));
+    return n;
+  }
+  function bulkDelete(st, ids) {
+    const L0 = st.log.slice(); let n = 0; for (const id of ids) if (findSheet(st, id)) { deleteSheet(st, id); n++; }
+    st.log = L0; log(st, 'Deleted ' + n + ' sheets');
+    return n;
+  }
+  return { SCHEMA, bulkUpdate, bulkDelete, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

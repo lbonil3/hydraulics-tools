@@ -596,6 +596,35 @@ async function serve(r) {
   await pg.type('#cmdkQ', 'stations table'); await pg.keyboard.press('Enter'); await sleep(300);
   ok(!!(await pg.$('#stTable')), 'palette runs view actions');
   await click('#vTree'); await sleep(250); await pg.keyboard.press('Escape'); await sleep(150);
+  // 10o. v2.16 multi-select + bulk edit
+  const D16 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)));
+  const n16 = (await D16()).length;
+  await click('#vList'); await pg.waitForSelector('table.grid tbody tr .rsel');
+  const rid = await pg.$$eval('table.grid tbody tr[data-id]', (e) => e.slice(0, 4).map((x) => x.dataset.id));
+  await click('tr[data-id="' + rid[0] + '"] .rsel');
+  if (!MOBILE) { await pg.keyboard.down('Shift'); await click('tr[data-id="' + rid[2] + '"] td[data-col="1"]'); await pg.keyboard.up('Shift'); }
+  else { await click('tr[data-id="' + rid[1] + '"] .rsel'); await click('tr[data-id="' + rid[2] + '"] .rsel'); }
+  await sleep(200);
+  ok(/3 sheets selected/.test(await txt('#bulkBar')), (MOBILE ? 'checkboxes' : 'checkbox + shift-click range') + ' select 3 sheets');
+  await pg.select('#bkStatus', 'In review'); await sleep(300);
+  await pg.select('#bkOwner', 'Maria Lopez'); await sleep(300);
+  let b16 = (await D16()).filter((x) => rid.slice(0, 3).includes(x.id));
+  ok(b16.every((x) => x.status === 'In review' && x.owner === 'Maria Lopez'), 'bulk status + owner change');
+  await setVal('#bkDue', '2026-12-15'); await sleep(300);
+  ok((await D16()).filter((x) => rid.slice(0, 3).includes(x.id)).every((x) => x.due === '2026-12-15'), 'bulk due date');
+  await pg.screenshot({ path: SHOTS + 'v2.16-bulk-edit-' + tag + '.png' });
+  await click('#bkDel'); await sleep(400);
+  ok((await D16()).length === n16 - 3 && !(await pg.$('#bulkBar')), 'bulk delete');
+  for (let i = 0; i < 4; i++) { await click('#undoBtn'); await sleep(250); }
+  ok((await D16()).length === n16 && (await D16()).filter((x) => rid.slice(0, 3).includes(x.id)).every((x) => x.status !== 'In review' || x.owner !== 'Maria Lopez'), 'bulk delete + edits undoable');
+  if (!MOBILE) {
+    await click('#vBoard'); await pg.waitForSelector('.bcard');
+    const bids = await pg.$$eval('.bcard', (e) => e.slice(0, 2).map((x) => x.dataset.id));
+    await pg.keyboard.down('Control'); await click('.bcard[data-id="' + bids[0] + '"] .sc-title'); await click('.bcard[data-id="' + bids[1] + '"] .sc-title'); await pg.keyboard.up('Control'); await sleep(200);
+    ok(/2 sheets selected/.test(await txt('#bulkBar')), 'ctrl-click multi-select on the board');
+    await click('#bkClear'); await sleep(200);
+  }
+  await click('#vTree'); await sleep(250);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

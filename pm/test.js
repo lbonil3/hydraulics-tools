@@ -678,6 +678,17 @@ t('v2.15 command palette search ranking', () => {
   assert.strictEqual(M.paletteSearch(items, 'sta 10+00')[0].label, 'FM 1960 Sta 10+00–25+50');
 });
 
+t('v2.16 bulk status/owner/due/discipline and bulk delete', () => {
+  const st = M.newState('B'); const g = M.addSegment(st, st.subs[0].id, { road: 'R', start: '0+00', end: '5+00' }).seg;
+  const a = M.addSheet(st, g.id, { title: 'A1' }), b = M.addSheet(st, g.id, { title: 'B1' }), c = M.addSheet(st, g.id, { title: 'C1' });
+  assert.strictEqual(M.bulkUpdate(st, [a.id, b.id], { status: 'In review', owner: 'Ana', due: '2026-11-01', discipline: 'SWP3' }), 2);
+  assert.ok([a, b].every((x) => x.status === 'In review' && x.owner === 'Ana' && x.due === '2026-11-01' && x.discipline === 'SWP3') && c.status === 'Not started');
+  assert.match(st.log[0].msg, /Bulk edit 2 sheets/);
+  assert.throws(() => M.bulkUpdate(st, [a.id, c.id], { status: 'Nope' })); assert.strictEqual(st.subs[0].segments[0].sheets.find((x) => x.id === c.id).status, 'Not started');
+  assert.throws(() => M.bulkUpdate(st, [a.id], {}), /Nothing/);
+  assert.strictEqual(M.bulkDelete(st, [a.id, c.id, 'zz']), 2); assert.strictEqual(st.subs[0].segments[0].sheets.length, 1);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

@@ -166,6 +166,7 @@
     for (const [id, v] of [['#bBoth', 'both'], ['#bDr', 'Drainage'], ['#bSw', 'SWP3']]) $(id).setAttribute('aria-pressed', String((ui.branch || 'both') === v));
     if (ui.view === 'tree') renderTree(); else if (ui.view === 'week') renderWeek(); else if (ui.view === 'board') renderBoard(); else if (ui.view === 'stations') renderStations(); else renderList();
     renderDrawer();
+    renderBulk();
   }
 
   /* ----- v2.7 'This week' + shared view filters (sub-project / discipline / owner) ----- */
@@ -183,7 +184,8 @@
   }
   function sheetCard(r, extra, attrs) {
     const sh = r.sh, today = M.todayISO();
-    return h('button', Object.assign({ type: 'button', class: 'scard st-' + slug(sh.status) + (sel && sel.type === 'sheet' && sel.id === sh.id ? ' sel' : ''), 'data-id': sh.id, onclick: () => select_('sheet', sh.id) }, attrs || {}),
+    return h('button', Object.assign({ type: 'button', class: 'scard st-' + slug(sh.status) + (sel && sel.type === 'sheet' && sel.id === sh.id ? ' sel' : '') + (msel.has(sh.id) ? ' msel' : ''), 'data-id': sh.id, 'aria-pressed': msel.size ? String(msel.has(sh.id)) : null,
+      onclick: (e) => { if (e.shiftKey || e.ctrlKey || e.metaKey || (msel.size && ui.view === 'board')) { pickSheet(sh.id, e.shiftKey ? 'range' : 'toggle', [...document.querySelectorAll('.scard[data-id]')].map((x) => x.dataset.id)); return; } select_('sheet', sh.id); } }, attrs || {}),
       h('span', { class: 'sc-top' }, h('span', { class: 'code' }, r.sub.code), h('span', { class: 'chip ' + DINFO[sh.discipline].cls }, DINFO[sh.discipline].short), sh.number ? h('span', { class: 'muted' }, '#' + sh.number) : null),
       h('span', { class: 'sc-title' }, sh.title),
       h('span', { class: 'sc-meta muted' }, M.segLabel(r.seg)),
@@ -336,6 +338,35 @@
     });
     const box = h('div', { id: 'cmdk', class: 'cmdk', onclick: (e) => { if (e.target.id === 'cmdk') close(); } }, h('div', { class: 'cmdk-card', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Command palette' }, q, list, h('p', { class: 'muted small cmdk-foot' }, '↑↓ to move · Enter to open · Esc to close · Ctrl/Cmd+K anywhere')));
     document.body.append(box); draw(); q.focus();
+  }
+
+  /* ----- v2.16 multi-select + bulk edit (List and Board) ----- */
+  const msel = new Set(); let mAnchor = null;
+  function pickSheet(id, mode, order) {
+    try { window.getSelection().removeAllRanges(); } catch (e) { /* ignore */ }
+    if (mode === 'range' && mAnchor && order.includes(mAnchor)) { const [i, j] = [order.indexOf(mAnchor), order.indexOf(id)].sort((x, y) => x - y); order.slice(i, j + 1).forEach((x) => msel.add(x)); }
+    else { msel.has(id) ? msel.delete(id) : msel.add(id); mAnchor = id; }
+    if (ui.view === 'list') renderList(); else if (ui.view === 'board') renderBoard(); else if (ui.view === 'week') renderWeek();
+    renderBulk();
+  }
+  function renderBulk() {
+    for (const id of [...msel]) if (!M.findSheet(st, id)) msel.delete(id);
+    let bar = $('#bulkBar');
+    if (!msel.size || !['list', 'board'].includes(ui.view)) { if (bar) bar.remove(); return; }
+    const ids = [...msel];
+    const ap = (f, what) => { const n = commit(() => M.bulkUpdate(st, ids, f)); if (n) toast(what + ' on ' + plural(n, 'sheet') + '. Undo with Ctrl+Z.'); };
+    const mk = (id, label, opts, k) => { const e = select(opts, '', { id, 'aria-label': label }); e.addEventListener('change', () => { if (e.value === '') return; ap({ [k]: e.value === '(none)' ? '' : e.value }, label + ' → ' + e.selectedOptions[0].textContent); }); return e; };
+    const due = h('input', { type: 'date', id: 'bkDue', 'aria-label': 'Set due date' });
+    due.addEventListener('change', () => ap({ due: due.value }, 'Due → ' + (due.value || '(none)')));
+    const nb = h('div', { id: 'bulkBar', class: 'bulkbar', role: 'region', 'aria-label': 'Bulk edit selected sheets' },
+      h('b', {}, plural(ids.length, 'sheet') + ' selected'),
+      mk('bkStatus', 'Status', [['', 'Status…']].concat(M.STATUSES), 'status'),
+      mk('bkOwner', 'Owner', [['', 'Owner…'], ['(none)', 'Unassigned']].concat(ownersList()), 'owner'),
+      due,
+      mk('bkDisc', 'Discipline', [['', 'Discipline…'], 'Drainage', 'SWP3'], 'discipline'),
+      h('button', { type: 'button', class: 'btn danger sm', id: 'bkDel', onclick: () => { if (!confirm('Delete ' + plural(ids.length, 'sheet') + '? You can undo with Ctrl+Z.')) return; const n = commit(() => M.bulkDelete(st, ids)); msel.clear(); renderBulk(); if (n) toast('Deleted ' + plural(n, 'sheet') + '. Undo with Ctrl+Z.'); } }, 'Delete'),
+      h('button', { type: 'button', class: 'btn sec sm', id: 'bkClear', onclick: () => { msel.clear(); renderAll(); } }, 'Clear'));
+    if (bar) bar.replaceWith(nb); else document.body.append(nb);
   }
 
   /* ----- overview rail ----- */
@@ -811,19 +842,25 @@
     rows = M.sortRows(rows, sc.k, ui.sort.dir, (r) => sc.get(r));
     const wrap = $('#listWrap');
     const refresh = () => { renderRail(); renderDrawer(); };
-    const thead = h('thead', {}, h('tr', {}, cols.map((c) => {
+    const visIds = rows.map((r) => r.sh.id);
+    const allOn = visIds.length && visIds.every((id) => msel.has(id));
+    const thead = h('thead', {}, h('tr', {}, h('th', { scope: 'col', class: 'selcol' }, h('input', { type: 'checkbox', id: 'selAll', 'aria-label': 'Select all shown sheets', checked: !!allOn, onchange: (e) => { visIds.forEach((id) => e.target.checked ? msel.add(id) : msel.delete(id)); renderList(); renderBulk(); } })), cols.map((c) => {
       const on = ui.sort.key === c.k;
       return h('th', { scope: 'col', class: c.wide ? 'wide' : '', 'aria-sort': on ? (ui.sort.dir === 'asc' ? 'ascending' : 'descending') : 'none' },
         h('button', { type: 'button', class: 'sort', onclick: () => { ui.sort = { key: c.k, dir: on && ui.sort.dir === 'asc' ? 'desc' : 'asc' }; saveUI(); renderList(); } }, c.l, on ? (ui.sort.dir === 'asc' ? ' ▲' : ' ▼') : ''));
     })));
     if (ui.group) rows = rows.map((r, i) => ({ r, i })).sort((a, b) => M.subOrder(st, a.r.sub) - M.subOrder(st, b.r.sub) || DISCS.indexOf(a.r.sh.discipline) - DISCS.indexOf(b.r.sh.discipline) || a.i - b.i).map((x) => x.r);
     const grpRow = (r) => { const g = rows.filter((x) => x.sub === r.sub && x.sh.discipline === r.sh.discipline); const p = M.progress(g.map((x) => x.sh));
-      return h('tr', { class: 'grp ' + DINFO[r.sh.discipline].cls }, h('th', { colspan: cols.length, scope: 'rowgroup' }, h('span', { class: 'code' }, r.sub.code), ' ', h('span', { class: 'chip ' + DINFO[r.sh.discipline].cls }, DINFO[r.sh.discipline].short), ' ' + r.sub.name + ' · ' + r.sh.discipline + ' — ' + plural(g.length, 'sheet') + ' · ' + Math.round(p.pct) + '%')); };
-    const tbody = h('tbody', {}, rows.map((r, i) => [ui.group && (!i || rows[i - 1].sub !== r.sub || rows[i - 1].sh.discipline !== r.sh.discipline) ? grpRow(r) : null, h('tr', { tabindex: 0, 'data-id': r.sh.id, class: (M.isOverdue(r.sh, M.todayISO()) ? 'od ' : '') + (sel && sel.id === r.sh.id ? 'sel' : ''),
+      return h('tr', { class: 'grp ' + DINFO[r.sh.discipline].cls }, h('th', { colspan: cols.length + 1, scope: 'rowgroup' }, h('span', { class: 'code' }, r.sub.code), ' ', h('span', { class: 'chip ' + DINFO[r.sh.discipline].cls }, DINFO[r.sh.discipline].short), ' ' + r.sub.name + ' · ' + r.sh.discipline + ' — ' + plural(g.length, 'sheet') + ' · ' + Math.round(p.pct) + '%')); };
+    const tbody = h('tbody', {}, rows.map((r, i) => [ui.group && (!i || rows[i - 1].sub !== r.sub || rows[i - 1].sh.discipline !== r.sh.discipline) ? grpRow(r) : null, h('tr', { tabindex: 0, 'data-id': r.sh.id, class: (M.isOverdue(r.sh, M.todayISO()) ? 'od ' : '') + (msel.has(r.sh.id) ? 'msel ' : '') + (sel && sel.id === r.sh.id ? 'sel' : ''),
       onkeydown: (e) => { if (e.key === 'Enter' && e.target.tagName === 'TR') { e.preventDefault(); select_('sheet', r.sh.id); } } },
+    h('td', { class: 'selcol' }, h('input', { type: 'checkbox', class: 'rsel', 'aria-label': 'Select ' + r.sh.title, checked: msel.has(r.sh.id), onclick: (e) => { e.stopPropagation(); pickSheet(r.sh.id, e.shiftKey ? 'range' : 'toggle', visIds); } })),
     cols.map((c, ci) => h('td', { class: c.wide ? 'wide' : '' , 'data-col': ci }, c.edit ? cellEditor(c, r, refresh) : c.k === 'title' ? null : (c.show ? c.show(r) : c.get(r))) ),
     )]));
-    tbody.addEventListener('click', (e) => { const tr = e.target.closest('tr'); if (tr && tr.dataset.id && !e.target.closest('input,select,button')) select_('sheet', tr.dataset.id); });
+    tbody.addEventListener('mousedown', (e) => { if (e.shiftKey && !e.target.closest('input,select,textarea')) e.preventDefault(); });
+    tbody.addEventListener('click', (e) => { const tr = e.target.closest('tr'); if (!tr || !tr.dataset.id || e.target.closest('input,select,button')) return;
+      if (e.shiftKey || e.ctrlKey || e.metaKey) { e.preventDefault(); pickSheet(tr.dataset.id, e.shiftKey ? 'range' : 'toggle', visIds); return; }
+      select_('sheet', tr.dataset.id); });
     tbody.addEventListener('keydown', (e) => {
       if (!['ArrowUp', 'ArrowDown'].includes(e.key)) return;
       const t = e.target;
@@ -833,7 +870,7 @@
       while (next && next.classList.contains('grp')) next = e.key === 'ArrowDown' ? next.nextElementSibling : next.previousElementSibling;
       if (!next) return;
       e.preventDefault();
-      const target = td && t !== tr ? next.children[td.dataset.col].querySelector('input,select') : next;
+      const target = td && t !== tr ? (next.querySelector('td[data-col="' + td.dataset.col + '"]') || next.children[0]).querySelector('input,select') : next;
       (target || next).focus();
     });
     const views = select([['', 'Saved views…']].concat(st.views.map((v) => [v.id, v.name])), '', { 'aria-label': 'Saved views' });
@@ -1497,6 +1534,7 @@
   });
   document.addEventListener('keydown', (e) => {
     const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement && document.activeElement.tagName);
+    if (e.key === 'Escape' && msel.size && $('#modal').hidden && !sel) { msel.clear(); renderAll(); return; }
     if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (sel) closeDrawer(); else if (typing) document.activeElement.blur(); return; }
     if (typing || e.metaKey || e.ctrlKey || e.altKey || !$('#modal').hidden) return;
     if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
