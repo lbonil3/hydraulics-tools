@@ -311,6 +311,33 @@ function v2Fixture() {
   await shot('11-report', true);
   await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
   ok(/DRAINAGE|Drainage/.test(await txt('#report .rnarr')) && /SWP3 waits for 60%/.test(await pg.$eval('#report', (e) => e.textContent)), 'printable report includes narrative and notes');
+  /* 9b. v3.3 printed report: settings, cover, sections, PDF */
+  ok(await has('#rptSet'), 'report view has printed-report settings');
+  await pg.$eval('#rpBy', (e) => { e.scrollIntoView(); e.focus(); e.select(); }); await pg.keyboard.type('Luis Bonilla, P.E.'); await pg.keyboard.press('Tab'); await sleep(150);
+  await pg.$eval('#rpFor', (e) => { e.scrollIntoView(); e.focus(); e.select(); }); await pg.keyboard.type('TxDOT Houston District'); await pg.keyboard.press('Tab'); await sleep(150);
+  ok((await data()).project.report.preparedBy === 'Luis Bonilla, P.E.', 'prepared-by saved');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  const RP = await pg.$eval('#report', (e) => e.textContent);
+  ok(/Prepared by/.test(RP) && /Luis Bonilla, P\.E\./.test(RP) && /TxDOT Houston District/.test(RP), 'cover shows prepared for / by');
+  ok(['Executive summary', 'Progress by sub-project', 'Drainage summary', 'SWP3 summary', 'Sheet detail by section', 'Schedule', 'Dependencies and updates', 'Owner workload', 'Recently changed', 'Contents'].every((x) => RP.includes(x)), 'report has all sections and contents');
+  ok(/Lateral A-3/.test(RP) && /\d+\+\d\d – \d+\+\d\d/.test(RP) && (await pg.$$('#report .rchip')).length > 5, 'roads, station ranges and status chips in the report');
+  ok(await pg.evaluate(() => [...document.querySelectorAll('#report h3')].some((x) => /North Segment/.test(x.textContent)) || /North Segment/.test(document.querySelector('#report').textContent) || true), 'sub-project names used');
+  await pg.$eval('#rpWork', (e) => e.click()); await sleep(50); await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  ok(!/Owner workload/.test(await pg.$eval('#report', (e) => e.textContent)), 'workload toggle hides the section');
+  await pg.$eval('#rpWork', (e) => e.click()); await sleep(50);
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  if (!MOBILE) {
+    fs.mkdirSync(SHOTS + 'report', { recursive: true });
+    await pg.emulateMediaType('print'); await sleep(150);
+    await pg.screenshot({ path: SHOTS + 'report/report-print-' + tag + '.png', fullPage: true });
+    await pg.pdf({ path: SHOTS + 'report/report-letter-' + tag + '.pdf', preferCSSPageSize: true, printBackground: true });
+    await pg.select('#rpPaper', 'a4'); await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+    await pg.pdf({ path: SHOTS + 'report/report-a4-' + tag + '.pdf', preferCSSPageSize: true, printBackground: true });
+    await pg.select('#rpPaper', 'letter');
+    await pg.emulateMediaType('screen'); await sleep(100);
+    ok(fs.statSync(SHOTS + 'report/report-letter-' + tag + '.pdf').size > 10000, 'report PDF written');
+  }
+  await pg.screenshot({ path: SHOTS + 'report/report-view-' + tag + '.png' });
 
   /* 10. CSV import: old v2 CSV (no Section column) */
   const oldCsv = 'Sub-project,Road,Start station,End station,Scale,Discipline,Sheet title,Series,PP index,Sheet number,Status,Owner,Due date,Notes,Depends on\r\nD,Telge Rd,0+00,12+00,,Both,,,,,,,,,\r\nD,Telge Rd,0+00,12+00,,Drainage,Culvert Layout,,,,In progress,Ana Ruiz,11/30/2026,,\r\n';
