@@ -16,7 +16,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.5` / `pm-v2.5-final` | + Project sheet index, bulk-apply to all segments |
 | `pm-v2.6` / `pm-v2.6-final` | Sheet-number ranges |
 | `pm-v2.7` / `pm-v2.7-final` | This-week view |
-| `pm-v2.8` | Status board |
+| `pm-v2.8` / `pm-v2.8-final` | Status board |
+| `pm-v2.9` | Undo / redo |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -203,3 +204,12 @@ No data changes; adds ui pref pm.ui.v2.vf (view filters).
 
 Undo: `git revert --no-edit 334c565` and push, or `git checkout pm-v2.7-final -- pm`, commit, push.
 No schema change; status moves are normal sheet edits (logged).
+
+## v2.9
+
+| Commit | Change |
+|---|---|
+| f88f29b | Undo / redo |
+
+Undo: `git revert --no-edit f88f29b` and push, or `git checkout pm-v2.8-final -- pm`, commit, push.
+No schema change; history is in memory only (cleared on reload).
