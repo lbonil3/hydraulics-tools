@@ -635,6 +635,15 @@ async function serve(r) {
   ok(!!(await pg.$('table.grid')) && (await pg.$eval('#fDisc', (e) => e.value)) === 'SWP3', 'last view and filters remembered across reload');
   await pg.screenshot({ path: SHOTS + 'v2.17-recent-and-remembered-' + tag + '.png' });
   await pg.select('#fDisc', ''); await sleep(200); await click('#vTree'); await sleep(300);
+  // 10q. v2.18 shortcut help, number keys
+  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  await pg.keyboard.press('?'); await pg.waitForSelector('#keysHelp');
+  ok(/Ctrl\/Cmd \+ K/.test(await txt('#keysHelp')) && /Undo/.test(await txt('#keysHelp')), '? opens the keyboard shortcut overlay');
+  await sleep(400); await pg.screenshot({ path: SHOTS + 'v2.18-shortcuts-' + tag + '.png' });
+  await pg.keyboard.press('Escape'); await sleep(150);
+  await pg.keyboard.press('3'); await sleep(250);
+  ok(!!(await pg.$('#wk-overdue')), 'number key 3 opens This week');
+  await pg.keyboard.press('1'); await sleep(250);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);
@@ -645,6 +654,8 @@ async function serve(r) {
   await pg.evaluate(() => localStorage.removeItem('pm.data.v2'));
   await pg.reload({ waitUntil: 'networkidle0' });
   ok((await pg.$$('.node.n-seg')).length === 0, 'cleared → empty project');
+  ok(/Start here/i.test(await txt('#emptyHint')), 'empty project shows a start hint');
+  await pg.screenshot({ path: SHOTS + 'v2.18-empty-hint-' + tag + '.png' });
   await click('#setBtn');
   await (await pg.$('#modalBody form.imp input[type=file]')).uploadFile(DL + '/' + bk);
   await click('#modalBody form.imp button[type=submit]');

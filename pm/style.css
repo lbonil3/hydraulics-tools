@@ -436,3 +436,9 @@ ul.plan{margin:6px 0 0;padding-left:16px;color:var(--muted)}
 .scard.msel{outline:2px solid var(--brand);background:var(--brand-soft)}
 .bulkbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--brand);border-radius:14px;padding:8px 12px;box-shadow:var(--shadow-lg,0 10px 30px rgba(0,0,0,.2));max-width:96vw}
 @media (max-width:900px){.bulkbar{left:6px;right:6px;transform:none;bottom:6px}.bulkbar select,.bulkbar input{flex:1 1 40%}}
+/* v2.18 */
+.emptyhint{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);z-index:3;max-width:420px;background:var(--surface);border:1px dashed var(--brand);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);text-align:center}
+.emptyhint p{margin:6px 0 10px;color:var(--muted)}
+kbd{font:12px var(--mono);background:var(--surface2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:1px 5px}
+#keysHelp .keys{columns:2;column-gap:24px;padding-left:0;list-style:none}#keysHelp li{break-inside:avoid;margin:4px 0}
+@media (max-width:900px){#keysHelp .keys{columns:1}}

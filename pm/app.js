@@ -125,7 +125,8 @@
     toast((dir < 0 ? 'Undid' : 'Redid') + (what ? ': ' + what.split('\u0000')[0] : '') + ' · ' + hist.undo.length + ' more to undo');
   }
   const flushIfDirty = () => { if (dirty) flush(); };
-  window.addEventListener('beforeunload', flushIfDirty);
+  window.addEventListener('beforeunload', (e) => { flushIfDirty(); if (dirty || pendingImport) { e.preventDefault(); e.returnValue = ''; } });
+  let pendingImport = false;
   window.addEventListener('pagehide', flushIfDirty);
   function commit(fn, opts) {
     let r;
@@ -306,7 +307,7 @@
       ['Undo', () => travel(-1), 'ctrl z'], ['Redo', () => travel(1), 'ctrl shift z'], ['Print status report', () => $('#printBtn').click(), 'pdf'],
       ['Open Settings', () => openSettings(), 'backup export import'], ['Sheet index', openIndex, ''], ['PP sheet calculator', openPP, ''], ['Milestones', openMilestones, ''], ['Staff & workload', openStaff, 'owners'],
       ['Expand all', () => { ui.view = 'tree'; renderAll(); $('#xAll').click(); }, 'tree'], ['Collapse all', () => { ui.view = 'tree'; renderAll(); $('#cAll').click(); }, 'tree'], ['Toggle dark mode', () => $('#themeBtn').click(), 'theme light'],
-      ['Keyboard shortcuts', () => openSettings('keys'), 'help ?']].map(([label, run, kw]) => ({ label, run, kw, kind: 'Action', rank: 2 }));
+      ['Keyboard shortcuts', () => openKeys(), 'help ?']].map(([label, run, kw]) => ({ label, run, kw, kind: 'Action', rank: 2 }));
     for (const sub of st.subs) {
       A.push({ label: 'Sub-project ' + sub.code + ' · ' + sub.name, kind: 'Sub-project', run: () => { ui.view = 'tree'; ui.collapsed['sub:' + sub.id] = false; saveUI(); renderAll(); select_('sub', sub.id); focusNode('sub:' + sub.id); } });
       A.push({ label: 'Add road to ' + sub.code, kind: 'Action', kw: 'segment new', run: () => { ui.view = 'tree'; renderAll(); select_('sub', sub.id); setTimeout(() => { const i = $('#addSegRoad'); if (i) i.focus(); }, 30); } });
@@ -370,6 +371,10 @@
       h('button', { type: 'button', class: 'btn sec sm', id: 'bkClear', onclick: () => { msel.clear(); renderAll(); } }, 'Clear'));
     if (bar) bar.replaceWith(nb); else document.body.append(nb);
   }
+
+  /* ----- v2.18 shortcut help ----- */
+  const KEYS = [['Ctrl/Cmd + K', 'Command palette: jump to any road, sheet or action'], ['/', 'Search'], ['?', 'This shortcut help'], ['n', 'Add (segment / sheet in the open drawer)'], ['Shift + Enter', 'Add road and start the next one (add-road form)'], ['l', 'Toggle Tree / List'], ['1 – 5', 'Tree / List / Week / Board / Stations'], ['f', 'Fit tree to screen'], ['c', 'Show / hide connectors'], ['d', 'Light / dark'], ['Ctrl/Cmd + Z', 'Undo'], ['Ctrl/Cmd + Shift + Z, Ctrl + Y', 'Redo'], ['Esc', 'Close drawer or dialog · clear multi-select'], ['Enter / Space', 'Open the focused node or row'], ['← →', 'Collapse / expand the focused tree node'], ['Shift / Ctrl + click', 'Multi-select sheets in List and Board'], ['Alt + ← →', 'Move a board card to the previous / next status'], ['↑ ↓', 'Move between rows in the list (Alt+↑↓ in dropdowns)'], ['Arrows, + −', 'Pan / zoom when the tree has focus']];
+  function openKeys() { openModal('Keyboard shortcuts', h('div', { id: 'keysHelp' }, h('ul', { class: 'keys' }, KEYS.map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v))), h('p', { class: 'muted small' }, 'Shortcuts are ignored while you type in a field (except Ctrl/Cmd+K).'))); }
 
   /* ----- overview rail ----- */
   function renderRail() {
@@ -499,6 +504,11 @@
     return { dim: !(any || (selfHit && onlyQ)), hit: selfHit && (n.type !== 'sheet' || any) };
   }
   function renderTree() {
+    const empty = !st.subs.some((x) => x.segments.length);
+    let eh = $('#emptyHint');
+    if (empty && !eh) { eh = h('div', { id: 'emptyHint', class: 'emptyhint' }, h('b', {}, 'Start here'), h('p', {}, 'Click ', h('b', {}, '+'), ' on a sub-project (or press ', h('kbd', {}, 'n'), ') and type just the road name and stations. Press ', h('kbd', {}, 'Ctrl/Cmd+K'), ' to jump anywhere, ', h('kbd', {}, '?'), ' for shortcuts.'),
+      h('button', { type: 'button', class: 'btn sm', onclick: () => { select_('sub', st.subs[0].id); setTimeout(() => { const i = $('#addSegRoad'); if (i) i.focus(); }, 30); } }, '+ Add the first road to A')); $('#treeWrap').append(eh); }
+    else if (!empty && eh) eh.remove();
     const nodes = buildTree();
     const edges = $('#edges');
     const box = $('#nodes');
@@ -1278,7 +1288,7 @@
     $('#modal').hidden = false;
     setTimeout(() => { const f = $('#modalBody').querySelector('input,select,button,textarea'); (f || $('#modalClose')).focus(); }, 20);
   }
-  function closeModal() { $('#modal').hidden = true; $('#modalBody').replaceChildren(); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+  function closeModal() { pendingImport = false; $('#modal').hidden = true; $('#modalBody').replaceChildren(); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
   function openPP() {
     const what = {};
     const body = h('div', {});
@@ -1398,7 +1408,7 @@
     ov.addEventListener('change', () => commit(() => { const v = Math.max(0, Number(ov.value) || 0); st.settings.overlapFt = v; M.log(st, 'PP overlap → ' + v + ' ft'); }));
     const qc = h('textarea', { rows: 4, 'aria-label': 'QC steps, one per line' }); qc.value = st.settings.qcSteps.join('\n');
     qc.addEventListener('change', () => commit(() => { st.settings.qcSteps = qc.value.split('\n').map((x) => x.trim()).filter(Boolean); }));
-    const impFile = h('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Backup file' });
+    const impFile = h('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Backup file', onchange: (e) => { pendingImport = !!(e.target.files && e.target.files.length); } });
     const impPass = h('input', { type: 'password', autocomplete: 'off', 'aria-label': 'Passphrase (only for old encrypted backups)' });
     const impErr = h('p', { class: 'err', role: 'alert' });
     const hasOld = !!localStorage.getItem(OLDKEY);
@@ -1455,13 +1465,13 @@
             } else data = M.readBackup(obj);
             impPass.value = '';
             if (!confirm('Replace ALL current data (' + M.allSheets(st).length + ' sheets) with this backup (' + M.allSheets(data).length + ' sheets, “' + data.project.name + '”)?')) return;
-            st = data; M.log(st, 'Imported backup'); hardEdit = true; flush(); closeModal(); closeDrawer(); firstFit = true; renderAll(); toast('Backup imported.');
+            st = data; M.log(st, 'Imported backup'); hardEdit = true; pendingImport = false; flush(); closeModal(); closeDrawer(); firstFit = true; renderAll(); toast('Backup imported.');
           } catch (ex) { impErr.textContent = ex.code === 'DECRYPT' ? 'Wrong passphrase for this backup (or the file was modified).' : 'Could not import: ' + ex.message; }
         } }, h('h3', {}, 'Import backup'), field('Backup file (v2 JSON, or old encrypted v1 backup)', impFile), field('Passphrase (old encrypted backups only)', impPass), impErr, h('button', { class: 'btn sec', type: 'submit' }, 'Import…'))),
       hasOld ? h('section', {}, h('h3', {}, 'Old encrypted v1 data'), h('p', { class: 'muted' }, 'An encrypted v1 vault is still stored in this browser.'),
         h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sec', onclick: () => { closeModal(); migrationPanel(true); } }, 'Import it again…'),
           h('button', { type: 'button', class: 'btn danger', onclick: () => { if (confirm('Delete the old encrypted vault from this browser? Current data is not affected.')) { localStorage.removeItem(OLDKEY); openSettings(); } } }, 'Delete old vault'))) : null,
-      h('section', {}, h('h3', {}, 'Keyboard'), h('ul', { class: 'keys' }, [['/', 'Search'], ['n', 'Add (segment / sheet in the open drawer)'], ['l', 'Toggle Tree / List'], ['f', 'Fit tree to screen'], ['c', 'Show / hide connectors'], ['d', 'Light / dark'], ['Esc', 'Close drawer or dialog'], ['Enter', 'Open the focused node or row'], ['↑ ↓', 'Move between rows in the list (Alt+↑↓ in dropdowns)'], ['Arrows, + −', 'Pan / zoom when the tree has focus']].map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v)))),
+      h('section', {}, h('h3', {}, 'Keyboard'), h('ul', { class: 'keys' }, KEYS.map(([k, v]) => h('li', {}, h('kbd', {}, k), ' ' + v)))),
       h('section', {}, h('h3', {}, 'Activity log'), h('ol', { class: 'log long' }, st.log.slice(0, 200).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString()), ' ', l.msg)))),
       h('section', {}, h('h3', {}, 'Danger zone'), h('button', { type: 'button', class: 'btn danger', onclick: () => { if (prompt('Type ERASE to delete all project data in this browser.') === 'ERASE') { localStorage.removeItem(KEY); st = M.newState(); flush(); closeModal(); closeDrawer(); renderAll(); } } }, 'Erase all data')));
     openModal('Settings, backup & export', body);
@@ -1547,7 +1557,8 @@
     else if (e.key === 'f') fit();
     else if (e.key === 'c') $('#lkBtn').click();
     else if (e.key === 'd') $('#themeBtn').click();
-    else if (e.key === '?') openSettings();
+    else if (e.key === '?') openKeys();
+    else if (/^[1-5]$/.test(e.key)) { ui.view = VIEWS[Number(e.key) - 1]; saveUI(); renderAll(); }
     else if (e.key === 'n') {
       e.preventDefault();
       if (sel && (sel.type === 'seg' || sel.type === 'sheet')) { const id = sel.type === 'seg' ? sel.id : M.findSheet(st, sel.id).seg.id; select_('seg', id); setTimeout(() => $('#addSheetTitle') && $('#addSheetTitle').focus(), 20); }
