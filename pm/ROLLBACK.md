@@ -21,7 +21,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.10` / `pm-v2.10-final` | Print status report |
 | `pm-v2.11` / `pm-v2.11-final` | Collapse branches |
 | `pm-v2.12` / `pm-v2.12-final` | Stations editor |
-| `pm-v2.13` | Split / merge segments |
+| `pm-v2.13` / `pm-v2.13-final` | Split / merge segments |
+| `pm-v2.14` | Copy road to sub-project |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -252,4 +253,13 @@ Adds optional seg.reverse; station parser also accepts plain feet (1000). Timeli
 | 7531470 | Split / merge segments |
 
 Undo: `git revert --no-edit 7531470` and push, or `git checkout pm-v2.12-final -- pm`, commit, push.
+No schema change.
+
+## v2.14
+
+| Commit | Change |
+|---|---|
+| 9cedcc4 | Copy road to sub-project |
+
+Undo: `git revert --no-edit 9cedcc4` and push, or `git checkout pm-v2.13-final -- pm`, commit, push.
 No schema change.
