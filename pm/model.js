@@ -1553,6 +1553,39 @@
     });
     return { today, project: P, note: notes.project || '', discs };
   }
+
+  /* v3.3 printable report data: header meta, executive metrics, per-branch tree with roads / station ranges, dependencies, workload, recent changes */
+  const REPORT_META = ['preparedFor', 'preparedBy', 'scope', 'reportNo'];
+  function setReportMeta(st, k, v) {
+    if (REPORT_META.indexOf(k) < 0) throw new Error('Bad report field');
+    const t = String(v == null ? '' : v).trim().slice(0, 200);
+    st.project.report = Object.assign({}, st.project.report); if (t) st.project.report[k] = t; else delete st.project.report[k];
+  }
+  function reportMeta(st) { const m = (st.project && st.project.report) || {}; return { preparedFor: m.preparedFor || '', preparedBy: m.preparedBy || '', scope: m.scope || '', reportNo: m.reportNo || '' }; }
+  function printReport(st, today) {
+    today = today || todayISO();
+    const R = report(st, today), F = flags(st), all = allSheets(st);
+    const owners = {};
+    for (const r of all) {
+      const k = r.sh.owner || 'Unassigned';
+      const o = owners[k] || (owners[k] = { owner: k, total: 0, open: 0, overdue: 0, due7: 0, hb: 0, ha: 0, by: Object.fromEntries(STATUSES.map((x) => [x, 0])) });
+      o.total++; o.by[r.sh.status]++; if (r.sh.status !== 'Done') o.open++;
+      if (isOverdue(r.sh, today)) o.overdue++; if (isUpcoming(r.sh, today, 7)) o.due7++;
+      o.hb += Number(r.sh.hoursBudget) || 0; o.ha += Number(r.sh.hoursActual) || 0;
+    }
+    const workload = Object.values(owners).sort((a, b) => (a.owner === 'Unassigned') - (b.owner === 'Unassigned') || b.open - a.open || a.owner.localeCompare(b.owner));
+    const tree = DISCIPLINES.map((d) => ({ disc: d, stats: R.discs.find((x) => x.disc === d), subs: orderedSubs(st).map((sub) => ({ sub, stats: branchStats(st, sub, d, null, today),
+      secs: sectionsOf(sub, d).map((sec) => {
+        const p = progress(sec.sheets), pp = isPPSec(sec);
+        const roads = pp ? roadGroups(sub, sec).map((g) => ({ name: g.name, spans: g.entries.map((r) => hasSta(r) ? formatStation(r.start) + ' – ' + formatStation(r.end) : 'stations not set'),
+          pp: g.entries.reduce((a, r) => a + roadPP(st, sub, r).count, 0), sheets: sheetsOfGroup(sub, sec, g).map((sh) => ({ sh, range: sheetRange(sh) })) })) : [];
+        return { sec, pp, total: sec.sheets.length, done: p.done, pct: p.pct, ppTotal: pp ? segPP(st, sub, sec).total : 0, roads, other: (pp ? otherSheets(sub, sec) : sec.sheets).map((sh) => ({ sh, range: sheetRange(sh) })) };
+      }) })) }));
+    const lab = (ref) => refLabel(st, ref);
+    const deps = { blocked: F.blocked.map((x) => ({ item: lab(x.ref), by: x.by.map(lab) })), update: F.update.map((x) => ({ item: lab(x.ref), from: x.from.map(lab) })), ready: F.ready.map((x) => lab(x.ref)) };
+    const recent = recentChanges(st, 12).map((c) => ({ t: c.t, msg: c.msg, item: lab(c.ref) }));
+    return { today, meta: reportMeta(st), R, tree, deps, workload, recent, N: narrative(st, today) };
+  }
   function narrativeText(st, today) {
     const N = narrative(st, today), L = [(st.project.name || 'Project') + ' — status summary as of ' + N.today, '', N.project];
     if (N.note) L.push('Notes: ' + N.note);
@@ -1794,7 +1827,7 @@
       csvLine(['B', 'SWP3', 'SWP3 Layout', 'Kuykendahl Rd', '1000', '1480', '40', '', '', '', '', '', '', '', 'Stations as 1000 / 10+00 / 10+00.50 all work', '']),
       csvLine(['B', 'SWP3', '', '', '', '', '', 'SWP3 Summary & Notes', '', '', '', '', '', 'Dec 5, 2026', 'No section? It is picked from the title', ''])].join('\r\n') + '\r\n';
   }
-  return { rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,

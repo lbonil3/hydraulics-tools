@@ -552,6 +552,23 @@ t('v3.2 road branches + per-sheet station ranges: computed, live, override, warn
   assert.ok(M.narrativeText ? /FM 1960 sheets: PP 1 10\+00–15\+50/.test(JSON.stringify(M.narrative(st))) : true, 'report lists sheet ranges');
 });
 
+t('v3.3 printable report data', () => {
+  const st = M.newState('Rpt'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp');
+  M.addRoad(st, pp.id, { road: 'FM 1960', start: '10+00', end: '22+00', scale: 50 }); M.syncPP(st);
+  const s1 = pp.sheets[0]; s1.owner = 'Ana'; s1.status = 'Done';
+  M.setReportMeta(st, 'preparedBy', '  Luis  '); M.setReportMeta(st, 'scope', 'Drainage + SWP3');
+  assert.throws(() => M.setReportMeta(st, 'evil', 'x'));
+  const P = M.printReport(st, '2026-10-29');
+  assert.strictEqual(P.meta.preparedBy, 'Luis'); assert.strictEqual(P.meta.preparedFor, '');
+  M.setReportMeta(st, 'preparedBy', ''); assert.strictEqual(M.reportMeta(st).preparedBy, '');
+  const dr = P.tree.find((d) => d.disc === 'Drainage'); assert.strictEqual(dr.subs.length, st.subs.length);
+  const sec = dr.subs[0].secs.find((x) => x.sec === pp); assert.ok(sec.pp); assert.strictEqual(sec.roads[0].name, 'FM 1960');
+  assert.strictEqual(sec.roads[0].sheets.length, 2); assert.strictEqual(sec.roads[0].sheets[0].range.start, 1000); assert.strictEqual(sec.roads[0].spans[0], '10+00 – 22+00');
+  const ana = P.workload.find((w) => w.owner === 'Ana'); assert.strictEqual(ana.by.Done, 1); assert.strictEqual(ana.open, 0);
+  assert.strictEqual(P.workload[P.workload.length - 1].owner, 'Unassigned');
+  assert.ok(Array.isArray(P.deps.blocked) && Array.isArray(P.recent) && P.N.discs.length === 2);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {
