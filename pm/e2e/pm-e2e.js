@@ -16,7 +16,7 @@ const MOBILE = MODE === 'iphone';
 const [VW, VH] = MOBILE ? [390, 844] : MODE.split('x').map(Number);
 const DL = '/tmp/pmdl3-' + MODE;
 const tag = MOBILE ? 'iphone' : String(VW);
-let n = 0, pg;
+let n = 0, pg, sel3;
 const ok = (c, m) => { if (!c) throw new Error('FAIL [' + MODE + ']: ' + m); n++; console.log('ok -', m); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const txt = (sel) => pg.$eval(sel, (e) => e.innerText);
@@ -154,9 +154,10 @@ function v2Fixture() {
   ok((await txt('#secPP')).trim() === '2', 'inline stations: 1,300 ft at 100 scale → 2 PP');
   await setVal('#roadTable tr[data-road="' + lat.id + '"] input[data-k="scale"]', '50'); await sleep(200);
   ok((await txt('#secPP')).trim() === '3', '50 scale (600 ft/sheet) → 3 PP');
-  await click('#genBtn'); await sleep(200);
   D = await data();
-  ok(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 3, 'Generate creates 3 Drainage Laterals PP sheets');
+  ok(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 3, 'PP sheets follow the stations live: 3 Drainage Laterals PP sheets');
+  ok(/up to date/.test(await txt('#genBtn')), 'nothing left to generate');
+  ok(JSON.stringify(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).map((s) => [s.gen.start, s.gen.end])) === '[[0,600],[600,1200],[1200,1300]]', 'ranges 0+00–6+00, 6+00–12+00, 12+00–13+00 (last partial)');
   ok(/Lateral A-3 Sta 0\+00 to 6\+00 \(PP 1 of 3\)/.test(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets[0].title), 'PP sheet title includes road + stations');
   await shot('04-section-roads');
   /* road drawer + undo */
@@ -165,9 +166,52 @@ function v2Fixture() {
   await pg.keyboard.press('Escape');
   await pg.evaluate(() => document.activeElement.blur());
   await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(250);
-  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 0, 'undo removes the generated sheets');
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 2, 'undo restores the 100-scale count (2 PP)');
   await pg.keyboard.down('Control'); await pg.keyboard.down('Shift'); await pg.keyboard.press('z'); await pg.keyboard.up('Shift'); await pg.keyboard.up('Control'); await sleep(250);
   ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 3, 'redo brings them back');
+
+  /* 3b. v3.2: road branch under the section, sheets with station ranges under the road */
+  const latSec = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat');
+  const rdKey = 'rd:' + latSec.id + ':lateral-a-3';
+  await pg.keyboard.press('Escape'); await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  if (!(await has('.node[data-key="' + rdKey + '"]'))) await click('.node[data-key="seg:' + latSec.id + '"] .nbtn.tog');
+  ok(await has('.node[data-key="' + rdKey + '"]'), 'road is a branch under Drainage Laterals');
+  ok(/Lateral A-3/.test(await txt('.node[data-key="' + rdKey + '"]')) && /3 PP/.test(await txt('.node[data-key="' + rdKey + '"]')) && /0\+00–13\+00/.test(await txt('.node[data-key="' + rdKey + '"]')), 'road node shows name, PP count and its station range');
+  const latSheets = latSec.sheets.filter((x) => x.gen);
+  const pp1 = '.node[data-key="sheet:' + latSheets[0].id + '"]';
+  ok(await has(pp1) && /PP 1: STA 0\+00 – 6\+00/.test(await txt(pp1)) && /50 scale/.test(await txt(pp1)), 'sheet node under the road: “PP 1: STA 0+00 – 6+00” with scale');
+  ok(await pg.$eval(pp1, (e) => parseFloat(e.style.left)) > await pg.$eval('.node[data-key="' + rdKey + '"]', (e) => parseFloat(e.style.left)), 'sheets sit to the right of their road');
+  await click('.node[data-key="' + rdKey + '"]');
+  ok(await has('#rgTable') && (await pg.$$('#rgTable tbody tr')).length === 3 && await has('#roadTable'), 'road drawer: station ranges per sheet + the road table');
+  const p2row = '#rgTable tr[data-sheet="' + latSheets[1].id + '"]';
+  await setVal(p2row + ' input[data-k="a"]', '6+50'); await sleep(250);
+  let L2 = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.find((x) => x.id === latSheets[1].id);
+  ok(L2.sta && L2.sta.start === 650 && L2.sta.end === 1200 && /Sta 6\+50 to 12\+00/.test(L2.title), 'manual range on PP 2 (title follows)');
+  ok(/✎/.test(await txt('.node[data-key="sheet:' + latSheets[1].id + '"]')), 'tree marks the manual range');
+  await setVal('#roadTable input[data-k="scale"]', '100'); await sleep(300);
+  let LS = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((x) => x.gen);
+  ok(LS.length === 2 && LS[1].sta && LS[1].sta.start === 650, 'scale 100 → 2 PP; the manual range is kept, not overwritten');
+  ok(/manual range/.test(await txt('#rgWarn')), 'and a warning explains the conflict');
+  await shot('04b-road-drawer');
+  await setVal('#roadTable input[data-k="scale"]', '50'); await sleep(300);
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((x) => x.gen).length === 3, 'back to 50 scale → 3 PP');
+  await click(p2row + ' button.btn'); await sleep(250);
+  L2 = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.find((x) => x.id === latSheets[1].id);
+  ok(!L2.sta && L2.gen.start === 600 && /Sta 6\+00 to 12\+00/.test(L2.title), 'reset to computed');
+  await click(pp1); ok((await pg.$eval('#shStaA', (e) => e.value)) === '0+00' && (await pg.$eval('#shStaB', (e) => e.value)) === '6+00' && /Computed/.test(await txt('#shStaHint')), 'sheet drawer shows the computed range');
+  await click('.node[data-key="' + rdKey + '"] .nbtn.tog'); ok(!(await has(pp1)), 'road branch collapses');
+  await click('.node[data-key="' + rdKey + '"] .nbtn.tog'); ok(await has(pp1), 'and expands');
+  await click('#zFit'); await shot('04c-road-branch');
+  await pg.keyboard.press('Escape'); await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await sleep(150);
+  await pg.keyboard.type('lateral a-3'); await sleep(150);
+  ok(/road/i.test(await txt('#cmdk')), 'Ctrl+K lists the road'); await pg.keyboard.press('Enter'); await sleep(400);
+  ok(await has('.node.n-road.sel[data-key="' + rdKey + '"]'), 'and jumps to the road node');
+  await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await sleep(150);
+  await pg.keyboard.type('12+00 13+00'); await sleep(150); await pg.keyboard.press('Enter'); await sleep(400);
+  const pp3 = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.find((x) => x.gen && x.gen.idx === 3);
+  ok(sel3 = await has('.node.sel[data-key="sheet:' + pp3.id + '"]'), 'Ctrl+K finds a sheet by its stations');
+
 
   /* 4. quick add: sheet picks a section */
   await click('.node[data-key="disc:' + A.id + ':Drainage"]');
@@ -226,7 +270,7 @@ function v2Fixture() {
   await setVal('#groupSel', 'subdisc'); await sleep(200);
   ok(/Drainage Plan & Profile · 2 PP · roads: FM 1960/.test(await txt('.grid tbody')), 'grouped by discipline › sub-project › section, P&P groups list roads');
   await setVal('[data-f="section"]', 'dr-pp'); await sleep(200);
-  ok((await pg.$$('.grid tbody tr[data-id]')).length === 3, 'section filter (Drainage P&P: 2 in A + 1 in B)');
+  ok((await pg.$$('.grid tbody tr[data-id]')).length === 4, 'section filter (Drainage P&P: 2 in A + 1 in B + 1 in C, which now follows its stations)');
   await setVal('[data-f="section"]', ''); await setVal('#groupSel', ''); await sleep(150);
   await pg.$eval('#q', (e) => { e.value = 'Utility'; e.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(350);
   const ids = await pg.$$eval('.grid tbody tr[data-id]', (e) => e.map((x) => x.dataset.id));
@@ -243,6 +287,10 @@ function v2Fixture() {
   /* 8. week, board, stations views */
   await click('#vWeek'); ok(/Overdue/.test(await txt('#weekWrap')) && /Drainage Plan & Profile – FM 1960/.test(await txt('#wk-overdue')), 'week view shows the overdue PP sheet');
   await click('#vBoard'); ok((await pg.$$('.bcol')).length === 4 && /Drainage Plan & Profile ·/.test(await txt('#boardWrap')), 'board shows section names on cards');
+  ok(/· Sta \d+\+\d\d/.test(await txt('#boardWrap')), 'board card subtitle shows the station range');
+  await click('#vList'); await sleep(200);
+  ok(/Station range/.test(await pg.evaluate(() => document.body.innerHTML)), 'list offers a Station range column');
+  await click('#vBoard'); await sleep(150);
   await clickText('.bcol[data-status="Not started"] .bmove button', /›/); await sleep(150);
   ok((await pg.$$('.bcol[data-status="In progress"] .bcard')).length >= 2, 'board move');
   await shot('09-board');
@@ -279,6 +327,21 @@ function v2Fixture() {
   ok(!(await pg.$('#migV3')), 'migration notice only once');
   ok((await data()).subs[3].roads.length === 2, 'data persists after reload');
   ok(await pg.evaluate((j) => localStorage.getItem('pm.data.v2') === j, v2json), 'pm.data.v2 still untouched');
+  /* 11b. v3.1 → v3.2 migration */
+  const v31 = await pg.evaluate(() => { const d = JSON.parse(localStorage.getItem('pm.data.v3')); delete d.v32; for (const sub of d.subs) for (const g of sub.segments) for (const sh of g.sheets) if (sh.gen) { sh.gen.start = 1; sh.gen.end = 2; } const j = JSON.stringify(d); localStorage.setItem('pm.data.v3', j); localStorage.removeItem('pm.data.v3.pre-v3.2-backup'); return j; });
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  ok(await has('#migV32'), 'v3.1 → v3.2 notice shown');
+  ok(await pg.evaluate((j) => localStorage.getItem('pm.data.v3.pre-v3.2-backup') === j && localStorage.getItem('pm.data.v3') === j, v31), 'v3.1 data backed up, nothing written before Continue');
+  await shot('01b-migration-v32');
+  await click('#mig32Dl'); await sleep(500);
+  const dl32 = fs.readdirSync(DL).filter((f) => /pm-v3.1-data-before-v3.2/.test(f));
+  ok(dl32.length === 1 && fs.readFileSync(path.join(DL, dl32[0]), 'utf8') === v31, 'download gives the exact v3.1 JSON');
+  await click('#mig32Go'); await sleep(200);
+  const D32 = await data();
+  ok(!(await pg.$('#migV32')) && D32.v32 && D32.v32.at, 'Continue saves v3.2 data');
+  ok(D32.subs.every((sub) => sub.segments.every((g) => g.sheets.every((sh) => !sh.gen || sh.gen.end > 2))), 'stale ranges recomputed');
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  ok(!(await pg.$('#migV32')), 'v3.2 notice only once');
   await click('#vReport'); await sleep(250);
   ok(/North Segment \(FM 1960\)/.test(await pg.evaluate(() => document.body.innerText)) && /South Segment/.test(await pg.evaluate(() => document.body.innerText)), 'report uses the sub-project names');
   await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await sleep(150);
