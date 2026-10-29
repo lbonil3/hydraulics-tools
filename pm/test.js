@@ -594,6 +594,19 @@ t('v2.10 status report data: progress, A–D by discipline, PP, overdue/blocked,
   assert.strictEqual(Object.values(R.counts).reduce((x, y) => x + y, 0), R.overall.total);
 });
 
+t('v2.11 collapse maps: show to level and focus branch', () => {
+  const st = M.newState('C'); const A = st.subs[0], B = st.subs[1];
+  const g = M.addSegment(st, A.id, { road: 'FM 1', start: '0+00', end: '5+00' }).seg; const g2 = M.addSegment(st, B.id, { road: 'FM 2', start: '0+00', end: '5+00' }).seg;
+  assert.strictEqual(M.collapseLevel(st, 0).root, true);
+  const L1 = M.collapseLevel(st, 1); assert.ok(!L1.root && L1['sub:' + A.id]);
+  const L3 = M.collapseLevel(st, 3); assert.ok(!L3['sub:' + A.id] && !L3['disc:' + A.id + ':SWP3'] && L3['seg:' + g.id]);
+  assert.ok(Object.values(M.collapseLevel(st, 4)).every((v) => v === false));
+  const F = M.focusBranch(st, { sub: A.id, disc: 'Drainage', seg: g.id });
+  assert.ok(!F['sub:' + A.id] && !F['disc:' + A.id + ':Drainage'] && !F['seg:' + g.id + '@Drainage']);
+  assert.ok(F['sub:' + B.id] && F['disc:' + A.id + ':SWP3'] && F['seg:' + g2.id]);
+  assert.strictEqual(M.TREE_LEVELS.length, 5);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

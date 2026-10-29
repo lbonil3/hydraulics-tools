@@ -858,7 +858,28 @@
     const mil = S.milestones.map((m) => Object.assign({ late: !!m.m.date && m.m.date < today && m.pct < 100 }, m));
     return { today, project: st.project, overall: S.overall, counts, subs, pp: { total: PP.total, byDisc: PP.byDisc }, overdue: S.overdue, blocked: w.blocked, due7: w.due7, milestones: mil };
   }
-  return { SCHEMA, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.11 tree collapse maps (UI keys: root, sub:<id>, disc:<sub>:<disc>, seg:<id>, seg:<id>@<disc>) */
+  const TREE_LEVELS = ['Project', 'Sub-projects', 'Disciplines', 'Segments', 'Sheets'];
+  function collapseLevel(st, level) {
+    const c = { root: level < 1 };
+    for (const sub of st.subs) {
+      c['sub:' + sub.id] = level < 2;
+      for (const d of DISCIPLINES) c['disc:' + sub.id + ':' + d] = level < 3;
+      for (const g of sub.segments) c['seg:' + g.id] = level < 4;
+    }
+    return c;
+  }
+  /* collapse everything except the path to (and the children of) one node */
+  function focusBranch(st, p) {
+    const c = collapseLevel(st, 1);
+    if (!p || !p.sub) return c;
+    c['sub:' + p.sub] = false;
+    if (p.disc) c['disc:' + p.sub + ':' + p.disc] = false;
+    else if (!p.seg) for (const d of DISCIPLINES) c['disc:' + p.sub + ':' + d] = false;
+    if (p.seg) { for (const d of (p.disc ? [p.disc] : DISCIPLINES)) { c['disc:' + p.sub + ':' + d] = false; c['seg:' + p.seg + '@' + d] = false; } }
+    return c;
+  }
+  return { SCHEMA, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

@@ -490,6 +490,35 @@ async function serve(r) {
   }
   await pg.screenshot({ path: SHOTS + 'v2.10-status-report-' + tag + '.png', fullPage: true });
   await pg.emulateMediaType('screen'); await sleep(150);
+  // 10j. v2.11 collapse branches
+  await click('#zFit'); await sleep(200);
+  const subKey = await pg.$$eval('.node.n-sub', (e) => e[0].dataset.key);
+  ok(!!(await pg.$('.node[data-key="root"] .nbtn.tog')) && (await pg.$$('.node.n-sub .nbtn.tog')).length === 4 && (await pg.$$('.node.n-disc .nbtn.tog')).length >= 1, 'chevron toggle on project, sub-project and branch nodes');
+  await pg.select('#lvlSel', '1'); await sleep(300);
+  ok((await pg.$$('.node.n-disc')).length === 0 && (await pg.$$('.node.n-sub.collapsed')).length >= 2, 'Show to level: Sub-projects collapses branches');
+  ok(/·\s*\d+ sh/.test(await txt('.node[data-key="' + subKey + '"] .nbtn.tog')) && !!(await pg.$('.node[data-key="' + subKey + '"] .ring')), 'collapsed node shows hidden count badge and keeps its progress ring');
+  ok((await pg.$$('#linkG path.lnk')).length >= 1, 'connectors re-attach to the visible collapsed ancestor');
+  await pg.focus('.node[data-key="' + subKey + '"]'); await pg.keyboard.press('ArrowRight'); await sleep(300);
+  ok((await pg.$$('.node[data-key^="disc:' + subKey.slice(4) + ':"]')).length >= 1, 'ArrowRight expands the focused node');
+  await pg.focus('.node[data-key="' + subKey + '"]'); await pg.keyboard.press('ArrowLeft'); await sleep(300);
+  ok((await pg.$$('.node[data-key^="disc:' + subKey.slice(4) + ':"]')).length === 0, 'ArrowLeft collapses it');
+  await pg.select('#lvlSel', '0'); await sleep(300);
+  ok((await pg.$$('.node')).length === 1, 'Show to level: Project shows only the project');
+  await pg.select('#lvlSel', '4'); await sleep(300);
+  ok((await pg.$$('.node.n-sheet')).length > 20, 'Show to level: Sheets expands everything');
+  const shk = await pg.$$eval('.node.n-sheet', (e) => e[0].dataset.key);
+  await click('.node[data-key="' + shk + '"]'); await pg.waitForSelector('#focusBranch');
+  await click('#focusBranch'); await sleep(400);
+  const vis = await pg.$$eval('.node.n-sub', (e) => e.map((x) => x.classList.contains('collapsed')));
+  ok(vis.filter((x) => !x).length === 1 && !!(await pg.$('.node[data-key="' + shk + '"]')), 'Focus branch collapses the others and keeps the selected path open');
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  ok((await pg.$$eval('.node.n-sub', (e) => e.filter((x) => x.classList.contains('collapsed')).length)) === 3, 'collapse state persists across reload');
+  await pg.screenshot({ path: SHOTS + 'v2.11-collapse-' + tag + '.png' });
+  await click('#cAll'); await sleep(300);
+  ok((await pg.$$('.node.n-disc')).length === 0, 'Collapse all');
+  await click('#xAll'); await sleep(300);
+  ok((await pg.$$('.node.n-sheet')).length > 20, 'Expand all');
+  await pg.keyboard.press('Escape'); await sleep(150);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

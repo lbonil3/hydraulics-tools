@@ -56,7 +56,8 @@
         <button type="button" class="ibtn" id="zOut" aria-label="Zoom out">&minus;</button>
         <button type="button" class="ibtn" id="zFit" title="Fit to screen (f)">Fit</button>
         <button type="button" class="ibtn" id="xAll" title="Expand all">Expand all</button>
-        <button type="button" class="ibtn" id="cAll" title="Collapse to segments">Collapse</button>
+        <button type="button" class="ibtn" id="cAll" title="Collapse all branches to sub-projects">Collapse all</button>
+        <label class="sr" for="lvlSel">Show tree to level</label><select id="lvlSel" class="lvlsel" title="Show to level"><option value="">Show to…</option><option value="0">Project</option><option value="1">Sub-projects</option><option value="2">Disciplines</option><option value="3">Segments</option><option value="4">Sheets</option></select>
         <div class="seg-toggle branch-toggle" role="group" aria-label="Discipline branches">
           <button type="button" id="bBoth" aria-pressed="true" title="Show both discipline branches">Both</button>
           <button type="button" id="bDr" aria-pressed="false" title="Show only the Drainage branch">Drainage</button>

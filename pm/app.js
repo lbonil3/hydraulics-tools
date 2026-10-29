@@ -378,7 +378,7 @@
   function openBranch(subId, d) { ui.collapsed['disc:' + subId + ':' + d] = false; if (!shownDiscs().includes(d)) ui.branch = 'both'; }
   function keyQuery(key) { return /^seg:[^@]+$/.test(key) ? '.node[data-key^="' + key + '@"]' : '.node[data-key="' + key + '"]'; }
   function buildTree() {
-    const root = { key: 'root', type: 'root', depth: 0, kids: [] };
+    const root = { key: 'root', type: 'root', depth: 0, kids: [], collapsed: isCollapsed('root', false) };
     for (const sub of st.subs) {
       const sn = { key: 'sub:' + sub.id, type: 'sub', sub, depth: 1, kids: [] };
       sn.collapsed = isCollapsed(sn.key, false);
@@ -528,10 +528,28 @@
     handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
     document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
   }
+  function hiddenCount(n) { let k = 0, sh = 0; (function walk(x) { for (const c of x.kids) { k++; if (c.type === 'sheet') sh++; walk(c); } })(n); return { k, sh }; }
+  function toggleNode(n, v) { ui.collapsed[n.key] = v == null ? !n.collapsed : v; if (n.type === 'seg') ui.collapsed[n.key] = ui.collapsed[n.key]; saveUI(); renderTree(); setTimeout(() => { const e = document.querySelector('.node[data-key="' + n.key + '"]'); if (e) e.focus({ preventScroll: true }); }, 0); }
   function toggleBtn(n) {
     if (!n.kids.length && n.type !== 'sub') return null;
-    return h('button', { type: 'button', class: 'nbtn tog', 'aria-expanded': String(!n.collapsed), 'aria-label': (n.collapsed ? 'Expand ' : 'Collapse ') + nodeLabel(n),
-      onclick: (e) => { e.stopPropagation(); ui.collapsed[n.key] = !n.collapsed; saveUI(); renderTree(); } }, (n.collapsed ? '▸ ' : '▾ ') + n.kids.length);
+    const hc = hiddenCount(n);
+    const badge = n.collapsed ? (hc.sh && hc.sh !== n.kids.length ? n.kids.length + ' · ' + hc.sh + ' sh' : String(n.kids.length || 0)) : String(n.kids.length);
+    return h('button', { type: 'button', class: 'nbtn tog' + (n.collapsed ? ' closed' : ''), 'aria-expanded': String(!n.collapsed), 'aria-label': (n.collapsed ? 'Expand ' : 'Collapse ') + nodeLabel(n) + (n.collapsed ? ' (' + hc.k + ' hidden items, ' + hc.sh + ' sheets)' : ''),
+      title: n.collapsed ? 'Expand · ' + hc.k + ' hidden (' + hc.sh + ' sheets)' : 'Collapse',
+      onclick: (e) => { e.stopPropagation(); toggleNode(n); } }, h('span', { class: 'chev', 'aria-hidden': 'true' }, n.collapsed ? '▸' : '▾'), ' ' + badge);
+  }
+  function setLevel(L) { ui.collapsed = M.collapseLevel(st, L); if (L < 4 && ui.branch !== 'both') { /* keep branch filter */ } saveUI(); renderTree(); fit(); }
+  function focusSel() {
+    if (!sel || sel.type === 'root') return;
+    let p = null;
+    if (sel.type === 'sub') p = { sub: sel.id };
+    else if (sel.type === 'disc') { const [sid, d] = sel.id.split(':'); p = { sub: sid, disc: d }; }
+    else if (sel.type === 'seg') { const r = M.findSeg(st, sel.id); p = r && { sub: r.sub.id, seg: sel.id, disc: sel.disc }; }
+    else if (sel.type === 'sheet') { const r = M.findSheet(st, sel.id); p = r && { sub: r.sub.id, seg: r.seg.id, disc: r.sh.discipline }; }
+    if (!p) return;
+    ui.collapsed = M.focusBranch(st, p); if (p.disc && !shownDiscs().includes(p.disc)) ui.branch = 'both';
+    if (ui.view !== 'tree') ui.view = 'tree';
+    saveUI(); renderAll(); fit(); toast('Focused this branch · others collapsed');
   }
   function addBtn(n, label, fn) { return h('button', { type: 'button', class: 'nbtn add', 'aria-label': label, title: label, onclick: (e) => { e.stopPropagation(); fn(); } }, '+'); }
   function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'sub' ? 'Sub-project ' + n.sub.code : n.type === 'disc' ? n.sub.code + ' ' + n.disc + ' branch' : n.type === 'seg' ? n.disc + ' segment ' + n.seg.name : 'sheet ' + n.sh.title; }
@@ -596,11 +614,12 @@
     }
     const id = n.type === 'root' ? 'root' : n.type === 'sub' ? n.sub.id : n.type === 'disc' ? n.sub.id + ':' + n.disc : n.type === 'seg' ? n.seg.id : n.sh.id;
     const selected = sel && (sel.type === n.type && sel.id === id && (n.type !== 'seg' || !sel.disc || sel.disc === n.disc) || (n.type === 'root' && sel.type === 'root'));
-    const el = h('div', { class: 'node n-' + n.type + (n.disc ? ' d-' + DINFO[n.disc].cls : '') + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
+    const el = h('div', { class: 'node n-' + n.type + (n.collapsed && n.kids.length ? ' collapsed' : '') + (n.disc ? ' d-' + DINFO[n.disc].cls : '') + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
       tabindex: 0, role: 'button', 'data-key': n.key, 'aria-label': nodeLabel(n),
       onclick: () => select_(n.type, id, n.disc),
       onmouseenter: () => hoverLinks(n.key, true), onmouseleave: () => hoverLinks(n.key, false),
-      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id, n.disc); } } },
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select_(n.type, id, n.disc); }
+        else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && n.kids.length && !e.altKey) { e.preventDefault(); e.stopPropagation(); if ((e.key === 'ArrowLeft') !== !!n.collapsed) toggleNode(n, e.key === 'ArrowLeft'); } } },
     body, h('div', { class: 'nacts' },
       n.type === 'sub' ? addBtn(n, 'Add segment to ' + n.sub.code, () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegRoad'); if (i) i.focus(); }, 30); }) : null,
       n.type === 'disc' ? addBtn(n, 'Add segment to ' + n.sub.code + ' (shared by both branches)', () => { select_('sub', n.sub.id); setTimeout(() => { const i = $('#addSegRoad'); if (i) i.focus(); }, 30); }) : null,
@@ -858,6 +877,7 @@
     const had = !d.hidden;
     d.hidden = false; $('#layout').classList.add('drawer-open');
     d.replaceChildren(h('div', { class: 'dhead' }, h('span', { class: 'dkind' }, ({ root: 'Project', sub: 'Sub-project', disc: 'Discipline branch', seg: 'Segment', sheet: 'Sheet' }[sel.type] + (sel.type === 'seg' && sel.disc ? ' · ' + sel.disc + ' branch' : ''))),
+      sel.type !== 'root' ? h('button', { type: 'button', class: 'btn sec sm', id: 'focusBranch', title: 'Collapse all other branches and keep this one open', onclick: focusSel }, '◎ Focus branch') : null,
       h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Close details', onclick: closeDrawer }, '×')), content);
     if (had) d.scrollTop = scroll;
   }
@@ -1324,8 +1344,9 @@
   $('#zIn').addEventListener('click', () => { const v = $('#viewport'); zoomAt(1.25, v.clientWidth / 2, v.clientHeight / 2); });
   $('#zOut').addEventListener('click', () => { const v = $('#viewport'); zoomAt(0.8, v.clientWidth / 2, v.clientHeight / 2); });
   $('#zFit').addEventListener('click', () => fit());
-  $('#xAll').addEventListener('click', () => { for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; DISCS.forEach((d) => { ui.collapsed['disc:' + sub.id + ':' + d] = false; }); for (const g of sub.segments) setSeg(g.id, false); } saveUI(); renderTree(); fit(); });
-  $('#cAll').addEventListener('click', () => { for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; DISCS.forEach((d) => { ui.collapsed['disc:' + sub.id + ':' + d] = false; }); for (const g of sub.segments) setSeg(g.id, true); } saveUI(); renderTree(); fit(); });
+  $('#xAll').addEventListener('click', () => { ui.collapsed.root = false;  for (const sub of st.subs) { ui.collapsed['sub:' + sub.id] = false; DISCS.forEach((d) => { ui.collapsed['disc:' + sub.id + ':' + d] = false; }); for (const g of sub.segments) setSeg(g.id, false); } saveUI(); renderTree(); fit(); });
+  $('#cAll').addEventListener('click', () => setLevel(1));
+  $('#lvlSel').addEventListener('change', (e) => { if (e.target.value !== '') setLevel(Number(e.target.value)); e.target.value = ''; });
   $('#railBtn').addEventListener('click', () => { const open = !document.body.classList.contains('rail-open'); document.body.classList.toggle('rail-open', open); $('#railBtn').setAttribute('aria-expanded', String(open)); });
   let qTm;
   $('#q').addEventListener('input', () => {
