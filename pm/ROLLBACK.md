@@ -18,7 +18,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.7` / `pm-v2.7-final` | This-week view |
 | `pm-v2.8` / `pm-v2.8-final` | Status board |
 | `pm-v2.9` / `pm-v2.9-final` | Undo / redo |
-| `pm-v2.10` | Print status report |
+| `pm-v2.10` / `pm-v2.10-final` | Print status report |
+| `pm-v2.11` | Collapse branches |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -223,3 +224,12 @@ No schema change; history is in memory only (cleared on reload).
 
 Undo: `git revert --no-edit 5f76fb7` and push, or `git checkout pm-v2.9-final -- pm`, commit, push.
 No data changes.
+
+## v2.11
+
+| Commit | Change |
+|---|---|
+| 46569d2 | Collapse branches |
+
+Undo: `git revert --no-edit 46569d2` and push, or `git checkout pm-v2.10-final -- pm`, commit, push.
+No data changes; collapse state stays in pm.ui.v2.collapsed (adds 'root' key).
