@@ -229,8 +229,8 @@
     for (const sub of st.subs) for (const seg of sub.segments) for (const sh of seg.sheets) if (sh.id === sheetId) return { sub, seg, sh };
     return null;
   }
-  function log(st, msg) {
-    st.log.unshift({ t: new Date().toISOString(), msg });
+  function log(st, msg, ref) {
+    st.log.unshift(ref ? { t: new Date().toISOString(), msg, ref: { t: ref.t, id: ref.id } } : { t: new Date().toISOString(), msg });
     if (st.log.length > 500) st.log.length = 500;
   }
   function addSegment(st, subId, f) {
@@ -243,7 +243,7 @@
     seg.name = segLabel(seg);
     sub.segments.push(seg);
     sub.segments.sort((x, y) => x.start - y.start);
-    log(st, 'Added segment ' + sub.code + ' · ' + seg.name + ' (' + formatStation(seg.start) + '–' + formatStation(seg.end) + ')');
+    log(st, 'Added segment ' + sub.code + ' · ' + seg.name + ' (' + formatStation(seg.start) + '–' + formatStation(seg.end) + ')', { t: 'seg', id: seg.id });
     return { seg, warns: v.warns };
   }
   function updateSegment(st, segId, f) {
@@ -257,7 +257,7 @@
     next.road = String(next.road || '').trim();
     Object.assign(hit.seg, next, { name: segLabel(next) });
     hit.sub.segments.sort((x, y) => x.start - y.start);
-    log(st, 'Updated segment ' + hit.sub.code + ' · ' + hit.seg.name);
+    log(st, 'Updated segment ' + hit.sub.code + ' · ' + hit.seg.name, { t: 'seg', id: hit.seg.id });
     return { seg: hit.seg, warns: v.warns };
   }
   function deleteSegment(st, segId) {
@@ -278,7 +278,7 @@
     if (!hit) throw new Error('No such segment');
     const sh = newSheet(f);
     hit.seg.sheets.push(sh);
-    log(st, 'Added sheet ' + sh.title + ' to ' + hit.sub.code + ' · ' + hit.seg.name);
+    log(st, 'Added sheet ' + sh.title + ' to ' + hit.sub.code + ' · ' + hit.seg.name, { t: 'sheet', id: sh.id });
     return sh;
   }
   const NUMERIC = ['pct', 'hoursBudget', 'hoursActual'];
@@ -308,7 +308,7 @@
     Object.assign(sh, g);
     if (sh.owner) addStaff(st, sh.owner);
     if (reopened) markRevised(st, { t: 'sheet', id: sh.id }, 'Re-opened (was Done)');
-    if (changed.length) log(st, sh.title + ': ' + changed.map((k) => k + (['notes', 'qc'].includes(k) ? '' : ' → ' + (g[k] === '' ? '(blank)' : g[k]))).join(', '));
+    if (changed.length) log(st, sh.title + ': ' + changed.map((k) => k + (['notes', 'qc'].includes(k) ? '' : ' → ' + (g[k] === '' ? '(blank)' : g[k]))).join(', '), { t: 'sheet', id: sh.id });
     return sh;
   }
   function deleteSheet(st, sheetId) {
@@ -1010,7 +1010,19 @@
     st.log = L0; log(st, 'Deleted ' + n + ' sheets');
     return n;
   }
-  return { SCHEMA, bulkUpdate, bulkDelete, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.17 recently changed items, from the activity log (newest first, one entry per item) */
+  function recentChanges(st, n) {
+    const seen = new Set(), out = [];
+    for (const l of st.log) {
+      if (!l.ref || seen.has(l.ref.t + ':' + l.ref.id)) continue;
+      seen.add(l.ref.t + ':' + l.ref.id);
+      const r = resolve(st, l.ref); if (!r) continue;
+      out.push({ ref: l.ref, t: l.t, msg: l.msg, r });
+      if (out.length >= (n || 8)) break;
+    }
+    return out;
+  }
+  return { SCHEMA, recentChanges, bulkUpdate, bulkDelete, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

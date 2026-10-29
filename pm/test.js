@@ -689,6 +689,17 @@ t('v2.16 bulk status/owner/due/discipline and bulk delete', () => {
   assert.strictEqual(M.bulkDelete(st, [a.id, c.id, 'zz']), 2); assert.strictEqual(st.subs[0].segments[0].sheets.length, 1);
 });
 
+t('v2.17 recently changed from the activity log', () => {
+  const st = M.newState('R'); const g = M.addSegment(st, st.subs[0].id, { road: 'R', start: '0+00', end: '5+00' }).seg;
+  const a = M.addSheet(st, g.id, { title: 'A1' }), b = M.addSheet(st, g.id, { title: 'B1' });
+  M.updateSheet(st, a.id, { status: 'In progress' });
+  const rc = M.recentChanges(st, 5);
+  assert.deepStrictEqual(rc.map((x) => x.ref.id), [a.id, b.id, g.id]);
+  assert.match(rc[0].msg, /status → In progress/);
+  M.deleteSheet(st, b.id);
+  assert.ok(!M.recentChanges(st).some((x) => x.ref.id === b.id), 'deleted items drop out');
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

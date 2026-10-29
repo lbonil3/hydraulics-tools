@@ -625,6 +625,16 @@ async function serve(r) {
     await click('#bkClear'); await sleep(200);
   }
   await click('#vTree'); await sleep(250);
+  // 10p. v2.17 recently changed + remembered view/filters
+  ok(/Recently changed/i.test(await txt('#recentPanel')) && (await pg.$$('#recentPanel li')).length >= 1, 'overview shows Recently changed items');
+  await click('#recentPanel li button'); await sleep(300);
+  ok(!!(await pg.$('#drawer:not([hidden])')), 'recent item opens its details');
+  await pg.keyboard.press('Escape'); await sleep(100);
+  await click('#vList'); await sleep(200); await pg.select('#fDisc', 'SWP3'); await sleep(200);
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  ok(!!(await pg.$('table.grid')) && (await pg.$eval('#fDisc', (e) => e.value)) === 'SWP3', 'last view and filters remembered across reload');
+  await pg.screenshot({ path: SHOTS + 'v2.17-recent-and-remembered-' + tag + '.png' });
+  await pg.select('#fDisc', ''); await sleep(200); await click('#vTree'); await sleep(300);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

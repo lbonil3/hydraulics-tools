@@ -11,14 +11,14 @@
   let st = null;
   const ui = Object.assign({ view: 'tree', timeline: true, theme: null, collapsed: {}, cols: null, sort: { key: 'sub', dir: 'asc' }, rail: true, links: true, linkSel: false, branch: 'both', group: '', vf: { sub: '', discipline: '', owner: '' } },
     safeJSON(localStorage.getItem(UIKEY)) || {});
-  const filt = { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '', flag: '' };
+  const filt = Object.assign({ status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '', flag: '' }, ui.filt || {}); /* v2.17: filters remembered */
   let sel = null; // { type, id }
   let view = { x: 40, y: 40, k: 1 };
   let firstFit = true;
   let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf })); }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, filt })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -157,6 +157,8 @@
 
   /* ---------- render ---------- */
   function renderAll() {
+    if (!VIEWS.includes(ui.view)) ui.view = 'tree';
+    saveUI();
     $('#appTitle').textContent = st.project.name || 'Project Tracker';
     fillFilterSelects();
     renderRail();
@@ -412,6 +414,9 @@
         S.milestones.length ? S.milestones.map((m) => h('button', { type: 'button', class: 'msline', onclick: toList({ milestone: m.m.id }) },
           h('span', { class: 'grow' }, h('span', { class: 'nm' }, m.m.name + (m.m.date ? ' · ' + m.m.date : '')), bar(m.pct, m.m.name)), h('span', { class: 'muted' }, m.total + ' sh'))) : h('p', { class: 'muted' }, 'None'),
         h('button', { type: 'button', class: 'link', onclick: openMilestones }, 'Manage milestones')),
+      (() => { const rc = M.recentChanges(st, 6); return h('section', { class: 'panel', id: 'recentPanel' }, h('h3', {}, 'Recently changed'),
+        rc.length ? h('ul', { class: 'mini' }, rc.map((x) => h('li', {}, h('button', { type: 'button', class: 'link', onclick: () => { if (x.ref.t === 'sheet') { select_('sheet', x.ref.id); revealSheet(x.r); } else revealRef(x.ref); } },
+          (x.r.sub ? x.r.sub.code + ' · ' : '') + (x.ref.t === 'sheet' ? x.r.sh.title : x.r.seg.name)), h('small', { class: 'muted' }, ' ' + new Date(x.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · ' + x.msg.replace(/^.*?: /, ''))))) : h('p', { class: 'muted' }, 'Edits to sheets and roads will show here.')); })(),
       h('section', { class: 'panel' }, h('h3', {}, 'Recent activity'),
         st.log.length ? h('ol', { class: 'log' }, st.log.slice(0, 8).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })), ' ', l.msg))) : h('p', { class: 'muted' }, 'Nothing yet.'))].filter(Boolean));
   }
@@ -1557,6 +1562,7 @@
   st = load();
   const needMigration = !st && !!localStorage.getItem(OLDKEY);
   if (!st) st = M.newState();
+  $('#q').value = filt.q || '';
   renderAll();
   if (needMigration) migrationPanel(false); else flush();
 })();
