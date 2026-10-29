@@ -13,7 +13,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.2` / `pm-v2.2-final` | + Drainage / SWP3 branches under each sub-project |
 | `pm-v2.3` / `pm-v2.3-final` | + Add segment with road + stations only (auto label) |
 | `pm-v2.4` / `pm-v2.4-final` | + Updated default sheet templates (Drainage + SWP3), Reset all templates |
-| `pm-v2.5` | + Project sheet index, bulk-apply to all segments |
+| `pm-v2.5` / `pm-v2.5-final` | + Project sheet index, bulk-apply to all segments |
+| `pm-v2.6` | Sheet-number ranges |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -173,3 +174,12 @@ Data note: only new projects and template resets get the new list; existing temp
 
 Undo: `git revert --no-edit bd2df3e` and push, or `git checkout pm-v2.4-final -- pm`, commit, push.
 Data note: adds `index` to the data (older data gets the default list). Rolling back ignores it; applied sheets stay.
+
+## v2.6
+
+| Commit | Change |
+|---|---|
+| 40c38a5 | Sheet-number ranges |
+
+Undo: `git revert --no-edit 40c38a5` and push, or `git checkout pm-v2.5-final -- pm`, commit, push.
+Adds settings.numbering (defaults filled on load); existing sheet numbers untouched unless 'Fill empty'/'Renumber all' used
