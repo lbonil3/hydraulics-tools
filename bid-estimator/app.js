@@ -302,6 +302,7 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   });
   function printHtml() {
+    const withAppx = !$('printAppx') || $('printAppx').checked;
     const rows = lineRows();
     const total = rows.reduce(function (t, r) { return t + (r.extension || 0); }, 0);
     const m = idx ? idx.meta : {};
@@ -311,7 +312,44 @@
       rows.map(function (r) { return '<tr><td>' + esc(r.code) + '</td><td>' + esc(r.desc) + '</td><td class="n">' + E.fmtQty(r.qty) + (r.entered ? '<br><small>(' + esc(r.entered) + ')</small>' : '') + '</td><td>' + esc(r.unit) + '</td><td class="n">' + E.fmtMoney(r.unit_price) + '</td><td class="n">' + (r.low != null ? E.fmtMoney(r.low) + '–' + E.fmtMoney(r.high) : '') + '</td><td class="n">' + E.fmtMoney(r.extension) + '</td><td>' + esc(r.confidence) + '</td><td>' + esc(r.notes) + '</td></tr>'; }).join('') +
       '</tbody><tfoot><tr><td colspan="6">Total (' + rows.length + ' items)</td><td class="n">' + E.fmtMoney(total) + '</td><td colspan="2"></td></tr></tfoot></table>' +
       '<h3>Backup</h3><ol class="ps-backup">' + rows.map(function (r) { return '<li><b>' + esc(r.code) + ':</b> ' + esc(r.backup) + '</li>'; }).join('') + '</ol>' +
-      '<p class="ps-meta">Source: Texas Open Data Portal, TxDOT Bid Tabulations (dataset de7b-7dna), low bidder. Not an official bid; ESBD / EBS remain official. Possibly unbalanced bids are flagged, not removed.</p>';
+      (withAppx ? '<p class="ps-ref"><b>Plots:</b> price-vs-quantity and price-spread plots for each bid item are in <i>Appendix: Bid item plots</i> at the end of this report.</p>' : '') +
+      '<p class="ps-meta">Source: Texas Open Data Portal, TxDOT Bid Tabulations (dataset de7b-7dna), low bidder. Not an official bid; ESBD / EBS remain official. Possibly unbalanced bids are flagged, not removed.</p>' +
+      (withAppx ? appendixHtml() : '');
+  }
+  // ---------- print appendix: per-item plots (print-friendly, black/white-safe) ----------
+  const SYM = {
+    pt: '<svg class="sym" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5" fill="none" stroke="#000" stroke-width="1.2"/></svg>',
+    hou: '<svg class="sym" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="#000"/></svg>',
+    flag: '<svg class="sym" viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" transform="rotate(45 6 6)" fill="#fff" stroke="#000" stroke-width="1.8"/></svg>',
+    band: '<svg class="sym" viewBox="0 0 12 12"><rect x="0" y="3" width="12" height="6" fill="#000" fill-opacity=".14"/><line x1="0" x2="12" y1="6" y2="6" stroke="#000" stroke-dasharray="3 2"/></svg>',
+    qty: '<svg class="sym" viewBox="0 0 12 12"><line x1="6" x2="6" y1="0" y2="12" stroke="#000" stroke-width="1.2" stroke-dasharray="1.5 1.5"/></svg>',
+    you: '<svg class="sym" viewBox="0 0 12 12"><path d="M6 1l5 5-5 5-5-5z" fill="#000"/></svg>'
+  };
+  function appendixBlock(it, n) {
+    const res = results[it.id];
+    const head = function (code, desc, qty, unit, price) {
+      return '<h4>A' + n + '. ' + esc(code) + (desc ? ' · ' + esc(desc) : '') + '</h4><p class="ax-sub">Quantity ' + qty + (unit ? ' ' + esc(unit) : '') + ' · Suggested unit price ' + price + '</p>';
+    };
+    if (!res || !res.ok) {
+      const row = rowFor(it.code);
+      return '<section class="ax-item ax-none">' + head(it.code, row ? row[1] : '', E.fmtQty(it.qty), row ? row[2] : '', '—') +
+        '<p class="ax-note">No plot: ' + esc(res ? res.reason : 'estimate not available') + '</p></section>';
+    }
+    const h = head(res.code, res.desc, E.fmtQty(res.qty), res.unit, E.fmtMoney(res.mid));
+    const nobs = (res.obs || []).length;
+    if (nobs < 2) return '<section class="ax-item ax-none">' + h + '<p class="ax-note">No plot: only ' + nobs + ' low bid' + (nobs === 1 ? '' : 's') + ' in the data for this code (' + esc(res.scopeLabel) + '); at least 2 are needed for a plot.</p></section>';
+    const fl = res.flagStats.n;
+    return '<section class="ax-item">' + h +
+      C.scatter(res, houstonIdx, { width: 640, height: 250 }) +
+      '<p class="ax-leg"><span>' + SYM.pt + 'low bid</span><span>' + SYM.hou + 'Houston District</span><span>' + SYM.band + 'suggested range / suggested price</span><span>' + SYM.qty + 'your quantity</span><span>' + SYM.you + 'your estimate</span>' + (fl ? '<span>' + SYM.flag + 'possibly unbalanced (kept)</span>' : '') + '</p>' +
+      '<p class="ax-cap">Low-bid unit price vs. quantity for ' + nobs + ' bids (' + esc(res.scopeLabel) + '), quantity on a log scale. The shaded band is the suggested range ' + E.fmtMoney(res.low) + '–' + E.fmtMoney(res.high) + ' and the dashed line the suggested price at your quantity.' +
+      (fl ? ' ' + fl + ' bid' + (fl === 1 ? ' is' : 's are') + ' flagged possibly unbalanced and drawn as open diamonds; they are kept in the statistics, not removed.' : ' No bids are flagged as possibly unbalanced.') + '</p>' +
+      C.boxplot(res, { width: 640 }) +
+      '<p class="ax-cap">Spread of low-bid unit prices: box = middle half (' + E.fmtMoney(res.p25) + '–' + E.fmtMoney(res.p75) + '), bar = median ' + E.fmtMoney(res.p50) + ', whiskers = 10th–90th percentile, dots = each bid' + (fl ? ', squares = possibly unbalanced' : '') + ', ▲ = suggested ' + E.fmtMoney(res.mid) + ', shaded = suggested range.' + (nobs < 3 ? ' Fewer than 3 bids, so no box is drawn.' : '') + '</p></section>';
+  }
+  function appendixHtml() {
+    return '<section class="ps-appx"><h2>Appendix: Bid item plots</h2><p class="ps-meta">One block per bid item, in the order of the summary table. Same plots as the item cards on screen, drawn for black-and-white printing.</p>' +
+      items.map(function (it, i) { return appendixBlock(it, i + 1); }).join('') + '</section>';
   }
   $('printBtn').addEventListener('click', function () {
     if (!items.length) return toast('Nothing to print yet');
@@ -324,6 +362,10 @@
     items = []; save(); renderAll();
   });
 
+  if ($('printAppx')) {
+    if (settings.printAppx === false) $('printAppx').checked = false;
+    $('printAppx').addEventListener('change', function () { settings.printAppx = $('printAppx').checked; try { localStorage.setItem(SETTINGS, JSON.stringify(settings)); } catch (e) { /* ignore */ } });
+  }
   // ---------- settings ----------
   const letEl = $('letDate'), escEl = $('escPct'), ptEl = $('projTotal');
   if (settings.projectTotal) ptEl.value = settings.projectTotal;
@@ -331,7 +373,7 @@
   if (settings.escPct != null) escEl.value = settings.escPct;
   if (settings.letDate || settings.projectTotal) $('settings').open = true;
   function onSettings() {
-    settings = { letDate: letEl.value || '', escPct: escEl.value === '' ? 0 : Number(escEl.value), projectTotal: Number(ptEl.value) > 0 ? Number(ptEl.value) : '' };
+    settings = { printAppx: settings.printAppx, letDate: letEl.value || '', escPct: escEl.value === '' ? 0 : Number(escEl.value), projectTotal: Number(ptEl.value) > 0 ? Number(ptEl.value) : '' };
     try { localStorage.setItem(SETTINGS, JSON.stringify(settings)); } catch (e) { /* ignore */ }
     if (ctx) Promise.all(items.map(compute)).then(renderAll);
   }
