@@ -10,7 +10,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v1.1` / `pm-v1.1-final` | + "Project Tracker" card on the home page (last encrypted, passphrase-login version) |
 | `pm-v2` / `pm-v2-final` | Testing mode (no login, plain JSON), tree UI, PP sheet counts (last version before connectors) |
 | `pm-v2.1` / `pm-v2.1-final` | + Connectors between sheets/segments in any sub-project, build order, update-needed, blocked/ready, impact |
-| `pm-v2.2` | + Drainage / SWP3 branches under each sub-project |
+| `pm-v2.2` / `pm-v2.2-final` | + Drainage / SWP3 branches under each sub-project |
+| `pm-v2.3` | + Add segment with road + stations only (auto label) |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -141,3 +142,14 @@ git commit -m "pm: back to v2.1 (no discipline branches)" && git push
 Data note: v2.2 does not change the data format. Segments are still stored once per sub-project and
 shown under both branches; it only fills in a missing sheet discipline (SWP3 / erosion / stormwater
 keywords → SWP3, else Drainage). Going back to v2.1 keeps everything.
+
+## v2.3 (road-only segments)
+
+| Commit | Change |
+|---|---|
+| 8811171 | Add-segment form: road + start/end (+ scale); label auto "<Road> Sta <start>–<end>"; migration; tests + e2e |
+
+Undo: `git revert --no-edit 8811171` and push, or `git checkout pm-v2.2-final -- pm`, commit, push.
+Data note: on first load v2.3 rewrites each segment's `name` to the auto label (a segment with only a
+name gets it as its road). v2.2 still opens this data; segment titles then show the auto label.
+Export a backup first if you want the old names.
