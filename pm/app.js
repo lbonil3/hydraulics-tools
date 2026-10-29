@@ -101,8 +101,28 @@
     clearTimeout(saveTm);
     if (!st) return;
     dirty = false;
-    try { localStorage.setItem(KEY, JSON.stringify(st)); $('#saved').textContent = 'Saved on this device'; }
+    const json = JSON.stringify(st);
+    track(json);
+    try { localStorage.setItem(KEY, json); $('#saved').textContent = 'Saved on this device'; }
     catch (e) { $('#saved').textContent = 'Save failed'; toast('Save failed: ' + e.message); }
+  }
+  /* ---------- v2.9 undo / redo: whole-project snapshots taken at each save, quick bursts (typing) coalesced ---------- */
+  const hist = M.history(50, 800);
+  let hardEdit = false;
+  function track(json) { if (hist.record(json, { hard: hardEdit })) histButtons(); hardEdit = false; }
+  function histButtons() { const u = $('#undoBtn'), r = $('#redoBtn'); if (!u) return; u.disabled = !hist.undo.length; r.disabled = !hist.redo.length; u.title = 'Undo (Ctrl/Cmd+Z) · ' + hist.undo.length + ' step' + (hist.undo.length === 1 ? '' : 's'); r.title = 'Redo (Ctrl/Cmd+Shift+Z) · ' + hist.redo.length; }
+  function lastMsg(json) { try { const l = JSON.parse(json).log; return l && l[0] ? l[0].msg + '\u0000' + l[0].t : ''; } catch (e) { return ''; } }
+  function travel(dir) {
+    if (dirty) flush();
+    const from = dir < 0 ? hist.undo : hist.redo, to = dir < 0 ? hist.redo : hist.undo;
+    if (!from.length) { toast(dir < 0 ? 'Nothing to undo.' : 'Nothing to redo.'); return; }
+    const a = lastMsg(hist.cur), b = lastMsg(from[from.length - 1]); const what = a !== b ? (dir < 0 ? a : b) : '';
+    hist.step(dir);
+    st = M.migrate(JSON.parse(hist.cur));
+    try { localStorage.setItem(KEY, hist.cur); $('#saved').textContent = 'Saved on this device'; } catch (e) { toast('Save failed: ' + e.message); }
+    if (sel && !(sel.type === 'sheet' ? M.findSheet(st, sel.id) : sel.type === 'seg' ? M.findSeg(st, sel.id) : true)) sel = null;
+    renderAll(); histButtons();
+    toast((dir < 0 ? 'Undid' : 'Redid') + (what ? ': ' + what.split('\u0000')[0] : '') + ' · ' + hist.undo.length + ' more to undo');
   }
   const flushIfDirty = () => { if (dirty) flush(); };
   window.addEventListener('beforeunload', flushIfDirty);
@@ -110,6 +130,7 @@
   function commit(fn, opts) {
     let r;
     try { r = fn(); } catch (e) { toast(e.message); return undefined; }
+    hardEdit = true;
     save();
     if (!opts || opts.render !== false) renderAll();
     return r;
@@ -1219,7 +1240,7 @@
             } else data = M.readBackup(obj);
             impPass.value = '';
             if (!confirm('Replace ALL current data (' + M.allSheets(st).length + ' sheets) with this backup (' + M.allSheets(data).length + ' sheets, “' + data.project.name + '”)?')) return;
-            st = data; M.log(st, 'Imported backup'); flush(); closeModal(); closeDrawer(); firstFit = true; renderAll(); toast('Backup imported.');
+            st = data; M.log(st, 'Imported backup'); hardEdit = true; flush(); closeModal(); closeDrawer(); firstFit = true; renderAll(); toast('Backup imported.');
           } catch (ex) { impErr.textContent = ex.code === 'DECRYPT' ? 'Wrong passphrase for this backup (or the file was modified).' : 'Could not import: ' + ex.message; }
         } }, h('h3', {}, 'Import backup'), field('Backup file (v2 JSON, or old encrypted v1 backup)', impFile), field('Passphrase (old encrypted backups only)', impPass), impErr, h('button', { class: 'btn sec', type: 'submit' }, 'Import…'))),
       hasOld ? h('section', {}, h('h3', {}, 'Old encrypted v1 data'), h('p', { class: 'muted' }, 'An encrypted v1 vault is still stored in this browser.'),
@@ -1244,7 +1265,7 @@
         const data = M.migrate((await C.open(p.value, env, 'vault')).data);
         p.value = '';
         if (again && !confirm('Replace current data with the old vault contents?')) { btn.disabled = false; btn.textContent = 'Unlock & import'; return; }
-        st = data; flush(); closeModal(); firstFit = true; renderAll(); toast('Imported ' + M.allSheets(st).length + ' sheets from the encrypted v1 data.');
+        st = data; hardEdit = true; flush(); closeModal(); firstFit = true; renderAll(); toast('Imported ' + M.allSheets(st).length + ' sheets from the encrypted v1 data.');
       } catch (ex) { btn.disabled = false; btn.textContent = 'Unlock & import'; p.value = ''; p.focus(); err.textContent = ex.code === 'DECRYPT' ? 'Wrong passphrase. Try again.' : 'Could not import: ' + ex.message; }
     } },
     h('p', {}, 'This browser has project data from the earlier encrypted version. Enter its passphrase once to import it into the new (unencrypted, testing-mode) store. The passphrase is used only here and is not saved.'),
@@ -1286,6 +1307,14 @@
   $('#lkBtn').addEventListener('click', () => { ui.links = !ui.links; saveUI(); renderTree(); });
   $('#lkSelBtn').addEventListener('click', () => { ui.linkSel = !ui.linkSel; if (ui.linkSel) ui.links = true; saveUI(); renderTree(); });
   for (const [id, k] of [['#fStatus', 'status'], ['#fOwner', 'owner'], ['#fDisc', 'discipline'], ['#fFlag', 'flag']]) $(id).addEventListener('change', (e) => { filt[k] = e.target.value; renderAll(); });
+  $('#undoBtn').addEventListener('click', () => travel(-1));
+  $('#redoBtn').addEventListener('click', () => travel(1));
+  document.addEventListener('keydown', (e) => {
+    const k = (e.key || '').toLowerCase(), tg = document.activeElement && document.activeElement.tagName;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 'z' || k === 'y') && !/INPUT|TEXTAREA|SELECT/.test(tg) && $('#modal').hidden) {
+      e.preventDefault(); travel(k === 'y' || e.shiftKey ? 1 : -1);
+    }
+  });
   document.addEventListener('keydown', (e) => {
     const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement && document.activeElement.tagName);
     if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (sel) closeDrawer(); else if (typing) document.activeElement.blur(); return; }
@@ -1304,7 +1333,7 @@
     }
   });
   window.addEventListener('resize', () => { if (ui.view === 'tree') applyView(); });
-  window.addEventListener('storage', (e) => { if (e.key === KEY && e.newValue) { st = M.migrate(JSON.parse(e.newValue)); renderAll(); } });
+  window.addEventListener('storage', (e) => { if (e.key === KEY && e.newValue) { st = M.migrate(JSON.parse(e.newValue)); hist.cur = e.newValue; renderAll(); } });
 
   /* ---------- start ---------- */
   applyTheme();

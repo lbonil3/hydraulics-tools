@@ -452,6 +452,27 @@ async function serve(r) {
   await pg.select('#bdDiscipline', ''); await sleep(200);
   await pg.screenshot({ path: SHOTS + 'v2.8-board-' + tag + '.png' });
   await click('#vTree'); await sleep(300);
+  // 10h. v2.9 undo / redo
+  const S29 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
+  const cnt29 = async () => (await S29()).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).length;
+  const n0 = await cnt29();
+  const did = (await S29()).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).find((x) => x.title === 'Drainage Area Map').id;
+  await click('.node[data-key="sheet:' + did + '"]'); await pg.waitForSelector('#shNum');
+  await pg.$$eval('#drawer button.btn.danger', (bs) => bs.find((b) => b.textContent === 'Delete').click()); await sleep(1000);
+  ok((await cnt29()) === n0 - 1, 'sheet deleted');
+  await click('#setBtn'); await pg.waitForSelector('#renumAll'); await click('#renumAll'); await sleep(1000); await click('#modalClose'); await sleep(150);
+  await pg.keyboard.press('Escape'); await sleep(100);
+  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  const mod = MOBILE ? 'Control' : 'Control';
+  await pg.keyboard.down(mod); await pg.keyboard.press('z'); await pg.keyboard.up(mod); await sleep(300);
+  ok(/Undid/.test(await txt('#toast')), 'Ctrl+Z undoes renumbering (' + (await txt('#toast')).slice(0, 70) + ')');
+  await click('#undoBtn'); await sleep(300);
+  ok((await cnt29()) === n0 && !!(await pg.$('.node[data-key="sheet:' + did + '"]')), 'Undo button restores the deleted sheet (saved)');
+  await pg.keyboard.down(mod); await pg.keyboard.down('Shift'); await pg.keyboard.press('z'); await pg.keyboard.up('Shift'); await pg.keyboard.up(mod); await sleep(300);
+  ok((await cnt29()) === n0 - 1, 'Ctrl+Shift+Z redoes the delete');
+  await click('#redoBtn'); await click('#undoBtn'); await sleep(200); await click('#undoBtn'); await sleep(300);
+  ok((await cnt29()) === n0 && await pg.$eval('#redoBtn', (e) => !e.disabled), 'redo/undo buttons step through history');
+  await pg.screenshot({ path: SHOTS + 'v2.9-undo-' + tag + '.png' });
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);
@@ -467,6 +488,10 @@ async function serve(r) {
   await click('#modalBody form.imp button[type=submit]');
   await pg.waitForFunction(() => document.querySelectorAll('.node.n-seg').length === 4, { timeout: 5000 });
   ok(true, 'import restored both segments');
+  await click('#undoBtn'); await sleep(400);
+  ok((await pg.$$('.node.n-seg')).length === 0, 'import can be undone');
+  await click('#redoBtn'); await sleep(400);
+  ok((await pg.$$('.node.n-seg')).length === 4, 'and redone');
   ok((await pg.$$('#linkG path.lnk')).length === 2 || (await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 2, 'import restored connectors');
 
   // 12. migration from encrypted v1 vault

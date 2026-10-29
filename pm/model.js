@@ -830,7 +830,26 @@
     for (const k in out) out[k].sort(byDue);
     return out;
   }
-  return { SCHEMA, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.9 undo/redo history of JSON snapshots. record(json, {hard, now}) after each save; soft records within ms of the last coalesce. */
+  function history(max, ms) {
+    const H = { undo: [], redo: [], cur: null, t: 0, soft: false, max: max || 50, ms: ms == null ? 800 : ms };
+    H.reset = (json) => { H.cur = json; H.soft = false; };
+    H.record = (json, o) => {
+      o = o || {}; const now = o.now == null ? Date.now() : o.now;
+      if (H.cur === null || json === H.cur) { H.cur = json; return false; }
+      const merge = !o.hard && H.soft && H.undo.length && now - H.t < H.ms;
+      if (!merge) { H.undo.push(H.cur); if (H.undo.length > H.max) H.undo.shift(); }
+      H.redo = []; H.cur = json; H.t = now; H.soft = !o.hard;
+      return true;
+    };
+    H.step = (dir) => {
+      const from = dir < 0 ? H.undo : H.redo, to = dir < 0 ? H.redo : H.undo;
+      if (!from.length) return null;
+      to.push(H.cur); H.cur = from.pop(); H.soft = false; return H.cur;
+    };
+    return H;
+  }
+  return { SCHEMA, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

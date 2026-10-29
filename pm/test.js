@@ -564,6 +564,21 @@ t('v2.8 board: filters by sub/discipline/owner and status moves', () => {
   assert.throws(() => M.updateSheet(st, a.id, { status: 'Bogus' }));
 });
 
+t('v2.9 undo/redo history: steps, coalescing, cap, redo cleared on new edit', () => {
+  const H = M.history(30, 800);
+  H.record('s0');
+  for (let i = 1; i <= 40; i++) H.record('s' + i, { hard: true, now: i * 1000 });
+  assert.strictEqual(H.undo.length, 30, 'keeps the last 30 actions');
+  assert.strictEqual(H.step(-1), 's39'); assert.strictEqual(H.step(-1), 's38');
+  assert.strictEqual(H.step(1), 's39');
+  H.record('typed1', { now: 100000 }); H.record('typed2', { now: 100300 }); H.record('typed3', { now: 100500 });
+  assert.strictEqual(H.redo.length, 0);
+  assert.strictEqual(H.step(-1), 's39', 'a typing burst undoes as one step');
+  H.step(1); H.record('gen', { hard: true, now: 100600 });
+  assert.strictEqual(H.step(-1), 'typed3', 'hard edits are never merged');
+  assert.strictEqual(M.history().step(-1), null);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

@@ -382,3 +382,4 @@ input.numbad{border-color:var(--bad);box-shadow:0 0 0 2px color-mix(in srgb,var(
 .bcard.ghost{position:fixed;z-index:50;pointer-events:none;transform:rotate(2deg);opacity:.95}
 @media (max-width:900px){.board{grid-template-columns:repeat(4,minmax(78vw,1fr));scroll-snap-type:x mandatory}.bcol{scroll-snap-align:start}.grip{font-size:22px;padding:8px 6px;top:2px;left:0}.ibtn.sm{min-width:40px;min-height:40px}.bcard .scard{padding-bottom:50px}}
 @media (max-width:900px){.top>.seg-toggle:not(.branch-toggle){order:4;flex-basis:100%;display:flex}.top>.seg-toggle:not(.branch-toggle) button{flex:1;padding:6px 4px}}
+@media (max-width:900px){.tools{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none}.tools .ibtn{flex:none;white-space:nowrap}}
