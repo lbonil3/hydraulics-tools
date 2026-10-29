@@ -21,11 +21,17 @@ if (/recently/i.test(html)) fail('home should not add a recently-used section');
 const groups = [
   { title: 'Design', hrefs: ['rational/index.html', 'drainage/index.html', 'ditch-table/index.html', 'culvert/index.html'] },
   { title: 'Estimating', hrefs: ['bid-cost/index.html', 'bid-estimator/index.html', 'pm/index.html'] },
-  { title: 'Pursuits &amp; compliance', hrefs: ['opportunity-radar/index.html', 'national-radar/index.html', 'swp3-builder/index.html', 'swp3-game/index.html', 'flow-game/index.html'] },
+  { title: 'Pursuits &amp; compliance', hrefs: ['swp3-builder/index.html', 'swp3-game/index.html', 'flow-game/index.html'] },
 ];
 const hrefs = groups.flatMap((g) => g.hrefs);
-const classes = ['tool-tc', 'tool-drainage', 'tool-bid-cost', 'tool-bid-estimator', 'tool-pm', 'tool-ditch', 'tool-culvert', 'tool-radar', 'tool-national', 'tool-swp3', 'tool-swp3-game', 'tool-flow-game'];
-const names = ['Tc Studio', 'Drainage Studio', 'Bid Cost', 'Bid Estimator', 'Project Tracker', 'Ditch', 'Culvert Studio', 'Opportunity Radar', 'National Radar', 'SWP3 Builder', 'SWP3 Designer (Game)', 'Storm Designer (Game)'];
+/* The two radars moved to their own app (https://lbonil3.github.io/radars/); their folders stay here only as a rollback by direct URL. */
+if (hrefs.length !== 10) fail('expected 10 home cards after the radars split, check-home lists ' + hrefs.length);
+for (const gone of ['opportunity-radar/', 'national-radar/', 'tool-radar', 'tool-national', 'Opportunity Radar', 'National Radar']) {
+  if (html.includes(gone)) fail('removed radar card is back on home: ' + gone);
+}
+if (/\.tool-(radar|national) \.icon/.test(css)) fail('unused radar icon styles still in home.css');
+const classes = ['tool-tc', 'tool-drainage', 'tool-bid-cost', 'tool-bid-estimator', 'tool-pm', 'tool-ditch', 'tool-culvert', 'tool-swp3', 'tool-swp3-game', 'tool-flow-game'];
+const names = ['Tc Studio', 'Drainage Studio', 'Bid Cost', 'Bid Estimator', 'Project Tracker', 'Ditch', 'Culvert Studio', 'SWP3 Builder', 'SWP3 Designer (Game)', 'Storm Designer (Game)'];
 
 let cursor = 0;
 for (const g of groups) {
