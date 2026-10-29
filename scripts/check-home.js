@@ -19,13 +19,13 @@ if (/<(input|form)\b/i.test(html)) fail('home should not add search or forms');
 if (/recently/i.test(html)) fail('home should not add a recently-used section');
 
 const groups = [
-  { title: 'Design', hrefs: ['rational/index.html', 'drainage/index.html', 'storm/index.html', 'ditch-table/index.html', 'culvert/index.html'] },
-  { title: 'Estimating', hrefs: ['bid-cost/index.html', 'bid-estimator/index.html', 'pm/index.html', 'pse-tracker/index.html'] },
-  { title: 'Pursuits &amp; compliance', hrefs: ['capture-terminal/index.html', 'opportunity-radar/index.html', 'national-radar/index.html', 'swp3-builder/index.html', 'swp3-game/index.html', 'flow-game/index.html'] },
+  { title: 'Design', hrefs: ['rational/index.html', 'drainage/index.html', 'ditch-table/index.html', 'culvert/index.html'] },
+  { title: 'Estimating', hrefs: ['bid-cost/index.html', 'bid-estimator/index.html', 'pm/index.html'] },
+  { title: 'Pursuits &amp; compliance', hrefs: ['opportunity-radar/index.html', 'national-radar/index.html', 'swp3-builder/index.html', 'swp3-game/index.html', 'flow-game/index.html'] },
 ];
 const hrefs = groups.flatMap((g) => g.hrefs);
-const classes = ['tool-tc', 'tool-drainage', 'tool-storm', 'tool-bid-cost', 'tool-bid-estimator', 'tool-pm', 'tool-ditch', 'tool-culvert', 'tool-pse', 'tool-capture', 'tool-radar', 'tool-national', 'tool-swp3', 'tool-swp3-game', 'tool-flow-game'];
-const names = ['Tc Studio', 'Drainage Studio', 'Storm Sewer', 'Bid Cost', 'Bid Estimator', 'Project Tracker', 'Ditch', 'Culvert Studio', 'PS&amp;E Tracker', 'Capture Terminal', 'Opportunity Radar', 'National Radar', 'SWP3 Builder', 'SWP3 Designer (Game)', 'Storm Designer (Game)'];
+const classes = ['tool-tc', 'tool-drainage', 'tool-bid-cost', 'tool-bid-estimator', 'tool-pm', 'tool-ditch', 'tool-culvert', 'tool-radar', 'tool-national', 'tool-swp3', 'tool-swp3-game', 'tool-flow-game'];
+const names = ['Tc Studio', 'Drainage Studio', 'Bid Cost', 'Bid Estimator', 'Project Tracker', 'Ditch', 'Culvert Studio', 'Opportunity Radar', 'National Radar', 'SWP3 Builder', 'SWP3 Designer (Game)', 'Storm Designer (Game)'];
 
 let cursor = 0;
 for (const g of groups) {
@@ -49,13 +49,10 @@ if (html.includes('href="ditch/index.html"')) fail('home still links to ditch/in
 
 /* Tools whose own code keeps the user's records in localStorage. */
 const localData = new Set([
-  'storm/index.html',
   'ditch-table/index.html',
   'culvert/index.html',
   'bid-estimator/index.html',
   'pm/index.html',
-  'pse-tracker/index.html',
-  'capture-terminal/index.html',
   'swp3-builder/index.html',
 ]);
 const cards = [...html.matchAll(/<a class="tool [^"]+" href="([^"]+)">([\s\S]*?)<\/a>/g)];
@@ -84,3 +81,4 @@ if (!/min-height:\s*44px/.test(css)) fail('home.css should keep a 44px minimum t
 
 if (bad) process.exit(1);
 console.log('ok');
+for (const gone of ['storm/index.html', 'pse-tracker/index.html', 'capture-terminal/index.html']) if (html.includes('href="' + gone + '"')) { console.error('removed card back on home: ' + gone); process.exit(1); }

@@ -403,14 +403,11 @@ a.tool .local {
 
 .tool-tc .icon { background: linear-gradient(155deg, #0d9488 0%, #0f766e 58%, #115e59 100%); }
 .tool-drainage .icon { background: linear-gradient(155deg, #3b82f6 0%, #2563eb 48%, #1d4ed8 100%); }
-.tool-storm .icon { background: linear-gradient(155deg, #0891b2 0%, #0e7490 62%, #155e75 100%); }
 .tool-bid-cost .icon { background: linear-gradient(155deg, #059669 0%, #047857 58%, #065f46 100%); }
 .tool-bid-estimator .icon { background: linear-gradient(155deg, #0d9488 0%, #0f766e 58%, #115e59 100%); }
 .tool-ditch .icon { background: linear-gradient(155deg, #16a34a 0%, #15803d 55%, #166534 100%); }
 .tool-culvert .icon { background: linear-gradient(155deg, #6366f1 0%, #4f46e5 52%, #4338ca 100%); }
 .tool-pm .icon { background: linear-gradient(155deg, #4f46e5 0%, #4338ca 58%, #3730a3 100%); }
-.tool-pse .icon { background: linear-gradient(155deg, #ea580c 0%, #c2410c 58%, #9a3412 100%); }
-.tool-capture .icon { background: linear-gradient(155deg, #5c5c56 0%, #3f3f3a 55%, #2e2e2c 100%); }
 .tool-radar .icon { background: linear-gradient(155deg, #0f766e 0%, #115e59 58%, #134e4a 100%); }
 .tool-national .icon { background: linear-gradient(155deg, #2563b8 0%, #1e4f95 58%, #173d75 100%); }
 .tool-swp3 .icon { background: linear-gradient(155deg, #1f7a56 0%, #1b5e45 55%, #134532 100%); }
