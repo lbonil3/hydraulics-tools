@@ -1,28 +1,32 @@
-// Headless-Chrome end-to-end test for Project Tracker v2.3 (testing mode, no login).
+// Headless-Chrome end-to-end test for Project Tracker v3 (sections structure, testing mode, no login).
 // Run from anywhere: node pm/e2e/pm-e2e.js [1440x900|1920x1080|iphone]
 // Files are served from this checkout by request interception (no server). Set PM_BASE=https://.../pm/ to test a live site.
+// Starts from v2 data (built with pm/legacy/model-v2.js) to check the v2 → v3 migration, then exercises the v3 UI.
 // Needs puppeteer-core and Chrome at /usr/bin/google-chrome.
 let p; try { p = require('puppeteer-core'); } catch (e) { p = require('/workspace/e2e/node_modules/puppeteer-core'); }
 const fs = require('fs');
 const path = require('path');
-const BASE = process.env.PM_BASE || 'https://pm.local/pm/' /* secure context so WebCrypto exists */;
+const V2 = require('../legacy/model-v2.js');
+const BASE = process.env.PM_BASE || 'https://pm.local/pm/';
 const ROOT = path.resolve(__dirname, '../..');
 const TYPES = { html: 'text/html', js: 'text/javascript', css: 'text/css', png: 'image/png', json: 'application/json' };
 const SHOTS = '/workspace/pm-shots/';
 const MODE = process.argv[2] || '1440x900';
 const MOBILE = MODE === 'iphone';
 const [VW, VH] = MOBILE ? [390, 844] : MODE.split('x').map(Number);
-const DL = '/tmp/pmdl-' + MODE;
+const DL = '/tmp/pmdl3-' + MODE;
 const tag = MOBILE ? 'iphone' : String(VW);
 let n = 0, pg;
 const ok = (c, m) => { if (!c) throw new Error('FAIL [' + MODE + ']: ' + m); n++; console.log('ok -', m); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const txt = (sel) => pg.$eval(sel, (e) => e.innerText);
-/* tree nodes can sit outside the visible pan area, so they are activated via DOM click (same handler as a mouse click) */
-const click = async (sel) => { if (MOBILE || sel.startsWith('.node')) await pg.$eval(sel, (e) => e.click()); else { const el = await pg.$(sel); if (!el) throw new Error('no ' + sel); await el.click(); } await sleep(120); };
-const typeInto = async (el, v) => { await el.evaluate((e) => { e.focus(); e.select(); }); await pg.keyboard.type(v); };
+const has = (sel) => pg.$(sel).then(Boolean);
+const click = async (sel) => { await pg.$eval(sel, (e) => { e.scrollIntoView({ block: 'center' }); e.click(); }); await sleep(140); };
+const clickText = async (sel, re) => { const ok1 = await pg.$$eval(sel, (els, src) => { const r = new RegExp(src); const e = els.find((x) => r.test(x.innerText || x.textContent)); if (!e) return false; e.scrollIntoView({ block: 'center' }); e.click(); return true; }, re.source); if (!ok1) throw new Error('no ' + sel + ' matching ' + re); await sleep(160); };
 const setVal = (sel, v) => pg.$eval(sel, (e, v) => { e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); }, v);
-const shot = (name, full) => pg.screenshot({ path: SHOTS + 'v2-' + name + '-' + tag + '.png', fullPage: !!full });
+const typeIn = async (sel, v) => { await pg.$eval(sel, (e) => { e.focus(); e.select && e.select(); }); await pg.keyboard.type(v); };
+const shot = (name, full) => pg.screenshot({ path: SHOTS + 'v3-' + name + '-' + tag + '.png', fullPage: !!full });
+const data = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v3')));
 async function serve(r) {
   const u = r.url();
   if (/^(blob|data):/.test(u)) return r.continue();
@@ -32,6 +36,23 @@ async function serve(r) {
   const fp = path.join(ROOT, f);
   if (!fp.startsWith(ROOT) || !fs.existsSync(fp)) return r.respond({ status: 404, body: 'not found' });
   r.respond({ status: 200, contentType: TYPES[fp.split('.').pop()] || 'application/octet-stream', body: fs.readFileSync(fp) });
+}
+function v2Fixture() {
+  const s = V2.newState('SH 249 Drainage'); const [A, B, C] = s.subs;
+  const g1 = V2.addSegment(s, A.id, { road: 'FM 1960', start: '10+00', end: '34+00' }).seg;
+  V2.applyGenerate(s, g1.id, V2.planGenerate(s, g1.id)); V2.bulkAddTemplates(s, g1.id, {});
+  const g2 = V2.addSegment(s, B.id, { road: 'Kuykendahl', start: '100+00', end: '104+80', scale: 40 }).seg;
+  V2.applyGenerate(s, g2.id, V2.planGenerate(s, g2.id));
+  V2.addSheet(s, g2.id, { title: 'Bridge Deck Drain Summary', discipline: 'Drainage' });
+  V2.addSheet(s, g2.id, { title: 'Utility Conflicts', discipline: 'Drainage' });
+  V2.addSegment(s, C.id, { road: 'Spring Cypress', start: '0+00', end: '6+00' });
+  const pp1 = g1.sheets.find((x) => x.gen && x.gen.series === 'pp-drain');
+  V2.updateSheet(s, pp1.id, { status: 'In progress', owner: 'Ana Ruiz', due: '2026-10-20', notes: 'check HGL' });
+  const cul = g1.sheets.find((x) => x.title === 'Culvert Layout');
+  V2.updateSheet(s, cul.id, { status: 'Done', owner: 'Bo Chen', number: '72' });
+  V2.addLink(s, { t: 'sheet', id: cul.id }, { t: 'sheet', id: g2.sheets.find((x) => x.title === 'Bridge Deck Drain Summary').id }, 'dep');
+  s.reportNotes['sub:' + A.id] = 'A first';
+  return s;
 }
 (async () => {
   const b = await p.launch({ executablePath: '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
@@ -45,720 +66,191 @@ async function serve(r) {
     if (!u.startsWith(new URL(BASE).origin) && !/^(blob|data):/.test(u)) ext.push(u);
     if (!process.env.PM_BASE) serve(r);
   });
-  pg.on('dialog', async (d) => { const m = d.message(); if (/staff name/i.test(m)) await d.accept('Maria Lopez'); else if (/Name this view/.test(m)) await d.accept('Maria open'); else await d.accept(); });
+  pg.on('dialog', async (d) => { const m = d.message(); if (/staff name/i.test(m)) await d.accept('Maria Lopez'); else if (/Name this view/.test(m)) await d.accept('Mine'); else if (/Type ERASE/.test(m)) await d.dismiss(); else await d.accept(); });
   fs.rmSync(DL, { recursive: true, force: true }); fs.mkdirSync(DL, { recursive: true });
   const cdp = await pg.target().createCDPSession();
   await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: DL });
   await pg.setViewport({ width: VW, height: VH, deviceScaleFactor: MOBILE ? 3 : 1, isMobile: MOBILE, hasTouch: MOBILE });
   await pg.goto(BASE, { waitUntil: 'networkidle0' });
-  await pg.evaluate(() => { localStorage.clear(); localStorage.setItem('pm.ui.v2', JSON.stringify({ theme: 'light' })); });
+  const v2json = JSON.stringify(v2Fixture());
+  await pg.evaluate((j) => { localStorage.clear(); localStorage.setItem('pm.data.v2', j); localStorage.setItem('pm.ui.v2', JSON.stringify({ theme: 'light', cols: ['sub', 'seg', 'title', 'status'] })); }, v2json);
   await pg.reload({ waitUntil: 'networkidle0' });
+  await sleep(300);
 
-  // 1. no login
+  /* 1. migration notice before anything is written */
   ok(!(await pg.$('input[type=password]')), 'no passphrase screen (testing mode)');
-  ok(/Testing mode: data is NOT encrypted/.test(await txt('.testbar')), 'testing-mode banner shown');
-  ok(/'self'/.test(await pg.$eval('meta[http-equiv="Content-Security-Policy"]', (e) => e.content)) && !!(await pg.$('meta[name=robots][content*=noindex]')), 'CSP + noindex retained');
-  ok((await pg.$$('.node.n-sub')).length === 4 && !!(await pg.$('.node.n-root')), 'tree: project root + sub-projects A–D');
-  ok(!(await pg.$('[role=tablist]')) && !(await pg.$('#nav')), 'no tab navigation');
+  ok(/'self'/.test(await pg.$eval('meta[http-equiv="Content-Security-Policy"]', (e) => e.content)), 'CSP kept');
+  ok(await has('#migV3'), 'v2 → v3 migration notice shown');
+  ok(await pg.evaluate(() => localStorage.getItem('pm.data.v3') === null), 'nothing written to pm.data.v3 before Continue');
+  ok(await pg.evaluate((j) => localStorage.getItem('pm.data.v2.pre-v3-backup') === j && localStorage.getItem('pm.data.v2') === j, v2json), 'v2 data copied to pm.data.v2.pre-v3-backup, original untouched');
+  ok(/sheets kept/.test(await txt('#migV3')) && /road entr/.test(await txt('#migV3')) && /Other/.test(await txt('#migV3')), 'notice explains sheets / roads / Other mapping');
+  await shot('01-migration');
+  await click('#migDl'); await sleep(500);
+  const dl = fs.readdirSync(DL).filter((f) => /pm-v2-data-before-v3/.test(f));
+  ok(dl.length === 1 && fs.readFileSync(path.join(DL, dl[0]), 'utf8') === v2json, 'Download old data gives the exact v2 JSON');
+  await click('#migGo'); await sleep(200);
+  ok(!(await pg.$('#migV3')) && (await data()).schema === 3, 'Continue saves v3 data');
+  ok((await data()).migration.from === 2, 'migration record stored');
+  const D0 = await data();
+  ok(D0.subs.reduce((a, s) => a + s.segments.reduce((x, g) => x + g.sheets.length, 0), 0) === JSON.parse(v2json).subs.reduce((a, s) => a + s.segments.reduce((x, g) => x + g.sheets.length, 0), 0), 'same number of sheets after migration');
 
-  // 2. add segment via + on sub A, live PP count
-  const subA = await pg.$$eval('.node.n-sub', (els) => els[0].dataset.key);
-  await click('.node[data-key="' + subA + '"] .nbtn.add');
-  await pg.waitForSelector('#addSegRoad');
-  const form = '#drawer form.stack';
-  const ins = async (vals) => { const f = await pg.$$(form + ' input'); for (let i = 0; i < vals.length; i++) await typeInto(f[i], vals[i]); };
-  ok(!(await pg.$('#drawer form.stack input[placeholder^="e.g. Mainlane"]')) && (await pg.$$eval(form + ' .f > label', (l) => l.map((x) => x.textContent))).join('|').startsWith('Road name|Start station|End station'), 'add-segment form asks only road + stations (+ scale)');
-  await ins(['FM 1960', '10+00', '25+50']);
-  ok(/Label: FM 1960 Sta 10\+00–25\+50/.test(await txt('#drawer .seglabel')), 'auto label preview “<Road> Sta <start>–<end>”');
-  await pg.screenshot({ path: SHOTS + 'v2.3-add-segment-form-' + tag + '.png' });
-  const live = (await txt('#drawer .live')).replace(/\s+/g, ' ');
-  ok(/1,550 ft/.test(live) && /= 4 PP/.test(live) && /2 Drainage Plan & Profile @100 \(1200 ft\/sh\)/.test(live), 'live PP count while editing: ' + live);
-  const endIn = (await pg.$$(form + ' input'))[2];
-  await typeInto(endIn, '22+00');
-  ok(/1,200 ft/.test(await txt('#drawer .live')) && /= 2 PP/.test(await txt('#drawer .live')), '1,200 ft @100 = 1 sheet per series (live)');
-  await typeInto(endIn, '25+50');
-  await click(form + ' button[type=submit]');
-  await pg.waitForSelector('#genBtn');
-  ok(/Segment/i.test(await txt('#drawer .dkind')), 'drawer switched to new segment');
-  await click('#genBtn');
-  await sleep(300);
-  const segKey = await pg.$$eval('.node.n-seg', (els) => els[0].dataset.key);
-  const ppTitles = await pg.$$eval('.node.n-sheet .nt', (els) => els.map((e) => e.textContent));
-  ok(ppTitles.includes('Drainage Plan & Profile – Sta 10+00 to 22+00 (PP 1 of 2)') && ppTitles.includes('Drainage Plan & Profile – Sta 22+00 to 25+50 (PP 2 of 2)') && ppTitles.filter((t) => /SWP3 Layout/.test(t)).length === 2, 'Generate PP sheets: numbered entries with correct station ranges');
-  ok(await pg.$eval('#genBtn', (e) => e.disabled), 'regenerate is a no-op when up to date (idempotent)');
-  await click('#drawer .box form.g2 button[type=submit]');
-  await sleep(200);
-  ok((await pg.$$('.node.n-sheet')).length === 15 && (await pg.$$eval('.node.n-sheet .nt', (e) => e.map((x) => x.textContent))).includes('Outfall / Detention / Pond Layout'), 'v2.4 standard set added: 4 PP + 11 = 15 sheets');
-  const subB = await pg.$$eval('.node.n-sub', (els) => els[1].dataset.key);
-  await click('.node[data-key="' + subB + '"] .nbtn.add');
-  await pg.waitForSelector('#addSegRoad');
-  ok((await pg.$eval('#addSegRoad', (e) => e.value)) === 'FM 1960' && (await pg.$$eval('#roadList option', (o) => o.map((x) => x.value))).includes('FM 1960'), 'road field remembers last road + offers existing roads');
-  await ins(['Kuykendahl Rd', '100+00', '104+81']);
-  await pg.select(form + ' .scalepick select', '40');
-  await sleep(100);
-  ok(/481 ft/.test(await txt('#drawer .live')) && /= 4 PP/.test(await txt('#drawer .live')), '481 ft @40 (480 ft/sheet) = 2 per series');
-  await (await pg.$$(form + ' input'))[2].focus(); await pg.keyboard.press('Enter');
-  await pg.waitForSelector('#genBtn');
-  await click('#genBtn');
-  await sleep(200);
+  /* 2. tree: Project → Drainage / SWP3 → A–D → sections */
+  ok(await has('.node[data-key="dtop:Drainage"]') && await has('.node[data-key="dtop:SWP3"]'), 'tree starts with Drainage and SWP3');
+  ok((await pg.$$('.node.n-disc')).length === 8, 'each discipline has 4 sub-projects');
+  await shot('02-tree-top');
+  const A = D0.subs[0];
+  const secA = (key) => A.segments.find((g) => g.key === key);
+  await click('.node[data-key="disc:' + A.id + ':Drainage"] .nbtn.tog'); await sleep(150);
+  const secTitles = await pg.$$eval('.node.n-seg.d-dr .nt', (e) => e.map((x) => x.textContent));
+  ok(secTitles[0] === 'Overall Drainage Area Map' && secTitles[15] === 'Standards' && secTitles.includes('Bridge Deck Drawing Details (Welded)') && secTitles.includes('Other Drainage'), 'A Drainage shows the 16 sections in order (+ Other for unmatched)');
+  ok(/2 PP/.test(await txt('.node[data-key="seg:' + secA('dr-pp').id + '"]')) && /FM 1960/.test(await txt('.node[data-key="seg:' + secA('dr-pp').id + '"]')), 'P&P section node shows PP count and road');
+  ok(!(await pg.$$eval('.node', (e) => e.map((x) => x.dataset.key))).some((k) => /^road:/.test(k)), 'roads are not tree nodes');
+  await click('.node[data-key="seg:' + secA('dr-hds-x').id + '"] .nbtn.tog');
+  ok(await has('.node[data-key^="sheet:"]'), 'section expands to its sheets');
+  await click('#zFit'); await shot('03-tree-sections');
 
-  // 3. edit a sheet in the drawer
-  const sheetKey = await pg.$$eval('.node.n-sheet', (els) => els[0].dataset.key);
-  await click('.node[data-key="' + sheetKey + '"]');
-  await pg.waitForSelector('#drawer .qc');
-  await pg.select('#drawer .stsel', 'In progress');
-  await sleep(150);
-  const ownerSel = (await pg.$$('#drawer select'))[1];
-  await ownerSel.select('__new');
-  await sleep(250);
-  await setVal('#drawer input[type=date]', '2026-01-15');
-  await sleep(150);
-  await pg.$$eval('#drawer .qc input', (els) => els[0].click());
-  await sleep(150);
-  ok(/In progress/.test(await txt('.node[data-key="' + sheetKey + '"]')) && /ML/.test(await txt('.node[data-key="' + sheetKey + '"] .av')), 'sheet node shows status + owner initials');
-  ok(!!(await pg.$('.node[data-key="' + sheetKey + '"] .flag')), 'overdue flag on node');
-  ok(/Overdue \(1\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'overview lists 1 overdue');
+  /* 3. section drawer: road name only, inline stations → PP, generate */
+  await click('.node[data-key="seg:' + secA('dr-lat').id + '"]');
+  ok(/Drainage Laterals/.test(await txt('#drawer')) && await has('#addRoadName'), 'Drainage Laterals drawer has the add-road form');
+  await typeIn('#addRoadName', 'Lateral A-3'); await pg.keyboard.press('Enter'); await sleep(250);
+  let D = await data();
+  const lat = D.subs[0].roads.find((r) => r.road === 'Lateral A-3');
+  ok(lat && lat.start === null, 'road added with the name only (no stations)');
+  ok(/—/.test(await txt('#roadTable tbody tr')) , 'no PP until stations are entered');
+  await setVal('#roadTable tr[data-road="' + lat.id + '"] input[data-k="start"]', '0+00'); await sleep(150);
+  await setVal('#roadTable tr[data-road="' + lat.id + '"] input[data-k="end"]', '13+00'); await sleep(200);
+  ok((await txt('#secPP')).trim() === '2', 'inline stations: 1,300 ft at 100 scale → 2 PP');
+  await setVal('#roadTable tr[data-road="' + lat.id + '"] input[data-k="scale"]', '50'); await sleep(200);
+  ok((await txt('#secPP')).trim() === '3', '50 scale (600 ft/sheet) → 3 PP');
+  await click('#genBtn'); await sleep(200);
+  D = await data();
+  ok(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 3, 'Generate creates 3 Drainage Laterals PP sheets');
+  ok(/Lateral A-3 Sta 0\+00 to 6\+00 \(PP 1 of 3\)/.test(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets[0].title), 'PP sheet title includes road + stations');
+  await shot('04-section-roads');
+  /* road drawer + undo */
+  await clickText('#roadTable .link', /Open/);
+  ok(/Road entry/i.test(await txt('#drawer .dkind')) && await has('#stStart'), 'road drawer with stations editor');
+  await pg.keyboard.press('Escape');
+  await pg.evaluate(() => document.activeElement.blur());
+  await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(250);
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 0, 'undo removes the generated sheets');
+  await pg.keyboard.down('Control'); await pg.keyboard.down('Shift'); await pg.keyboard.press('z'); await pg.keyboard.up('Shift'); await pg.keyboard.up('Control'); await sleep(250);
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 3, 'redo brings them back');
 
-  // 4. search highlight + filter dims
-  await pg.type('#q', 'kuykendahl'); await sleep(400);
-  ok((await pg.$$('.node.hit')).length >= 1 && (await pg.$$('.node.dim')).length >= 4, 'search highlights matches and dims others');
-  await pg.$eval('#q', (e) => { e.value = ''; e.dispatchEvent(new Event('input')); }); await sleep(300);
-  await pg.select('#fDisc', 'SWP3'); await sleep(150);
-  ok(await pg.$$eval('.node.n-sheet', (els) => els.filter((e) => e.classList.contains('d-dr')).every((e) => e.classList.contains('dim')) && els.filter((e) => e.classList.contains('d-sw')).every((e) => !e.classList.contains('dim'))), 'discipline filter dims Drainage sheets, keeps SWP3');
-  await click('#zFit'); await sleep(450); await shot('tree-filter');
-  await pg.select('#fDisc', ''); await sleep(100);
-  await click('#drawer .dhead .ibtn'); await click('#zFit'); await sleep(450);
-  await shot('tree');
-  await click('.node[data-key="' + sheetKey + '"]');
+  /* 4. quick add: sheet picks a section */
+  await click('.node[data-key="disc:' + A.id + ':Drainage"]');
+  ok(await has('#qaTitle') && await has('#qaSec'), 'sub-project branch drawer has quick add with section picker');
+  await typeIn('#qaTitle', 'Special Junction Box Details 2'); await sleep(100);
+  ok(/Special Junction Box Details/.test(await txt('#qaHint')), 'quick add suggests the section from the title');
+  await pg.keyboard.press('Enter'); await sleep(200);
+  D = await data();
+  ok(D.subs[0].segments.find((g) => g.key === 'dr-jb').sheets.some((s) => s.title === 'Special Junction Box Details 2'), 'sheet lands in Special Junction Box Details');
+  await setVal('#qaSec', D.subs[0].segments.find((g) => g.key === 'dr-det-xs').id);
+  await typeIn('#qaTitle', 'Pond XS-1'); await pg.keyboard.press('Enter'); await sleep(200);
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-det-xs').sheets.some((s) => s.title === 'Pond XS-1'), 'picked section wins');
+  await click('#discStd'); await sleep(150);
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-odam').sheets.length === 1, '+ Standard sheets adds one sheet per empty section');
+  await shot('05-branch-drawer');
 
-  // 5. pan / zoom / fit / collapse
-  const tf0 = await pg.$eval('#stage', (e) => e.style.transform);
-  if (!MOBILE) { await pg.mouse.move(VW / 2, VH / 2); await pg.mouse.wheel({ deltaY: -400 }); await sleep(100); } else await click('#zIn');
-  const tf1 = await pg.$eval('#stage', (e) => e.style.transform);
-  ok(tf0 !== tf1, 'zoom changes transform');
-  if (!MOBILE) {
-    const vp = await pg.$eval('#viewport', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + 40, y: r.y + r.height / 2 }; });
-    await pg.mouse.move(vp.x, vp.y); await pg.mouse.down(); await pg.mouse.move(vp.x - 120, vp.y + 40, { steps: 5 }); await pg.mouse.up();
-    ok((await pg.$eval('#stage', (e) => e.style.transform)) !== tf1, 'drag pans the tree');
-  }
-  await click('#zFit');
-  const before = (await pg.$$('.node.n-sheet')).length;
-  await click('.node[data-key="' + segKey + '"] .nbtn.tog');
-  ok((await pg.$$('.node.n-sheet')).length < before, 'collapse a branch hides its sheets');
-  await click('.node[data-key="' + segKey + '"] .nbtn.tog');
-  ok((await pg.$$('.node.n-sheet')).length === before, 'expand restores it');
-  await click('#zFit'); await sleep(450);
-  await shot('tree-fit');
+  /* 5. sheet drawer: section + road tag, connectors kept */
+  const cul = D.subs[0].segments.find((g) => g.key === 'dr-hds-x').sheets.find((s) => s.title === 'Culvert Layout');
+  await pg.evaluate(() => { const i = document.querySelector('#q'); i.value = ''; });
+  await pg.keyboard.press('Escape');
+  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await sleep(150);
+  ok(await has('#cmdk'), 'Ctrl+K opens the palette');
+  await pg.keyboard.type('culvert layout'); await sleep(150); await pg.keyboard.press('Enter'); await sleep(300);
+  ok(/Culvert Layout/.test(await pg.$eval('#drawer input', (e) => e.value)) && await has('#shSec') && await has('#shRoad'), 'palette opens the sheet; drawer has Section and Road');
+  ok((await pg.$eval('#shRoad', (e) => e.value)) === 'FM 1960', 'road tag kept from the v2 segment');
+  ok(/Needed first by/i.test(await txt('#connBox')) && /Bridge Deck Drain Summary/.test(await txt('#connBox')), 'cross-project connector kept (A → B)');
+  ok((await pg.$eval('#shNum', (e) => e.value)) === '72' && /Done/.test(await pg.$eval('.stsel', (e) => e.value)), 'number and status kept');
+  await setVal('#shSec', D.subs[0].segments.find((g) => g.key === 'dr-std').id); await sleep(200);
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-std').sheets.some((s) => s.id === cul.id), 'Section select moves the sheet');
+  await shot('06-sheet-drawer');
 
-  // 6. list view
-  await click('#vList');
-  await pg.waitForSelector('table.grid tbody tr');
-  ok((await pg.$$('table.grid tbody tr')).length === 19, 'list toggle shows all 19 sheets');
-  ok(await pg.$eval('table.grid thead th', (e) => getComputedStyle(e).position === 'sticky'), 'sticky table header');
-  const dueIdx = await pg.$$eval('table.grid thead th', (ths) => ths.findIndex((t) => /Due/.test(t.textContent)));
-  await pg.$$eval('table.grid thead th .sort', (bs, i) => bs[i].click(), dueIdx); await sleep(100);
-  ok((await pg.$eval('table.grid tbody tr input[type=date]', (e) => e.value)) === '2026-01-15', 'sort by due puts dated sheet first');
-  ok(!!(await pg.$('table.grid thead th[aria-sort=ascending]')), 'aria-sort set');
-  await click('.colmenu summary');
-  await pg.$$eval('.colpop label', (ls) => ls.find((l) => /Hrs bud/.test(l.textContent)).querySelector('input').click());
-  ok(!/Hrs bud/i.test(await txt('table.grid thead')), 'column hidden via Columns menu');
-  await pg.$eval('.colmenu', (e) => { e.open = false; });
-  await pg.select('table.grid tbody tr:nth-child(2) select.stsel', 'In review'); await sleep(150);
-  ok((await pg.$eval('table.grid tbody tr:nth-child(2) select.stsel', (e) => e.value)) === 'In review', 'inline status edit in list');
-  const pctInputs = await pg.$$('table.grid tbody td input.num');
-  await pctInputs[0].focus(); await pg.keyboard.press('ArrowDown');
-  ok(await pg.evaluate(() => document.activeElement.closest('tr') === document.querySelectorAll('table.grid tbody tr')[1] && document.activeElement.classList.contains('num')), 'ArrowDown moves to next row, same column');
-  await pg.evaluate(() => document.querySelectorAll('table.grid tbody tr')[2].focus()); await pg.keyboard.press('Enter'); await sleep(150);
-  ok(/Sheet/i.test(await txt('#drawer .dkind')), 'Enter on a row opens the sheet drawer');
-  await pg.select('#fOwner', 'Maria Lopez'); await sleep(150);
-  ok((await pg.$$('table.grid tbody tr')).length === 1, 'owner filter in list');
-  await pg.$$eval('.listbar button', (bs) => bs.find((b) => b.textContent === 'Save view').click()); await sleep(150);
-  await pg.select('#fOwner', ''); await sleep(150);
-  await pg.$$eval('.listbar select', (ss) => { const s = ss.find((x) => x.getAttribute('aria-label') === 'Saved views'); s.value = [...s.options].find((o) => o.text === 'Maria open').value; s.dispatchEvent(new Event('change')); });
-  await sleep(150);
-  ok((await pg.$$('table.grid tbody tr')).length === 1, 'saved view restores filter');
-  await pg.select('#fOwner', ''); await sleep(100);
-  await shot('list');
-  await pg.$$eval('.listbar button', (bs) => bs.find((b) => b.textContent === 'CSV (filtered)').click());
-  await pg.$$eval('.listbar button', (bs) => bs.find((b) => b.textContent === 'PP summary CSV').click());
-  await sleep(800);
-  const files = fs.readdirSync(DL);
-  const ppf = files.find((f) => f.startsWith('pm-pp-summary'));
-  ok(files.some((f) => f.startsWith('pm-sheets')) && ppf && /Project total,All,,,,,2031,,,,,8/.test(fs.readFileSync(DL + '/' + ppf, 'utf8')), 'CSV exports: sheets + PP summary (8 PP total)');
-  await click('#vTree');
-
-  // 7. PP calculator what-if (not saved)
-  await click('#ppBtn');
-  await pg.waitForSelector('#ppWhatIf');
-  ok((await txt('#ppWhatIf')) === '8', 'calculator total 8');
-  await pg.$$eval('#modalBody select', (ss) => { ss[0].value = '50'; ss[0].dispatchEvent(new Event('change')); });
-  await sleep(100);
-  ok((await txt('#ppWhatIf')) === '10', 'what-if A at 50 scale → 10 (1,550/600 = 3 per series)');
-  await shot('ppcalc');
+  /* 6. section editor in Settings */
+  await click('#setBtn'); await sleep(200);
+  ok(await has('#secSec') && (await pg.$$('#secSec .secedit[data-disc="Drainage"] .secrow')).length === 17, 'Settings lists the 17 Drainage sections (16 + Other)');
+  await typeIn('#secNewDR', 'Utility Conflict Sheets'); await pg.keyboard.press('Enter'); await sleep(250);
+  ok((await data()).settings.sections.some((x) => x.title === 'Utility Conflict Sheets'), 'add section');
+  const rn = await pg.$$('#secSec .secedit[data-disc="Drainage"] .secrow input:not([type=checkbox])');
+  await rn[12].evaluate((e) => { e.value = 'Bridge Deck Drainage Details (Welded)'; e.dispatchEvent(new Event('change', { bubbles: true })); }); await sleep(250);
+  ok((await data()).subs.every((s) => s.segments.find((g) => g.key === 'dr-bd-welded').title === 'Bridge Deck Drainage Details (Welded)'), 'rename applies to A–D');
+  await pg.$$eval('#secSec .secedit[data-disc="Drainage"] .secrow', (rows) => { const r = rows.find((x) => x.querySelector('input').value === 'Utility Conflict Sheets'); r.querySelector('[aria-label^="Move"][aria-label$="up"]').click(); }); await sleep(250);
+  const order = (await data()).settings.sections.filter((x) => x.discipline === 'Drainage').map((x) => x.title);
+  ok(order.indexOf('Utility Conflict Sheets') < order.indexOf('Other Drainage'), 'reorder section');
+  await pg.$$eval('#secSec .secedit[data-disc="Drainage"] .secrow', (rows) => { const r = rows.find((x) => x.querySelector('input').value === 'Utility Conflict Sheets'); r.querySelector('.ibtn.danger').click(); }); await sleep(250);
+  ok(!(await data()).settings.sections.some((x) => x.title === 'Utility Conflict Sheets'), 'remove empty section');
+  await pg.$$eval('#secSec .secedit[data-disc="Drainage"] .secrow', (rows) => { const r = rows.find((x) => x.querySelector('input').value === 'Standards'); r.querySelector('.ibtn.danger').click(); }); await sleep(250);
+  ok((await data()).settings.sections.some((x) => x.title === 'Standards') && /still has/.test(await txt('#secErr')), 'a section in use cannot be removed');
+  ok(await has('#v2Sec'), 'Settings keeps the old v2 data download');
+  await shot('07-settings-sections');
   await click('#modalClose');
-  await sleep(300);
-  ok((await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs[0].scale)) === 100, 'what-if not saved');
 
-  // 8. editable scale table → counts + regenerate ranges
-  await click('#setBtn');
-  await shot('settings');
-  await setVal('#modalBody input[aria-label="Feet per sheet at 100 scale"]', '800');
-  await sleep(200);
-  ok(!!(await pg.$('#resetAllTpl')), 'settings offers “Reset all templates to defaults”');
-  await pg.screenshot({ path: SHOTS + 'v2.4-settings-templates-' + tag + '.png' });
-  await click('#modalClose');
-  ok(/4 PP @ 100/.test(await txt('.node[data-key="' + subA + '"]')), 'A still 4 PP at 800 ft/sheet (1,550 → 2 per series)');
-  await click('.node[data-key="' + segKey + '"]'); await pg.waitForSelector('#genBtn');
-  ok(!(await pg.$eval('#genBtn', (e) => e.disabled)), 'generate becomes available after scale-table change');
-  await click('#genBtn'); await sleep(250);
-  const t3 = await pg.$$eval('.node.n-sheet .nt', (els) => els.map((e) => e.textContent).filter((t) => /^Drainage Plan/.test(t)));
-  ok(t3.includes('Drainage Plan & Profile – Sta 10+00 to 18+00 (PP 1 of 2)') && t3.includes('Drainage Plan & Profile – Sta 18+00 to 25+50 (PP 2 of 2)'), 'regenerate updates ranges: 10+00–18+00, 18+00–25+50 (last shorter)');
-  ok(/In progress/.test(await txt('.node[data-key="' + sheetKey + '"]')), 'regenerate kept the edited PP sheet status/owner');
-
-  // 9. dark mode
-  await click('#themeBtn');
-  ok((await pg.evaluate(() => document.documentElement.dataset.theme)) === 'dark', 'dark mode toggle');
-  await click('#zFit'); await sleep(450);
-  await shot('tree-dark');
-  await click('#themeBtn');
-
-  // 10. reload persists, plain store
-  await sleep(300);
-  await pg.reload({ waitUntil: 'networkidle0' });
-  ok(!(await pg.$('input[type=password]')) && (await pg.$$('.node.n-seg')).length === 4, 'reload opens straight to data (no lock)');
-  const keys = await pg.evaluate(() => Object.keys(localStorage).sort());
-  ok(JSON.stringify(keys) === '["pm.data.v2","pm.ui.v2"]', 'storage keys: pm.data.v2 + pm.ui.v2 (' + keys + ')');
-
-  // 10b. v2.1 connectors across sub-projects
-  const shot21 = (name) => pg.screenshot({ path: SHOTS + 'v2.1-' + name + '-' + tag + '.png' });
-  await click('#xAll'); await sleep(300);
-  const ids = await pg.evaluate(() => { const d = JSON.parse(localStorage.getItem('pm.data.v2')); const a = d.subs[0].segments[0].sheets, b = d.subs[1].segments[0].sheets; return { a0: a[0].id, a1: a[1].id, a0t: a[0].title, b0: b[0].id, b1: b[1].id }; });
-  ok(/A\s*→\s*B\s*→\s*C\s*→\s*D/.test(await txt('#buildChain')) && /Build: A → B → C → D/.test(await txt('.node.n-root')), 'build order chain A→B→C→D on overview and tree');
-  // link via drawer picker: B sheet depends on A sheet
-  await click('.node[data-key="sheet:' + ids.b0 + '"]');
-  await pg.waitForSelector('#connBox');
-  await pg.$eval('#connBox details.lkadd summary', (e) => e.click()); await sleep(100);
-  await typeInto(await pg.$('#lkSearch'), ids.a0t); await sleep(150);
-  const opts = await pg.$$eval('#lkRes button', (bs) => bs.map((b) => b.textContent));
-  ok(opts.length >= 1 && opts.every((t) => /^A/.test(t)) && opts.some((t) => /FM 1960 Sta 10\+00–25\+50/.test(t)), 'picker searches other sub-projects (shows sub, segment, sheet)');
-  await pg.$$eval('#lkRes button', (bs, t) => bs.find((b) => b.textContent.includes(t)).click(), ids.a0t); await sleep(200);
-  ok(/Depends on/i.test(await txt('#connBox .lklist')) && /FM 1960 Sta/.test(await txt('#connBox .lklist')), 'drawer lists the new cross-project connector');
-  ok(/Blocked by 1/.test(await txt('#blockedMsg')), 'drawer shows “Blocked by 1”');
-  ok(/Blocked by 1/.test(await txt('.node[data-key="sheet:' + ids.b0 + '"] .fl-blk')), 'tree node flagged ⛓ Blocked by 1');
-  ok((await pg.$$('#linkG path.lnk.cross.dep')).length === 1, 'cross-project connector drawn as SVG curve');
-  ok(await pg.$eval('#linkG path.lnk', (e) => e.classList.contains('on') && Number(getComputedStyle(e).opacity) > 0.9), 'connector at full strength while its node is selected');
-  await shot21('drawer-link');
-  // cycle is blocked with a clear message
-  await pg.select('#lkDir', 'out'); await sleep(50);
-  await pg.$$eval('#lkRes button', (bs, t) => bs.find((b) => b.textContent.includes(t)).click(), ids.a0t); await sleep(150);
-  ok(/circular dependency/.test(await txt('#toast')), 'circular dependency rejected: ' + (await txt('#toast')).slice(0, 60));
-  ok((await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 1, 'cycle not saved');
-  // link via drag from a node's connector handle
-  await pg.keyboard.press('Escape'); await sleep(250);
-  await click('#zFit'); await sleep(450); await click('#zOut'); await click('#zOut'); await sleep(200);
-  const hp = await pg.$eval('.node[data-key="sheet:' + ids.a1 + '"] .handle', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
-  const tp = await pg.$eval('.node[data-key="sheet:' + ids.b1 + '"]', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
-  if (MOBILE) { /* finger drag */
-    await pg.touchscreen.touchStart(hp.x, hp.y);
-    for (let i = 1; i <= 8; i++) { await pg.touchscreen.touchMove(hp.x + (tp.x - hp.x) * i / 8, hp.y + (tp.y - hp.y) * i / 8); await sleep(20); }
-    await pg.touchscreen.touchEnd();
-  } else {
-    await pg.mouse.move(hp.x, hp.y); await pg.mouse.down();
-    for (let i = 1; i <= 8; i++) { await pg.mouse.move(hp.x + (tp.x - hp.x) * i / 8, hp.y + (tp.y - hp.y) * i / 8); await sleep(20); }
-    await pg.mouse.up();
-  }
-  await sleep(250);
-  const L = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links);
-  ok(L.length === 2 && L[1].src.id === ids.a1 && L[1].dst.id === ids.b1 && L[1].kind === 'dep', 'drag from handle onto another node creates a connector');
-  ok((await pg.$$('#linkG path.lnk')).length === 2 && !(await pg.$('#linkG path.lnk.on')), 'two connectors drawn, faded when nothing selected');
-  ok(/Blocked \(2\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'overview lists 2 blocked sheets');
-  await shot21('tree');
-  // change propagation: revise A sheet → B flagged update needed
-  await click('.node[data-key="sheet:' + ids.a0 + '"]'); await pg.waitForSelector('#markRevBtn');
-  await typeInto(await pg.$('#revNote'), 'Culvert size 4x3 → 5x3');
-  await click('#markRevBtn'); await sleep(200);
-  ok(/Update needed/.test(await txt('.node[data-key="sheet:' + ids.b0 + '"] .fl-upd')), 'downstream sheet flagged ⟳ Update needed after Mark revised');
-  ok(/Needs update \(1\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'overview “Needs update (1)”');
-  await click('#impactBtn'); await sleep(200);
-  ok(/0 upstream · 1 downstream/.test(await txt('#impactCounts')) && (await pg.$$('.node.imp-down')).length === 1 && !!(await pg.$('.node.imp-self')), 'impact view highlights downstream + counts');
-  await shot21('impact');
-  // only-selected + hide toggles
-  await click('#lkSelBtn'); await sleep(150);
-  ok((await pg.$$('#linkG path.lnk')).length === 1, '“Only selected” shows just the selected node’s connectors');
-  await click('#lkSelBtn'); await click('#lkBtn'); await sleep(150);
-  ok(await pg.$eval('#links', (e) => e.classList.contains('off')), 'connectors can be hidden');
-  await click('#lkBtn');
-  // filter + acknowledge
-  await pg.select('#fFlag', 'update'); await sleep(150);
-  ok((await pg.$$('.node.n-sheet:not(.dim)')).length === 1, '“Needs update” filter dims everything else');
-  await pg.select('#fFlag', ''); await sleep(100);
-  await click('.node[data-key="sheet:' + ids.b0 + '"]'); await pg.waitForSelector('#markUpdBtn');
-  await shot21('update-needed');
-  await click('#markUpdBtn'); await sleep(200);
-  ok(!(await pg.$('.node[data-key="sheet:' + ids.b0 + '"] .fl-upd')) && /Needs update \(0\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'Mark updated clears the flag');
-  // prerequisite done → ready
-  await click('.node[data-key="sheet:' + ids.a0 + '"]'); await pg.waitForSelector('#drawer .stsel');
-  await pg.select('#drawer .stsel', 'Done'); await sleep(200);
-  ok(!(await pg.$('.node[data-key="sheet:' + ids.b0 + '"] .fl-blk')) && /Ready to start \(1\)/.test(await pg.$eval('#rail', (e) => e.textContent)), 'prerequisite Done → dependent unblocked and listed Ready');
-  // build order editor + dependencies CSV
-  await click('#setBtn'); await pg.waitForSelector('#orderSec');
-  await pg.$eval('#orderSec button[aria-label="Move B earlier"]', (e) => e.click()); await sleep(200);
-  ok(/B\s*→\s*A\s*→\s*C\s*→\s*D/.test(await txt('#buildChain')), 'build order editable (B moved first)');
-  await pg.$eval('#orderSec button[aria-label="Move A earlier"]', (e) => e.click()); await sleep(200);
-  await click('#depsCsvBtn'); await sleep(700);
-  const dcf = fs.readdirSync(DL).find((f) => f.startsWith('pm-dependencies'));
-  const dcsv = dcf && fs.readFileSync(DL + '/' + dcf, 'utf8');
-  ok(dcsv && /^\ufeff?Type,From sub/.test(dcsv) && dcsv.trim().split(/\r\n/).length === 3 && /dep,A,FM 1960 Sta 10\+00–25\+50/.test(dcsv), 'dependencies CSV exported');
-  await shot21('settings-order');
-  await click('#modalClose'); await sleep(200);
-  await pg.keyboard.press('Escape'); await sleep(200);
-
-  // 10c. v2.2 discipline branches
-  const shot22 = (name) => pg.screenshot({ path: SHOTS + 'v2.2-' + name + '-' + tag + '.png' });
-  await click('#xAll'); await sleep(250);
-  const D = await pg.evaluate(() => { const d = JSON.parse(localStorage.getItem('pm.data.v2')); const all = d.subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)); return { A: d.subs[0].id, segA: d.subs[0].segments[0].id, sw: all.filter((x) => x.discipline === 'SWP3').length, dr: all.filter((x) => x.discipline === 'Drainage').length }; });
-  ok((await pg.$$('.node.n-disc')).length === 8 && !!(await pg.$('.node[data-key="disc:' + D.A + ':Drainage"]')) && !!(await pg.$('.node[data-key="disc:' + D.A + ':SWP3"]')), 'each sub-project splits into Drainage + SWP3 branches (8 branch nodes)');
-  ok((await pg.$$('.node.n-sheet.d-sw')).length === D.sw && (await pg.$$('.node.n-sheet.d-dr')).length === D.dr, 'each sheet appears once, under its discipline branch');
-  const segSW = 'seg:' + D.segA + '@SWP3', segDR = 'seg:' + D.segA + '@Drainage';
-  ok(!!(await pg.$('.node[data-key="' + segSW + '"]')) && !!(await pg.$('.node[data-key="' + segDR + '"]')), 'same road segment appears under both branches');
-  ok(/SW PP/.test(await txt('.node[data-key="' + segSW + '"]')) && /DR PP/.test(await txt('.node[data-key="' + segDR + '"]')) && /10\+00 → 25\+50/.test(await txt('.node[data-key="' + segSW + '"]')), 'branch segment shows stations + that discipline’s PP count');
-  ok(/DR \d+%/.test(await txt('.node[data-key="sub:' + D.A + '"]')) && /SW \d+%/.test(await txt('.node[data-key="sub:' + D.A + '"]')), 'sub-project node aggregates both disciplines');
-  ok(/\d+ PP/.test(await txt('.node[data-key="disc:' + D.A + ':SWP3"]')) && !!(await pg.$('.node[data-key="disc:' + D.A + ':SWP3"] svg')), 'branch node: progress ring, sheet + PP counts');
-  ok((await pg.$$('#rail .discline')).length === 8, 'overview: progress per discipline per sub-project');
-  ok(!(await pg.$('#timeline')) && !(await pg.$('#tlBtn')), 'station timeline removed');
-  ok(await pg.$$eval('#linkG path.lnk', (ps) => ps.length === 2 && ps.every((p) => p.dataset.a.startsWith('sheet:') && p.dataset.b.startsWith('sheet:'))), 'connectors still attach to sheet nodes across branches');
-  await shot22('tree');
-  // collapse one branch: its sheets hide, the other branch stays; arrows re-attach to the branch node
-  await click('.node[data-key="disc:' + D.A + ':Drainage"] .nbtn.tog'); await sleep(200);
-  ok(!(await pg.$('.node[data-key="' + segDR + '"]')) && !!(await pg.$('.node[data-key="' + segSW + '"]')), 'collapse per branch');
-  ok(await pg.$$eval('#linkG path.lnk', (ps, k) => ps.some((p) => p.dataset.a === k), 'disc:' + D.A + ':Drainage'), 'collapsed branch: connector attaches to the branch node');
-  await click('.node[data-key="disc:' + D.A + ':Drainage"] .nbtn.tog'); await sleep(200);
-  // branch visibility
-  await click('#bDr'); await sleep(200);
-  ok((await pg.$$('.node.n-disc')).length === 4 && !(await pg.$('.node.n-sheet.d-sw')), 'show only Drainage branch');
-  await shot22('drainage-only');
-  await click('#bSw'); await sleep(200);
-  ok((await pg.$$('.node.n-disc.d-sw')).length === 4 && !(await pg.$('.node.n-sheet.d-dr')), 'show only SWP3 branch');
-  await click('#bBoth'); await sleep(200);
-  // add from within a branch defaults the discipline
-  await click('.node[data-key="' + segSW + '"] .nbtn.add'); await pg.waitForSelector('#addSheetDisc');
-  ok((await pg.$eval('#addSheetDisc', (e) => e.value)) === 'SWP3' && /SWP3 branch/i.test(await txt('#drawer .dkind')), '+ on a SWP3 segment defaults the new sheet to SWP3');
-  await typeInto(await pg.$('#addSheetTitle'), 'Inlet protection details');
-  await pg.$eval('#addSheetTitle', (e) => e.form.requestSubmit()); await sleep(250);
-  ok(await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs[0].segments[0].sheets.some((x) => x.title === 'Inlet protection details' && x.discipline === 'SWP3')), 'sheet added to SWP3 branch');
-  ok(!!(await pg.$('#genDR')) && !!(await pg.$('#genSW')) && /✓/.test(await txt('#genSW')), 'per-discipline generate buttons (SWP3 up to date)');
-  await shot22('segment-drawer');
-  // branch drawer + per-discipline generate
-  await click('.node[data-key="disc:' + D.A + ':SWP3"]'); await pg.waitForSelector('#genBranchBtn');
-  ok(/SWP3 PP sheets/.test(await txt('#drawer')) && /Generate SWP3 PP for all segments/.test(await txt('#genBranchBtn')), 'branch drawer with stats + generate for that discipline');
-  await shot22('branch-drawer');
-  await click('#genBranchBtn'); await sleep(200);
-  ok(/already up to date/.test(await txt('#toast')), 'generate per discipline is idempotent');
-  await pg.keyboard.press('Escape'); await sleep(200);
-  // PP calculator by discipline
-  await click('#ppBtn'); await pg.waitForSelector('#ppDr');
-  const ppd = await pg.evaluate(() => [document.querySelector('#ppDr').textContent, document.querySelector('#ppSw').textContent, document.querySelector('#ppWhatIf').textContent].map(Number));
-  ok(ppd[0] + ppd[1] === ppd[2] && ppd[0] > 0 && ppd[1] > 0, 'PP calculator totals by discipline: DR ' + ppd[0] + ' + SW ' + ppd[1] + ' = ' + ppd[2]);
-  await click('#modalClose'); await sleep(200);
-  // list: discipline filter + grouping
+  /* 7. list: section + road columns, grouping, section filter, bulk move */
   await click('#vList'); await sleep(200);
-  await pg.select('#groupSel', 'subdisc'); await sleep(200);
-  const grps = await pg.$$eval('table.grid tr.grp', (t) => t.map((x) => x.textContent));
-  ok(grps.length === 4 && /Drainage/.test(grps[0]) && /SWP3/.test(grps[1]), 'list grouped by sub-project › discipline (' + grps.length + ' groups)');
-  await shot22('list-grouped');
-  await pg.$$eval('.listbar select', (ss) => { const s = ss.find((x) => x.getAttribute('aria-label') === 'Discipline'); s.value = 'SWP3'; s.dispatchEvent(new Event('change')); }); await sleep(200);
-  ok((await pg.$$('table.grid tbody tr:not(.grp)')).length === D.sw + 1 && (await pg.$$('table.grid tr.grp')).length === 2, 'list discipline filter');
-  await pg.select('#groupSel', ''); await sleep(100);
-  await pg.select('#fDisc', ''); await sleep(150);
-  await click('#vTree'); await sleep(200);
-  // 10d. v2.5 project sheet index
-  await click('#idxBtn'); await pg.waitForSelector('#applyIdxBtn');
-  const before25 = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs.map((s) => s.segments.map((g) => g.sheets.length)));
-  await typeInto(await pg.$('#idxNew'), 'Utility Conflict Sheet'); await pg.keyboard.press('Enter'); await sleep(200);
-  ok(/Utility Conflict Sheet/.test(await pg.$$eval('#modalBody .idx input', (i) => i.map((x) => x.value).join('|'))), 'add a sheet to the project index');
-  ok(/Apply adds 13 sheets across 2 segments/.test(await txt('#idxPlan')), 'plan preview: ' + await txt('#idxPlan'));
-  await pg.screenshot({ path: SHOTS + 'v2.5-sheet-index-' + tag + '.png' });
-  await click('#applyIdxBtn'); await sleep(300);
-  const after25 = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs.map((s) => s.segments.map((g) => g.sheets.length)));
-  ok(after25[0][0] === before25[0][0] + 1 && after25[1][0] === before25[1][0] + 12, 'bulk-apply adds index sheets to every segment, skipping existing (' + JSON.stringify(after25) + ')');
-  ok(/Every segment already has/.test(await txt('#idxPlan')), 're-apply would add nothing');
-  await click('#modalClose'); await sleep(200);
-  // 10e. v2.6 sheet-number ranges
-  const dams = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).filter((x) => x.title === 'Drainage Area Map').map((x) => x.id));
-  await click('.node[data-key="sheet:' + dams[0] + '"]'); await pg.waitForSelector('#numHint');
-  ok(/Drainage Area Map: 1–9 · next free 1/.test(await txt('#numHint')), 'sheet drawer suggests next free number in the series range');
-  await click('#useNum'); await sleep(150);
-  ok((await pg.$eval('#shNum', (e) => e.value)) === '1', '“Use” fills the suggested number');
-  await click('.node[data-key="sheet:' + dams[1] + '"]'); await pg.waitForSelector('#numHint');
-  ok(/next free 2/.test(await txt('#numHint')), 'next suggestion skips used numbers');
-  await setVal('#shNum', '1'); await sleep(200);
-  ok(/Duplicate sheet number/.test(await txt('#numWarn')) && !!(await pg.$('#numRail')), 'duplicate number warning (drawer + overview)');
-  await setVal('#shNum', '15'); await sleep(200);
-  ok(/Out of range: Drainage Area Map uses 1–9/.test(await txt('#numWarn')), 'out-of-range warning');
-  await pg.screenshot({ path: SHOTS + 'v2.6-sheet-number-' + tag + '.png' });
-  await click('#setBtn'); await pg.waitForSelector('#renumAll');
-  await click('#renumAll'); await sleep(250);
-  ok(/No duplicate or out-of-range numbers/.test(await txt('#numIssues')) && !(await pg.$('#numRail')), 'Renumber all from ranges clears issues');
-  await pg.screenshot({ path: SHOTS + 'v2.6-number-ranges-' + tag + '.png' });
-  await click('#modalClose'); await sleep(150);
-  await pg.keyboard.press('Escape'); await sleep(150);
-  // 10f. v2.7 This-week view
-  await pg.evaluate(() => {
-    const d = JSON.parse(localStorage.getItem('pm.data.v2')); const iso = (n) => { const x = new Date(); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
-    const sh = d.subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).filter((x) => x.status !== 'Done');
-    sh[0].due = iso(-3); sh[1].due = iso(2); sh[2].due = iso(5);
-    const sw = sh.find((x) => x.discipline === 'SWP3'); sw.due = iso(4);
-    localStorage.setItem('pm.data.v2', JSON.stringify(d));
-  });
-  await pg.reload({ waitUntil: 'networkidle0' });
-  await click('#vWeek'); await pg.waitForSelector('#wk-overdue');
-  const wk = async () => pg.evaluate(() => Object.fromEntries([...document.querySelectorAll('.wkcol')].map((c) => [c.id, c.querySelectorAll('.scard').length])));
-  let w7 = await wk();
-  ok(w7['wk-overdue'] >= 1 && w7['wk-due7'] >= 2, 'week view: overdue + due in 7 days buckets (' + JSON.stringify(w7) + ')');
-  ok(['wk-blocked', 'wk-update', 'wk-ready'].every((k) => k in w7), 'week view: blocked / update / ready buckets shown');
-  await pg.select('#wkDiscipline', 'SWP3'); await sleep(200);
-  ok(await pg.$$eval('.wkcol .scard .chip', (e) => e.length > 0 && e.every((x) => x.textContent === 'SW')), 'week view discipline filter');
-  await pg.select('#wkSub', await pg.$eval('#wkSub option:nth-child(2)', (e) => e.value)); await sleep(200);
-  ok(await pg.$$eval('.wkcol .scard .code', (e) => e.every((x) => x.textContent === 'A')), 'week view sub-project filter');
-  await pg.select('#wkSub', ''); await pg.select('#wkDiscipline', ''); await sleep(200);
-  await pg.screenshot({ path: SHOTS + 'v2.7-this-week-' + tag + '.png' });
-  await click('#wk-overdue .scard'); await pg.waitForSelector('#shNum');
-  ok(true, 'week card opens the sheet drawer');
-  await pg.keyboard.press('Escape'); await sleep(150);
-  await click('#vTree'); await sleep(300);
-  // 10g. v2.8 status board
-  await click('#vBoard'); await pg.waitForSelector('.bcol[data-status="Not started"] .bcard');
-  const stOf = (id) => pg.evaluate((id) => JSON.parse(localStorage.getItem('pm.data.v2')).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).find((x) => x.id === id).status, id);
-  ok((await pg.$$('.bcol')).length === 4, 'board shows the four status columns');
-  const bid = await pg.$eval('.bcol[data-status="Not started"] .bcard', (e) => e.dataset.id);
-  if (!MOBILE) {
-    const a = await (await pg.$('.bcard[data-id="' + bid + '"] .sc-title')).boundingBox(), t = await (await pg.$('.bcol[data-status="In progress"] h3')).boundingBox();
-    await pg.mouse.move(a.x + 20, a.y + 5); await pg.mouse.down(); await pg.mouse.move(a.x + 60, a.y + 30, { steps: 4 });
-    await pg.mouse.move(t.x + 40, t.y + 60, { steps: 8 });
-    await pg.screenshot({ path: SHOTS + 'v2.8-board-drag-' + tag + '.png' });
-    await pg.mouse.up(); await sleep(300);
-    ok((await stOf(bid)) === 'In progress', 'drag a card to In progress saves the status');
-    ok(!!(await pg.$('.bcol[data-status="In progress"] .bcard[data-id="' + bid + '"]')) && !(await pg.$('#drawer:not([hidden]) #shNum')), 'card moved; drag did not open the drawer');
-  } else {
-    await click('.bcard[data-id="' + bid + '"] .bmove button'); await sleep(300);
-    ok((await stOf(bid)) === 'In progress', 'move button (touch) changes status');
-  }
-  await pg.focus('.bcard[data-id="' + bid + '"] .scard'); await pg.keyboard.down('Alt'); await pg.keyboard.press('ArrowRight'); await pg.keyboard.up('Alt'); await sleep(300);
-  ok((await stOf(bid)) === 'In review', 'Alt+Right moves the card to the next status');
-  await pg.select('#bdDiscipline', 'SWP3'); await sleep(200);
-  ok(await pg.$$eval('.bcol .scard .chip', (e) => e.length > 0 && e.every((x) => x.textContent === 'SW')), 'board discipline filter');
-  await pg.select('#bdDiscipline', ''); await sleep(200);
-  await pg.screenshot({ path: SHOTS + 'v2.8-board-' + tag + '.png' });
-  await click('#vTree'); await sleep(300);
-  // 10h. v2.9 undo / redo
-  const S29 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
-  const cnt29 = async () => (await S29()).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).length;
-  const n0 = await cnt29();
-  const did = (await S29()).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).find((x) => x.title === 'Drainage Area Map').id;
-  await click('.node[data-key="sheet:' + did + '"]'); await pg.waitForSelector('#shNum');
-  await pg.$$eval('#drawer button.btn.danger', (bs) => bs.find((b) => b.textContent === 'Delete').click()); await sleep(1000);
-  ok((await cnt29()) === n0 - 1, 'sheet deleted');
-  await click('#setBtn'); await pg.waitForSelector('#renumAll'); await click('#renumAll'); await sleep(1000); await click('#modalClose'); await sleep(150);
-  await pg.keyboard.press('Escape'); await sleep(100);
-  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
-  const mod = MOBILE ? 'Control' : 'Control';
-  await pg.keyboard.down(mod); await pg.keyboard.press('z'); await pg.keyboard.up(mod); await sleep(300);
-  ok(/Undid/.test(await txt('#toast')), 'Ctrl+Z undoes renumbering (' + (await txt('#toast')).slice(0, 70) + ')');
-  await click('#undoBtn'); await sleep(300);
-  ok((await cnt29()) === n0 && !!(await pg.$('.node[data-key="sheet:' + did + '"]')), 'Undo button restores the deleted sheet (saved)');
-  await pg.keyboard.down(mod); await pg.keyboard.down('Shift'); await pg.keyboard.press('z'); await pg.keyboard.up('Shift'); await pg.keyboard.up(mod); await sleep(300);
-  ok((await cnt29()) === n0 - 1, 'Ctrl+Shift+Z redoes the delete');
-  await click('#redoBtn'); await click('#undoBtn'); await sleep(200); await click('#undoBtn'); await sleep(300);
-  ok((await cnt29()) === n0 && await pg.$eval('#redoBtn', (e) => !e.disabled), 'redo/undo buttons step through history');
-  await pg.screenshot({ path: SHOTS + 'v2.9-undo-' + tag + '.png' });
-  // 10r. v2.19 report narrative + notes
-  await click('#vReport'); await pg.waitForSelector('#narrProject');
-  const g19 = await txt('#narrProject .gen');
-  ok(/is \d+% complete/.test(g19) && /plan & profile sheets/.test(g19) && /(risks|No significant)/.test(g19), 'project summary paragraph generated');
-  ok((await pg.$$('.npart[data-sub]')).length === 4 && (await pg.$$('.ndisc')).length >= 2 && /Drainage|SWP3/.test(await txt('.npart[data-sub="A"]')), 'paragraph per sub-project with Drainage / SWP3 parts');
-  await pg.type('.npart[data-sub="A"] textarea.rnote', 'Outfall survey pending from TxDOT.'); await sleep(500);
-  await pg.reload({ waitUntil: 'networkidle0' }); await pg.waitForSelector('#narrProject');
-  ok((await pg.$eval('.npart[data-sub="A"] textarea.rnote', (e) => e.value)) === 'Outfall survey pending from TxDOT.' && (await txt('#narrProject .gen')) === g19, 'notes saved separately; generated text unchanged');
-  await pg.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (t) => { window.__clip = t; return Promise.resolve(); } } }); });
-  await click('#copyNarr'); await sleep(200);
-  ok(/Outfall survey pending/.test(await pg.evaluate(() => window.__clip || '')) && /Sub-project A/.test(await pg.evaluate(() => window.__clip || '')), 'Copy narrative (with notes) to clipboard');
-  await sleep(300); await pg.screenshot({ path: SHOTS + 'v2.19-report-view-' + tag + '.png' });
-  await click('#vTree'); await sleep(250);
-  // 10i. v2.10 printable status report
-  await pg.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
-  await pg.evaluate(() => document.querySelector('#printBtn').click()); await sleep(200);
-  ok((await pg.evaluate(() => window.__printed)) === 1, 'Print report button opens the print dialog');
-  const rep = await txt('#report');
-  ok(/weighted progress/i.test(rep) && /Sub-projects by discipline/i.test(rep) && /PP sheets/i.test(rep) && /Overdue \(/i.test(rep) && /Blocked \(/i.test(rep) && /Milestones/i.test(rep), 'report has progress, A–D by discipline, PP, overdue/blocked, milestones');
-  ok(await pg.$eval('#report', (e) => getComputedStyle(e).display === 'none'), 'report hidden on screen');
-  await pg.emulateMediaType('print');
-  ok(await pg.$eval('#report', (e) => getComputedStyle(e).display !== 'none') && await pg.$eval('#layout', (e) => getComputedStyle(e).display === 'none'), 'print stylesheet shows only the report');
-  if (!MOBILE) {
-    const pdf = await pg.pdf({ format: 'letter', printBackground: true });
-    const pages = (Buffer.from(pdf).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
-    ok(pages === 2, 'report prints as summary page + narrative page (' + pages + ')');
-    fs.writeFileSync(SHOTS + 'v2.10-status-report-' + tag + '.pdf', pdf);
-  }
-  await pg.screenshot({ path: SHOTS + 'v2.10-status-report-' + tag + '.png', fullPage: true });
-  await pg.emulateMediaType('screen'); await sleep(150);
-  // 10j. v2.11 collapse branches
-  await click('#zFit'); await sleep(200);
-  const subKey = await pg.$$eval('.node.n-sub', (e) => e[0].dataset.key);
-  ok(!!(await pg.$('.node[data-key="root"] .nbtn.tog')) && (await pg.$$('.node.n-sub .nbtn.tog')).length === 4 && (await pg.$$('.node.n-disc .nbtn.tog')).length >= 1, 'chevron toggle on project, sub-project and branch nodes');
-  await pg.select('#lvlSel', '1'); await sleep(300);
-  ok((await pg.$$('.node.n-disc')).length === 0 && (await pg.$$('.node.n-sub.collapsed')).length >= 2, 'Show to level: Sub-projects collapses branches');
-  ok(/·\s*\d+ sh/.test(await txt('.node[data-key="' + subKey + '"] .nbtn.tog')) && !!(await pg.$('.node[data-key="' + subKey + '"] .ring')), 'collapsed node shows hidden count badge and keeps its progress ring');
-  ok((await pg.$$('#linkG path.lnk')).length >= 1, 'connectors re-attach to the visible collapsed ancestor');
-  await pg.focus('.node[data-key="' + subKey + '"]'); await pg.keyboard.press('ArrowRight'); await sleep(300);
-  ok((await pg.$$('.node[data-key^="disc:' + subKey.slice(4) + ':"]')).length >= 1, 'ArrowRight expands the focused node');
-  await pg.focus('.node[data-key="' + subKey + '"]'); await pg.keyboard.press('ArrowLeft'); await sleep(300);
-  ok((await pg.$$('.node[data-key^="disc:' + subKey.slice(4) + ':"]')).length === 0, 'ArrowLeft collapses it');
-  await pg.select('#lvlSel', '0'); await sleep(300);
-  ok((await pg.$$('.node')).length === 1, 'Show to level: Project shows only the project');
-  await pg.select('#lvlSel', '4'); await sleep(300);
-  ok((await pg.$$('.node.n-sheet')).length > 20, 'Show to level: Sheets expands everything');
-  const shk = await pg.$$eval('.node.n-sheet', (e) => e[0].dataset.key);
-  await click('.node[data-key="' + shk + '"]'); await pg.waitForSelector('#focusBranch');
-  await click('#focusBranch'); await sleep(400);
-  const vis = await pg.$$eval('.node.n-sub', (e) => e.map((x) => x.classList.contains('collapsed')));
-  ok(vis.filter((x) => !x).length === 1 && !!(await pg.$('.node[data-key="' + shk + '"]')), 'Focus branch collapses the others and keeps the selected path open');
-  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
-  ok((await pg.$$eval('.node.n-sub', (e) => e.filter((x) => x.classList.contains('collapsed')).length)) === 3, 'collapse state persists across reload');
-  await pg.screenshot({ path: SHOTS + 'v2.11-collapse-' + tag + '.png' });
-  await click('#cAll'); await sleep(300);
-  ok((await pg.$$('.node.n-disc')).length === 0, 'Collapse all');
-  await click('#xAll'); await sleep(300);
-  ok((await pg.$$('.node.n-sheet')).length > 20, 'Expand all');
-  await pg.keyboard.press('Escape'); await sleep(150);
-  // 10k. v2.12 stations editor + table
-  const D12 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
-  const seg12 = (await D12()).subs[0].segments[0];
-  await click('.node[data-key="seg:' + seg12.id + '@Drainage"]'); await pg.waitForSelector('#stBox');
-  await setVal('#stEnd', 'abc'); await sleep(150);
-  ok(/must look like/.test(await txt('#stLive')) && await pg.$eval('#stSave', (e) => e.disabled), 'live validation of stations');
-  await setVal('#stEnd', '4600'); await sleep(150);
-  ok(/3,600 ft/.test(await txt('#stLive')) && /PP/.test(await txt('#stLive')), 'plain feet accepted; live length + PP per discipline');
-  ok(/Create \d+/.test(await txt('#stPlan')), 'preview lists PP sheets that will be created');
-  await click('#stSave'); await sleep(400);
-  ok((await D12()).subs[0].segments[0].end === 4600 && (await D12()).subs[0].segments[0].sheets.filter((x) => x.gen && x.discipline === 'Drainage').length >= 3, 'save (confirmed) updates stations and regenerates PP sheets');
-  await pg.screenshot({ path: SHOTS + 'v2.12-stations-editor-' + tag + '.png' });
-  await setVal('#stOff', '+100'); await click('#stShift'); await sleep(400);
-  ok((await D12()).subs[0].segments[0].start === seg12.start + 100, 'shift road by an offset');
-  await pg.keyboard.press('Escape'); await sleep(150);
-  await click('#vStations'); await pg.waitForSelector('#stTable');
-  ok((await pg.$$('#stTable tbody tr')).length === 2, 'Stations table lists every segment');
-  await pg.$eval('#stTable .scell[data-r="0"][data-c="2"]', (e) => { e.focus(); const dt = new DataTransfer(); dt.setData('text/plain', '50+00\t40\n'); e.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); }); await sleep(400);
-  const s12 = (await D12()).subs[0].segments[0];
-  ok(s12.end === 5000 && s12.scale === 40, 'paste TSV row into the table (end + scale)');
-  await pg.screenshot({ path: SHOTS + 'v2.12-stations-table-' + tag + '.png' });
-  for (let i = 0; i < 3; i++) { await click('#undoBtn'); await sleep(250); }
-  ok((await D12()).subs[0].segments[0].end === seg12.end, 'station edits are undoable');
-  await click('#vTree'); await sleep(300); await pg.keyboard.press('Escape'); await sleep(150);
-  // 10l. v2.13 split / merge
-  const D13 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
-  const g13 = (await D13()).subs[0].segments[0];
-  await click('.node[data-key="seg:' + g13.id + '@Drainage"]'); await pg.waitForSelector('#spAt');
-  await setVal('#spAt', '18+00'); await click('#spBtn'); await sleep(500);
-  const a13 = (await D13()).subs[0].segments;
-  ok(a13.length === 2 && a13[0].end === 1800 && a13[1].start === 1800 && a13[1].end === g13.end, 'split a road segment at a station');
-  ok(a13[1].sheets.some((q) => q.gen) && a13[0].sheets.length + a13[1].sheets.length >= g13.sheets.length, 'PP sheets follow their station range; other sheets kept');
-  await click('.node[data-key="seg:' + a13[0].id + '@Drainage"]'); await pg.waitForSelector('.mergebtn');
-  await pg.screenshot({ path: SHOTS + 'v2.13-split-merge-' + tag + '.png' });
-  await click('.mergebtn'); await sleep(500);
-  const m13 = (await D13()).subs[0].segments;
-  ok(m13.length === 1 && m13[0].start === g13.start && m13[0].end === g13.end, 'merge two touching segments of the same road');
-  for (let i = 0; i < 2; i++) { await click('#undoBtn'); await sleep(250); }
-  ok((await D13()).subs[0].segments.length === 1 && (await D13()).subs[0].segments[0].id === g13.id, 'split + merge undoable');
-  await pg.keyboard.press('Escape'); await sleep(150);
-  // 10m. v2.14 copy road to another sub-project + duplicate sheet
-  const D14 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
-  const g14 = (await D14()).subs[0].segments[0];
-  await click('.node[data-key="seg:' + g14.id + '@Drainage"]'); await pg.waitForSelector('#cpBtn');
-  await pg.select('#cpTo', (await D14()).subs[2].id); await click('#cpBtn'); await sleep(500);
-  const c14 = (await D14()).subs[2].segments;
-  ok(c14.length === 1 && c14[0].road === g14.road && c14[0].sheets.length === g14.sheets.length && c14[0].sheets.every((q) => q.status === 'Not started'), 'copy road with sheets to sub-project C');
-  await pg.screenshot({ path: SHOTS + 'v2.14-copy-road-' + tag + '.png' });
-  await click('#undoBtn'); await sleep(300);
-  ok((await D14()).subs[2].segments.length === 0, 'copy undone');
-  const sh14 = g14.sheets.find((q) => !q.gen);
-  await click('.node[data-key="sheet:' + sh14.id + '"]'); await pg.waitForSelector('#shNum');
-  await pg.$$eval('#drawer button', (bs) => bs.find((b) => b.textContent === 'Duplicate').click()); await sleep(400);
-  ok((await D14()).subs[0].segments[0].sheets.some((q) => q.title === sh14.title + ' (copy)'), 'duplicate a sheet');
-  await click('#undoBtn'); await sleep(300); await pg.keyboard.press('Escape'); await sleep(150);
-  // 10n. v2.15 quick-add chain + command palette
-  const D15 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
-  const sd = (await D15()).subs[3];
-  await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await pg.waitForSelector('#cmdkQ');
-  await pg.type('#cmdkQ', 'add road to D'); await sleep(100); await pg.keyboard.press('Enter'); await pg.waitForSelector('#addSegRoad'); await sleep(100);
-  ok(true, 'palette action opens the add-road form');
-  await setVal('#addSegRoad', 'SH 249'); await setVal('#addSegStart', '0+00'); await setVal('#addSegEnd', '1200');
-  await click('#addSegNext'); await sleep(400);
-  ok((await pg.$eval('#addSegStart', (e) => e.value)) === '12+00' && (await pg.$eval('#addSegRoad', (e) => e.value)) === 'SH 249', 'Add + next: road remembered, next start = previous end');
-  await setVal('#addSegEnd', '20+00'); await pg.focus('#addSegEnd'); await pg.keyboard.down('Shift'); await pg.keyboard.press('Enter'); await pg.keyboard.up('Shift'); await sleep(400);
-  ok((await D15()).subs[3].segments.length === sd.segments.length + 2, 'Shift+Enter adds and chains the next segment');
-  for (let i = 0; i < 2; i++) { await click('#undoBtn'); await sleep(300); }
-  ok((await D15()).subs[3].segments.length === sd.segments.length, 'quick-adds undone');
-  await pg.keyboard.press('Escape'); await sleep(100);
-  await click('#cmdkBtn'); await pg.waitForSelector('#cmdkQ');
-  await pg.type('#cmdkQ', 'culvert layout'); await sleep(150);
-  ok(/Culvert Layout/.test(await txt('#cmdkList .cmdi.on')), 'palette finds sheets by title');
-  await pg.screenshot({ path: SHOTS + 'v2.15-command-palette-' + tag + '.png' });
-  await pg.keyboard.press('Enter'); await pg.waitForSelector('#shNum'); await sleep(150);
-  ok(!(await pg.$('#cmdk')) && /Culvert Layout/.test(await pg.$eval('#drawer input', (e) => e.value) + await txt('#drawer')), 'Enter jumps to the sheet');
-  await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await pg.waitForSelector('#cmdkQ');
-  await pg.type('#cmdkQ', 'stations table'); await pg.keyboard.press('Enter'); await sleep(300);
-  ok(!!(await pg.$('#stTable')), 'palette runs view actions');
-  await click('#vTree'); await sleep(250); await pg.keyboard.press('Escape'); await sleep(150);
-  // 10o. v2.16 multi-select + bulk edit
-  const D16 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)));
-  const n16 = (await D16()).length;
-  await click('#vList'); await pg.waitForSelector('table.grid tbody tr .rsel');
-  const rid = await pg.$$eval('table.grid tbody tr[data-id]', (e) => e.slice(0, 4).map((x) => x.dataset.id));
-  await click('tr[data-id="' + rid[0] + '"] .rsel');
-  if (!MOBILE) { await pg.keyboard.down('Shift'); await click('tr[data-id="' + rid[2] + '"] td[data-col="1"]'); await pg.keyboard.up('Shift'); }
-  else { await click('tr[data-id="' + rid[1] + '"] .rsel'); await click('tr[data-id="' + rid[2] + '"] .rsel'); }
-  await sleep(200);
-  ok(/3 sheets selected/.test(await txt('#bulkBar')), (MOBILE ? 'checkboxes' : 'checkbox + shift-click range') + ' select 3 sheets');
-  await pg.select('#bkStatus', 'In review'); await sleep(300);
-  await pg.select('#bkOwner', 'Maria Lopez'); await sleep(300);
-  let b16 = (await D16()).filter((x) => rid.slice(0, 3).includes(x.id));
-  ok(b16.every((x) => x.status === 'In review' && x.owner === 'Maria Lopez'), 'bulk status + owner change');
-  await setVal('#bkDue', '2026-12-15'); await sleep(300);
-  ok((await D16()).filter((x) => rid.slice(0, 3).includes(x.id)).every((x) => x.due === '2026-12-15'), 'bulk due date');
-  await pg.screenshot({ path: SHOTS + 'v2.16-bulk-edit-' + tag + '.png' });
-  await click('#bkDel'); await sleep(400);
-  ok((await D16()).length === n16 - 3 && !(await pg.$('#bulkBar')), 'bulk delete');
-  for (let i = 0; i < 4; i++) { await click('#undoBtn'); await sleep(250); }
-  ok((await D16()).length === n16 && (await D16()).filter((x) => rid.slice(0, 3).includes(x.id)).every((x) => x.status !== 'In review' || x.owner !== 'Maria Lopez'), 'bulk delete + edits undoable');
-  if (!MOBILE) {
-    await click('#vBoard'); await pg.waitForSelector('.bcard');
-    const bids = await pg.$$eval('.bcard', (e) => e.slice(0, 2).map((x) => x.dataset.id));
-    await pg.keyboard.down('Control'); await click('.bcard[data-id="' + bids[0] + '"] .sc-title'); await click('.bcard[data-id="' + bids[1] + '"] .sc-title'); await pg.keyboard.up('Control'); await sleep(200);
-    ok(/2 sheets selected/.test(await txt('#bulkBar')), 'ctrl-click multi-select on the board');
-    await click('#bkClear'); await sleep(200);
-  }
-  await click('#vTree'); await sleep(250);
-  // 10p. v2.17 recently changed + remembered view/filters
-  ok(/Recently changed/i.test(await txt('#recentPanel')) && (await pg.$$('#recentPanel li')).length >= 1, 'overview shows Recently changed items');
-  await click('#recentPanel li button'); await sleep(300);
-  ok(!!(await pg.$('#drawer:not([hidden])')), 'recent item opens its details');
-  await pg.keyboard.press('Escape'); await sleep(100);
-  await click('#vList'); await sleep(200); await pg.select('#fDisc', 'SWP3'); await sleep(200);
-  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
-  ok(!!(await pg.$('table.grid')) && (await pg.$eval('#fDisc', (e) => e.value)) === 'SWP3', 'last view and filters remembered across reload');
-  await pg.screenshot({ path: SHOTS + 'v2.17-recent-and-remembered-' + tag + '.png' });
-  await pg.select('#fDisc', ''); await sleep(200); await click('#vTree'); await sleep(300);
-  // 10q. v2.18 shortcut help, number keys
-  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
-  await pg.keyboard.press('?'); await pg.waitForSelector('#keysHelp');
-  ok(/Ctrl\/Cmd \+ K/.test(await txt('#keysHelp')) && /Undo/.test(await txt('#keysHelp')), '? opens the keyboard shortcut overlay');
-  await sleep(400); await pg.screenshot({ path: SHOTS + 'v2.18-shortcuts-' + tag + '.png' });
-  await pg.keyboard.press('Escape'); await sleep(150);
-  await pg.keyboard.press('3'); await sleep(250);
-  ok(!!(await pg.$('#wk-overdue')), 'number key 3 opens This week');
-  await pg.keyboard.press('1'); await sleep(250);
-  // 10s. v2.20 CSV import
-  const D20 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
-  const n20 = (await D20()).subs.reduce((a, x) => a + x.segments.length, 0);
-  await click('#csvBtn'); await pg.waitForSelector('#csvDrop');
-  await click('#csvTpl'); await sleep(600);
-  const tplF = fs.readdirSync(DL).find((f) => f.startsWith('pm-import-template'));
-  ok(!!tplF && /Sub-project,Road,Start station/.test(fs.readFileSync(DL + '/' + tplF, 'utf8')), 'CSV template downloads');
-  const csv20 = 'sub;road name;begin station;end station;scale;discipline;sheet title;status;assigned to;due date;depends on\r\nC;SH 249;0+00;2400;40;Both;;;;;\r\nC;SH 249;0+00;2400;40;Drainage;Outfall Plan;In progress;Ana Ruiz;11/20/2026;\r\nC;SH 249;0+00;2400;40;Drainage;Outfall Profile;;;Dec 1, 2026;Outfall Plan\r\nE;Bad Rd;5+00;1+00;;;;;;;\r\n';
-  await pg.$eval('#csvDrop', (el, t) => { const dt = new DataTransfer(); dt.items.add(new File([t], 'roads.csv', { type: 'text/csv' })); el.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); }, csv20);
-  await pg.waitForSelector('#csvPreview'); await sleep(200);
-  ok((await pg.$$('#csvPreview tbody tr')).length === 4 && (await pg.$$('#csvPreview tr.cerr')).length === 1, 'drag-and-drop CSV (semicolons) → preview with per-row validation');
-  ok(/Unknown sub-project/.test(await txt('#csvPreview')) && /End station must be after start/.test(await txt('#csvPreview')), 'bad rows explained');
-  ok((await pg.$eval('#csvMap select[data-field="start"]', (e) => e.selectedOptions[0].textContent)) === 'begin station', 'columns auto-detected');
-  ok(/1 new roads/.test(await txt('#csvSummary')), 'summary of what will be created');
-  await sleep(200); await pg.screenshot({ path: SHOTS + 'v2.20-csv-import-' + tag + '.png' });
-  await click('#csvImport'); await sleep(600);
-  const c20 = (await D20()).subs[2].segments;
-  ok(c20.length === 1 && c20[0].start === 0 && c20[0].end === 2400 && c20[0].scale === 40, 'road imported (stations 0+00 / 2400)');
-  const op = c20[0].sheets.find((q) => q.title === 'Outfall Plan');
-  ok(op && op.status === 'In progress' && op.owner === 'Ana Ruiz' && op.due === '2026-11-20' && c20[0].sheets.some((q) => q.gen) && c20[0].sheets.length > 10, 'sheet rows + default sheet list + PP generated');
-  ok((await D20()).links.some((l) => l.src.id === op.id), 'Depends-on creates a connector');
-  await click('#undoBtn'); await sleep(400);
-  ok((await D20()).subs.reduce((a, x) => a + x.segments.length, 0) === n20, 'whole import undone in one step');
-  await click('#csvBtn'); await pg.waitForSelector('#csvExport'); await click('#csvExport'); await sleep(600);
-  const exF = fs.readdirSync(DL).find((f) => f.startsWith('pm-roads-sheets'));
-  ok(!!exF && fs.readFileSync(DL + '/' + exF, 'utf8').split('\n').length > 10, 'current data exports as importable CSV');
-  await click('#modalClose'); await sleep(150);
-  // 11. backup export → clear → import
-  await click('#setBtn'); await pg.waitForSelector('#exportBtn');
-  await click('#exportBtn'); await sleep(800);
-  const bk = fs.readdirSync(DL).find((f) => f.startsWith('pm-backup'));
-  ok(bk && JSON.parse(fs.readFileSync(DL + '/' + bk, 'utf8')).fmt === 'pm-plain-backup', 'backup downloaded (plain JSON)');
-  ok(JSON.parse(fs.readFileSync(DL + '/' + bk, 'utf8')).data.links.length === 2, 'backup includes connectors');
-  await click('#modalClose');
-  await pg.evaluate(() => localStorage.removeItem('pm.data.v2'));
-  await pg.reload({ waitUntil: 'networkidle0' });
-  ok((await pg.$$('.node.n-seg')).length === 0, 'cleared → empty project');
-  ok(/Start here/i.test(await txt('#emptyHint')), 'empty project shows a start hint');
-  await pg.screenshot({ path: SHOTS + 'v2.18-empty-hint-' + tag + '.png' });
-  await click('#setBtn');
-  await (await pg.$('#modalBody form.imp input[type=file]')).uploadFile(DL + '/' + bk);
-  await click('#modalBody form.imp button[type=submit]');
-  await pg.waitForFunction(() => document.querySelectorAll('.node.n-seg').length === 4, { timeout: 5000 });
-  ok(true, 'import restored both segments');
-  await click('#undoBtn'); await sleep(400);
-  ok((await pg.$$('.node.n-seg')).length === 0, 'import can be undone');
-  await click('#redoBtn'); await sleep(400);
-  ok((await pg.$$('.node.n-seg')).length === 4, 'and redone');
-  ok((await pg.$$('#linkG path.lnk')).length === 2 || (await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).links.length)) === 2, 'import restored connectors');
+  const heads = await pg.$$eval('.grid thead th', (e) => e.map((x) => x.textContent.replace(/[▲▼]/g, '').trim()));
+  ok(heads.includes('Section') && heads.includes('Road') && !heads.includes('Segment'), 'list has Section and Road columns (old Segment column mapped)');
+  await setVal('#groupSel', 'subdisc'); await sleep(200);
+  ok(/Drainage Plan & Profile · 2 PP · roads: FM 1960/.test(await txt('.grid tbody')), 'grouped by discipline › sub-project › section, P&P groups list roads');
+  await setVal('[data-f="section"]', 'dr-pp'); await sleep(200);
+  ok((await pg.$$('.grid tbody tr[data-id]')).length === 3, 'section filter (Drainage P&P: 2 in A + 1 in B)');
+  await setVal('[data-f="section"]', ''); await setVal('#groupSel', ''); await sleep(150);
+  await pg.$eval('#q', (e) => { e.value = 'Utility'; e.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(350);
+  const ids = await pg.$$eval('.grid tbody tr[data-id]', (e) => e.map((x) => x.dataset.id));
+  ok(ids.length >= 1, 'search finds the unmatched sheet');
+  await click('#selAll'); await sleep(100);
+  ok(await has('#bulkBar #bkSec'), 'bulk bar has Move to section');
+  await setVal('#bkSec', 'dr-std'); await sleep(250);
+  D = await data();
+  ok(ids.every((id) => D.subs.some((s) => s.segments.find((g) => g.key === 'dr-std').sheets.some((x) => x.id === id))), 'bulk move to Standards (each in its own sub-project)');
+  await click('#bkClear');
+  await pg.$eval('#q', (e) => { e.value = ''; e.dispatchEvent(new Event('input', { bubbles: true })); }); await sleep(350);
+  await shot('08-list');
 
-  // 12. migration from encrypted v1 vault
-  await pg.evaluate(async () => {
-    const v1 = { schema: 1, project: { name: 'Old Encrypted Project' }, staff: ['Ana Ruiz'], settings: {}, lastBackup: null,
-      subs: ['A', 'B', 'C', 'D'].map((code, i) => ({ id: 'o' + i, code, name: 'Sub-project ' + code, templates: [], segments: i ? [] : [{ id: 'og', name: 'Old Seg', road: 'SH 6', start: 1000, end: 3400, notes: '',
-        sheets: [{ id: 'oh', title: 'Culvert Layout', discipline: 'Drainage', status: 'In review', owner: 'Ana Ruiz', due: '', notes: '' }] }] })) };
-    const r = await PMCrypto.seal('old v1 passphrase', v1, 'vault');
-    localStorage.setItem('pm.vault.v1', JSON.stringify(r.env));
-    localStorage.removeItem('pm.data.v2');
-  });
-  ok(!/Old Seg|Culvert/.test(await pg.evaluate(() => localStorage.getItem('pm.vault.v1'))), 'v1 vault is ciphertext');
-  await pg.reload({ waitUntil: 'networkidle0' });
-  await pg.waitForSelector('#migPass');
-  ok(/encrypted v1 data/.test(await txt('#modalTitle')), 'landing offers one-time v1 import');
-  await shot('migrate');
-  await pg.type('#migPass', 'wrong passphrase!');
-  await click('#modalBody button[type=submit]');
-  await pg.waitForFunction(() => /Wrong passphrase/.test(document.querySelector('#modalBody .err').textContent), { timeout: 15000 });
-  ok(true, 'wrong v1 passphrase rejected gracefully');
-  await pg.type('#migPass', 'old v1 passphrase');
-  await click('#modalBody button[type=submit]');
-  await pg.waitForFunction(() => document.querySelector('#modal').hidden, { timeout: 15000 });
-  ok(/Old Encrypted Project/.test(await txt('#appTitle')) && (await pg.$$('.node.n-seg')).length === 2, 'v1 data migrated into plain store');
-  const migrated = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
-  ok(migrated.schema === 2 && migrated.subs[0].segments[0].sheets[0].status === 'In review', 'migrated data saved as schema 2');
-  ok(!(await pg.evaluate(() => JSON.stringify(localStorage))).includes('old v1 passphrase'), 'passphrase not stored');
-  // restore the richer project for layout screenshots
-  await click('#setBtn');
-  await (await pg.$('#modalBody form.imp input[type=file]')).uploadFile(DL + '/' + bk);
-  await click('#modalBody form.imp button[type=submit]');
-  await pg.waitForFunction(() => document.querySelectorAll('.node.n-seg').length === 4, { timeout: 5000 });
+  /* 8. week, board, stations views */
+  await click('#vWeek'); ok(/Overdue/.test(await txt('#weekWrap')) && /Drainage Plan & Profile – FM 1960/.test(await txt('#wk-overdue')), 'week view shows the overdue PP sheet');
+  await click('#vBoard'); ok((await pg.$$('.bcol')).length === 4 && /Drainage Plan & Profile ·/.test(await txt('#boardWrap')), 'board shows section names on cards');
+  await clickText('.bcol[data-status="Not started"] .bmove button', /›/); await sleep(150);
+  ok((await pg.$$('.bcol[data-status="In progress"] .bcard')).length >= 2, 'board move');
+  await shot('09-board');
+  await click('#vStations'); await sleep(150);
+  const stRows = await pg.$$eval('#stTable tbody tr', (e) => e.map((x) => x.innerText));
+  ok(stRows.length === 7 && stRows.some((r) => /Drainage Laterals/.test(r)) && stRows.some((r) => /SWP3 Layout/.test(r)), 'stations table lists every road entry with its section');
+  await shot('10-stations');
 
-  // 13. layout checks
-  const node = await pg.$$eval('.node.n-seg', (e) => e[0].dataset.key);
-  if (MOBILE) {
-    ok((await pg.evaluate(() => document.documentElement.scrollWidth)) <= 390, 'no horizontal page overflow on iPhone');
-    await click('#railBtn'); await sleep(400);
-    await shot('overview');
-    await click('#railBtn'); await sleep(350);
-    await click('.node[data-key="' + node + '"]'); await sleep(300);
-    await shot('drawer');
-    const small = await pg.evaluate(() => [...document.querySelectorAll('.top button, .top select, .top input, #drawer button, #drawer select, #drawer input:not([type=checkbox])')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 40).length);
-    ok(small === 0, 'tap targets ≥ 40px in toolbar and drawer (' + small + ')');
-  } else {
-    ok((await pg.$eval('#layout', (e) => getComputedStyle(e).gridTemplateColumns)).split(' ').length === 2, 'desktop: overview rail + main');
-    await click('.node[data-key="' + node + '"]'); await sleep(300);
-    ok((await pg.$eval('#layout', (e) => getComputedStyle(e).gridTemplateColumns)).split(' ').length === 3, 'desktop: right-side drawer column');
-    await shot('drawer');
-  }
-  const unl = await pg.evaluate(() => [...document.querySelectorAll('input, select, textarea')].filter((e) => e.offsetParent && !e.labels?.length && !e.getAttribute('aria-label')).length);
-  ok(unl === 0, 'all visible form controls labelled');
-  ok(ext.length === 0, 'no external requests ' + ext.join(','));
-  ok(errs.length === 0, 'no console/CSP errors ' + errs.join(' | '));
-  console.log('E2E PASS [' + MODE + ']', n, 'checks');
+  /* 9. report: per discipline / sub-project / section, roads under P&P */
+  await click('#vReport'); await sleep(150);
+  const R = await txt('#reportWrap');
+  ok(/Drainage is \d+% \(/.test(R) && /SWP3 is/.test(R), 'project summary per discipline');
+  ok(/roads FM 1960 Sta 10\+00–34\+00 \(2,400 ft at 1"=100', 2 PP sheets\)/.test(R), 'P&P section text lists its roads');
+  ok(await has('textarea[data-key="dtop:Drainage"]') && await has('textarea[data-key="disc:' + A.id + ':Drainage"]') && await has('textarea[data-key^="sec:"]'), 'notes per discipline / sub-project / section');
+  ok((await pg.$eval('textarea[data-key="disc:' + A.id + ':Drainage"]', (e) => e.value)) === 'A first', 'v2 sub-project note kept');
+  await setVal('textarea[data-key="dtop:SWP3"]', 'SWP3 waits for 60%'); await sleep(300);
+  ok((await data()).reportNotes['dtop:SWP3'] === 'SWP3 waits for 60%', 'note saved');
+  await shot('11-report', true);
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  ok(/DRAINAGE|Drainage/.test(await txt('#report .rnarr')) && /SWP3 waits for 60%/.test(await pg.$eval('#report', (e) => e.textContent)), 'printable report includes narrative and notes');
+
+  /* 10. CSV import: old v2 CSV (no Section column) */
+  const oldCsv = 'Sub-project,Road,Start station,End station,Scale,Discipline,Sheet title,Series,PP index,Sheet number,Status,Owner,Due date,Notes,Depends on\r\nD,Telge Rd,0+00,12+00,,Both,,,,,,,,,\r\nD,Telge Rd,0+00,12+00,,Drainage,Culvert Layout,,,,In progress,Ana Ruiz,11/30/2026,,\r\n';
+  await click('#csvBtn'); await setVal('#csvText', oldCsv); await sleep(400);
+  ok(/Section/i.test(await txt('#csvPreview thead')) && /Drainage Plan & Profile \+ SWP3 Layout/.test(await txt('#csvPreview')), 'old CSV preview: road row → both P&P sections');
+  await click('#csvImport'); await sleep(250);
+  D = await data();
+  const Dd = D.subs[3];
+  ok(Dd.roads.length === 2 && Dd.segments.find((g) => g.key === 'dr-hds-x').sheets.some((s) => s.title === 'Culvert Layout' && s.owner === 'Ana Ruiz'), 'old v2 CSV imported into sections');
+  await shot('12-after-csv');
+
+  /* 11. persistence, v2 untouched, no external requests, errors */
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  ok(!(await pg.$('#migV3')), 'migration notice only once');
+  ok((await data()).subs[3].roads.length === 2, 'data persists after reload');
+  ok(await pg.evaluate((j) => localStorage.getItem('pm.data.v2') === j, v2json), 'pm.data.v2 still untouched');
+  await click('#cAll'); await click('#zFit'); await shot('13-final');
+  if (MOBILE) { await click('#railBtn'); await sleep(200); await shot('14-rail'); await click('#railBtn'); }
+  ok(!ext.length, 'no external requests (' + ext.join(', ') + ')');
+  ok(!errs.length, 'no console errors: ' + errs.join(' | '));
+  console.log('PASS', n, 'checks', MODE);
   await b.close();
-})().catch(async (e) => { console.error(e); try { await pg.screenshot({ path: '/tmp/pm-fail-' + MODE + '.png' }); } catch (x) { /* ignore */ } process.exit(1); });
+})().catch((e) => { console.error(e); process.exit(1); });
