@@ -482,6 +482,34 @@ t('v2.15 command palette search ranking', () => {
   assert.strictEqual(M.paletteSearch(items, 'sta 10+00')[0].label, 'FM 1960 Sta 10+00–25+50');
 });
 
+t('v3.1 sub-project rename: trim, empty/duplicate blocked, ids/order/links unchanged, CSV by name or letter', () => {
+  const { st, A, B, pA, pB } = setup();
+  const ids = st.subs.map((s) => s.id), order = M.orderedSubs(st).map((s) => s.id);
+  assert.strictEqual(M.subName(A), 'Sub-project A'); assert.strictEqual(M.subTag(A), 'A');
+  assert.strictEqual(M.renameSub(st, A.id, '   ').ok, false);
+  assert.match(M.renameSub(st, A.id, 'sub-project b').error, /already uses/);
+  assert.match(M.renameSub(st, A.id, 'b').error, /already uses/, 'another letter is blocked');
+  const r = M.renameSub(st, A.id, '  North   Segment ');
+  assert.ok(r.ok); assert.strictEqual(A.name, 'North Segment'); assert.strictEqual(A.code, 'A');
+  assert.strictEqual(M.subTag(A), 'North Segment'); assert.strictEqual(M.subLabel(A), 'A · North Segment');
+  assert.ok(M.renameSub(st, A.id, 'north segment').ok, 'case change of own name is fine');
+  M.renameSub(st, A.id, 'North Segment');
+  assert.deepStrictEqual(st.subs.map((s) => s.id), ids); assert.deepStrictEqual(M.orderedSubs(st).map((s) => s.id), order);
+  assert.match(st.log[0].msg, /Renamed sub-project A: north segment → North Segment/);
+  /* old data without a name falls back to the letter */
+  const raw = JSON.parse(JSON.stringify(st)); delete raw.subs[1].name; const st2 = M.migrate(raw);
+  if (st2) assert.strictEqual(M.subName(st2.subs[1]), 'Sub-project B');
+  assert.strictEqual(M.subName({ code: 'C', name: '' }), 'Sub-project C');
+  /* CSV export uses the name; import matches by name or by old letter */
+  assert.match(M.exportImportCSV(st), /\nNorth Segment,/);
+  const rows = M.parseCSV(M.csvTemplate()).rows; const map = M.detectMapping(rows[0]);
+  const mk = (sub) => [sub, 'Drainage', 'Drainage Plan and Profile', 'Rd ' + sub, '', '', '', '', '', '', '', '', '', '', '', ''];
+  const plan = M.planCSV(st, [mk('North Segment'), mk('a'), mk('Sub-project A'), mk('B')], map, { mode: 'merge', defaults: false });
+  assert.strictEqual(plan.summary.errors, 0);
+  assert.deepStrictEqual(plan.items.map((x) => x.f.sub.code), ['A', 'A', 'A', 'B']);
+  void pA; void pB; void B;
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {
