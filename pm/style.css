@@ -525,3 +525,16 @@ textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size
 .nren{display:none;opacity:1}
 .node.n-disc:hover .nren,.node.n-disc.sel .nren,.node.n-disc:focus-within .nren{display:inline-block}
 @media (hover:none){.node.n-disc:hover .nren{display:none}.node.n-disc.sel .nren{display:inline-block}}
+/* v3.2 road branches + sheet station ranges */
+.node.n-road{display:flex;align-items:center;gap:8px;padding:8px 10px;border-left:4px solid var(--brand);background:color-mix(in srgb,var(--brand) 5%,var(--surface))}
+.node.n-road.d-sw{border-left:4px dashed var(--sw)}
+.node.n-road .rdicon{font-size:18px;color:var(--brand);flex:none}
+.node.n-road .rranges{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node.n-oth{display:flex;align-items:center;padding:8px 10px;border-left:4px dotted var(--line2);opacity:.95}
+.node.n-sheet .nt.sta{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;letter-spacing:-.01em}
+.rgtab input.scell{min-width:0;width:100%}
+.rgtab th:nth-child(1){width:auto}.rgtab th:nth-child(2),.rgtab th:nth-child(3){width:86px}.rgtab th:nth-child(4){width:110px}
+.rgtab{table-layout:fixed;width:100%}
+.rgtab tr.manual td:nth-child(2) input,.rgtab tr.manual td:nth-child(3) input{border-color:var(--brand);background:var(--brand-soft)}
+.rgtab .stpill{margin-left:6px}
+@media (max-width:700px){.tablewrap:has(.rgtab){overflow-x:auto}.rgtab{min-width:420px}}
