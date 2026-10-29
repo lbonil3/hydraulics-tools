@@ -486,6 +486,46 @@ t('v2.5 project sheet index: edit once, bulk-apply to every segment, skip existi
   assert.strictEqual(m.index.length, M.DEFAULT_TEMPLATES.length, 'older data gets the default index');
 });
 
+t('v2.6 sheet-number ranges: suggestion, duplicates, out-of-range, auto-number', () => {
+  const st = M.newState();
+  const g = M.addSegment(st, st.subs[0].id, { road: 'FM 1960', start: '10+00', end: '35+00' }).seg;
+  M.applyGenerate(st, g.id, M.planGenerate(st, g.id));
+  M.bulkAddTemplates(st, g.id, {});
+  const dam = g.sheets.find((x) => x.title === 'Drainage Area Map');
+  const pp1 = g.sheets.find((x) => x.gen && x.gen.series === 'pp-drain' && x.gen.idx === 1);
+  const sw = g.sheets.find((x) => x.title === 'SWP3 Standard Details');
+  assert.strictEqual(M.rangeFor(st, dam).from, 1);
+  assert.strictEqual(M.rangeFor(st, pp1).key, 'series:pp-drain');
+  assert.strictEqual(M.rangeFor(st, sw).key, 'disc:SWP3');
+  assert.strictEqual(M.suggestNumber(st, dam), '1');
+  M.updateSheet(st, dam.id, { number: '1' });
+  const dam2 = M.addSheet(st, g.id, { title: 'Drainage Area Map', discipline: 'Drainage' });
+  assert.strictEqual(M.suggestNumber(st, dam2), '2', 'next free number in range');
+  M.updateSheet(st, dam2.id, { number: '1' });
+  assert.match(M.numberIssues(st, dam2)[0], /Duplicate sheet number/);
+  M.updateSheet(st, dam2.id, { number: '55' });
+  assert.match(M.numberIssues(st, dam2)[0], /Out of range: Drainage Area Map uses 1–9/);
+  assert.deepStrictEqual([pp1.number, M.numberIssues(st, pp1).length], ['10', 0], 'generated PP sheets get range numbers');
+  M.updateSheet(st, pp1.id, { number: 'DRAIN-1' });
+  assert.strictEqual(M.numberIssues(st, pp1).length, 0, 'non-numeric numbers are not range-checked');
+  assert.strictEqual(M.allNumberIssues(st).length, 1);
+  M.setRange(st, 'tpl:drainage area map', { to: 9 }); M.updateSheet(st, dam2.id, { number: '2' });
+  assert.strictEqual(M.allNumberIssues(st).length, 0);
+  assert.throws(() => M.setRange(st, 'disc:SWP3', { from: 9, to: 3 }), /to/);
+  const n = M.autoNumber(st, { all: true });
+  assert.strictEqual(n, g.sheets.length);
+  assert.strictEqual(pp1.number, '10');
+  assert.strictEqual(new Set(g.sheets.map((x) => x.number)).size, g.sheets.length, 'unique');
+  assert.strictEqual(M.allNumberIssues(st).length, 0);
+  const x = M.addSheet(st, g.id, { title: 'Extra drainage sheet', discipline: 'Drainage' });
+  assert.strictEqual(M.autoNumber(st), 1);
+  assert.ok(Number(x.number) >= 70 && Number(x.number) <= 99);
+  M.addRange(st, 'Culvert Layout', 60, 64);
+  assert.ok(M.rangeOverlaps(st).some((s) => /Culvert Layout/.test(s)));
+  const m = M.migrate(Object.assign(JSON.parse(JSON.stringify(st)), { settings: Object.assign({}, st.settings, { numbering: undefined }) }));
+  assert.strictEqual(m.settings.numbering.length, M.DEFAULT_NUMBERING.length, 'older data gets default ranges');
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

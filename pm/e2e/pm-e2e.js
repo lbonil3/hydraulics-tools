@@ -383,6 +383,25 @@ async function serve(r) {
   ok(after25[0][0] === before25[0][0] + 1 && after25[1][0] === before25[1][0] + 12, 'bulk-apply adds index sheets to every segment, skipping existing (' + JSON.stringify(after25) + ')');
   ok(/Every segment already has/.test(await txt('#idxPlan')), 're-apply would add nothing');
   await click('#modalClose'); await sleep(200);
+  // 10e. v2.6 sheet-number ranges
+  const dams = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets)).filter((x) => x.title === 'Drainage Area Map').map((x) => x.id));
+  await click('.node[data-key="sheet:' + dams[0] + '"]'); await pg.waitForSelector('#numHint');
+  ok(/Drainage Area Map: 1–9 · next free 1/.test(await txt('#numHint')), 'sheet drawer suggests next free number in the series range');
+  await click('#useNum'); await sleep(150);
+  ok((await pg.$eval('#shNum', (e) => e.value)) === '1', '“Use” fills the suggested number');
+  await click('.node[data-key="sheet:' + dams[1] + '"]'); await pg.waitForSelector('#numHint');
+  ok(/next free 2/.test(await txt('#numHint')), 'next suggestion skips used numbers');
+  await setVal('#shNum', '1'); await sleep(200);
+  ok(/Duplicate sheet number/.test(await txt('#numWarn')) && !!(await pg.$('#numRail')), 'duplicate number warning (drawer + overview)');
+  await setVal('#shNum', '15'); await sleep(200);
+  ok(/Out of range: Drainage Area Map uses 1–9/.test(await txt('#numWarn')), 'out-of-range warning');
+  await pg.screenshot({ path: SHOTS + 'v2.6-sheet-number-' + tag + '.png' });
+  await click('#setBtn'); await pg.waitForSelector('#renumAll');
+  await click('#renumAll'); await sleep(250);
+  ok(/No duplicate or out-of-range numbers/.test(await txt('#numIssues')) && !(await pg.$('#numRail')), 'Renumber all from ranges clears issues');
+  await pg.screenshot({ path: SHOTS + 'v2.6-number-ranges-' + tag + '.png' });
+  await click('#modalClose'); await sleep(150);
+  await pg.keyboard.press('Escape'); await sleep(150);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);

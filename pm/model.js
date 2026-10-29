@@ -24,6 +24,15 @@
     ['SWP3 Summary & Notes', 'SWP3'],
     ['SWP3 Standard Details', 'SWP3'],
   ];
+  /* v2.6 sheet-number ranges: key = series:<id> | tpl:<title lowercase> | disc:<discipline> (fallback) */
+  const DEFAULT_NUMBERING = [
+    { key: 'tpl:drainage area map', label: 'Drainage Area Map', from: 1, to: 9 },
+    { key: 'series:pp-drain', label: 'Drainage Plan & Profile', from: 10, to: 49 },
+    { key: 'series:pp-storm', label: 'Storm Sewer Plan & Profile', from: 50, to: 69 },
+    { key: 'disc:Drainage', label: 'Other Drainage sheets', from: 70, to: 99 },
+    { key: 'series:pp-swp3', label: 'SWP3 Layout', from: 100, to: 129 },
+    { key: 'disc:SWP3', label: 'Other SWP3 sheets', from: 130, to: 149 },
+  ];
   const DEFAULT_SERIES = [
     { id: 'pp-drain', name: 'Drainage Plan & Profile', discipline: 'Drainage', enabled: true, scale: null },
     { id: 'pp-storm', name: 'Storm Sewer Plan & Profile', discipline: 'Drainage', enabled: false, scale: null },
@@ -44,7 +53,7 @@
       subs: ['A', 'B', 'C', 'D'].map((code) => ({ id: uid(), code, name: 'Sub-project ' + code, order: ['A', 'B', 'C', 'D'].indexOf(code) + 1, scale: 100, templates: defaultTemplates(), segments: [] })),
       staff: [],
       index: defaultTemplates(),
-      settings: { scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES) },
+      settings: { scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES), numbering: clone(DEFAULT_NUMBERING) },
       milestones: DEFAULT_MILESTONES.map((name) => ({ id: uid(), name, date: '' })),
       links: [],
       views: [],
@@ -189,8 +198,8 @@
     for (const c of plan.create) {
       const sh = newSheet({ title: c.title, discipline: c.series.discipline, series: c.series.name });
       sh.gen = { series: c.series.id, idx: c.range.idx, of: c.range.of, start: c.range.start, end: c.range.end };
-      sh.number = c.series.id.replace('pp-', '').toUpperCase() + '-' + c.range.idx;
       seg.sheets.push(sh);
+      sh.number = suggestNumber(st, sh) || c.series.id.replace('pp-', '').toUpperCase() + '-' + c.range.idx; /* v2.6: next free number in the series range */
     }
     for (const u of plan.update) {
       Object.assign(u.sheet.gen, { idx: u.range.idx, of: u.range.of, start: u.range.start, end: u.range.end });
@@ -525,8 +534,9 @@
   function normalize(st) {
     if (!st || st.schema !== SCHEMA || !Array.isArray(st.subs)) throw new Error('Data is not a PM v2 project');
     st.staff = Array.isArray(st.staff) ? st.staff.map((s) => (typeof s === 'string' ? { name: s, role: '' } : s)) : [];
-    st.settings = Object.assign({ scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES) }, st.settings || {});
+    st.settings = Object.assign({ scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), series: clone(DEFAULT_SERIES), numbering: clone(DEFAULT_NUMBERING) }, st.settings || {});
     st.milestones = Array.isArray(st.milestones) ? st.milestones : [];
+    if (!Array.isArray(st.settings.numbering)) st.settings.numbering = clone(DEFAULT_NUMBERING);
     st.views = Array.isArray(st.views) ? st.views : [];
     st.links = Array.isArray(st.links) ? st.links : [];
     st.index = Array.isArray(st.index) ? st.index : defaultTemplates();
@@ -744,7 +754,65 @@
     return plan.count;
   }
   function indexToTemplates(st) { for (const sub of st.subs) sub.templates = st.index.map((t) => ({ id: uid(), title: t.title, discipline: t.discipline })); log(st, 'Sheet index copied to every sub-project’s standard set'); }
-  return { SCHEMA, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* ---- v2.6 sheet numbers ---- */
+  function numVal(n) { const m = /^\s*(\d+)\s*$/.exec(String(n == null ? '' : n)); return m ? Number(m[1]) : null; }
+  function rangeFor(st, sh) {
+    const R = st.settings.numbering || [];
+    return (sh.gen && R.find((r) => r.key === 'series:' + sh.gen.series)) || R.find((r) => r.key === 'tpl:' + String(sh.title).trim().toLowerCase()) || R.find((r) => r.key === 'disc:' + sh.discipline) || null;
+  }
+  function suggestNumber(st, sh, taken) {
+    const r = rangeFor(st, sh); if (!r) return null;
+    const used = taken || new Set(allSheets(st).filter((x) => x.sh !== sh).map((x) => String(x.sh.number).trim().toLowerCase()).filter(Boolean));
+    for (let n = Number(r.from); n <= Number(r.to); n++) if (!used.has(String(n))) return String(n);
+    return null;
+  }
+  function numberIssues(st, sh) {
+    const out = [];
+    const num = String(sh.number || '').trim();
+    if (!num) return out;
+    const dup = allSheets(st).filter((x) => x.sh !== sh && String(x.sh.number || '').trim().toLowerCase() === num.toLowerCase());
+    if (dup.length) out.push('Duplicate sheet number — also on ' + dup.map((x) => x.sub.code + ' · ' + x.sh.title).join(', '));
+    const v = numVal(num), r = rangeFor(st, sh);
+    if (r && v != null && (v < r.from || v > r.to)) out.push('Out of range: ' + r.label + ' uses ' + r.from + '–' + r.to);
+    return out;
+  }
+  function allNumberIssues(st) { return allSheets(st).map((r) => ({ r, issues: numberIssues(st, r.sh) })).filter((x) => x.issues.length); }
+  /* fill numbers in project order (build order, station, generated index); opts.all also replaces existing numbers */
+  function autoNumber(st, opts) {
+    const rows = orderedSubs(st).flatMap((sub) => sub.segments.slice().sort((a, b) => a.start - b.start).flatMap((seg) => seg.sheets.map((sh) => ({ sub, seg, sh }))));
+    const all = !!(opts && opts.all);
+    const used = new Set(all ? [] : rows.map((x) => String(x.sh.number).trim().toLowerCase()).filter(Boolean));
+    let n = 0;
+    for (const x of rows) {
+      if (!all && String(x.sh.number || '').trim()) continue;
+      const v = suggestNumber(st, x.sh, used);
+      if (v) { x.sh.number = v; used.add(v); n++; }
+    }
+    log(st, (all ? 'Renumbered ' : 'Numbered ') + n + ' sheet(s) from the number ranges');
+    return n;
+  }
+  function setRange(st, key, f) {
+    const r = st.settings.numbering.find((x) => x.key === key); if (!r) throw new Error('No such range');
+    const from = f.from != null ? Math.floor(Number(f.from)) : r.from, to = f.to != null ? Math.floor(Number(f.to)) : r.to;
+    if (!(from >= 0) || !(to >= from)) throw new Error('Range must be numbers with “to” ≥ “from”.');
+    r.from = from; r.to = to; if (f.label) r.label = String(f.label).trim() || r.label;
+    return r;
+  }
+  function addRange(st, title, from, to) {
+    const key = 'tpl:' + String(title || '').trim().toLowerCase();
+    if (key === 'tpl:') throw new Error('Sheet title is required.');
+    if (st.settings.numbering.some((x) => x.key === key)) throw new Error('That sheet already has a range.');
+    const r = { key, label: String(title).trim(), from: 0, to: 0 };
+    st.settings.numbering.unshift(r);
+    try { return setRange(st, key, { from, to }); } catch (e) { st.settings.numbering.shift(); throw e; }
+  }
+  function removeRange(st, key) { st.settings.numbering = st.settings.numbering.filter((x) => x.key !== key); }
+  function rangeOverlaps(st) {
+    const R = st.settings.numbering, out = [];
+    for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) if (R[i].from <= R[j].to && R[j].from <= R[i].to) out.push(R[i].label + ' / ' + R[j].label);
+    return out;
+  }
+  return { SCHEMA, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

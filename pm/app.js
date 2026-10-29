@@ -161,6 +161,7 @@
     const kpi = (n, l, cls, on) => h('button', { type: 'button', class: 'kpi ' + (cls || ''), onclick: on }, h('b', {}, n), h('span', {}, l));
     const toList = (f) => () => { Object.assign(filt, { status: '', owner: '', discipline: '', q: '', sub: '', milestone: '', kind: '', when: '', flag: '' }, f); $('#q').value = filt.q; ui.view = 'list'; saveUI(); renderAll(); };
     $('#rail').replaceChildren(...[
+      M.allNumberIssues(st).length ? h('div', { class: 'warnbox', id: 'numRail' }, '⚠ ' + plural(M.allNumberIssues(st).length, 'sheet') + ' with duplicate / out-of-range numbers. ', h('button', { type: 'button', class: 'link', onclick: () => openSettings('nums') }, 'Review')) : null,
       days > BACKUP_DAYS ? h('div', { class: 'warnbox' }, st.lastBackup ? 'Last backup ' + Math.floor(days) + ' days ago. ' : 'No backup yet. ', h('button', { type: 'button', class: 'link', onclick: openSettings }, 'Export backup')) : null,
       h('section', { class: 'panel hero' }, ring(o.pct, 84),
         h('div', {}, h('div', { class: 'big' }, o.pct + '%'), h('div', { class: 'muted' }, 'weighted progress'), h('div', { class: 'muted' }, o.done + ' of ' + o.total + ' sheets done'))),
@@ -615,7 +616,7 @@
     const sh = r.sh;
     const lab = c.l + ' for ' + sh.title;
     const upd = (f) => { commit(() => M.updateSheet(st, sh.id, f), { render: false }); refresh(); };
-    if (c.edit === 'text') { const i = h('input', { value: sh[c.k] || '', 'aria-label': lab, class: 'c-' + c.k }); i.addEventListener('change', () => upd({ [c.k]: i.value })); return i; }
+    if (c.edit === 'text') { const iss = c.k === 'number' ? M.numberIssues(st, sh) : []; const i = h('input', { value: sh[c.k] || '', 'aria-label': lab, class: 'c-' + c.k + (iss.length ? ' numbad' : ''), title: iss.join(' · ') || null, placeholder: c.k === 'number' ? M.suggestNumber(st, sh) || '' : null }); i.addEventListener('change', () => upd({ [c.k]: i.value })); return i; }
     if (c.edit === 'num') { const i = h('input', { type: 'number', min: 0, max: c.k === 'pct' ? 100 : null, step: c.k === 'pct' ? 5 : 0.5, value: sh[c.k] || 0, 'aria-label': lab, class: 'num' }); i.addEventListener('change', () => upd({ [c.k]: i.value || 0 })); return i; }
     if (c.edit === 'date') { const i = h('input', { type: 'date', value: sh.due, 'aria-label': lab }); i.addEventListener('change', () => upd({ due: i.value })); return i; }
     if (c.edit === 'status') { const i = select(M.STATUSES, sh.status, { 'aria-label': lab, class: 'stsel st-' + slug(sh.status) }); i.addEventListener('change', () => upd({ status: i.value })); return i; }
@@ -900,6 +901,14 @@
         renderAll();
       } }, impactKey === key ? 'Hide impact' : 'Show impact'), h('span', { class: 'muted', id: 'impactCounts' }, I.up.size + ' upstream · ' + I.down.size + ' downstream')));
   }
+  function numberField(sh, input) {
+    const r = M.rangeFor(st, sh), sug = M.suggestNumber(st, sh), iss = M.numberIssues(st, sh);
+    if (iss.length) input.classList.add('numbad');
+    return h('div', { class: 'f' }, h('label', { for: input.id }, 'Sheet number'), input,
+      h('small', { class: 'muted', id: 'numHint' }, r ? r.label + ': ' + r.from + '–' + r.to : 'No range set',
+        sug && String(sh.number).trim() !== sug ? [' · next free ', h('b', {}, sug), ' ', h('button', { type: 'button', class: 'link', id: 'useNum', onclick: () => commit(() => M.updateSheet(st, sh.id, { number: sug })) }, 'Use')] : null),
+      iss.length ? h('small', { class: 'err', id: 'numWarn', role: 'alert' }, '⚠ ' + iss.join(' · ')) : null);
+  }
   function sheetDrawer({ sub, seg, sh }) {
     const up = (f) => commit(() => M.updateSheet(st, sh.id, f));
     const inp = (k, attrs) => { const i = h('input', Object.assign({ value: sh[k] == null ? '' : sh[k] }, attrs || {})); i.addEventListener('change', () => up({ [k]: i.type === 'number' ? Number(i.value) || 0 : i.value })); return i; };
@@ -919,7 +928,7 @@
       sh.gen ? h('p', { class: 'pill' }, 'Generated PP sheet ' + sh.gen.idx + ' of ' + sh.gen.of + ' · Sta ' + M.formatStation(sh.gen.start) + ' to ' + M.formatStation(sh.gen.end) + ' (' + fmtFt(sh.gen.end - sh.gen.start) + ')') : null,
       blocked.length ? h('p', { class: 'warnbox', id: 'blockedMsg' }, '⛓ Blocked by ' + blocked.length + ': ' + blocked.map((r) => M.refLabel(st, r)).join(', ')) : null,
       h('div', { class: 'g2' }, field('Status', status), field('Owner', owner), field('Due date', inp('due', { type: 'date' })), field('Milestone', ms),
-        field('Discipline', disc), field('Sheet number', inp('number', { placeholder: 'e.g. DR-01' })), field('Series', inp('series', { placeholder: 'e.g. Drainage Plan & Profile' })),
+        field('Discipline', disc), numberField(sh, inp('number', { placeholder: 'e.g. 12', id: 'shNum' })), field('Series', inp('series', { placeholder: 'e.g. Drainage Plan & Profile' })),
         h('div', { class: 'f' }, h('label', { for: pct.id = 'pct' + sh.id }, '% complete'), h('div', { class: 'rangebox' }, pct, pctOut)),
         field('Hours budget', inp('hoursBudget', { type: 'number', min: 0, step: 0.5 })), field('Hours actual', inp('hoursActual', { type: 'number', min: 0, step: 0.5 }))),
       h('fieldset', { class: 'qc' }, h('legend', {}, 'QC checklist'),
@@ -1031,6 +1040,27 @@
       h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); commit(() => M.addMilestone(st, nn.value, nd.value)); openMilestones(); } }, nn, nd, h('button', { class: 'btn', type: 'submit' }, 'Add milestone')));
     openModal('Milestones', body);
   }
+  function numberingSection() {
+    const ov = M.rangeOverlaps(st), iss = M.allNumberIssues(st);
+    const nt = h('input', { placeholder: 'Sheet title (e.g. Culvert Layout)', 'aria-label': 'Sheet title for new range', list: 'tplList2' });
+    const nf = h('input', { type: 'number', min: 0, placeholder: 'From', 'aria-label': 'Range from', class: 'num' });
+    const nto = h('input', { type: 'number', min: 0, placeholder: 'To', 'aria-label': 'Range to', class: 'num' });
+    const set = (r, k) => (e) => { try { M.setRange(st, r.key, { [k]: e.target.value }); save(); openSettings('nums'); } catch (ex) { toast(ex.message); e.target.value = r[k]; } };
+    return h('section', { id: 'numSec' }, h('h3', {}, 'Sheet number ranges'),
+      h('p', { class: 'muted' }, 'Per series or sheet type. The sheet drawer suggests the next free number; duplicates and numbers outside the range are flagged.'),
+      h('table', { class: 'grid compact' }, h('thead', {}, h('tr', {}, ['Sheets', 'From', 'To', ''].map((x) => h('th', { scope: 'col' }, x)))),
+        h('tbody', {}, st.settings.numbering.map((r) => h('tr', {}, h('th', { scope: 'row' }, r.label),
+          h('td', {}, h('input', { type: 'number', min: 0, value: r.from, class: 'num', 'aria-label': r.label + ' from', onchange: set(r, 'from') })),
+          h('td', {}, h('input', { type: 'number', min: 0, value: r.to, class: 'num', 'aria-label': r.label + ' to', onchange: set(r, 'to') })),
+          h('td', {}, /^disc:/.test(r.key) ? null : h('button', { type: 'button', class: 'ibtn danger', 'aria-label': 'Remove range ' + r.label, onclick: () => { commit(() => M.removeRange(st, r.key)); openSettings('nums'); } }, '×')))))),
+      h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); try { M.addRange(st, nt.value, nf.value, nto.value); save(); openSettings('nums'); } catch (ex) { toast(ex.message); } } }, nt, nf, nto, h('button', { class: 'btn sec', type: 'submit' }, 'Add range')),
+      h('datalist', { id: 'tplList2' }, (st.index || []).map((t) => h('option', { value: t.title }))),
+      ov.length ? h('p', { class: 'warnbox' }, 'Overlapping ranges: ' + ov.join('; ')) : null,
+      h('p', { class: iss.length ? 'err' : 'muted', id: 'numIssues' }, iss.length ? '⚠ ' + plural(iss.length, 'sheet') + ' with number issues: ' + iss.slice(0, 5).map((x) => x.r.sub.code + ' ' + x.r.sh.title + ' (' + x.r.sh.number + ')').join(', ') + (iss.length > 5 ? '…' : '') : 'No duplicate or out-of-range numbers.'),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn sec', id: 'fillNums', onclick: () => { const n = commit(() => M.autoNumber(st)); toast('Numbered ' + plural(n || 0, 'sheet') + '.'); openSettings('nums'); } }, 'Fill empty numbers'),
+        h('button', { type: 'button', class: 'btn sec', id: 'renumAll', onclick: () => { if (confirm('Renumber ALL sheets from the ranges (in build order and station order)? This replaces existing sheet numbers.')) { const n = commit(() => M.autoNumber(st, { all: true })); toast('Renumbered ' + plural(n || 0, 'sheet') + '.'); openSettings('nums'); } } }, 'Renumber all')));
+  }
   function openSettings(focus) {
     const sc = h('input', { type: 'number', min: 1, step: 'any', placeholder: 'Scale (e.g. 30)', 'aria-label': 'New scale' });
     const ft = h('input', { type: 'number', min: 1, step: 'any', placeholder: 'Feet per sheet', 'aria-label': 'Feet per sheet for new scale' });
@@ -1074,6 +1104,7 @@
         }))),
       h('section', {}, h('h3', {}, 'Standard sheet templates'), h('p', { class: 'muted' }, 'Each sub-project has its own editable list (open a sub-project → “Standard (non-PP) sheet set”). Resetting changes the template lists only — sheets already on segments are not touched.'),
         h('button', { type: 'button', class: 'btn sec', id: 'resetAllTpl', onclick: () => { if (confirm('Reset the standard sheet templates of ALL sub-projects to the defaults?\n\nExisting sheets on segments are not changed.')) { commit(() => M.resetAllTemplates(st)); toast('Templates reset to defaults.'); } } }, 'Reset all templates to defaults')),
+      numberingSection(),
       h('section', {}, h('h3', {}, 'QC checklist steps'), qc),
       h('section', {}, h('h3', {}, 'Backup & export'),
         h('p', {}, 'Last backup: ', h('b', { id: 'lastBackup' }, st.lastBackup ? new Date(st.lastBackup).toLocaleString() : 'never')),
@@ -1105,6 +1136,7 @@
       h('section', {}, h('h3', {}, 'Activity log'), h('ol', { class: 'log long' }, st.log.slice(0, 200).map((l) => h('li', {}, h('time', { datetime: l.t }, new Date(l.t).toLocaleString()), ' ', l.msg)))),
       h('section', {}, h('h3', {}, 'Danger zone'), h('button', { type: 'button', class: 'btn danger', onclick: () => { if (prompt('Type ERASE to delete all project data in this browser.') === 'ERASE') { localStorage.removeItem(KEY); st = M.newState(); flush(); closeModal(); closeDrawer(); renderAll(); } } }, 'Erase all data')));
     openModal('Settings, backup & export', body);
+    if (focus === 'nums') setTimeout(() => { const o = $('#numSec'); if (o) o.scrollIntoView({ block: 'start' }); }, 40);
     if (focus === 'order') setTimeout(() => { const o = $('#orderSec'); if (o) { o.scrollIntoView({ block: 'start' }); const i = o.querySelector('input'); if (i) i.focus({ preventScroll: true }); } }, 40);
   }
   /* one-time import of the encrypted v1 vault */

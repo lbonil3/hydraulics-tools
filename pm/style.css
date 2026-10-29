@@ -349,3 +349,4 @@ body.linking,body.linking *{cursor:crosshair!important}
 .idxrow input{flex:1;min-width:0}
 .idxrow select{flex:0 0 120px}
 .dlist.idx{max-height:46vh;overflow:auto;padding-right:4px}
+input.numbad{border-color:var(--bad);box-shadow:0 0 0 2px color-mix(in srgb,var(--bad) 20%,transparent)}
