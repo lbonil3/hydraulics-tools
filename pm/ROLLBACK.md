@@ -15,7 +15,8 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.4` / `pm-v2.4-final` | + Updated default sheet templates (Drainage + SWP3), Reset all templates |
 | `pm-v2.5` / `pm-v2.5-final` | + Project sheet index, bulk-apply to all segments |
 | `pm-v2.6` / `pm-v2.6-final` | Sheet-number ranges |
-| `pm-v2.7` | This-week view |
+| `pm-v2.7` / `pm-v2.7-final` | This-week view |
+| `pm-v2.8` | Status board |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -193,3 +194,12 @@ Adds settings.numbering (defaults filled on load); existing sheet numbers untouc
 
 Undo: `git revert --no-edit 6069c86` and push, or `git checkout pm-v2.6-final -- pm`, commit, push.
 No data changes; adds ui pref pm.ui.v2.vf (view filters).
+
+## v2.8
+
+| Commit | Change |
+|---|---|
+| 334c565 | Status board |
+
+Undo: `git revert --no-edit 334c565` and push, or `git checkout pm-v2.7-final -- pm`, commit, push.
+No schema change; status moves are normal sheet edits (logged).
