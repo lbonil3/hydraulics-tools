@@ -669,6 +669,15 @@ t('v2.14 copy segment to another sub-project, with or without sheets', () => {
   const d = M.duplicateSheet(st, s0.id); assert.ok(d.id !== s0.id && /copy/.test(d.title));
 });
 
+t('v2.15 command palette search ranking', () => {
+  const items = [{ label: 'Open Settings', kind: 'action' }, { label: 'FM 1960 Sta 10+00–25+50', hint: 'A · road' }, { label: 'Culvert Layout', hint: 'A · FM 1960' }, { label: 'Print report', kw: 'pdf' }];
+  assert.deepStrictEqual(M.paletteSearch(items, 'fm 1960').map((x) => x.label), ['FM 1960 Sta 10+00–25+50', 'Culvert Layout']);
+  assert.strictEqual(M.paletteSearch(items, 'pdf')[0].label, 'Print report');
+  assert.strictEqual(M.paletteSearch(items, 'zzz').length, 0);
+  assert.strictEqual(M.paletteSearch(items, '').length, 4);
+  assert.strictEqual(M.paletteSearch(items, 'sta 10+00')[0].label, 'FM 1960 Sta 10+00–25+50');
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

@@ -420,3 +420,13 @@ ul.plan{margin:6px 0 0;padding-left:16px;color:var(--muted)}
 .tablewrap{overflow:auto}
 .stable input.scell{min-width:96px}.stable td:nth-child(2) input.scell{min-width:150px}
 .grid.stable td input.scell{max-width:none;width:110px;border-color:var(--line2)}.grid.stable td:nth-child(2) input.scell{width:170px}
+/* v2.15 command palette */
+.cmdk{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.35);display:flex;justify-content:center;align-items:flex-start;padding-top:12vh}
+.cmdk-card{width:min(640px,94vw);background:var(--surface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--shadow-lg,0 20px 50px rgba(0,0,0,.25));padding:10px;display:flex;flex-direction:column;gap:6px}
+.cmdk-card input{font-size:16px;min-height:44px}
+#cmdkList{max-height:52vh;overflow:auto;display:flex;flex-direction:column}
+.cmdi{display:grid;grid-template-columns:86px 1fr;gap:0 10px;text-align:left;border:0;background:transparent;padding:7px 10px;border-radius:10px;cursor:pointer;color:var(--text);font:inherit}
+.cmdi.on{background:var(--brand-soft)}
+.cmdi .ck{grid-row:span 2;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;padding-top:2px}
+.cmdi .cl{font-weight:600}.cmdi .ch{font-size:12px}
+.cmdk-foot{margin:2px 4px}

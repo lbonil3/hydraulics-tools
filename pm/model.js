@@ -983,7 +983,20 @@
     log(st, 'Copied ' + hit.seg.name + ' from ' + hit.sub.code + ' to ' + to.code + (opts && opts.sheets ? ' with ' + hit.seg.sheets.length + ' sheets' : ''));
     return r;
   }
-  return { SCHEMA, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
+  /* v2.15 command palette ranking: every query word must appear; label prefix / word-start matches rank first */
+  function paletteSearch(items, q, limit) {
+    const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+    const out = [];
+    items.forEach((it, i) => {
+      const L = String(it.label).toLowerCase(), hay = L + ' ' + String(it.hint || '').toLowerCase() + ' ' + String(it.kw || '').toLowerCase();
+      if (!words.every((w) => hay.includes(w))) return;
+      let sc = (it.rank || 0);
+      for (const w of words) { if (L.startsWith(w)) sc += 30; else if (new RegExp('(^|[^a-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(L)) sc += 15; else if (L.includes(w)) sc += 5; }
+      out.push({ it, sc, i });
+    });
+    return out.sort((a, b) => b.sc - a.sc || a.i - b.i).slice(0, limit || 40).map((x) => x.it);
+  }
+  return { SCHEMA, paletteSearch, copySegment, splitSegment, touching, mergeSegments, allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV, TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, setRange, addRange, removeRange, rangeOverlaps, addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV, STATUSES, DISCIPLINES, WEIGHT, DEFAULT_TEMPLATES, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, uid, newState,
     parseStation, formatStation, segLength, validateSegment, overlaps,
     ftPerSheet, ppCount, ppRanges, segScale, seriesScale, segPP, ppSummary, genTitle, isTouched, planGenerate, applyGenerate,
     findSub, findSeg, findSheet, log, addSegment, updateSegment, deleteSegment, newSheet, addSheet, updateSheet, deleteSheet, duplicateSheet, blockedBy,

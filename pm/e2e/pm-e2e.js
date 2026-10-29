@@ -572,6 +572,30 @@ async function serve(r) {
   await pg.$$eval('#drawer button', (bs) => bs.find((b) => b.textContent === 'Duplicate').click()); await sleep(400);
   ok((await D14()).subs[0].segments[0].sheets.some((q) => q.title === sh14.title + ' (copy)'), 'duplicate a sheet');
   await click('#undoBtn'); await sleep(300); await pg.keyboard.press('Escape'); await sleep(150);
+  // 10n. v2.15 quick-add chain + command palette
+  const D15 = () => pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v2')));
+  const sd = (await D15()).subs[3];
+  await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await pg.waitForSelector('#cmdkQ');
+  await pg.type('#cmdkQ', 'add road to D'); await sleep(100); await pg.keyboard.press('Enter'); await pg.waitForSelector('#addSegRoad'); await sleep(100);
+  ok(true, 'palette action opens the add-road form');
+  await setVal('#addSegRoad', 'SH 249'); await setVal('#addSegStart', '0+00'); await setVal('#addSegEnd', '1200');
+  await click('#addSegNext'); await sleep(400);
+  ok((await pg.$eval('#addSegStart', (e) => e.value)) === '12+00' && (await pg.$eval('#addSegRoad', (e) => e.value)) === 'SH 249', 'Add + next: road remembered, next start = previous end');
+  await setVal('#addSegEnd', '20+00'); await pg.focus('#addSegEnd'); await pg.keyboard.down('Shift'); await pg.keyboard.press('Enter'); await pg.keyboard.up('Shift'); await sleep(400);
+  ok((await D15()).subs[3].segments.length === sd.segments.length + 2, 'Shift+Enter adds and chains the next segment');
+  for (let i = 0; i < 2; i++) { await click('#undoBtn'); await sleep(300); }
+  ok((await D15()).subs[3].segments.length === sd.segments.length, 'quick-adds undone');
+  await pg.keyboard.press('Escape'); await sleep(100);
+  await click('#cmdkBtn'); await pg.waitForSelector('#cmdkQ');
+  await pg.type('#cmdkQ', 'culvert layout'); await sleep(150);
+  ok(/Culvert Layout/.test(await txt('#cmdkList .cmdi.on')), 'palette finds sheets by title');
+  await pg.screenshot({ path: SHOTS + 'v2.15-command-palette-' + tag + '.png' });
+  await pg.keyboard.press('Enter'); await pg.waitForSelector('#shNum'); await sleep(150);
+  ok(!(await pg.$('#cmdk')) && /Culvert Layout/.test(await pg.$eval('#drawer input', (e) => e.value) + await txt('#drawer')), 'Enter jumps to the sheet');
+  await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await pg.waitForSelector('#cmdkQ');
+  await pg.type('#cmdkQ', 'stations table'); await pg.keyboard.press('Enter'); await sleep(300);
+  ok(!!(await pg.$('#stTable')), 'palette runs view actions');
+  await click('#vTree'); await sleep(250); await pg.keyboard.press('Escape'); await sleep(150);
   // 11. backup export → clear → import
   await click('#setBtn'); await pg.waitForSelector('#exportBtn');
   await click('#exportBtn'); await sleep(800);
