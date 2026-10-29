@@ -30,6 +30,7 @@ Every version is tagged. Going back never needs a force push: you either revert 
 | `pm-v2.19` / `pm-v2.19-final` | Report narrative + notes |
 | `pm-v2.20` | PM v2.20 CSV import |
 | `pm-v3.2` / `pm-v3.2-final` | Roads as tree branches, sheets with station ranges (before: `pm-v3.2-pre` = `pm-v3.1-final`) |
+| `pm-v3.3` / `pm-v3.3-final` | Professional printed status report (before: `pm-pre-report`) |
 
 Up to `pm-v1` the PM tool only added files under `pm/`. `pm-v1.1` adds a home card in
 `index.html`, `home.css` and `scripts/check-home.js` (commit bc54383).
@@ -368,3 +369,17 @@ Tags: pm-v3.2-pre (= pm-v3.1-final, before), pm-v3.2, pm-v3.2-final.
 
 Undo (code): `git checkout pm-v3.1-final -- pm`, commit, push (no force).
 Data: same key pm.data.v3. Before the upgrade the untouched v3.1 data is copied to pm.data.v3.pre-v3.2-backup (download from the notice or Settings). To go back fully, restore the code and put the backup back: `localStorage.setItem('pm.data.v3', localStorage.getItem('pm.data.v3.pre-v3.2-backup'))`. v3.1 code ignores the new `sta` / `v32` fields, so keeping v3.2 data also works.
+
+## v3.3 (professional printed report)
+
+Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
+
+| Commit | Change |
+|---|---|
+| 1fc1c37 | pm v3.3 (part 4): e2e for printed report and PDF output |
+| 88b1c46 | pm v3.3 (part 3): print stylesheet: page header/footer, page numbers, B/W chips, Letter/A4, page breaks |
+| 624200c | pm v3.3 (part 2): printed report layout and report settings |
+| e2e5d74 | pm v3.3 (part 1): printable report data (printReport, report meta), tests |
+
+Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
+Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
