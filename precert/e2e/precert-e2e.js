@@ -184,6 +184,48 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ok((await data()).example && await pg.$eval('#exRestore', (e) => e.hidden) && await pg.evaluate(() => localStorage.getItem('precert.data.v1.pre-example') === null), 'first-run example: no backup needed');
   await pg.$eval('#exBtn', (e) => e.click()); await sleep(300);
   ok(!(await data()).projects.length && !(await data()).example, 'header Clear example empties the example');
+  /* 10. v1.4 interface */
+  const V14 = SHOTS + 'v14/', v14 = (n, full) => pg.screenshot({ path: V14 + n + '-' + tag + '.png', fullPage: !!full }); fs.mkdirSync(V14, { recursive: true });
+  const vis = (sel) => pg.evaluate((q) => { const e = document.querySelector(q); if (!e) return false; const r = e.getBoundingClientRect(), cs = getComputedStyle(e); return r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden'; }, sel);
+  await pg.evaluate(() => { const u = JSON.parse(localStorage.getItem('precert.ui.v1')); u.tour = 0; u.tab = 'profile'; localStorage.setItem('precert.ui.v1', JSON.stringify(u)); }); await pg.reload({ waitUntil: 'networkidle0' }); await pg.waitForSelector('#main > *');
+  ok(await vis('#tour') && /1 of 4/.test(await txt('#tour')), 'first-run tour shown'); await v14('01-tour');
+  for (let i = 0; i < 3; i++) { await pg.click('#tourNext'); await sleep(80); } ok(/4 of 4/.test(await txt('#tour')), 'tour steps'); await pg.click('#tourSkip'); await sleep(80);
+  ok(!(await pg.$('#tour')) && (await pg.evaluate(() => JSON.parse(localStorage.getItem('precert.ui.v1')).tour)) === 'done', 'tour dismissed and remembered');
+  ok(!(await vis('#menu')), 'menu closed'); await pg.click('#menuBtn'); await sleep(80); ok(await vis('#menu') && await vis('#exBtn') && await vis('#themeBtn') && await vis('#tourBtn'), 'one menu holds example, theme, tour'); await v14('02-menu');
+  await pg.keyboard.press('Escape'); await sleep(50); ok(!(await vis('#menu')), 'Escape closes the menu');
+  ok(await pg.evaluate(() => document.querySelector('.notice').getBoundingClientRect().height < 90), 'notices merged into one slim bar');
+  if (MOBILE) {
+    ok(await pg.evaluate(() => { const r = document.querySelector('.tabs').getBoundingClientRect(); return getComputedStyle(document.querySelector('.tabs')).position === 'fixed' && Math.abs(r.bottom - innerHeight) < 2; }), 'phone: bottom tab bar');
+    ok(await vis('.tabs [data-tab="form"]') && await vis('#moreBtn') && !(await vis('.tabs [data-tab="sources"]')), 'phone: four main tabs + More');
+    await pg.click('#moreBtn'); await sleep(80); ok(await vis('.tabs [data-tab="sources"]') && await vis('.tabs [data-tab="export"]'), 'More reveals the other sections'); await v14('03-phone-more');
+    await pg.click('.tabs [data-tab="cats"]'); await sleep(150); ok(!(await vis('.tabs [data-tab="sources"]')) && await pg.$eval('#moreBtn', (e) => e.classList.contains('on')), 'More closes; marked active for a secondary tab');
+    ok(await pg.evaluate(() => [...document.querySelectorAll('.tabs button, .btn, .mi')].filter((e) => e.offsetParent).every((e) => e.getBoundingClientRect().height >= 43.5)), 'tap targets >= 44px');
+  } else ok(!(await vis('#moreBtn')) && await vis('.tabs [data-tab="sources"]') && await pg.evaluate(() => getComputedStyle(document.querySelector('.tabs')).position === 'sticky'), 'desktop keeps top tabs');
+  await pg.$eval('#exBtn', (e) => e.click()); await sleep(300); ok((await data()).example, 'example loaded from the menu');
+  await tab('projects'); ok((await pg.$$('details.proj')).length === 3 && (await pg.$$('details.proj[open]')).length <= 1, 'projects collapsed, at most one open');
+  ok(await pg.$eval('details.proj summary', (e) => /02\/01\/2015/.test(e.textContent) && /10\.2\.1/.test(e.textContent) && !!e.querySelector('.light')), 'collapsed card: name, dates, categories, readiness dot');
+  await v14('04-projects-collapsed', true);
+  await pg.$$eval('details.proj > summary', (a) => a[0].click()); await sleep(80); await pg.$$eval('details.proj > summary', (a) => a[1].click()); await sleep(150);
+  ok(await pg.evaluate(() => { const o = [...document.querySelectorAll('details.proj')].map((d) => d.open); return o[1] && !o[0] && !o[2]; }), 'opening a project closes the others');
+  ok(await vis('#nextStep') && /Next step|All checks/.test(await txt('#nextStep')), 'Next step line');
+  const eSel = 'details.proj[open] .entry';
+  ok(await pg.$eval(eSel + ' .covers', (e) => !!e.querySelector('.auto.ok, .auto.no')), 'checklist shows live term-match marks');
+  if (!MOBILE) { ok(await pg.$eval(eSel + ' .ebody', (e) => getComputedStyle(e).gridTemplateColumns.split(' ').length === 2), 'desktop: checklist beside the text'); await pg.$eval(eSel, (e) => e.scrollIntoView()); await v14('05-editor-desktop'); }
+  else { await pg.$eval(eSel + ' .fsbtn', (e) => e.click()); await sleep(100); ok(await pg.$eval('.entry.fs', (e) => getComputedStyle(e).position === 'fixed' && Math.abs(e.getBoundingClientRect().width - innerWidth) < 2), 'phone: full-screen editor'); await v14('05-editor-fullscreen'); await pg.$eval('.entry.fs .fsbar .btn', (e) => e.click()); await sleep(80); ok(!(await pg.$('.entry.fs')), 'Done leaves full screen'); }
+  await pg.$eval(eSel + ' .wtext', (e) => { e.value += ' x'; e.dispatchEvent(new Event('input')); }); await sleep(300); ok(/✓ Saved on this device/.test(await txt('#saved')), 'autosave indicator');
+  await pg.$eval('#exBtn', (e) => e.click()); await sleep(300); await tab('form');
+  await pg.$eval('#formView [data-jump="f-firm-p"]', (e) => e.click()); await sleep(200);
+  ok(await pg.evaluate(() => document.activeElement && document.activeElement.id === 'f-firm-p') && /profile/.test(await pg.evaluate(() => document.querySelector('#main').dataset.tab)), 'tap a missing red field jumps to its input');
+  await tab('form'); await v14('06-form-jump');
+  /* dark-mode contrast (WCAG AA 4.5:1 for text) */
+  await pg.evaluate(() => { if (document.documentElement.dataset.theme !== 'dark') document.querySelector('#themeBtn').click(); }); await sleep(100);
+  const bad = await pg.evaluate(() => {
+    const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number), lum = (c) => { const v = rgb(c).slice(0, 3).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    const bg = (e) => { while (e) { const c = getComputedStyle(e).backgroundColor, a = rgb(c)[3]; if (c && c !== 'transparent' && (a === undefined || a > 0.5)) return c; e = e.parentElement; } return 'rgb(11,18,32)'; };
+    const out = []; document.querySelectorAll('#main *, .top *, .notice *, .tabs button').forEach((e) => { if (!e.offsetParent || ![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return; const a = lum(getComputedStyle(e).color), b = lum(bg(e)), r = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); if (r < 4.5) out.push(e.tagName + '.' + e.className + ' ' + r.toFixed(2) + ' "' + e.textContent.trim().slice(0, 30) + '"'); });
+    return out; });
+  ok(!bad.length, 'dark mode text contrast >= 4.5: ' + bad.slice(0, 8).join(' | ')); await v14('07-dark-form', true);
+  await pg.evaluate(() => document.querySelector('#themeBtn').click());
   ok(!ext.length, 'no external requests ' + ext.join(' '));
   ok(!errs.length, 'no console errors: ' + errs.join(' | '));
   console.log('PASS', n, 'checks', MODE); await b.close();
