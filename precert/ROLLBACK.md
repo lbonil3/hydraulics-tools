@@ -6,6 +6,8 @@ Going back never needs a force push: restore files from a tag and commit, or rev
 |---|---|
 | `precert-pre` / `home-pre-precert` | main just before the tool and its home card (bddc4c6) |
 | `precert-v1` / `precert-v1-final` | First version of `/precert/` plus the home card |
+| `precert-pre-example` | = precert-v1-final (87f3299), before example mode |
+| `precert-v1.1` / `precert-v1.1-final` | Fictional example mode (Load / Clear example, banner, watermark) |
 
 | Commit | Change |
 |---|---|
@@ -37,3 +39,16 @@ Removing the code does not delete it; export a JSON backup from the Export tab f
 `precert/categories.json` was extracted from TxDOT's Precertification Work Categories document (dated 08/25/2026,
 https://www.txdot.gov/content/dam/docs/division/ppd/precert/precert-work-categories.docx), verified 2026-10-29.
 When TxDOT publishes a new list, regenerate the file and update `docDate` / `verified`.
+
+## v1.1 example mode
+
+| Commit | Change |
+|---|---|
+| 874b28a | precert v1.1: e2e for example mode |
+| 3f422d8 | precert v1.1: Load / Clear example, banner, Restore my data, watermarked exports |
+| 5f28009 | precert v1.1: example data model and tests |
+
+Undo (keeps v1): `git revert --no-edit precert-pre-example..precert-v1.1-final` then push (no force),
+or `git checkout precert-pre-example -- precert` and commit.
+Data: the example lives in `precert.data.v1` with `example: true` and `isExample` flags; real data is copied to
+`precert.data.v1.pre-example` before loading and put back by "Clear example" / "Restore my data". v1 ignores the flags.
