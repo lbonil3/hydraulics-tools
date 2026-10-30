@@ -293,7 +293,7 @@
   })();
 
   /* ----- v3.3 printable status report (engineering deliverable layout) ----- */
-  const RPT_DEF = { paper: 'letter', detail: true, deps: true, workload: true, recent: true, summary: true };
+  const RPT_DEF = { paper: 'letter', detail: true, deps: true, workload: true, recent: true, summary: true, bullets: true };
   function rptOpts() { ui.rpt = ui.rpt && typeof ui.rpt === 'object' ? ui.rpt : {}; for (const k in RPT_DEF) if (!(k in ui.rpt)) ui.rpt[k] = RPT_DEF[k]; return ui.rpt; }
   const ST_SYM = { 'Not started': '○', 'In progress': '◔', 'In review': '◑', Done: '●' };
   function rchip(s) { return h('span', { class: 'rchip s-' + String(s).toLowerCase().replace(/\s+/g, '-') }, (ST_SYM[s] || '') + ' ' + s); }
@@ -315,6 +315,16 @@
       h('td', { class: 'rnw' }, x.range ? M.formatStation(x.range.start) + ' – ' + M.formatStation(x.range.end) + (x.sh.sta ? ' *' : '') : '—'),
       h('td', {}, rchip(x.sh.status)), h('td', {}, x.sh.owner || '—'), h('td', { class: 'rnw' }, x.sh.due || '—'));
     const SHEAD = ['Sheet', 'No.', 'Station range', 'Status', 'Owner', 'Due'];
+    const B = O.bullets ? M.reportOutline(st) : null;
+    const ul = (items, cls) => items && items.length ? h('ul', { class: 'rbul ' + (cls || '') }, items.map((x) => h('li', {}, x))) : null;
+    const GSYM = { Done: '●', 'In progress': '◔', 'Not started': '○', 'Needs update': '↻' };
+    const cap = (a, n) => a.length > n ? a.slice(0, n).concat(['+ ' + (a.length - n) + ' more']) : a;
+    const groupList = (g) => h('ul', { class: 'rbul rgroups' }, B.GROUPS.map((k) => { const v = g[k]; const n = typeof v === 'number' ? v : v.length;
+      return h('li', { class: 'rg-' + k.toLowerCase().replace(/\s+/g, '-') }, h('b', {}, GSYM[k] + ' ' + k + ': '), typeof v === 'number' ? n + (n === 1 ? ' section' : ' sections') : n ? (k === 'Not started' && n > 4 ? cap(v.map((x) => x.replace(/ \(0\/0\)$/, '')), 6).join(', ') : null) : 'none',
+        typeof v !== 'number' && n && !(k === 'Not started' && n > 4) ? ul(cap(v, 8)) : null); }));
+    const roadList = (roads) => roads.length ? h('div', { class: 'rroadsb' }, h('ul', { class: 'rbul rroads' }, roads.map((r) => h('li', {}, h('b', {}, 'Road: ' + r.name), h('span', { class: 'rm' }, ' · ' + r.sec),
+      h('ul', { class: 'rbul' }, h('li', {}, 'Stations: ' + r.spans.join(', ')), r.scale ? h('li', {}, 'Scale: ' + r.scale) : null, h('li', {}, 'PP sheets: ' + r.pp),
+        r.sheets.length ? h('li', {}, 'Sheet ranges:', h('ul', { class: 'rbul rranges' }, r.sheets.map((x) => h('li', {}, h('span', { class: 'rnw' }, x.label + (x.number ? ' (#' + x.number + ')' : '') + ': ' + x.range), ' ', rchip(x.status))))) : null))))) : null;
 
     const body = [];
     /* cover / title block */
@@ -338,8 +348,11 @@
         kp(R.overall.done + ' / ' + R.overall.total, 'sheets done'),
         kp(R.pp.total, 'PP sheets · DR ' + R.pp.byDisc.Drainage + ' / SW ' + R.pp.byDisc.SWP3),
         kp(R.overdue.length, 'overdue', R.overdue.length), kp(R.blocked.length, 'blocked', R.blocked.length), kp(upd, 'need update', upd), kp(R.due7.length, 'due in 7 days')),
-      tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h('td', {}, rchip(x)), h('td', { class: 'rnumc' }, String(R.counts[x])), h('td', {}, rbar(R.overall.total ? R.counts[x] / R.overall.total * 100 : 0), R.overall.total ? pct(R.counts[x] / R.overall.total * 100) : '—')))),
-      h('p', { class: 'rlead' }, P.N.project), nt(P.N.note)));
+      B ? [h('p', { class: 'rlead' }, String(P.N.project).split(/(?<=\.)\s/)[0]),
+        h('div', { class: 'rcols' }, h('div', { class: 'rbox' }, h('h3', {}, 'Key takeaways'), ul(B.takeaways)),
+          h('div', { class: 'rbox ratt' }, h('h3', {}, '⚠ Attention needed'), B.attention.length ? h('ul', { class: 'rbul' }, B.attention.map((a) => h('li', { class: 'ra-' + a.kind }, h('b', {}, a.text), ul(a.items)))) : h('p', { class: 'rm' }, 'Nothing needs attention: no overdue, due-soon, blocked, needs-update or unassigned items.'))),
+        h('h3', {}, 'Next steps'), h('ol', { class: 'rbul rnext' }, B.next.map((x) => h('li', {}, x)))] : h('p', { class: 'rlead' }, P.N.project),
+tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h('td', {}, rchip(x)), h('td', { class: 'rnumc' }, String(R.counts[x])), h('td', {}, rbar(R.overall.total ? R.counts[x] / R.overall.total * 100 : 0), R.overall.total ? pct(R.counts[x] / R.overall.total * 100) : '—')))), nt(P.N.note)));
 
     /* 2 progress by sub-project */
     body.push(h('section', { class: 'rsec' }, H2('Progress by sub-project', 'subs'),
@@ -351,8 +364,11 @@
     for (const D of P.N.discs) {
       const T = P.tree.find((t) => t.disc === D.disc);
       body.push(h('section', { class: 'rsec rnarr ' + DINFO[D.disc].cls }, H2(D.disc + ' summary', 'sum-' + DINFO[D.disc].cls),
-        h('p', { class: 'rlead' }, D.text), nt(D.note),
+        B ? (() => { const Bb = B.branches.find((b) => b.disc === D.disc); return [h('p', { class: 'rlead' }, Bb.lead), ul(Bb.facts, 'rfacts'), groupList(Bb.groups)]; })() : h('p', { class: 'rlead' }, D.text), nt(D.note),
         D.subs.map((x) => { const S = T.subs.find((y) => y.sub === x.sub).stats;
+          if (B) { const Bs = B.branches.find((b) => b.disc === D.disc).subs.find((y) => y.sub === x.sub);
+            return h('div', { class: 'rsub' }, h('h3', {}, h('span', { class: 'rcode' }, x.sub.code), ' ' + M.subName(x.sub), h('span', { class: 'rh3m' }, D.disc + ' · ' + pct(S.pct) + ' · ' + S.done + ' / ' + S.total + ' sheets' + (S.pp ? ' · ' + S.pp + ' PP' : ''))),
+              Bs.lead ? h('p', {}, Bs.lead) : null, ul(Bs.facts, 'rfacts'), groupList(Bs.groups), roadList(Bs.roads), nt(x.note)); }
           return h('div', { class: 'rsub' }, h('h3', {}, h('span', { class: 'rcode' }, x.sub.code), ' ' + M.subName(x.sub), h('span', { class: 'rh3m' }, D.disc + ' · ' + pct(S.pct) + ' · ' + S.done + ' / ' + S.total + ' sheets' + (S.pp ? ' · ' + S.pp + ' PP' : ''))),
             h('p', {}, x.text.replace(/^[^—]*— \w+: /, '')), nt(x.note),
             x.secs.length ? h('ul', { class: 'rsecs' }, x.secs.map((y) => h('li', {}, y.text || y.sec.title, y.note ? h('span', { class: 'rnotep' }, ' Notes: ' + y.note) : null))) : null); })));
@@ -380,7 +396,11 @@
       h('h3', {}, 'Due in the next 7 days (' + R.due7.length + ')'), R.due7.length ? tbl('', DH, R.due7.slice(0, MAX).map(dueRow).concat([more(R.due7.length, 5)])) : none('Nothing due in the next 7 days.')));
 
     /* 7 dependencies */
-    if (O.deps) body.push(h('section', { class: 'rsec' }, H2('Dependencies and updates', 'deps'),
+    if (O.deps && B) body.push(h('section', { class: 'rsec' }, H2('Dependencies and updates', 'deps'),
+      h('p', { class: 'rm' }, B.deps.length + (B.deps.length === 1 ? ' dependency' : ' dependencies') + ' · ✓ upstream done · ⧗ waiting on upstream · ↻ upstream revised, needs update'),
+      B.deps.length ? h('ul', { class: 'rbul rdeps' }, cap(B.deps, 40).map((d) => typeof d === 'string' ? h('li', { class: 'rm' }, d) : h('li', { class: d.update ? 'rd-upd' : d.done ? 'rd-ok' : 'rd-wait' }, h('b', { class: 'rdsym' }, d.update ? '↻ ' : d.done ? '✓ ' : '⧗ '), d.text, d.update ? ' — needs update' : d.done ? '' : ' — waiting'))) : none('No dependencies set.'),
+      P.deps.ready.length ? h('p', {}, h('b', {}, 'Ready to start: '), P.deps.ready.slice(0, MAX).join('; ') + (P.deps.ready.length > MAX ? ' (+' + (P.deps.ready.length - MAX) + ' more)' : '')) : null));
+    if (O.deps && !B) body.push(h('section', { class: 'rsec' }, H2('Dependencies and updates', 'deps'),
       h('h3', {}, 'Blocked (' + P.deps.blocked.length + ')'), P.deps.blocked.length ? tbl('', ['Item', 'Waiting on'], P.deps.blocked.slice(0, MAX).map((x) => h('tr', {}, h('td', {}, x.item), h('td', {}, x.by.join('; ')))).concat([more(P.deps.blocked.length, 2)])) : none('Nothing blocked.'),
       h('h3', {}, 'Needs update after a linked revision (' + upd + ')'), upd ? tbl('', ['Item', 'Changed upstream'], P.deps.update.slice(0, MAX).map((x) => h('tr', {}, h('td', {}, x.item), h('td', {}, x.from.join('; ')))).concat([more(upd, 2)])) : none('No updates needed.'),
       P.deps.ready.length ? h('p', {}, h('b', {}, 'Ready to start: '), P.deps.ready.slice(0, MAX).join('; ') + (P.deps.ready.length > MAX ? ' (+' + (P.deps.ready.length - MAX) + ' more)' : '')) : null));
@@ -388,14 +408,15 @@
     /* 8 workload */
     if (O.workload) body.push(h('section', { class: 'rsec' }, H2('Owner workload', 'work'),
       P.workload.length ? tbl('rwork', ['Owner', 'Sheets', 'Open'].concat(M.STATUSES.map((s) => (ST_SYM[s] + ' ' + s)), ['Overdue', 'Due 7 d', 'Hours act / bud']), P.workload.map((w) => h('tr', { class: w.overdue ? 'rbad' : '' }, h('td', {}, h('b', {}, w.owner)), h('td', { class: 'rnumc' }, String(w.total)), h('td', { class: 'rnumc' }, String(w.open)),
-        M.STATUSES.map((s) => h('td', { class: 'rnumc' }, String(w.by[s]))), h('td', { class: 'rnumc' }, String(w.overdue)), h('td', { class: 'rnumc' }, String(w.due7)), h('td', { class: 'rnumc' }, w.hb || w.ha ? w.ha + ' / ' + w.hb : '—')))) : none('No sheets yet.')));
+        M.STATUSES.map((s) => h('td', { class: 'rnumc' }, String(w.by[s]))), h('td', { class: 'rnumc' }, String(w.overdue)), h('td', { class: 'rnumc' }, String(w.due7)), h('td', { class: 'rnumc' }, w.hb || w.ha ? w.ha + ' / ' + w.hb : '—')))) : none('No sheets yet.'),
+      B && B.work.length ? h('ul', { class: 'rbul rworkb' }, B.work.map((w) => h('li', {}, h('b', {}, w.owner), ul(w.bullets)))) : null));
 
     /* 9 recent changes */
     if (O.recent) body.push(h('section', { class: 'rsec' }, H2('Recently changed', 'recent'),
       P.recent.length ? tbl('', ['When', 'Item', 'Change'], P.recent.map((c) => h('tr', {}, h('td', { class: 'rnw' }, c.t ? new Date(c.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'), h('td', {}, c.item), h('td', {}, c.msg || '')))) : none('No changes logged yet.')));
 
     body.push(h('p', { class: 'rend rm' }, 'End of report · generated on this device by Project Tracker, ' + new Date().toLocaleString() + '. Data never leaves the browser.'));
-    if (toc.length > 4) tocBox.replaceChildren(h('h2', {}, 'Contents'), h('ol', {}, toc.map(([n, t]) => h('li', {}, t)))); else tocBox.remove();
+    if (toc.length > 4) tocBox.replaceChildren(h('h2', {}, 'Contents'), h('ol', {}, toc.map(([n, t]) => h('li', { value: String(n) }, t)))); else tocBox.remove();
 
     $('#report').className = 'report ' + (O.paper === 'a4' ? 'pg-a4' : 'pg-letter');
     $('#report').replaceChildren(h('table', { class: 'rpage' },
@@ -514,7 +535,7 @@
       h('div', { class: 'rpgrid' }, fld('rpFor', 'preparedFor', 'Prepared for', 'e.g. TxDOT Houston District'), fld('rpBy', 'preparedBy', 'Prepared by', 'Name, firm'),
         fld('rpNo', 'reportNo', 'Report no.', 'e.g. 07'), fld('rpScope', 'scope', 'Scope', 'Leave blank for the default scope sentence'),
         h('label', { class: 'f' }, h('span', {}, 'Paper'), paper)),
-      h('div', { class: 'rpchk' }, chk('rpDetail', 'detail', 'Sheet detail by section'), chk('rpDeps', 'deps', 'Dependencies'), chk('rpWork', 'workload', 'Owner workload'), chk('rpRecent', 'recent', 'Recently changed')));
+      h('div', { class: 'rpchk' }, chk('rpDetail', 'detail', 'Sheet detail by section'), chk('rpDeps', 'deps', 'Dependencies'), chk('rpWork', 'workload', 'Owner workload'), chk('rpRecent', 'recent', 'Recently changed'), chk('rpBullets', 'bullets', 'Use bullet summaries (off: paragraph style)')));
   }
   function renderReportView() {
     const N = M.narrative(st);
