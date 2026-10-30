@@ -96,3 +96,16 @@ scripts/refresh-precert-data.js. Data: `ref` (reference dates) is added to saved
 3. Categories changed: regenerate precert/categories.json (docDate, verified), update `REF.categoriesDate`.
 4. Set `REF.verified` to the check date (the in-app notice turns amber after 90 days), run tests + e2e, commit, push.
 No GitHub Action is used (the repo has no workflows); run the script by hand.
+
+## v1.4 interface
+
+| Commit | Change |
+|---|---|
+| 3a0143d | precert v1.4: e2e for the interface changes (menu, tabs, tour, cards, editor, jump, contrast) |
+| 2fa1a32 | precert v1.4: collapsed project cards, Next step bar, side-by-side / full-screen editor, tap-to-fix form fields, tour, tap targets, dark contrast |
+| 461590e | precert v1.4: Next step guide model (readiness, years, write-up quality, form) + tests |
+| 80103da | precert v1.4: header menu (example, theme, tour), one slim notice bar, live saved indicator, phone bottom tab bar with More |
+
+Undo (keeps v1.3): `git revert --no-edit precert-pre-v14..precert-v1.4-final` then push (no force),
+or `git checkout precert-pre-v14 -- precert` and commit.
+New file: precert/guide.js (Next step, PCG). UI-only state in `precert.ui.v1`: `tour` (0–3 or 'done'), `openProj`; no change to saved data.
