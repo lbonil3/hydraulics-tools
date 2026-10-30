@@ -326,6 +326,33 @@ function v2Fixture() {
   ok(!/Owner workload/.test(await pg.$eval('#report', (e) => e.textContent)), 'workload toggle hides the section');
   await pg.$eval('#rpWork', (e) => e.click()); await sleep(50);
   await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  /* 9c. v3.4 bullet report */
+  {
+    const V34 = '/workspace/pm-shots/report-v34/'; fs.mkdirSync(V34, { recursive: true });
+    const RB = await pg.$eval('#report', (e) => e.textContent);
+    ok(/\+ \d+ more \(see the app\)/.test(RB) && ['Key takeaways', 'Attention needed', 'Next steps'].every((x) => RB.includes(x)) && (await pg.$$('#report .rbul li')).length > 20, 'bullet summaries: takeaways, attention, next steps');
+    ok(/% complete — \d+ of \d+ sheets? done/.test(RB) && /Status: \d+ not started · \d+ in progress · \d+ in review · \d+ done/.test(RB) && /● Done:/.test(RB) && /◔ In progress:/.test(RB) && /○ Not started:/.test(RB) && /↻ Needs update:/.test(RB), 'branch facts and Done / In progress / Not started / Needs update bullets');
+    ok(/Stations: \d+\+\d\d – \d+\+\d\d/.test(RB) && /PP sheets: \d+/.test(RB) && /Sheet ranges:/.test(RB) && /Scale: 1" = \d+'/.test(RB) && (await pg.$$('#report .rranges li')).length > 0, 'roads as nested bullets: stations, scale, PP sheets, sheet ranges');
+    ok(/depends on/.test(RB) || /No dependencies set/.test(RB), 'dependencies as bullet pairs');
+    ok((await pg.$$('#report .rworkb li')).length > 0 && await has('#report .rwork'), 'owner workload table plus bullet detail');
+    ok(await pg.evaluate(() => { const toc = [...document.querySelectorAll('#report .rtoc li')].map((l) => l.value + ' ' + l.textContent); const hs = [...document.querySelectorAll('#report h2 .rnum')].map((n) => parseInt(n.textContent, 10) + ' ' + n.parentElement.textContent.replace(/^\d+\.\s*/, '')); return toc.length > 4 && toc.every((t, i) => t === hs[i]); }), 'numbered sections match the contents');
+    await pg.$eval('#rpBullets', (e) => e.click()); await sleep(50); await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+    ok(!(await has('#report .rbul')) && /Executive summary/.test(await pg.$eval('#report', (e) => e.textContent)) && (await data()) !== null, 'toggle off: paragraph style');
+    ok((await pg.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => /ui/i.test(k)) || '{}') || '{}'))) !== null, 'ui saved');
+    await pg.$eval('#rpBullets', (e) => e.click()); await sleep(50); await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+    ok(await has('#report .rbul'), 'toggle on again');
+    await pg.emulateMediaType('print'); await sleep(150);
+    await pg.screenshot({ path: V34 + 'report-print-' + tag + '.png', fullPage: true });
+    for (const pap of ['letter', 'a4']) {
+      await pg.select('#rpPaper', pap); await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+      const f = V34 + 'report-' + pap + '-' + tag + '.pdf'; await pg.pdf({ path: f, preferCSSPageSize: true, printBackground: true });
+      const cp = require('child_process'), pages = Number(/Pages:\s+(\d+)/.exec(cp.execSync('pdfinfo ' + f).toString())[1]), tx = cp.execSync('pdftotext -layout ' + f + ' -').toString();
+      const size = /Page size:\s+([\d.]+) x ([\d.]+)/.exec(cp.execSync('pdfinfo ' + f).toString());
+      ok(pages > 2 && /•/.test(tx) && /Key takeaways/.test(tx) && /Page 1 of \d+/.test(tx) && (pap === 'a4' ? Math.round(size[1]) === 595 : Math.round(size[1]) === 612), pap + ' PDF: ' + pages + ' pages, bullets render, page numbers, paper size');
+    }
+    await pg.select('#rpPaper', 'letter'); await pg.emulateMediaType('screen'); await sleep(100);
+    await pg.evaluate(() => { document.querySelector('#report').classList.add('rpreview'); }); await pg.screenshot({ path: V34 + 'report-screen-' + tag + '.png', fullPage: true }); await pg.evaluate(() => { document.querySelector('#report').classList.remove('rpreview'); });
+  }
   if (!MOBILE) {
     fs.mkdirSync(SHOTS + 'report', { recursive: true });
     await pg.emulateMediaType('print'); await sleep(150);
