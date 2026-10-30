@@ -149,4 +149,14 @@ t('v1.3 years check: parsed minimums, overlaps once, only projects with the cate
   const un = C.categories.find((k) => M.parseMinYears(k).status !== 'ok'); assert.ok(un); assert.strictEqual(M.yearsCheck(st, un).status, 'unknown'); assert.ok(/confirm on TxDOT/.test(M.yearsCheck(st, un).msg));
   st.targets.push('10.2.1'); d.end = '2019-02-01'; assert.ok(M.formCheck(st, C).warnings.some((w) => /^10\.2\.1 experience: below minimum/.test(w)));
 });
+t('v1.3 quality checker: vague text flags, methods, quantities, requirement term match, tick override', () => {
+  const Q = require('./quality.js'), items = M.checklist(M.catIndex(C)['10.2.1']);
+  let q = Q.check('', items, []); assert.strictEqual(q.light, 'red'); assert.strictEqual(q.score, 0);
+  q = Q.check('Worked on drainage.', items, []); assert.deepStrictEqual(q.flags.map((f) => f.id).sort(), ['methods', 'qty', 'short', 'verbs']); assert.strictEqual(q.light, 'red'); assert.ok(!q.reqs[0].auto);
+  q = Q.check('SAMPLE TEXT I designed ____ inlets', items, []); assert.ok(q.flags.some((f) => f.id === 'sample') && q.flags.some((f) => f.id === 'blanks'));
+  const good = 'I designed the storm drain system for a 3 mile widening using the TxDOT Hydraulic Design Manual. I computed runoff with the Rational Method for the 10-year design storm on 45 acres, sized 24 in to 60 in pipes, and computed the hydraulic grade line in StormCAD. I designed 2 culverts in HY-8 and prepared the state/federal permitting documents and the detention pond analysis. I checked gutter spread, coordinated with the environmental team on the Nationwide Permit, and prepared the drainage plan and profile sheets for the hydraulic analysis and design tasks.';
+  q = Q.check(good, items, []); assert.strictEqual(q.light, 'green', JSON.stringify(q.flags)); assert.ok(q.score >= 80); assert.ok(q.methods.includes('HY-8') && q.methods.includes('Rational Method')); assert.ok(q.reqs[0].auto);
+  const r = Q.check('I designed things carefully for 2 years with HEC-RAS and lots of words to pass the length check here and there.', items, ['r0']); assert.ok(r.reqs[0].ticked);
+  assert.ok(Q.check('Worked on drainage.', items, []).hints.some((h) => /^Add detail about/.test(h)));
+});
 (async () => { let n = 0; for (const [name, f] of tests) { try { await f(); n++; } catch (e) { console.error('FAIL', name, e); process.exit(1); } } console.log('ok', n, 'tests'); })();

@@ -138,7 +138,16 @@
     var ta = h('textarea', { rows: 6, class: 'wtext', 'data-entry': e.id, 'aria-label': 'Description of work for ' + e.code, placeholder: 'Describe the work YOU performed on this project for ' + c.name + '. Start with "I designed / I analyzed / I computed …".' });
     ta.value = e.text;
     var stat = h('div', { class: 'wstat' });
-    var upd = function () { var n = M.words(ta.value), b = M.blanksLeft(ta.value); stat.replaceChildren(h('span', {}, n + ' words · ' + ta.value.length + ' characters'), h('span', { class: M.firstPerson(ta.value) ? 'ok' : 'bad' }, M.firstPerson(ta.value) ? '✓ first person' : '✗ no "I designed / I computed…" yet'), b ? h('span', { class: 'bad' }, b + ' blank(s) to fill') : ''); };
+    var qbox = h('div', { class: 'qbody' }), qsum = h('summary', {});
+    var qual = function () { var q = PCQ.check(ta.value, M.checklist(c), e.covers), L = { green: 'Good detail', amber: 'Needs detail', red: 'Not ready' }[q.light];
+      qsum.replaceChildren(h('span', { class: 'light ' + q.light, 'aria-hidden': 'true' }), 'Write-up check: ' + L, h('span', { class: 'tag', 'data-score': q.score }, q.score + '/100'));
+      qbox.replaceChildren(q.flags.length ? h('ul', { class: 'qflags' }, q.flags.map(function (f) { return h('li', { class: f.sev }, f.msg); })) : h('p', { class: 'ok' }, '✓ No vague-text flags.'),
+        q.methods.length ? h('p', { class: 'muted' }, 'Methods / standards named: ' + q.methods.join(', ')) : null,
+        q.hints.length ? h('div', {}, h('b', {}, 'Suggestions'), h('ul', { class: 'qhints' }, q.hints.map(function (x) { return h('li', {}, x); }))) : null,
+        h('b', {}, 'Requirements (term match — your tick below overrides it)'), h('ul', { class: 'qreqs' }, q.reqs.map(function (r) { var on = r.ticked || r.auto; return h('li', { class: on ? 'ok' : 'gap', 'data-req': r.id }, (r.ticked ? '✓ ticked: ' : r.auto ? '≈ appears addressed: ' : '✗ not found: ') + r.text, r.matched.length ? h('span', { class: 'muted' }, ' (matched: ' + r.matched.join(', ') + ')') : null); })),
+        h('p', { class: 'muted' }, 'A text check only: it can\'t judge your experience and never writes it for you.')); };
+    var qd = h('details', { class: 'panel qual', 'data-qual': e.id }, qsum, qbox);
+    var upd = function () { qual(); var n = M.words(ta.value), b = M.blanksLeft(ta.value); stat.replaceChildren(h('span', {}, n + ' words · ' + ta.value.length + ' characters'), h('span', { class: M.firstPerson(ta.value) ? 'ok' : 'bad' }, M.firstPerson(ta.value) ? '✓ first person' : '✗ no "I designed / I computed…" yet'), b ? h('span', { class: 'bad' }, b + ' blank(s) to fill') : ''); };
     ta.addEventListener('input', function () { e.text = ta.value; save(); upd(); }); upd();
     var items = M.checklist(c);
     return h('div', { class: 'entry', 'data-code': e.code },
@@ -146,9 +155,9 @@
         h('span', { class: 'sp' }), h('button', { type: 'button', class: 'btn ghost sm tpl', onclick: function () { if (ta.value.trim() && !confirm('Add the fill-in template below your text?')) return; ta.value = (ta.value.trim() ? ta.value.trim() + '\n\n' : '') + M.template(c); e.text = ta.value; save(); upd(); ta.focus(); } }, 'Insert template'),
         h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { copy(e.text, 'Description of work'); } }, 'Copy'),
         h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { if (!confirm('Remove ' + e.code + ' from this project?')) return; p.cats.splice(p.cats.indexOf(e), 1); save(); render(); } }, 'Remove')),
-      ta, stat,
+      ta, stat, qd,
       h('fieldset', { class: 'covers' }, h('legend', {}, 'This write-up addresses:'), items.map(function (it) {
-        return h('label', { class: 'chk ' + it.kind }, h('input', { type: 'checkbox', 'data-item': it.id, checked: e.covers.indexOf(it.id) >= 0, onchange: function (ev) { M.toggleCover(st, p.id, e.id, it.id, ev.target.checked); save(); } }), h('span', {}, it.kind === 'scope' ? h('i', {}, 'Scope: ') : h('b', {}, 'Requirement: '), it.text)); })));
+        return h('label', { class: 'chk ' + it.kind }, h('input', { type: 'checkbox', 'data-item': it.id, checked: e.covers.indexOf(it.id) >= 0, onchange: function (ev) { M.toggleCover(st, p.id, e.id, it.id, ev.target.checked); save(); qual(); } }), h('span', {}, it.kind === 'scope' ? h('i', {}, 'Scope: ') : h('b', {}, 'Requirement: '), it.text)); })));
   }
 
   /* suggested categories from this project's own text (keyword scoring in suggest.js; hints only) */

@@ -111,3 +111,6 @@ details.panel{border:1px solid var(--line,#ddd);border-radius:8px;padding:6px 10
 .slist{list-style:none;margin:0;padding:0}.slist li{border-top:1px solid var(--line,#eee);padding:6px 0;display:grid;gap:4px}.slist .why{font-size:.9em;overflow-wrap:anywhere}.slist .btn{justify-self:start}
 
 .tree li.unk>.node{color:#b45309}.yrs .ymsg{margin:2px 0 4px 18px;font-size:.9em}
+
+.light{display:inline-block;width:12px;height:12px;border-radius:50%;flex:none}.light.green{background:#16a34a}.light.amber{background:#d97706}.light.red{background:#dc2626}
+.qflags li.red{color:#dc2626}.qflags li.amber{color:#b45309}[data-theme=dark] .qflags li.amber{color:#fbbf24}[data-theme=dark] .qflags li.red{color:#f87171}.qreqs li.ok{color:#15803d}.qreqs li.gap{color:#b91c1c}[data-theme=dark] .qreqs li.ok{color:#4ade80}[data-theme=dark] .qreqs li.gap{color:#f87171}.qbody ul{margin:4px 0 8px 18px;padding:0}
