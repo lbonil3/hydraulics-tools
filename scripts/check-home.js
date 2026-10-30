@@ -21,17 +21,17 @@ if (/recently/i.test(html)) fail('home should not add a recently-used section');
 const groups = [
   { title: 'Design', hrefs: ['rational/index.html', 'drainage/index.html', 'ditch-table/index.html', 'culvert/index.html'] },
   { title: 'Estimating', hrefs: ['bid-cost/index.html', 'bid-estimator/index.html', 'pm/index.html'] },
-  { title: 'Pursuits &amp; compliance', hrefs: ['swp3-builder/index.html', 'swp3-game/index.html', 'flow-game/index.html'] },
+  { title: 'Pursuits &amp; compliance', hrefs: ['swp3-builder/index.html', 'precert/index.html', 'swp3-game/index.html', 'flow-game/index.html'] },
 ];
 const hrefs = groups.flatMap((g) => g.hrefs);
 /* The two radars moved to their own app (https://lbonil3.github.io/radars/); their folders stay here only as a rollback by direct URL. */
-if (hrefs.length !== 10) fail('expected 10 home cards after the radars split, check-home lists ' + hrefs.length);
+if (hrefs.length !== 11) fail('expected 11 home cards (radars split, + TxDOT Precertification), check-home lists ' + hrefs.length);
 for (const gone of ['opportunity-radar/', 'national-radar/', 'tool-radar', 'tool-national', 'Opportunity Radar', 'National Radar']) {
   if (html.includes(gone)) fail('removed radar card is back on home: ' + gone);
 }
 if (/\.tool-(radar|national) \.icon/.test(css)) fail('unused radar icon styles still in home.css');
-const classes = ['tool-tc', 'tool-drainage', 'tool-bid-cost', 'tool-bid-estimator', 'tool-pm', 'tool-ditch', 'tool-culvert', 'tool-swp3', 'tool-swp3-game', 'tool-flow-game'];
-const names = ['Tc Studio', 'Drainage Studio', 'Bid Cost', 'Bid Estimator', 'Project Tracker', 'Ditch', 'Culvert Studio', 'SWP3 Builder', 'SWP3 Designer (Game)', 'Storm Designer (Game)'];
+const classes = ['tool-tc', 'tool-drainage', 'tool-bid-cost', 'tool-bid-estimator', 'tool-pm', 'tool-ditch', 'tool-culvert', 'tool-swp3', 'tool-precert', 'tool-swp3-game', 'tool-flow-game'];
+const names = ['Tc Studio', 'Drainage Studio', 'Bid Cost', 'Bid Estimator', 'Project Tracker', 'Ditch', 'Culvert Studio', 'SWP3 Builder', 'TxDOT Precertification', 'SWP3 Designer (Game)', 'Storm Designer (Game)'];
 
 let cursor = 0;
 for (const g of groups) {
@@ -60,6 +60,7 @@ const localData = new Set([
   'bid-estimator/index.html',
   'pm/index.html',
   'swp3-builder/index.html',
+  'precert/index.html',
 ]);
 const cards = [...html.matchAll(/<a class="tool [^"]+" href="([^"]+)">([\s\S]*?)<\/a>/g)];
 if (cards.length !== hrefs.length) fail('expected ' + hrefs.length + ' tool cards, found ' + cards.length);
@@ -85,6 +86,8 @@ for (const href of hrefs) {
 if (!/grid-template-columns:[^;{]*repeat\(\s*2\s*,/.test(css)) fail('home.css should use a two-column card grid');
 if (!/min-height:\s*44px/.test(css)) fail('home.css should keep a 44px minimum tap target');
 
+if (!fs.existsSync('precert/index.html') || !fs.existsSync('precert/categories.json')) fail('precert tool files missing');
+if (!/connect-src 'self'/.test(fs.readFileSync('precert/index.html', 'utf8'))) fail('precert CSP should stay self-only');
 if (bad) process.exit(1);
 console.log('ok');
 for (const gone of ['storm/index.html', 'pse-tracker/index.html', 'capture-terminal/index.html']) if (html.includes('href="' + gone + '"')) { console.error('removed card back on home: ' + gone); process.exit(1); }
