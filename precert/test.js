@@ -168,4 +168,18 @@ t('v1.3 reference data: dates stored, age amber after 90 days, migration keeps d
   const old = M.newState(); delete old.ref; old.profile.first = 'Luis'; const n = M.importJSON(JSON.stringify(old)); assert.strictEqual(n.ref.verified, '2026-10-29'); assert.strictEqual(n.profile.first, 'Luis');
   assert.strictEqual(C.docDate, M.REF.categoriesDate);
 });
+t('v1.4 next step: ordered by profile, categories, projects, write-up quality, requirements, years, form', () => {
+  const G = require('./guide.js'), Q = require('./quality.js'), st = M.newState();
+  assert.strictEqual(G.nextStep(st, C, M, Q).focus, 'f-first-p');
+  Object.assign(st.profile, { first: 'L', last: 'B' }); assert.strictEqual(G.nextStep(st, C, M, Q).tab, 'cats');
+  st.targets.push('10.2.1'); assert.ok(/Add a project/.test(G.nextStep(st, C, M, Q).text));
+  const p = M.addProject(st, { name: 'P', begin: '2020-01-01', end: '2021-01-01' }); const e = M.addEntry(st, p.id, '10.2.1', C);
+  let n = G.nextStep(st, C, M, Q); assert.ok(/No description/.test(n.text) && n.entry === e.id);
+  e.text = 'I designed the storm drain system for a 3 mile widening using the TxDOT Hydraulic Design Manual. I computed runoff with the Rational Method for the 10-year design storm on 45 acres, sized 24 in to 60 in pipes, and computed the hydraulic grade line in StormCAD. I designed 2 culverts in HY-8 and prepared the state/federal permitting documents and the detention pond analysis. I checked gutter spread and prepared the drainage plan sheets.';
+  n = G.nextStep(st, C, M, Q); assert.ok(/address the requirement/.test(n.text), n.text);
+  e.covers.push('r0'); n = G.nextStep(st, C, M, Q); assert.ok(/of 5 years/.test(n.text) && n.tab === 'ready', n.text);
+  p.begin = '2010-01-01'; n = G.nextStep(st, C, M, Q); assert.ok(/mandatory field Firm name/.test(n.text), n.text);
+  Object.assign(st.profile, { firm: 'F', firmSeq: '1' }); n = G.nextStep(st, C, M, Q); assert.ok(/P\.E\. license/.test(n.text) && n.focus === 'f-peNumber-p', n.text);
+  st.profile.peNumber = '1'; n = G.nextStep(st, C, M, Q); assert.ok(n.done, n.text);
+});
 (async () => { let n = 0; for (const [name, f] of tests) { try { await f(); n++; } catch (e) { console.error('FAIL', name, e); process.exit(1); } } console.log('ok', n, 'tests'); })();
