@@ -157,6 +157,7 @@ t('v1.3 quality checker: vague text flags, methods, quantities, requirement term
   const good = 'I designed the storm drain system for a 3 mile widening using the TxDOT Hydraulic Design Manual. I computed runoff with the Rational Method for the 10-year design storm on 45 acres, sized 24 in to 60 in pipes, and computed the hydraulic grade line in StormCAD. I designed 2 culverts in HY-8 and prepared the state/federal permitting documents and the detention pond analysis. I checked gutter spread, coordinated with the environmental team on the Nationwide Permit, and prepared the drainage plan and profile sheets for the hydraulic analysis and design tasks.';
   q = Q.check(good, items, []); assert.strictEqual(q.light, 'green', JSON.stringify(q.flags)); assert.ok(q.score >= 80); assert.ok(q.methods.includes('HY-8') && q.methods.includes('Rational Method')); assert.ok(q.reqs[0].auto);
   const r = Q.check('I designed things carefully for 2 years with HEC-RAS and lots of words to pass the length check here and there.', items, ['r0']); assert.ok(r.reqs[0].ticked);
+  assert.strictEqual(Q.check('I designed the storm drain system for 3.2 miles of SH 249 and I computed the runoff using the Rational Method considering TxDOT Hydraulic Design Manual IDF data.', items, ['r0']).light, 'amber', 'short text never green');
   assert.ok(Q.check('Worked on drainage.', items, []).hints.some((h) => /^Add detail about/.test(h)));
 });
 t('v1.3 reference data: dates stored, age amber after 90 days, migration keeps data', () => {

@@ -28,7 +28,7 @@
     });
     reqs.forEach(function (r) { if (!r.auto && !r.ticked) { var miss = r.terms.filter(function (x) { return r.matched.indexOf(x) < 0; }).slice(0, 5); hints.push('Add detail about: ' + (miss.length ? miss.join(', ') : 'this requirement') + ' — "' + r.text.slice(0, 90) + (r.text.length > 90 ? '…' : '') + '"'); score -= Math.round(20 / reqs.length); } });
     score = Math.max(0, Math.min(100, score));
-    var red = flags.some(function (f) { return f.sev === 'red'; }), light = red || score < 50 ? 'red' : score < 80 ? 'amber' : 'green';
+    var red = flags.some(function (f) { return f.sev === 'red'; }), light = red || score < 50 ? 'red' : score < 80 || n < 60 || !verbs ? 'amber' : 'green';
     return { score: score, light: light, words: n, verbs: verbs, methods: methods, quantities: qty, flags: flags, hints: hints, reqs: reqs };
   }
   var api = { check: check, terms: terms, METHODS: METHODS };
