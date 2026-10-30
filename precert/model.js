@@ -25,6 +25,11 @@
     'Give enough detail to show knowledge and competence, e.g. "I computed the runoff using the Rational Method considering …".'
   ];
 
+  /* reference data this tool was built against (re-check with scripts/refresh-precert-data.js) */
+  var REF = { categoriesDate: '08/25/2026', formDate: '09/18/2026', verified: '2026-10-29', page: 'https://www.txdot.gov/business/peps/become-precertified.html',
+    categoriesUrl: 'https://www.txdot.gov/content/dam/docs/division/ppd/precert/precert-work-categories.docx', formUrl: 'https://www.txdot.gov/content/dam/docs/division/ppd/precert/precertification-application-form.docx', staleDays: 90 };
+  function refAge(now) { var v = new Date(REF.verified + 'T00:00:00'), n = now ? new Date(now) : new Date(); var d = Math.floor((n - v) / 864e5); return { days: d, stale: d > REF.staleDays }; }
+  function refLine() { return 'Reference data: TxDOT categories dated ' + REF.categoriesDate + ', form dated ' + REF.formDate + ', verified ' + REF.verified; }
   function today() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
@@ -33,7 +38,7 @@
   function newState() {
     return { schema: SCHEMA, created: new Date().toISOString(),
       profile: { first: '', middle: '', last: '', firm: '', firmSeq: '', personnelNo: '', branch: '', expertise: '', employment: 'Employed', formerTxdot: false, peNumber: '', peState: 'TX', peDate: '', employeeSeq: '', peAgency: '' },
-      degrees: [], certs: [], projects: [], targets: [], ccis: {} };
+      degrees: [], certs: [], projects: [], targets: [], ccis: {}, ref: { categoriesDate: REF.categoriesDate, formDate: REF.formDate, verified: REF.verified } };
   }
 
   /* SSN guard: TxDOT says the personnel number is assigned by the firm; never an SSN */
@@ -298,7 +303,7 @@
   }
   function importJSON(text) { var o = JSON.parse(text); return normalize(o && o.data ? o.data : o); }
 
-  var api = { parseMinYears: parseMinYears, yearsCheck: yearsCheck, fmtDate: fmtDate, fullName: fullName, formCerts: formCerts, formData: formData, formCheck: formCheck, formText: formText, PRE_EXAMPLE_KEY: PRE_EXAMPLE_KEY, EXAMPLE_HEAD: EXAMPLE_HEAD, exampleState: exampleState, isExampleState: isExampleState, hasRealData: hasRealData, clearExample: clearExample, today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
+  var api = { REF: REF, refAge: refAge, refLine: refLine, parseMinYears: parseMinYears, yearsCheck: yearsCheck, fmtDate: fmtDate, fullName: fullName, formCerts: formCerts, formData: formData, formCheck: formCheck, formText: formText, PRE_EXAMPLE_KEY: PRE_EXAMPLE_KEY, EXAMPLE_HEAD: EXAMPLE_HEAD, exampleState: exampleState, isExampleState: isExampleState, hasRealData: hasRealData, clearExample: clearExample, today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
     scopeItems: scopeItems, checklist: checklist, template: template, words: words, firstPerson: firstPerson, blanksLeft: blanksLeft, addProject: addProject, findProject: findProject, addEntry: addEntry, entries: entries, toggleCover: toggleCover, years: years,
     trainingFor: trainingFor, certFileName: certFileName, coverage: coverage, readiness: readiness, ccisProgress: ccisProgress, projectText: projectText, summaryText: summaryText, exportJSON: exportJSON, importJSON: importJSON, normalize: normalize, money: money };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PCM = api;

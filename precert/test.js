@@ -159,4 +159,12 @@ t('v1.3 quality checker: vague text flags, methods, quantities, requirement term
   const r = Q.check('I designed things carefully for 2 years with HEC-RAS and lots of words to pass the length check here and there.', items, ['r0']); assert.ok(r.reqs[0].ticked);
   assert.ok(Q.check('Worked on drainage.', items, []).hints.some((h) => /^Add detail about/.test(h)));
 });
+t('v1.3 reference data: dates stored, age amber after 90 days, migration keeps data', () => {
+  assert.deepStrictEqual([M.REF.categoriesDate, M.REF.formDate, M.REF.verified], ['08/25/2026', '09/18/2026', '2026-10-29']);
+  assert.strictEqual(M.refLine(), 'Reference data: TxDOT categories dated 08/25/2026, form dated 09/18/2026, verified 2026-10-29');
+  assert.ok(!M.refAge('2026-12-01T12:00:00').stale); assert.ok(M.refAge('2027-02-01T12:00:00').stale); assert.strictEqual(M.refAge('2026-10-30T12:00:00').days, 1);
+  assert.strictEqual(M.newState().ref.formDate, '09/18/2026');
+  const old = M.newState(); delete old.ref; old.profile.first = 'Luis'; const n = M.importJSON(JSON.stringify(old)); assert.strictEqual(n.ref.verified, '2026-10-29'); assert.strictEqual(n.profile.first, 'Luis');
+  assert.strictEqual(C.docDate, M.REF.categoriesDate);
+});
 (async () => { let n = 0; for (const [name, f] of tests) { try { await f(); n++; } catch (e) { console.error('FAIL', name, e); process.exit(1); } } console.log('ok', n, 'tests'); })();

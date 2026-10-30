@@ -334,7 +334,7 @@
     var F = M.formData(st, C), ck = M.formCheck(st, C), txt = M.formText(st, C), canShare = !!navigator.share;
     var doPrint = function () { fillFormPrint(); if (typeof window.print === 'function') { try { window.print(); } catch (e) { toast('Printing is not available here — use Download printable form.'); } } else toast('Printing is not available here — use Download printable form.'); };
     return [h('section', { class: 'card' }, h('h2', {}, 'TxDOT Precertification Application Form'),
-      h('p', { class: 'muted' }, 'Fills the official TxDOT form (dated 09/18/2026, bundled with this tool) from what you entered. It is a helper output to prepare your CCIS entry — nothing is submitted anywhere.'),
+      h('p', { class: 'muted' }, 'Fills the official TxDOT form (dated 09/18/2026, bundled with this tool) from what you entered. It is a helper output to prepare your CCIS entry — nothing is submitted anywhere.'), refBar(),
       h('div', { class: 'fcheck ' + (ck.ok ? 'ok' : 'bad'), id: 'formCheck' }, h('b', {}, ck.ok ? '✓ All mandatory (*) fields are filled.' : '✗ Missing mandatory (*) fields:'), ck.missing.length ? h('ul', { id: 'formMissing' }, ck.missing.map(function (m) { return h('li', {}, m); })) : null,
         ck.warnings.length ? h('div', {}, h('b', {}, 'Check before exporting:'), h('ul', { id: 'formWarn' }, ck.warnings.map(function (m) { return h('li', {}, m); }))) : null),
       h('div', { class: 'btns' },
@@ -347,6 +347,12 @@
       h('section', { class: 'card formview', id: 'formView' }, formNodes(F))];
   }
 
+  function refBar() {
+    var A = M.refAge();
+    return h('div', { class: 'refline' + (A.stale ? ' stale' : ''), id: 'refLine' }, h('span', {}, M.refLine() + '.'), h('span', { class: 'age', id: 'refAge' }, A.days <= 0 ? ' Verified today.' : ' Verified ' + A.days + ' day' + (A.days === 1 ? '' : 's') + ' ago' + (A.stale ? ' — older than ' + M.REF.staleDays + ' days, check TxDOT for newer versions.' : '.')),
+      h('a', { class: 'btn ghost sm', id: 'checkUpdates', href: M.REF.page, target: '_blank', rel: 'noopener noreferrer' }, 'Check for updates ↗'),
+      h('span', { class: 'muted' }, ' (opens TxDOT\'s page; this tool makes no outside requests)'));
+  }
   /* ---------- 7. sources ---------- */
   function renderSources() {
     var S = [['TxDOT — Become precertified (eligibility, CCIS access, annual renewal Jan 1 – Mar 31)', 'https://www.txdot.gov/business/peps/become-precertified.html'],
@@ -359,7 +365,7 @@
       ['PEPS fireside chat, Feb 2, 2024 — new CCIS in Salesforce (steps, description-of-work tips)', 'https://www.txdot.gov/content/dam/docs/division/ppd/fireside-chats/2024/2024-02-02-presentation.pdf'],
       ['CCIS help guide (legacy CCIS, before the 2024 Salesforce system)', 'https://www.dot.state.tx.us/des/ccis/userguide.pdf'],
       ['43 TAC Chapter 9, Subchapter C, Rule 9.33 (precertification rule; text via Cornell LII)', 'https://www.law.cornell.edu/regulations/texas/43-Tex-Admin-Code-SS-9-33']];
-    return h('section', { class: 'card' }, h('h2', {}, 'Sources'), h('p', {}, C.note), h('ul', { class: 'src' }, S.map(function (s) { return h('li', {}, h('a', { href: s[1], target: '_blank', rel: 'noopener noreferrer' }, s[0])); })),
+    return h('section', { class: 'card' }, h('h2', {}, 'Sources'), refBar(), h('p', {}, C.note), h('ul', { class: 'src' }, S.map(function (s) { return h('li', {}, h('a', { href: s[1], target: '_blank', rel: 'noopener noreferrer' }, s[0])); })),
       h('h2', {}, 'Disclaimer'), h('p', {}, 'This is an informational helper, not an official TxDOT system, and not affiliated with TxDOT. Requirements can change; verify everything against TxDOT\'s current pages before you submit in CCIS. The tool handles no sign-in or credentials. Your data stays in this browser\'s local storage; nothing is sent anywhere.'),
       h('p', { class: 'muted' }, 'If a requirement is unclear or missing here, confirm on TxDOT\'s page. Contact: peps_ccis_precert@txdot.gov · 512-960-5271.'));
   }
