@@ -98,7 +98,7 @@ body.isex .card.proj{border-style:dashed}
 /* v1.2 TxDOT form view */
 .fcheck{border:1px solid var(--line,#ccc);border-radius:8px;padding:8px 12px;margin:8px 0}.fcheck.ok{border-color:#16a34a}.fcheck.bad{border-color:#dc2626}.fcheck ul{margin:4px 0 4px 18px;padding:0}
 .formview .ft{font-size:1.4rem;margin:0}.formview .fh{color:#1f4e79;font-size:1.1rem;margin:16px 0 4px}[data-theme=dark] .formview .fh{color:#93c5fd}
-.fr{display:flex;flex-wrap:wrap;gap:2px 10px;border-bottom:1px solid var(--line,#ddd);padding:4px 0}.fr .fl{flex:1 1 260px}.fv{font-weight:700;overflow-wrap:anywhere}.ne{font-weight:400;font-style:italic;opacity:.65}.fr.miss{background:rgba(220,38,38,.08)}.ne.req{color:#dc2626;opacity:1}
+.fr{display:flex;flex-wrap:wrap;gap:2px 10px;border-bottom:1px solid var(--line,#ddd);padding:4px 0}.fr .fl{flex:1 1 260px}.fv{font-weight:700;overflow-wrap:anywhere}.ne{font-weight:400;font-style:italic;color:var(--muted)}.fr.miss{background:rgba(220,38,38,.08)}.ne.req{color:var(--bad)}
 .fd{white-space:pre-wrap;border:1px solid var(--line,#ddd);border-radius:6px;padding:6px 8px;margin:2px 0 8px;overflow-wrap:anywhere}.fblk{margin:10px 0}.fcat{margin-left:8px}
 .ftab{border-collapse:collapse;width:100%}.ftab td,.ftab th{border:1px solid var(--line,#ccc);padding:4px 6px;text-align:left}
 .pwm.fwm{color:#b91c1c;border:2px solid #b91c1c;padding:6px;text-align:center;font-weight:700}
@@ -136,3 +136,23 @@ details.panel{border:1px solid var(--line,#ddd);border-radius:8px;padding:6px 10
   .menu{top:56px}
 }
 @media (max-width:640px){.tabs.moreopen .pri,.tabs.moreopen .morebtn{grid-row:2}}
+
+/* v1.4 collapsed project cards */
+details.proj>summary.psum{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;min-height:48px}details.proj>summary::-webkit-details-marker{display:none}
+.psum .pt{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;flex:1;min-width:0}.psum .pt b{font-size:16px;overflow-wrap:anywhere}.pdates{font-size:13px}.pcats code{font-size:12px;font-weight:700;color:var(--acc2);margin-right:6px}
+details.proj>summary.psum::after{content:'▸';color:var(--muted);font-size:18px;transition:transform .15s}details.proj[open]>summary.psum::after{transform:rotate(90deg)}
+details.proj[open]>summary.psum{border-bottom:1px solid var(--line);margin-bottom:8px;padding-bottom:6px}
+.nextstep{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;margin:0 0 12px;border-radius:12px;border:1px solid var(--acc);background:var(--accs);font-size:14px}.nextstep #nextText{flex:1 1 220px}.nextstep.done{border-color:var(--ok);background:var(--oks)}
+.flash{outline:3px solid var(--acc)!important;outline-offset:2px}
+
+/* v1.4 write-up editor: checklist beside the text on desktop, full screen on phone */
+.fsbar{display:none}.covers .auto{font-size:12px;font-weight:600;margin-left:4px}.covers .auto.ok{color:var(--ok)}.covers .auto.no{color:var(--muted)}
+@media (min-width:960px){.ebody{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,1fr);gap:14px;align-items:start}.ebody .covers{margin-top:8px;position:sticky;top:130px;max-height:70vh;overflow:auto}.fsbtn{display:none}}
+.entry.fs{position:fixed;inset:0;z-index:60;margin:0;border-radius:0;overflow:auto;padding:10px 12px calc(16px + env(safe-area-inset-bottom));background:var(--card)}
+.entry.fs .ehead{display:none}.entry.fs .fsbar{display:flex;align-items:center;gap:8px;position:sticky;top:0;background:var(--card);padding:4px 0 8px;z-index:1}.entry.fs .wtext{min-height:45vh}
+body.fsopen{overflow:hidden}body.fsopen .tabs{display:none}
+.fr.jump,tr.jump{cursor:pointer}.fr.jump:hover,.fr.jump:focus-visible{outline:2px solid var(--bad);outline-offset:1px}.jl{margin-left:auto;font-size:12px;font-weight:700;color:var(--bad)}.linkbtn{background:none;border:0;padding:6px 0;min-height:36px;color:var(--bad);font:600 14px var(--font);text-align:left;cursor:pointer;text-decoration:underline}
+
+.tour{border:2px solid var(--acc);background:var(--accs)}.tour p{margin:6px 0 10px}
+/* larger tap targets on touch screens */
+@media (pointer:coarse){.btn.sm{min-height:44px;padding:6px 12px}.covers .chk{min-height:44px}.cbtn{min-height:48px}details.panel>summary{min-height:44px}}

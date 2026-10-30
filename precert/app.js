@@ -145,21 +145,33 @@
         q.methods.length ? h('p', { class: 'muted' }, 'Methods / standards named: ' + q.methods.join(', ')) : null,
         q.hints.length ? h('div', {}, h('b', {}, 'Suggestions'), h('ul', { class: 'qhints' }, q.hints.map(function (x) { return h('li', {}, x); }))) : null,
         h('b', {}, 'Requirements (term match — your tick below overrides it)'), h('ul', { class: 'qreqs' }, q.reqs.map(function (r) { var on = r.ticked || r.auto; return h('li', { class: on ? 'ok' : 'gap', 'data-req': r.id }, (r.ticked ? '✓ ticked: ' : r.auto ? '≈ appears addressed: ' : '✗ not found: ') + r.text, r.matched.length ? h('span', { class: 'muted' }, ' (matched: ' + r.matched.join(', ') + ')') : null); })),
-        h('p', { class: 'muted' }, 'A text check only: it can\'t judge your experience and never writes it for you.')); };
+        h('p', { class: 'muted' }, 'A text check only: it can\'t judge your experience and never writes it for you.'));
+      if (typeof box !== 'undefined') q.reqs.forEach(function (r) { var m = box.querySelector('[data-auto="' + r.id + '"]'); if (m) { m.textContent = r.auto ? ' ≈ text appears to address this' : r.ticked ? '' : ' · not found in text yet'; m.className = 'auto ' + (r.auto ? 'ok' : 'no'); } }); };
     var qd = h('details', { class: 'panel qual', 'data-qual': e.id }, qsum, qbox);
     var upd = function () { qual(); var n = M.words(ta.value), b = M.blanksLeft(ta.value); stat.replaceChildren(h('span', {}, n + ' words · ' + ta.value.length + ' characters'), h('span', { class: M.firstPerson(ta.value) ? 'ok' : 'bad' }, M.firstPerson(ta.value) ? '✓ first person' : '✗ no "I designed / I computed…" yet'), b ? h('span', { class: 'bad' }, b + ' blank(s) to fill') : ''); };
     ta.addEventListener('input', function () { e.text = ta.value; save(); upd(); }); upd();
     var items = M.checklist(c);
-    return h('div', { class: 'entry', 'data-code': e.code },
+    var box = h('div', { class: 'entry', 'data-code': e.code },
       h('div', { class: 'ehead' }, h('b', {}, catLabel(e.code)), e.isExample ? h('span', { class: 'tag extag' }, 'SAMPLE TEXT') : null, M.needsTraining(e.code) ? h('span', { class: 'tag warnt' }, '⚑ training upload') : null,
         h('span', { class: 'sp' }), h('button', { type: 'button', class: 'btn ghost sm tpl', onclick: function () { if (ta.value.trim() && !confirm('Add the fill-in template below your text?')) return; ta.value = (ta.value.trim() ? ta.value.trim() + '\n\n' : '') + M.template(c); e.text = ta.value; save(); upd(); ta.focus(); } }, 'Insert template'),
         h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { copy(e.text, 'Description of work'); } }, 'Copy'),
+        h('button', { type: 'button', class: 'btn ghost sm fsbtn', onclick: function () { fs(true); } }, 'Full screen'),
         h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { if (!confirm('Remove ' + e.code + ' from this project?')) return; p.cats.splice(p.cats.indexOf(e), 1); save(); render(); } }, 'Remove')),
-      ta, stat, qd,
+      h('div', { class: 'ebody' }, h('div', { class: 'ewrite' }, h('div', { class: 'fsbar' }, h('b', {}, catLabel(e.code)), h('span', { class: 'sp' }), h('button', { type: 'button', class: 'btn sm', onclick: function () { fs(false); } }, 'Done')), ta, stat, qd),
       h('fieldset', { class: 'covers' }, h('legend', {}, 'This write-up addresses:'), items.map(function (it) {
-        return h('label', { class: 'chk ' + it.kind }, h('input', { type: 'checkbox', 'data-item': it.id, checked: e.covers.indexOf(it.id) >= 0, onchange: function (ev) { M.toggleCover(st, p.id, e.id, it.id, ev.target.checked); save(); qual(); } }), h('span', {}, it.kind === 'scope' ? h('i', {}, 'Scope: ') : h('b', {}, 'Requirement: '), it.text)); })));
+        return h('label', { class: 'chk ' + it.kind }, h('input', { type: 'checkbox', 'data-item': it.id, checked: e.covers.indexOf(it.id) >= 0, onchange: function (ev) { M.toggleCover(st, p.id, e.id, it.id, ev.target.checked); save(); qual(); } }), h('span', {}, it.kind === 'scope' ? h('i', {}, 'Scope: ') : h('b', {}, 'Requirement: '), it.text, h('span', { class: 'auto', 'data-auto': it.id }))); }))));
+    upd();
+    function fs(on) { box.classList.toggle('fs', on); document.body.classList.toggle('fsopen', on); if (on) ta.focus(); }
+    return box;
   }
 
+  /* project readiness dot: worst write-up quality light; red when no category */
+  function projLight(p) {
+    if (!p.cats.length) return { light: 'red', label: 'No work category yet' };
+    var L = p.cats.map(function (e) { return IX[e.code] ? PCQ.check(e.text, M.checklist(IX[e.code]), e.covers).light : 'red'; });
+    var w = L.indexOf('red') >= 0 ? 'red' : L.indexOf('amber') >= 0 ? 'amber' : 'green';
+    return { light: w, label: { red: 'Write-ups not ready', amber: 'Write-ups need detail', green: 'Write-ups look detailed' }[w] };
+  }
   /* suggested categories from this project's own text (keyword scoring in suggest.js; hints only) */
   function suggPanel(p) {
     var S = PCS.suggest(p, C);
@@ -174,8 +186,10 @@
   /* ---------- 2. projects ---------- */
   function renderProjects() {
     var list = st.projects.map(function (p, i) {
-      return h('section', { class: 'card proj', 'data-project': p.id },
-        h('div', { class: 'ehead' }, h('h2', {}, 'Project ' + (i + 1) + (p.name ? ': ' + p.name : '')), p.isExample ? h('span', { class: 'tag extag' }, 'EXAMPLE') : null, h('span', { class: 'sp' }),
+      var dot = projLight(p), open = ui.openProj === p.id || st.projects.length === 1;
+      return h('details', { class: 'card proj', 'data-project': p.id, open: open ? true : null, ontoggle: function (ev) { if (ev.target.open) { ui.openProj = p.id; document.querySelectorAll('details.proj[open]').forEach(function (d) { if (d !== ev.target) d.open = false; }); } else if (ui.openProj === p.id) ui.openProj = ''; saveUI(); } },
+        h('summary', { class: 'psum' }, h('span', { class: 'light ' + dot.light, title: dot.label, 'aria-label': dot.label }), h('span', { class: 'pt' }, h('b', {}, 'Project ' + (i + 1) + (p.name ? ': ' + p.name : '')), h('span', { class: 'muted pdates' }, p.begin ? M.fmtDate(p.begin) + ' – ' + (p.end ? M.fmtDate(p.end) : 'present') : 'no dates yet'), h('span', { class: 'pcats' }, p.cats.length ? p.cats.map(function (e) { return h('code', {}, e.code); }) : h('span', { class: 'muted' }, 'no categories'))), p.isExample ? h('span', { class: 'tag extag' }, 'EXAMPLE') : null),
+        h('div', { class: 'ehead' }, h('span', { class: 'muted' }, dot.label), h('span', { class: 'sp' }),
           h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { copy(M.projectText(st, p, C), 'Project'); } }, 'Copy for CCIS'),
           h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { if (confirm('Delete this project and its write-ups?')) { st.projects.splice(st.projects.indexOf(p), 1); save(); render(); } } }, 'Delete')),
         h('div', { class: 'grid' }, field('Project name', p, 'name', { id: 'pname' }), field('Begin date', p, 'begin', { type: 'date', id: 'pbeg' }), field('End date', p, 'end', { type: 'date', id: 'pend' }), field('Location', p, 'location', { id: 'ploc' }),
@@ -186,7 +200,7 @@
         catSelect('addCat-' + p.id, function (code) { M.addEntry(st, p.id, code, C); save(); render(); }, true));
     });
     return [h('div', { class: 'bar' }, h('p', { class: 'muted' }, 'Mirrors CCIS "Add Project": project details, then each work category with a description of the work you performed. Overlapping project periods are not counted twice.'),
-      h('button', { type: 'button', class: 'btn', id: 'addProject', onclick: function () { M.addProject(st); save(); render(); } }, '+ Add project')), list.length ? list : h('p', { class: 'empty' }, 'No projects yet. Add the projects that show your experience in the categories you want.')];
+      h('button', { type: 'button', class: 'btn', id: 'addProject', onclick: function () { ui.openProj = M.addProject(st).id; saveUI(); save(); render(); } }, '+ Add project')), list.length ? list : h('p', { class: 'empty' }, 'No projects yet. Add the projects that show your experience in the categories you want.')];
   }
 
   /* ---------- 3. categories + write-up helper ---------- */
@@ -301,9 +315,12 @@
       .catch(function (e) { toast('Could not build the .docx (' + e.message + '). Use Print / Save PDF or Download printable page.'); });
   }
   /* form mirror: the form's sections and labels verbatim; blanks shown as "not entered" */
-  function formNodes(F) {
+  var JUMP = { 'Firm name*': { tab: 'profile', focus: 'f-firm-p' }, 'Firm sequence number*': { tab: 'profile', focus: 'f-firmSeq-p' }, 'First name*': { tab: 'profile', focus: 'f-first-p' }, 'Last name*': { tab: 'profile', focus: 'f-last-p' }, 'Employment status*': { tab: 'profile', focus: 'f-employment-p' } };
+  function jumpFor(label) { return JUMP[label] || (/Work Group|Work Category/.test(label) ? { tab: 'cats', focus: 'catQ' } : null); }
+  function formNodes(F, live) {
     var v = function (x, req) { var t = String(x == null ? '' : x).trim(); return t ? h('span', { class: 'fv' }, t) : h('span', { class: 'fv ne' + (req ? ' req' : '') }, req ? 'not entered — required' : 'not entered'); };
-    var row = function (label, x, req) { return h('div', { class: 'fr' + (req && !String(x || '').trim() ? ' miss' : '') }, h('span', { class: 'fl' }, label), v(x, req)); };
+    var row = function (label, x, req) { var miss = req && !String(x || '').trim(), j = miss && live ? jumpFor(label) : null;
+      return h('div', { class: 'fr' + (miss ? ' miss' : '') + (j ? ' jump' : ''), role: j ? 'button' : null, tabindex: j ? '0' : null, title: j ? 'Go to where this is entered' : null, 'data-jump': j ? j.focus || j.tab : null, onclick: j ? function () { goTo(j.tab, j); } : null, onkeydown: j ? function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); goTo(j.tab, j); } } : null }, h('span', { class: 'fl' }, label), v(x, req), j ? h('span', { class: 'jl' }, 'Fix ›') : null); };
     var blk = function (x) { var t = String(x || '').trim(); return t ? h('div', { class: 'fd' }, t) : h('div', { class: 'fd ne' }, 'not entered'); };
     return [F.example ? h('p', { class: 'pwm fwm' }, F.example) : null,
       h('h1', { class: 'ft' }, 'Precertification Application Form'), h('p', { class: 'pm' }, 'TxDOT form dated 09/18/2026, filled by a personal helper — not an official TxDOT system. Enter this information into CCIS; nothing is submitted by this tool.'),
@@ -313,7 +330,7 @@
       row('Personnel number (Employee # assigned by firm)', F.emp.personnelNo), row('Branch number (Employee’s base branch)', F.emp.branch), row('Employee Expertise (Ex. engineer, surveyor, technician, etc.)', F.emp.expertise),
       row('Former TxDOT employee?', F.emp.formerTxdot ? 'Yes' : 'No'), row('Employment status*', F.emp.employment, 1), row('Employee sequence number (if unknown, leave blank)', F.emp.seq),
       h('h2', { class: 'fh' }, 'Precertifications in this Application'),
-      h('table', { class: 'ftab' }, h('thead', {}, h('tr', {}, h('th', {}, 'Work Group*'), h('th', {}, 'Work Category*'))), h('tbody', {}, F.precerts.length ? F.precerts.map(function (g) { return h('tr', {}, h('td', {}, String(g.group)), h('td', {}, g.cats.join(', '))); }) : h('tr', { class: 'miss' }, h('td', { colspan: '2' }, v('', 1))))),
+      h('table', { class: 'ftab' }, h('thead', {}, h('tr', {}, h('th', {}, 'Work Group*'), h('th', {}, 'Work Category*'))), h('tbody', {}, F.precerts.length ? F.precerts.map(function (g) { return h('tr', {}, h('td', {}, String(g.group)), h('td', {}, g.cats.join(', '))); }) : h('tr', { class: 'miss' + (live ? ' jump' : ''), 'data-jump': live ? 'catQ' : null, onclick: live ? function () { goTo('cats', { focus: 'catQ' }); } : null }, h('td', { colspan: '2' }, v('', 1), live ? h('span', { class: 'jl' }, ' Choose categories ›') : null)))),
       h('h2', { class: 'fh' }, 'Employee Certifications'), F.certs.length ? null : h('p', { class: 'muted' }, 'None entered.'),
       F.certs.map(function (c, i) { return h('div', { class: 'fblk' }, h('h3', {}, 'Certification ' + (i + 1)), row('Work category (If applicable)', c.category), row('Degree type (ex. B.S., M.S.)', c.degreeType), row('Training type (ex. engineering, surveying, architecture)', c.trainingType),
         row('Certification training date (format: MM/DD/YYYY)', c.trainingDate), row('Personnel/laboratory certification type (ex. P.E., CFM, RPLS, Hot Mix-Level IB)', c.certType), row('Issue date (format: MM/DD/YY)', c.issue), row('Expiration date (format: MM/DD/YY)', c.exp),
@@ -335,7 +352,7 @@
     var doPrint = function () { fillFormPrint(); if (typeof window.print === 'function') { try { window.print(); } catch (e) { toast('Printing is not available here — use Download printable form.'); } } else toast('Printing is not available here — use Download printable form.'); };
     return [h('section', { class: 'card' }, h('h2', {}, 'TxDOT Precertification Application Form'),
       h('p', { class: 'muted' }, 'Fills the official TxDOT form (dated 09/18/2026, bundled with this tool) from what you entered. It is a helper output to prepare your CCIS entry — nothing is submitted anywhere.'), refBar(),
-      h('div', { class: 'fcheck ' + (ck.ok ? 'ok' : 'bad'), id: 'formCheck' }, h('b', {}, ck.ok ? '✓ All mandatory (*) fields are filled.' : '✗ Missing mandatory (*) fields:'), ck.missing.length ? h('ul', { id: 'formMissing' }, ck.missing.map(function (m) { return h('li', {}, m); })) : null,
+      h('div', { class: 'fcheck ' + (ck.ok ? 'ok' : 'bad'), id: 'formCheck' }, h('b', {}, ck.ok ? '✓ All mandatory (*) fields are filled.' : '✗ Missing mandatory (*) fields:'), ck.missing.length ? h('ul', { id: 'formMissing' }, ck.missing.map(function (m) { var j = jumpFor(m); return h('li', {}, j ? h('button', { type: 'button', class: 'linkbtn', 'data-jump': j.focus, onclick: function () { goTo(j.tab, j); } }, m + ' — fix ›') : m); })) : null,
         ck.warnings.length ? h('div', {}, h('b', {}, 'Check before exporting:'), h('ul', { id: 'formWarn' }, ck.warnings.map(function (m) { return h('li', {}, m); }))) : null),
       h('div', { class: 'btns' },
         h('button', { type: 'button', class: 'btn', id: 'dlDocx', onclick: function () { if (!ck.ok && !confirm('Some mandatory (*) fields are missing (' + ck.missing.length + '). Download anyway?')) return; dlDocx(); } }, 'Download filled form (.docx)'),
@@ -344,7 +361,7 @@
         h('button', { type: 'button', class: 'btn', id: 'dlFormHtml', onclick: function () { download(formName('html'), formHTML(), 'text/html'); toast('Printable form downloaded — open it and use Share › Print / Save to PDF.'); } }, 'Download printable form'),
         h('button', { type: 'button', class: 'btn', id: 'copyForm', onclick: function () { copy(txt, 'Form text'); } }, 'Copy as text')),
       h('p', { class: 'muted' }, 'On a phone, if Print does nothing (for example in a home-screen app), use Share or Download printable form and print from there. The .docx opens in Word, Google Docs or Pages.')),
-      h('section', { class: 'card formview', id: 'formView' }, formNodes(F))];
+      h('section', { class: 'card formview', id: 'formView' }, formNodes(F, true))];
   }
 
   function refBar() {
@@ -370,13 +387,35 @@
       h('p', { class: 'muted' }, 'If a requirement is unclear or missing here, confirm on TxDOT\'s page. Contact: peps_ccis_precert@txdot.gov · 512-960-5271.'));
   }
 
+  /* "Next step" guide line + jump to where it is fixed */
+  function goTo(tab, opts) {
+    opts = opts || {}; ui.tab = tab; if (opts.project) ui.openProj = opts.project; saveUI(); render();
+    setTimeout(function () { var el = opts.focus ? document.getElementById(opts.focus) : opts.entry ? document.querySelector('.wtext[data-entry="' + opts.entry + '"]') : null; if (!el) { window.scrollTo(0, 0); return; } el.scrollIntoView({ block: 'center' }); try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); } el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1600); }, 30);
+  }
+  function nextBar() {
+    if (M.isExampleState(st) && ui.tab === 'profile') return null;
+    var n = PCG.nextStep(st, C, M, PCQ);
+    return h('div', { class: 'nextstep' + (n.done ? ' done' : ''), id: 'nextStep', role: 'status' }, h('b', {}, n.done ? '✓ ' : 'Next step: '), h('span', { id: 'nextText' }, n.text),
+      n.tab !== ui.tab || n.entry || n.focus ? h('button', { type: 'button', class: 'btn sm', id: 'nextGo', onclick: function () { goTo(n.tab, n); } }, 'Go') : null);
+  }
+  var TOUR = [['Quick tour 1 of 4 — My profile', 'Enter your name, firm and P.E. license. Everything stays on this device; never enter an SSN.'],
+    ['Quick tour 2 of 4 — Projects', 'Add each project with dates, then the work categories you did on it and a first-person description of YOUR work. Suggestions and the write-up check help; they never write experience for you.'],
+    ['Quick tour 3 of 4 — Readiness', 'Shows each category\'s requirements, the years found in your project dates (overlaps counted once) and what is still missing. The Next step line at the top always points to the most useful fix.'],
+    ['Quick tour 4 of 4 — TxDOT form', 'Fills the official Precertification Application Form (.docx, print/PDF, text). Tap a red field to jump to where it is entered. Nothing is submitted anywhere.']];
+  function tourCard() {
+    if (ui.tour === 'done') return null;
+    var i = Math.min(Number(ui.tour) || 0, TOUR.length - 1), last = i === TOUR.length - 1;
+    return h('section', { class: 'card tour', id: 'tour', role: 'dialog', 'aria-label': 'Quick tour' }, h('div', { class: 'ehead' }, h('b', {}, TOUR[i][0]), h('span', { class: 'sp' }), h('button', { type: 'button', class: 'btn ghost sm', id: 'tourSkip', 'aria-label': 'Dismiss the tour', onclick: function () { ui.tour = 'done'; saveUI(); render(); } }, 'Dismiss ✕')),
+      h('p', {}, TOUR[i][1]), h('div', { class: 'btns' }, i ? h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { ui.tour = i - 1; saveUI(); render(); } }, '‹ Back') : null,
+        h('button', { type: 'button', class: 'btn sm', id: 'tourNext', onclick: function () { ui.tour = last ? 'done' : i + 1; saveUI(); render(); } }, last ? 'Got it' : 'Next ›')));
+  }
   /* ---------- shell ---------- */
   var R = { profile: renderProfile, projects: renderProjects, cats: renderCats, ready: renderReady, ccis: renderCCIS, form: renderForm, export: renderExport, sources: renderSources };
   function render() {
     if (!R[ui.tab]) ui.tab = 'profile';
     document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { var on = b.dataset.tab === ui.tab; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.classList.toggle('on', on); });
     $('#moreBtn').classList.toggle('on', !document.querySelector('.tabs [data-tab="' + ui.tab + '"]').classList.contains('pri'));
-    var main = $('#main'), y = window.scrollY; main.replaceChildren.apply(main, [R[ui.tab]()].flat(4).filter(Boolean)); main.dataset.tab = ui.tab;
+    var main = $('#main'), y = window.scrollY; main.replaceChildren.apply(main, [tourCard(), nextBar(), R[ui.tab]()].flat(4).filter(Boolean)); main.dataset.tab = ui.tab;
     window.scrollTo(0, y); if (ui.tab === 'form') fillFormPrint(); else fillPrint(); exampleChrome();
   }
   document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { b.addEventListener('click', function () { ui.tab = b.dataset.tab; saveUI(); more(false); render(); window.scrollTo(0, 0); }); });
@@ -384,6 +423,7 @@
   $('#moreBtn').addEventListener('click', function () { more(); });
   $('#themeBtn').addEventListener('click', function () { ui.theme = ui.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); });
   function menu(open) { var m = $('#menu'), b = $('#menuBtn'); if (open == null) open = m.hidden; m.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) { var f = m.querySelector('.mi'); if (f) f.focus(); } }
+  $('#tourBtn').addEventListener('click', function () { ui.tour = 0; saveUI(); render(); window.scrollTo(0, 0); });
   $('#menuBtn').addEventListener('click', function (e) { e.stopPropagation(); menu(); });
   $('#menu').addEventListener('click', function () { setTimeout(function () { menu(false); }, 0); });
   document.addEventListener('click', function (e) { if (!$('#menu').hidden && !e.target.closest('#menu')) menu(false); });
