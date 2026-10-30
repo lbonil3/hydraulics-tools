@@ -94,6 +94,30 @@
     if (cur) tot += cur[1] - cur[0];
     return Math.round(tot / (365.25 * 864e5) * 10) / 10;
   }
+  /* minimum years parsed from the requirement wording; reliable only when every "year" mention parsed */
+  var YW = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, fifteen: 15 };
+  function parseMinYears(c) {
+    var found = [], mentions = 0;
+    (c.requirements || []).forEach(function (r) {
+      var t = String(r.text), re = /(?:minimum of |minimum |with |at least |least )(one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|\d+)\s+(?:\(\d+\)\s+)?years?/gi, m;
+      mentions += (t.match(/\byears?\b/gi) || []).length;
+      while ((m = re.exec(t))) found.push(YW[m[1].toLowerCase()] || Number(m[1]));
+    });
+    if (!mentions) return { years: 0, status: 'none', phrases: 0 };
+    if (!found.length) return { years: 0, status: 'unclear', phrases: mentions };
+    return { years: Math.max.apply(null, found), status: found.length >= mentions ? 'ok' : 'unclear', phrases: mentions, all: found };
+  }
+  /* years-of-experience check for one category: only projects that include it, overlaps counted once (form note 2) */
+  function yearsCheck(st, c) {
+    var P = parseMinYears(c), es = entries(st, c.code), found = years(st, c.code);
+    var projects = es.map(function (x) { var ok = isFinite(Date.parse(x.p.begin)); return { id: x.p.id, name: x.p.name || 'Untitled project', begin: x.p.begin, end: x.p.end, dated: ok }; });
+    var undated = projects.filter(function (p) { return !p.dated; }).length, status, msg;
+    if (P.status !== 'ok') { status = 'unknown'; msg = P.status === 'none' ? 'No minimum years found in the requirement text — confirm on TxDOT\'s page.' : 'Minimum years could not be read reliably from the requirement text — confirm on TxDOT\'s page.'; }
+    else if (found >= P.years) { status = 'pass'; msg = '~' + found + ' of ' + P.years + ' years in project dates (overlaps counted once).'; }
+    else if (undated) { status = 'unknown'; msg = '~' + found + ' of ' + P.years + ' years; ' + undated + ' project(s) in this category have no begin date.'; }
+    else { status = 'fail'; msg = '~' + found + ' of ' + P.years + ' years in project dates (overlaps counted once).'; }
+    return { code: c.code, required: P.status === 'ok' ? P.years : null, parse: P.status, found: found, status: status, msg: msg, pct: P.status === 'ok' && P.years ? Math.min(100, Math.round(found / P.years * 100)) : 0, projects: projects };
+  }
   function trainingFor(st, code) { return st.certs.filter(function (c) { return c.category === code && (c.kind === 'training'); }); }
   function certFileName(st, cert) {
     var P = st.profile, d = cert.completion || cert.issue || 'YYYY-MM-DD';
@@ -109,12 +133,12 @@
     req.forEach(function (r) { if (!r.by.length) gaps.push('Requirement not addressed: ' + r.item.text); });
     if (!es.length) gaps.push('No project describes work in this category yet.');
     es.forEach(function (x) { if (!x.e.text.trim()) gaps.push((x.p.name || 'Untitled project') + ': description of work is empty.'); else { if (!firstPerson(x.e.text)) gaps.push((x.p.name || 'Untitled project') + ': no first-person phrase ("I designed", "I computed" …).'); if (blanksLeft(x.e.text)) gaps.push((x.p.name || 'Untitled project') + ': ' + blanksLeft(x.e.text) + ' template blank(s) not filled.'); } });
-    var my = minYears(c), y = years(st, c.code);
-    if (my && y < my) gaps.push('Experience in project dates: ' + y + ' of ' + my + ' years (estimate; overlaps counted once).');
+    var my = minYears(c), y = years(st, c.code), yc = yearsCheck(st, c);
+    if (yc.status === 'fail') gaps.push('Experience in project dates: ' + yc.found + ' of ' + yc.required + ' years (estimate; overlaps counted once).');
     if (/Professional Engineer/i.test(c.requirements.map(function (r) { return r.text; }).join(' ')) && !st.profile.peNumber) gaps.push('Requirement mentions a Professional Engineer: add your P.E. license in My profile.');
     if (/Certified Floodplain Manager|\bCFM\b/.test(c.requirements.map(function (r) { return r.text; }).join(' ')) && !st.certs.some(function (x) { return /CFM|Floodplain/i.test(x.type || ''); })) gaps.push('Requirement mentions a Certified Floodplain Manager (CFM): add the certification.');
     if (needsTraining(c.code) && !trainingFor(st, c.code).length) gaps.push('Training certificate required: add the training (as a separate PDF upload in CCIS).');
-    return { cat: c, rows: rows, reqTotal: req.length, reqDone: done, pct: req.length ? Math.round(done / req.length * 100) : 0, entries: es, years: y, minYears: my, gaps: gaps, ready: !gaps.length };
+    return { cat: c, rows: rows, reqTotal: req.length, reqDone: done, pct: req.length ? Math.round(done / req.length * 100) : 0, entries: es, years: y, minYears: my, gaps: gaps, yearsCheck: yc, ready: !gaps.length };
   }
   function readiness(st, C) { var ix = catIndex(C); return st.targets.filter(function (k) { return ix[k]; }).map(function (k) { return coverage(st, ix[k]); }); }
   function ccisProgress(st) { var n = CCIS_STEPS.filter(function (s) { return st.ccis[s.id]; }).length; return { done: n, total: CCIS_STEPS.length }; }
@@ -208,6 +232,8 @@
     if (!F.projects.length) warn.push('No projects entered.');
     F.projects.forEach(function (p, i) { var n = 'Project ' + (i + 1) + (p.name ? ' (' + p.name + ')' : ''); if (!p.name) warn.push(n + ': project name is blank.'); if (!p.cats.length) warn.push(n + ': no work category.'); p.cats.forEach(function (c) { if (!String(c.text || '').trim()) warn.push(n + ': ' + c.code + ' work category description is blank.'); if (blanksLeft(c.text)) warn.push(n + ': ' + c.code + ' description still has template blanks.'); }); });
     F.precerts.forEach(function (g) { g.cats.forEach(function (k) { if (needsTraining(k) && !st.certs.some(function (c) { return c.category === k; })) warn.push(k + ': training certificate required (upload each as a separate PDF in CCIS).'); }); });
+    var ix = C ? catIndex(C) : {};
+    F.precerts.forEach(function (g) { g.cats.forEach(function (k) { if (!ix[k]) return; var y = yearsCheck(st, ix[k]); if (y.status !== 'pass') warn.push(k + ' experience: ' + (y.status === 'fail' ? 'below minimum — ' : 'unknown — ') + y.msg); }); });
     if (F.certs.length > 10) warn.push(F.certs.length + ' certifications: the form shows 10, more may be added (the generated form lists all).');
     if (F.projects.some(function (p) { return p.cats.length > 5; })) warn.push('A project has more than five categories: the form shows five, more may be added (the generated form lists all).');
     return { missing: miss, warnings: warn, ok: !miss.length };
@@ -272,7 +298,7 @@
   }
   function importJSON(text) { var o = JSON.parse(text); return normalize(o && o.data ? o.data : o); }
 
-  var api = { fmtDate: fmtDate, fullName: fullName, formCerts: formCerts, formData: formData, formCheck: formCheck, formText: formText, PRE_EXAMPLE_KEY: PRE_EXAMPLE_KEY, EXAMPLE_HEAD: EXAMPLE_HEAD, exampleState: exampleState, isExampleState: isExampleState, hasRealData: hasRealData, clearExample: clearExample, today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
+  var api = { parseMinYears: parseMinYears, yearsCheck: yearsCheck, fmtDate: fmtDate, fullName: fullName, formCerts: formCerts, formData: formData, formCheck: formCheck, formText: formText, PRE_EXAMPLE_KEY: PRE_EXAMPLE_KEY, EXAMPLE_HEAD: EXAMPLE_HEAD, exampleState: exampleState, isExampleState: isExampleState, hasRealData: hasRealData, clearExample: clearExample, today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
     scopeItems: scopeItems, checklist: checklist, template: template, words: words, firstPerson: firstPerson, blanksLeft: blanksLeft, addProject: addProject, findProject: findProject, addEntry: addEntry, entries: entries, toggleCover: toggleCover, years: years,
     trainingFor: trainingFor, certFileName: certFileName, coverage: coverage, readiness: readiness, ccisProgress: ccisProgress, projectText: projectText, summaryText: summaryText, exportJSON: exportJSON, importJSON: importJSON, normalize: normalize, money: money };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PCM = api;

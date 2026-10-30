@@ -133,4 +133,20 @@ t('v1.3 suggestions: deterministic keyword scoring, excludes existing, explains 
   assert.ok(S.suggest({ name: 'x', desc: 'Section 404 individual permit with wetland mitigation', cats: [] }, C).some((x) => x.code === '2.4.2'));
   assert.ok(/not a determination/.test(S.NOTE));
 });
+t('v1.3 years check: parsed minimums, overlaps once, only projects with the category, unparsed -> confirm', () => {
+  const c = { code: '9.9.9', requirements: [{ text: 'The firm must employ one Professional Engineer with a minimum of five years of experience in X.' }] };
+  assert.deepStrictEqual([M.parseMinYears(c).years, M.parseMinYears(c).status], [5, 'ok']);
+  assert.strictEqual(M.parseMinYears({ requirements: [{ text: 'one planner, with a minimum five years of demonstrated experience' }] }).years, 5);
+  assert.strictEqual(M.parseMinYears({ requirements: [{ text: 'Experience in years as determined by TxDOT.' }] }).status, 'unclear');
+  assert.strictEqual(M.parseMinYears({ requirements: [{ text: 'Must hold a CFM.' }] }).status, 'none');
+  const st = M.newState(), ix = M.catIndex(C);
+  const a = M.addProject(st, { name: 'A', begin: '2015-01-01', end: '2018-01-01' }); M.addEntry(st, a.id, '10.2.1', C);
+  const b = M.addProject(st, { name: 'B', begin: '2017-01-01', end: '2019-01-01' }); M.addEntry(st, b.id, '10.2.1', C);
+  const x = M.addProject(st, { name: 'Other', begin: '2000-01-01', end: '2014-01-01' }); M.addEntry(st, x.id, '4.2.1', C);
+  let y = M.yearsCheck(st, ix['10.2.1']); assert.strictEqual(y.required, 5); assert.strictEqual(y.found, 4); assert.strictEqual(y.status, 'fail'); assert.deepStrictEqual(y.projects.map((p) => p.name), ['A', 'B']); assert.strictEqual(y.pct, 80);
+  const d = M.addProject(st, { name: 'D', begin: '', end: '' }); M.addEntry(st, d.id, '10.2.1', C); assert.strictEqual(M.yearsCheck(st, ix['10.2.1']).status, 'unknown');
+  d.begin = '2019-01-01'; d.end = '2020-06-01'; y = M.yearsCheck(st, ix['10.2.1']); assert.strictEqual(y.status, 'pass'); assert.strictEqual(y.found, 5.4);
+  const un = C.categories.find((k) => M.parseMinYears(k).status !== 'ok'); assert.ok(un); assert.strictEqual(M.yearsCheck(st, un).status, 'unknown'); assert.ok(/confirm on TxDOT/.test(M.yearsCheck(st, un).msg));
+  st.targets.push('10.2.1'); d.end = '2019-02-01'; assert.ok(M.formCheck(st, C).warnings.some((w) => /^10\.2\.1 experience: below minimum/.test(w)));
+});
 (async () => { let n = 0; for (const [name, f] of tests) { try { await f(); n++; } catch (e) { console.error('FAIL', name, e); process.exit(1); } } console.log('ok', n, 'tests'); })();

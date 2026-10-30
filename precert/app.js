@@ -230,11 +230,18 @@
           h('ul', {}, r.rows.filter(function (x) { return x.item.kind === 'req'; }).map(function (x) {
             return h('li', { class: x.by.length ? 'ok' : 'gap' }, h('div', { class: 'node' }, (x.by.length ? '✓ ' : '✗ ') + x.item.text),
               x.by.length ? h('ul', {}, x.by.map(function (y) { return h('li', { class: 'proj' }, h('div', { class: 'node pnode' }, '▣ ' + (y.p.name || 'Untitled project') + (y.p.begin ? ' (' + y.p.begin.slice(0, 4) + '–' + (y.p.end || 'now').slice(0, 4) + ')' : ''))); })) : null);
-          }), r.minYears ? h('li', { class: r.years >= r.minYears ? 'ok' : 'gap' }, h('div', { class: 'node' }, (r.years >= r.minYears ? '✓ ' : '✗ ') + 'Experience: ~' + r.years + ' of ' + r.minYears + ' years in project dates')) : null),
+          }), yearsNode(r.yearsCheck)),
           r.gaps.length ? h('ul', { class: 'gaps' }, r.gaps.map(function (g) { return h('li', {}, g); })) : null);
       }))];
   }
 
+  function yearsNode(y) {
+    var cls = y.status === 'pass' ? 'ok' : y.status === 'fail' ? 'gap' : 'unk', ic = y.status === 'pass' ? '✓ ' : y.status === 'fail' ? '✗ ' : '? ';
+    return h('li', { class: 'yrs ' + cls, 'data-years': y.status }, h('div', { class: 'node' }, h('span', {}, ic + 'Experience: ' + (y.required ? y.found + ' of ' + y.required + ' years' : y.found + ' years found, minimum not confirmed')), h('span', { class: 'sp' }), y.required ? bar(y.pct, y.pct + '% of required years') : null,
+      h('span', { class: 'tag ' + (cls === 'ok' ? 'okt' : cls === 'gap' ? 'badt' : 'warnt') }, y.status === 'pass' ? 'Pass' : y.status === 'fail' ? 'Short' : 'Confirm')),
+      h('div', { class: 'muted ymsg' }, y.msg, y.status === 'unknown' && y.parse !== 'ok' ? [' ', h('a', { href: 'https://www.txdot.gov/business/peps/become-precertified.html', target: '_blank', rel: 'noopener noreferrer' }, 'TxDOT page')] : null),
+      y.projects.length ? h('ul', {}, y.projects.map(function (p) { return h('li', { class: 'proj' }, h('div', { class: 'node pnode' }, '▣ ' + p.name + ' — ' + (p.dated ? M.fmtDate(p.begin) + ' – ' + (p.end ? M.fmtDate(p.end) : 'present') : 'no begin date'))); })) : h('div', { class: 'muted' }, 'No project includes this category yet.'));
+  }
   /* ---------- 5. CCIS steps ---------- */
   function renderCCIS() {
     var P = M.ccisProgress(st);

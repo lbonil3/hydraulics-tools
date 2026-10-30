@@ -109,3 +109,5 @@ body.isex .card.proj{border-style:dashed}
 /* v1.3 collapsible panels */
 details.panel{border:1px solid var(--line,#ddd);border-radius:8px;padding:6px 10px;margin:8px 0}details.panel>summary{cursor:pointer;font-weight:600;display:flex;gap:8px;align-items:center;min-height:32px}
 .slist{list-style:none;margin:0;padding:0}.slist li{border-top:1px solid var(--line,#eee);padding:6px 0;display:grid;gap:4px}.slist .why{font-size:.9em;overflow-wrap:anywhere}.slist .btn{justify-self:start}
+
+.tree li.unk>.node{color:#b45309}.yrs .ymsg{margin:2px 0 4px 18px;font-size:.9em}
