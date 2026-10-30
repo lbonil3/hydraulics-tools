@@ -383,3 +383,15 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
+
+## v3.4 bullet report
+
+| Commit | Change |
+|---|---|
+| dadef38 | pm v3.4: e2e for the bullet report and Letter/A4 PDFs |
+| 1f9613e | pm v3.4: bullet report (takeaways, attention, next steps, branch/sub bullets, road sub-lists, dependency pairs, workload detail) + Use bullet summaries toggle, print CSS |
+| 472adf9 | pm v3.4: cap attention lists with + n more |
+| 941c40b | pm v3.4: report outline model (takeaways, attention, next steps, branch bullets, roads, dependency pairs) + tests |
+
+Undo: `git revert --no-edit pm-pre-bullets..pm-v3.4-final` then push (no force), or `git checkout pm-pre-bullets -- pm` and commit.
+Data model and storage unchanged (M.reportOutline is derived only). UI setting `ui.rpt.bullets` (default on) picks bullets vs the v3.3 paragraph style.
