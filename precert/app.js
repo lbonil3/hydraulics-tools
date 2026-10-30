@@ -151,6 +151,17 @@
         return h('label', { class: 'chk ' + it.kind }, h('input', { type: 'checkbox', 'data-item': it.id, checked: e.covers.indexOf(it.id) >= 0, onchange: function (ev) { M.toggleCover(st, p.id, e.id, it.id, ev.target.checked); save(); } }), h('span', {}, it.kind === 'scope' ? h('i', {}, 'Scope: ') : h('b', {}, 'Requirement: '), it.text)); })));
   }
 
+  /* suggested categories from this project's own text (keyword scoring in suggest.js; hints only) */
+  function suggPanel(p) {
+    var S = PCS.suggest(p, C);
+    return h('details', { class: 'panel sugg', id: 'sugg-' + p.id, open: ui.suggOpen && ui.suggOpen[p.id] ? true : null, ontoggle: function (ev) { ui.suggOpen = ui.suggOpen || {}; ui.suggOpen[p.id] = ev.target.open; saveUI(); } },
+      h('summary', {}, 'Suggested categories', h('span', { class: 'tag' + (S.length ? ' okt' : '') }, String(S.length))),
+      h('p', { class: 'muted' }, PCS.NOTE),
+      S.length ? h('ul', { class: 'slist' }, S.map(function (x) {
+        return h('li', {}, h('div', {}, h('b', {}, x.code + ' ' + x.name), ' ', h('span', { class: 'muted' }, 'match strength ' + x.score)), h('div', { class: 'why' }, 'Why: ' + x.why.join('; ')),
+          h('button', { type: 'button', class: 'btn sm', 'data-sugg': x.code, onclick: function () { M.addEntry(st, p.id, x.code, C); save(); toast(x.code + ' added — confirm it against TxDOT\'s requirements and describe your own work.'); render(); } }, 'Add this category to project'));
+      })) : h('p', { class: 'muted' }, 'No suggestions yet — add a project name, description or write-up text (e.g. storm drain, culvert, HEC-RAS, FEMA, widening).'));
+  }
   /* ---------- 2. projects ---------- */
   function renderProjects() {
     var list = st.projects.map(function (p, i) {
@@ -160,6 +171,7 @@
           h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { if (confirm('Delete this project and its write-ups?')) { st.projects.splice(st.projects.indexOf(p), 1); save(); render(); } } }, 'Delete')),
         h('div', { class: 'grid' }, field('Project name', p, 'name', { id: 'pname' }), field('Begin date', p, 'begin', { type: 'date', id: 'pbeg' }), field('End date', p, 'end', { type: 'date', id: 'pend' }), field('Location', p, 'location', { id: 'ploc' }),
           field('Estimated project fees ($)', p, 'fees', { mode: 'decimal', id: 'pfee' }), field('Estimated construction cost ($)', p, 'cost', { mode: 'decimal', id: 'pcost' }), field('General description', p, 'desc', { area: true, wide: true, id: 'pdesc' })),
+        suggPanel(p),
         h('h3', {}, 'Work categories on this project'),
         p.cats.length ? p.cats.map(function (e) { return entryEditor(p, e); }) : h('p', { class: 'muted' }, 'No work categories yet.'),
         catSelect('addCat-' + p.id, function (code) { M.addEntry(st, p.id, code, C); save(); render(); }, true));

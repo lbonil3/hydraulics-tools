@@ -105,3 +105,7 @@ body.isex .card.proj{border-style:dashed}
   .printout.form .fv{font-weight:700}.printout.form .ne{font-weight:400;font-style:italic;color:#666}.printout.form .fd{white-space:pre-wrap;border:.5pt solid #999;padding:3pt;margin:2pt 0 5pt}
   .printout.form .pwm{color:#b00;border-color:#b00}
 }
+
+/* v1.3 collapsible panels */
+details.panel{border:1px solid var(--line,#ddd);border-radius:8px;padding:6px 10px;margin:8px 0}details.panel>summary{cursor:pointer;font-weight:600;display:flex;gap:8px;align-items:center;min-height:32px}
+.slist{list-style:none;margin:0;padding:0}.slist li{border-top:1px solid var(--line,#eee);padding:6px 0;display:grid;gap:4px}.slist .why{font-size:.9em;overflow-wrap:anywhere}.slist .btn{justify-self:start}

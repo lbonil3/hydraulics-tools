@@ -121,4 +121,16 @@ t('v1.2 docx: zip round trip, fill official template, valid XML, values present 
   } else console.log('  (soffice not found: PDF conversion check skipped)');
 });
 
+t('v1.3 suggestions: deterministic keyword scoring, excludes existing, explains why', () => {
+  const S = require('./suggest.js');
+  const p = { name: 'IH 10 frontage drainage', desc: 'Replaced a box culvert and designed storm drain inlets; checked with HY-8 and the TxDOT Hydraulic Design Manual. Prepared a FEMA no-rise and CLOMR.', cats: [] };
+  const r = S.suggest(p, C), codes = r.map((x) => x.code);
+  assert.strictEqual(codes[0], '10.2.1'); assert.ok(codes.includes('10.8.1')); assert.ok(!codes.includes('10.6.1'));
+  assert.ok(r[0].why.some((w) => /HY-8/.test(w))); assert.deepStrictEqual(S.suggest(p, C), r, 'deterministic');
+  p.cats.push({ code: '10.2.1', text: '' }); assert.ok(!S.suggest(p, C).some((x) => x.code === '10.2.1'), 'already on project');
+  assert.deepStrictEqual(S.suggest({ name: '', desc: '', cats: [] }, C), []);
+  assert.ok(S.suggest({ name: 'Road widening', desc: 'horizontal alignment, typical sections, plan and profile sheets', cats: [] }, C).some((x) => x.code === '4.2.1'));
+  assert.ok(S.suggest({ name: 'x', desc: 'Section 404 individual permit with wetland mitigation', cats: [] }, C).some((x) => x.code === '2.4.2'));
+  assert.ok(/not a determination/.test(S.NOTE));
+});
 (async () => { let n = 0; for (const [name, f] of tests) { try { await f(); n++; } catch (e) { console.error('FAIL', name, e); process.exit(1); } } console.log('ok', n, 'tests'); })();
