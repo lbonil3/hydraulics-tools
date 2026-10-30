@@ -69,3 +69,30 @@ https://www.txdot.gov/content/dam/docs/division/ppd/precert/precertification-app
 When TxDOT revises the form, replace the file and re-run `node precert/test.js` (the docx round-trip test checks the fill).
 Data: new optional fields (profile.employeeSeq, profile.peAgency, cert.degreeType/trainingType/trainingDate) default to ''
 on load; v1.1 ignores them, so rolling back loses nothing else.
+
+## v1.3 suggestions, years check, write-up quality, reference-data notice
+
+| Commit | Change |
+|---|---|
+| 1a04739 | precert v1.3: e2e for suggestions, years check, quality, reference line |
+| 61c8abf | precert v1.3: short write-ups never rate green |
+| b97c351 | precert v1.3: reference-data dates, age notice + Check for updates link, manual refresh script |
+| 06a11de | precert v1.3: write-up quality checker (flags, traffic light, requirement term match, hints) + tests |
+| 80999bb | precert v1.3: years-of-experience check per category (parsed minimum, overlaps once, Readiness + form warnings) + tests |
+| b6c44e7 | precert v1.3: suggest work categories from project text (keyword scoring, why, one-tap add) + tests |
+
+Undo (keeps v1.2): `git revert --no-edit precert-pre-v13..precert-v1.3-final` then push (no force),
+or `git checkout precert-pre-v13 -- precert scripts/refresh-precert-data.js` and commit.
+New files: precert/suggest.js (keyword rules per category, PCS), precert/quality.js (write-up checks, PCQ),
+scripts/refresh-precert-data.js. Data: `ref` (reference dates) is added to saved data on load; older versions ignore it.
+
+## Updating reference data (TxDOT publishes a new list or form)
+
+1. `node scripts/refresh-precert-data.js --save /tmp/precert-new` (Node 18+). Exit 0 = unchanged, 2 = changed, 1 = error.
+   It compares the categories document's date line (or Last-Modified) with `REF.categoriesDate` / categories.json `docDate`,
+   and the form's SHA-256 with precert/form-template.docx. It changes nothing.
+2. Form changed: copy the new .docx to precert/form-template.docx, update `REF.formDate` in precert/model.js and the
+   date in formText/formNodes labels, run `node precert/test.js` (docx round trip) and fix label mappings in docx.js if the layout changed.
+3. Categories changed: regenerate precert/categories.json (docDate, verified), update `REF.categoriesDate`.
+4. Set `REF.verified` to the check date (the in-app notice turns amber after 90 days), run tests + e2e, commit, push.
+No GitHub Action is used (the repo has no workflows); run the script by hand.
