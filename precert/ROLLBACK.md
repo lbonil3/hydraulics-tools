@@ -52,3 +52,20 @@ Undo (keeps v1): `git revert --no-edit precert-pre-example..precert-v1.1-final` 
 or `git checkout precert-pre-example -- precert` and commit.
 Data: the example lives in `precert.data.v1` with `example: true` and `isExample` flags; real data is copied to
 `precert.data.v1.pre-example` before loading and put back by "Clear example" / "Restore my data". v1 ignores the flags.
+
+## v1.2 filled TxDOT form
+
+| Commit | Change |
+|---|---|
+| f2a4b58 | precert v1.2: e2e for the TxDOT form outputs |
+| 2e633e9 | precert v1.2: TxDOT form tab, checklist, .docx / print / share / copy, new inputs |
+| 36203dc | precert: form data model (CCIS dates, mapping, mandatory check, form text) + tests |
+| b7520ac | precert: bundle official form template (09/18/2026) and in-browser docx filler |
+
+Undo (keeps v1.1): `git revert --no-edit precert-pre-form..precert-v1.2-final` then push (no force),
+or `git checkout precert-pre-form -- precert` and commit.
+Template: `precert/form-template.docx` is a byte-identical copy of
+https://www.txdot.gov/content/dam/docs/division/ppd/precert/precertification-application-form.docx (form dated 09/18/2026).
+When TxDOT revises the form, replace the file and re-run `node precert/test.js` (the docx round-trip test checks the fill).
+Data: new optional fields (profile.employeeSeq, profile.peAgency, cert.degreeType/trainingType/trainingDate) default to ''
+on load; v1.1 ignores them, so rolling back loses nothing else.
