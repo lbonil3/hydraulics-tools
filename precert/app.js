@@ -102,15 +102,15 @@
     return [exampleCard(),
       h('section', { class: 'card' }, h('h2', {}, 'Employee'),
         h('div', { class: 'grid' }, field('First name *', P, 'first'), field('Middle name', P, 'middle'), field('Last name *', P, 'last'), field('Firm name *', P, 'firm'), field('Firm sequence number *', P, 'firmSeq', { mode: 'numeric' }), field('Branch number', P, 'branch'),
-          field('Field of expertise', P, 'expertise', { ph: 'e.g. engineer' }), field('Employment status *', P, 'employment'),
+          field('Field of expertise', P, 'expertise', { ph: 'e.g. engineer' }), field('Employment status *', P, 'employment'), field('Employee sequence number (if unknown, leave blank)', P, 'employeeSeq', { id: 'empSeq' }),
           field('Employee personnel number (assigned by your firm)', P, 'personnelNo', { id: 'pno', hint: 'Do NOT enter a Social Security number.', onInput: function (v) { ssnW.hidden = !M.looksLikeSSN(v); } }),
           h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'formerTx', checked: P.formerTxdot, onchange: function (e) { P.formerTxdot = e.target.checked; save(); } }), 'Former TxDOT employee')),
         h('p', { class: 'warn soft' }, '⚠ Never enter your SSN anywhere in this tool. TxDOT asks for a personnel number assigned within your firm.'), ssnW),
       h('section', { class: 'card' }, h('h2', {}, 'Licensure'),
-        h('div', { class: 'grid' }, field('P.E. license number', P, 'peNumber'), field('State', P, 'peState'), field('Issue date', P, 'peDate', { type: 'date' })),
+        h('div', { class: 'grid' }, field('P.E. license number', P, 'peNumber'), field('State', P, 'peState'), field('Issue date', P, 'peDate', { type: 'date' }), field('Issuing agency', P, 'peAgency', { id: 'peAgency', ph: 'TBPELS (default for TX)' })),
         h('p', { class: 'muted' }, 'In CCIS a license is entered as a certification (type Professional Engineer, code 100000, issuing agency e.g. TBPELS).')),
       listCard('Degrees', st.degrees, function () { return { id: M.uid(), type: '', field: '', school: '', date: '' }; }, function (d) { return [field('Degree type', d, 'type', { ph: 'B.S., M.S.' }), field('Field', d, 'field', { ph: 'Civil engineering' }), field('School', d, 'school'), field('Date', d, 'date', { type: 'date' })]; }, 'addDegree'),
-      listCard('Certifications and training', st.certs, function () { return { id: M.uid(), kind: 'cert', type: '', code: '', number: '', agency: '', issue: '', exp: '', completion: '', category: '', note: '' }; }, certFields, 'addCert',
+      listCard('Certifications and training', st.certs, function () { return { id: M.uid(), kind: 'cert', type: '', code: '', number: '', agency: '', issue: '', exp: '', completion: '', category: '', note: '', degreeType: '', trainingType: '', trainingDate: '' }; }, certFields, 'addCert',
         h('p', { class: 'muted' }, 'Training certificates must be uploaded in CCIS for work categories ' + M.TRAINING_UPLOAD.join(', ') + ' — each as a separate PDF named Last.First.category.YYYY-MM-DD.PDF. This tool does not store files; keep the PDFs on your device.'))
     ];
   }
@@ -122,7 +122,7 @@
     var cat = h('select', { 'aria-label': 'Work category', onchange: function (e) { c.category = e.target.value; save(); upd(); } }, h('option', { value: '' }, '—'), M.TRAINING_UPLOAD.map(function (k) { return h('option', { value: k }, '⚑ ' + catLabel(k)); }));
     cat.value = c.category; upd();
     return [h('label', { class: 'f' }, h('span', {}, 'Kind'), kind), field('Type', c, 'type', { ph: 'P.E., CFM, NHI 130055…' }), field('Number', c, 'number'), field('Issuing agency', c, 'agency', { ph: 'TBPELS, ASFPM, NHI' }),
-      field('Issue date', c, 'issue', { type: 'date' }), field('Expiration', c, 'exp', { type: 'date' }), field('Completion (training)', c, 'completion', { type: 'date', onInput: upd }), h('label', { class: 'f' }, h('span', {}, 'For work category'), cat),
+      field('Issue date', c, 'issue', { type: 'date' }), field('Expiration', c, 'exp', { type: 'date' }), field('Completion (training)', c, 'completion', { type: 'date', onInput: upd }), field('Certification training date', c, 'trainingDate', { type: 'date' }), field('Degree type (form)', c, 'degreeType', { ph: 'B.S., M.S. (if applicable)' }), field('Training type (form)', c, 'trainingType', { ph: 'engineering, surveying…' }), h('label', { class: 'f' }, h('span', {}, 'For work category'), cat),
       field('PDF / notes', c, 'note', { ph: 'Where the PDF is kept, course hours…', wide: true }), fn];
   }
   function listCard(title, arr, make, fields, addId, extra) {
@@ -237,6 +237,7 @@
     return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Precertification worksheet</title><style>body{font:14px/1.5 Arial,Helvetica,sans-serif;max-width:800px;margin:16px auto;padding:0 12px;color:#000}pre{white-space:pre-wrap;font:inherit}h1{font-size:18px}.n{font-size:12px;color:#444}</style></head><body><h1>TxDOT precertification worksheet</h1><p class="n">Personal helper output, not an official TxDOT form. Verify on txdot.gov. Use your browser\'s Share or Print menu to save as PDF.</p><pre>' + esc(M.summaryText(st, C)) + '</pre></body></html>';
   }
   function fillPrint() {
+    $('#printOut').classList.remove('form');
     var R = M.readiness(st, C), P = st.profile;
     $('#printOut').replaceChildren(M.isExampleState(st) ? h('p', { class: 'pwm' }, M.EXAMPLE_HEAD) : null, h('h1', {}, 'TxDOT precertification worksheet'), h('p', { class: 'pm' }, [P.first, P.middle, P.last].filter(Boolean).join(' ') + (P.firm ? ' · ' + P.firm : '') + ' · generated ' + M.today() + ' · personal helper, not an official TxDOT form'),
       R.length ? h('table', {}, h('thead', {}, h('tr', {}, ['Category', 'Requirements', 'Projects', 'Status'].map(function (x) { return h('th', {}, x); }))), h('tbody', {}, R.map(function (r) { return h('tr', {}, h('td', {}, r.cat.code + ' ' + r.cat.name), h('td', {}, r.reqDone + ' / ' + r.reqTotal), h('td', {}, String(r.entries.length)), h('td', {}, r.ready ? 'Ready' : r.gaps.length + ' gap(s)')); }))) : null,
@@ -261,12 +262,69 @@
           h('button', { type: 'button', class: 'btn ghost', id: 'importBtn', onclick: function () { file.click(); } }, 'Import backup…'), file))];
   }
 
+
+  /* ---------- 6a. the official TxDOT Precertification Application Form, filled ---------- */
+  var TPL = null;
+  function getTemplate() { return TPL ? Promise.resolve(TPL) : fetch('form-template.docx').then(function (r) { if (!r.ok) throw new Error('template ' + r.status); return r.arrayBuffer(); }).then(function (b) { TPL = new Uint8Array(b); return TPL; }); }
+  function formName(ext) { var P = st.profile; return 'Precertification-Application-Form-' + (M.isExampleState(st) ? 'EXAMPLE-' : '') + ([P.last, P.first].filter(Boolean).join('-').replace(/[^\w-]+/g, '') || 'blank') + '-' + M.today() + '.' + ext; }
+  function dlDocx() {
+    var F = M.formData(st, C);
+    getTemplate().then(function (t) { var out = PCDOCX.buildDocx(t, F); var a = h('a', { download: formName('docx') }), u = URL.createObjectURL(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })); a.href = u; document.body.append(a); a.click(); setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, 1500); toast('Filled form (.docx) downloaded.'); })
+      .catch(function (e) { toast('Could not build the .docx (' + e.message + '). Use Print / Save PDF or Download printable page.'); });
+  }
+  /* form mirror: the form's sections and labels verbatim; blanks shown as "not entered" */
+  function formNodes(F) {
+    var v = function (x, req) { var t = String(x == null ? '' : x).trim(); return t ? h('span', { class: 'fv' }, t) : h('span', { class: 'fv ne' + (req ? ' req' : '') }, req ? 'not entered — required' : 'not entered'); };
+    var row = function (label, x, req) { return h('div', { class: 'fr' + (req && !String(x || '').trim() ? ' miss' : '') }, h('span', { class: 'fl' }, label), v(x, req)); };
+    var blk = function (x) { var t = String(x || '').trim(); return t ? h('div', { class: 'fd' }, t) : h('div', { class: 'fd ne' }, 'not entered'); };
+    return [F.example ? h('p', { class: 'pwm fwm' }, F.example) : null,
+      h('h1', { class: 'ft' }, 'Precertification Application Form'), h('p', { class: 'pm' }, 'TxDOT form dated 09/18/2026, filled by a personal helper — not an official TxDOT system. Enter this information into CCIS; nothing is submitted by this tool.'),
+      h('p', { class: 'pm' }, 'Note: Fields marked with an asterisk* are mandatory fields'),
+      h('h2', { class: 'fh' }, 'Firm Identification'), row('Firm name*', F.firm.name, 1), row('Firm sequence number*', F.firm.seq, 1),
+      h('h2', { class: 'fh' }, 'Employee Details'), row('First name*', F.emp.first, 1), row('Middle name (if applicable)', F.emp.middle), row('Last name*', F.emp.last, 1),
+      row('Personnel number (Employee # assigned by firm)', F.emp.personnelNo), row('Branch number (Employee’s base branch)', F.emp.branch), row('Employee Expertise (Ex. engineer, surveyor, technician, etc.)', F.emp.expertise),
+      row('Former TxDOT employee?', F.emp.formerTxdot ? 'Yes' : 'No'), row('Employment status*', F.emp.employment, 1), row('Employee sequence number (if unknown, leave blank)', F.emp.seq),
+      h('h2', { class: 'fh' }, 'Precertifications in this Application'),
+      h('table', { class: 'ftab' }, h('thead', {}, h('tr', {}, h('th', {}, 'Work Group*'), h('th', {}, 'Work Category*'))), h('tbody', {}, F.precerts.length ? F.precerts.map(function (g) { return h('tr', {}, h('td', {}, String(g.group)), h('td', {}, g.cats.join(', '))); }) : h('tr', { class: 'miss' }, h('td', { colspan: '2' }, v('', 1))))),
+      h('h2', { class: 'fh' }, 'Employee Certifications'), F.certs.length ? null : h('p', { class: 'muted' }, 'None entered.'),
+      F.certs.map(function (c, i) { return h('div', { class: 'fblk' }, h('h3', {}, 'Certification ' + (i + 1)), row('Work category (If applicable)', c.category), row('Degree type (ex. B.S., M.S.)', c.degreeType), row('Training type (ex. engineering, surveying, architecture)', c.trainingType),
+        row('Certification training date (format: MM/DD/YYYY)', c.trainingDate), row('Personnel/laboratory certification type (ex. P.E., CFM, RPLS, Hot Mix-Level IB)', c.certType), row('Issue date (format: MM/DD/YY)', c.issue), row('Expiration date (format: MM/DD/YY)', c.exp),
+        row('Completion date (for training) (format: MM/DD/YY)', c.completion), row('Employee certification number (ex. license/registration number)', c.number), row('Issuing agency name (ex. TBPELS, TBAE, Florida PE board, National Highway Institute)', c.agency)); }),
+      h('h2', { class: 'fh' }, 'Employee Projects'), F.projects.length ? null : h('p', { class: 'muted' }, 'None entered.'),
+      F.projects.map(function (p, i) { return h('div', { class: 'fblk' }, h('h3', {}, 'Project ' + (i + 1)), row('Project name', p.name), row('Project begin date', p.begin), row('End date', p.end), row('Project location', p.location), row('Estimated project fees', p.fees), row('Estimated construction cost', p.cost),
+        h('div', { class: 'fl' }, 'Project general description**'), blk(p.desc),
+        p.cats.map(function (c) { return h('div', { class: 'fcat' }, h('div', { class: 'fr' }, h('span', { class: 'fl' }, 'Work group'), h('span', { class: 'fv' }, String(c.group)), h('span', { class: 'fl' }, 'Work category'), h('span', { class: 'fv' }, c.code + (c.name ? ' ' + c.name : ''))), h('div', { class: 'fl' }, "Work category description** (describe applicant's work as it pertains to the category)"), blk(c.text)); })); }),
+      h('p', { class: 'pm' }, '**This field does not enforce character limitations')];
+  }
+  function fillFormPrint() { $('#printOut').replaceChildren.apply($('#printOut'), formNodes(M.formData(st, C)).flat(3).filter(Boolean)); $('#printOut').classList.add('form'); }
+  function formHTML() {
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var box = h('div'); box.replaceChildren.apply(box, formNodes(M.formData(st, C)).flat(3).filter(Boolean));
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc((M.isExampleState(st) ? 'EXAMPLE — ' : '') + 'Precertification Application Form') + '</title><style>body{font:11pt/1.45 Arial,Helvetica,sans-serif;max-width:800px;margin:16px auto;padding:0 12px;color:#000}h1{font-size:18pt;margin:0}h2{font-size:13pt;color:#1f4e79;margin:14pt 0 4pt}h3{font-size:11.5pt;margin:10pt 0 2pt}.pm{font-size:9pt;color:#333}.pwm{font-weight:700;color:#b00;border:1.5pt solid #b00;padding:4pt;text-align:center}.fr{display:flex;flex-wrap:wrap;gap:4pt 8pt;border-bottom:.5pt solid #999;padding:2pt 0}.fl{color:#222}.fv{font-weight:700}.ne{font-weight:400;color:#777;font-style:italic}.fd{white-space:pre-wrap;border:.5pt solid #999;padding:4pt;margin:2pt 0 6pt}table{border-collapse:collapse;width:100%}td,th{border:.5pt solid #777;padding:3pt;text-align:left}.fblk{break-inside:avoid-page}</style></head><body>' + box.innerHTML + '</body></html>';
+  }
+  function renderForm() {
+    var F = M.formData(st, C), ck = M.formCheck(st, C), txt = M.formText(st, C), canShare = !!navigator.share;
+    var doPrint = function () { fillFormPrint(); if (typeof window.print === 'function') { try { window.print(); } catch (e) { toast('Printing is not available here — use Download printable form.'); } } else toast('Printing is not available here — use Download printable form.'); };
+    return [h('section', { class: 'card' }, h('h2', {}, 'TxDOT Precertification Application Form'),
+      h('p', { class: 'muted' }, 'Fills the official TxDOT form (dated 09/18/2026, bundled with this tool) from what you entered. It is a helper output to prepare your CCIS entry — nothing is submitted anywhere.'),
+      h('div', { class: 'fcheck ' + (ck.ok ? 'ok' : 'bad'), id: 'formCheck' }, h('b', {}, ck.ok ? '✓ All mandatory (*) fields are filled.' : '✗ Missing mandatory (*) fields:'), ck.missing.length ? h('ul', { id: 'formMissing' }, ck.missing.map(function (m) { return h('li', {}, m); })) : null,
+        ck.warnings.length ? h('div', {}, h('b', {}, 'Check before exporting:'), h('ul', { id: 'formWarn' }, ck.warnings.map(function (m) { return h('li', {}, m); }))) : null),
+      h('div', { class: 'btns' },
+        h('button', { type: 'button', class: 'btn', id: 'dlDocx', onclick: function () { if (!ck.ok && !confirm('Some mandatory (*) fields are missing (' + ck.missing.length + '). Download anyway?')) return; dlDocx(); } }, 'Download filled form (.docx)'),
+        h('button', { type: 'button', class: 'btn', id: 'printForm', onclick: doPrint }, 'Print / Save PDF'),
+        canShare ? h('button', { type: 'button', class: 'btn', id: 'shareForm', onclick: function () { navigator.share({ title: 'Precertification Application Form', text: txt }).catch(function () {}); } }, 'Share…') : null,
+        h('button', { type: 'button', class: 'btn', id: 'dlFormHtml', onclick: function () { download(formName('html'), formHTML(), 'text/html'); toast('Printable form downloaded — open it and use Share › Print / Save to PDF.'); } }, 'Download printable form'),
+        h('button', { type: 'button', class: 'btn', id: 'copyForm', onclick: function () { copy(txt, 'Form text'); } }, 'Copy as text')),
+      h('p', { class: 'muted' }, 'On a phone, if Print does nothing (for example in a home-screen app), use Share or Download printable form and print from there. The .docx opens in Word, Google Docs or Pages.')),
+      h('section', { class: 'card formview', id: 'formView' }, formNodes(F))];
+  }
+
   /* ---------- 7. sources ---------- */
   function renderSources() {
     var S = [['TxDOT — Become precertified (eligibility, CCIS access, annual renewal Jan 1 – Mar 31)', 'https://www.txdot.gov/business/peps/become-precertified.html'],
       ['Precertification Work Categories (dated ' + C.docDate + '; source of the category list and requirements)', C.source],
       ['Precertification handout (process, 60-day review)', 'https://www.txdot.gov/content/dam/docs/division/ppd/precert/precert-handout.docx'],
-      ['Precertification application form (fields mirrored here)', 'https://www.txdot.gov/content/dam/docs/division/ppd/precert/precertification-application-form.docx'],
+      ['Precertification Application Form (dated 09/18/2026; a byte-identical copy is bundled as form-template.docx and filled in your browser by the TxDOT form tab)', 'https://www.txdot.gov/content/dam/docs/division/ppd/precert/precertification-application-form.docx'],
       ['Personal certification type codes', 'https://www.txdot.gov/content/dam/docs/division/ppd/precert/precert-personal-certification-list.docx'],
       ['Training certificate submittal requirements (separate PDFs, file naming)', 'https://www.txdot.gov/content/dam/docs/division/ppd/precert/precert-training-cert-submittal.docx'],
       ['Training requirement FAQs for work categories 3.7.1 and 4.7.1', 'https://www.txdot.gov/content/dam/docs/division/ppd/precert/precert-training-requirement-faqs-work-categories.docx'],
@@ -279,16 +337,16 @@
   }
 
   /* ---------- shell ---------- */
-  var R = { profile: renderProfile, projects: renderProjects, cats: renderCats, ready: renderReady, ccis: renderCCIS, export: renderExport, sources: renderSources };
+  var R = { profile: renderProfile, projects: renderProjects, cats: renderCats, ready: renderReady, ccis: renderCCIS, form: renderForm, export: renderExport, sources: renderSources };
   function render() {
     if (!R[ui.tab]) ui.tab = 'profile';
     document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { var on = b.dataset.tab === ui.tab; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.classList.toggle('on', on); });
     var main = $('#main'), y = window.scrollY; main.replaceChildren.apply(main, [R[ui.tab]()].flat(4).filter(Boolean)); main.dataset.tab = ui.tab;
-    window.scrollTo(0, y); fillPrint(); exampleChrome();
+    window.scrollTo(0, y); if (ui.tab === 'form') fillFormPrint(); else fillPrint(); exampleChrome();
   }
   document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { b.addEventListener('click', function () { ui.tab = b.dataset.tab; saveUI(); render(); window.scrollTo(0, 0); }); });
   $('#themeBtn').addEventListener('click', function () { ui.theme = ui.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); });
-  window.addEventListener('beforeprint', fillPrint);
+  window.addEventListener('beforeprint', function () { if (ui.tab === 'form') fillFormPrint(); else fillPrint(); });
   $('#exBtn').addEventListener('click', function () { if (M.isExampleState(st)) clearEx(); else loadExample(); });
   $('#exClear').addEventListener('click', clearEx); $('#exRestore').addEventListener('click', restoreMine);
   applyTheme();
