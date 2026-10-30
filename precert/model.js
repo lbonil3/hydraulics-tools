@@ -119,34 +119,87 @@
   function readiness(st, C) { var ix = catIndex(C); return st.targets.filter(function (k) { return ix[k]; }).map(function (k) { return coverage(st, ix[k]); }); }
   function ccisProgress(st) { var n = CCIS_STEPS.filter(function (s) { return st.ccis[s.id]; }).length; return { done: n, total: CCIS_STEPS.length }; }
 
+
+  /* ---- v1.1 EXAMPLE mode: entirely fictional sample data, every record flagged isExample ---- */
+  var PRE_EXAMPLE_KEY = 'precert.data.v1.pre-example';
+  var SAMPLE = 'SAMPLE TEXT — replace with your own work. ';
+  function exampleState() {
+    var st = newState(); st.example = true;
+    st.profile = { first: 'Alex', middle: '', last: 'Example', firm: 'Example Engineering Co. (fictional)', firmSeq: '000000', personnelNo: 'EX-0001', branch: '01', expertise: 'Engineer', employment: 'Employed', formerTxdot: false, peNumber: 'EXAMPLE-000000', peState: 'TX', peDate: '2014-06-01', isExample: true };
+    st.degrees = [{ id: 'ex-deg1', type: 'B.S.', field: 'Civil Engineering', school: 'Example State University (fictional)', date: '2009-05-15', isExample: true },
+      { id: 'ex-deg2', type: 'M.S.', field: 'Water Resources Engineering', school: 'Example State University (fictional)', date: '2011-05-15', isExample: true }];
+    st.certs = [{ id: 'ex-c1', kind: 'license', type: 'Professional Engineer (P.E.)', code: '100000', number: 'EXAMPLE-000000', agency: 'TBPELS', issue: '2014-06-01', exp: '', completion: '', category: '', note: 'EXAMPLE — not a real license', isExample: true },
+      { id: 'ex-c2', kind: 'cert', type: 'Hydraulic design short course (example)', code: '132000', number: 'EX-TRN-01', agency: 'Example Training Provider', issue: '2019-03-12', exp: '', completion: '2019-03-12', category: '', note: 'EXAMPLE certificate', isExample: true },
+      { id: 'ex-c3', kind: 'cert', type: 'Storm drain modeling workshop (example)', code: '132000', number: 'EX-TRN-02', agency: 'Example Training Provider', issue: '2022-10-05', exp: '', completion: '2022-10-05', category: '', note: 'EXAMPLE certificate', isExample: true }];
+    var P = function (f, cats) { return Object.assign({ id: f.id, isExample: true, cats: cats.map(function (c, i) { return { id: f.id + '-' + i, code: c[0], text: SAMPLE + c[1], covers: c[2], isExample: true }; }) }, f); };
+    st.projects = [
+      P({ id: 'ex-p1', name: 'EXAMPLE: FM 0000 widening (fictional)', begin: '2015-02-01', end: '2018-08-31', location: 'Example County, TX (fictional)', desc: SAMPLE + 'Widening of a two-lane rural road to a four-lane curbed section, about 3 miles, with a new storm drain system and roadside channels.', fees: '1200000', cost: '38000000' }, [
+        ['10.2.1', 'I designed the storm drain system (inlets, laterals and trunk line) following the TxDOT Hydraulic Design Manual. I computed inlet spacing and gutter spread for the design frequency, sized the pipes and computed the hydraulic grade line with storm drain software, and designed the roadside channels and outfalls. I prepared the drainage plan and profile sheets and coordinated the state/federal permit documentation with the environmental team.', ['r0', 's0']],
+        ['4.2.1', 'I designed the roadway horizontal and vertical alignment and typical sections, prepared the roadway plan and profile sheets, and coordinated the drainage design, utility relocations, stormwater permit and traffic control plans for the widening.', ['r0']]]),
+      P({ id: 'ex-p2', name: 'EXAMPLE: SH 000 culvert replacement (fictional)', begin: '2018-09-01', end: '2021-03-31', location: 'Example County, TX (fictional)', desc: SAMPLE + 'Replacement of an undersized box culvert under a state highway, including hydrology for the contributing watershed and a detention pond.', fees: '450000', cost: '6500000' }, [
+        ['10.1.1', 'I delineated the watershed and computed the runoff using a unit hydrograph method, considering land use, soils and rainfall depths for the design frequencies. I routed the hydrographs through the existing channel and the proposed detention pond.', ['r0', 's0']],
+        ['10.2.1', 'I analyzed the existing and proposed culverts with culvert analysis software, designed the new box culvert and its headwalls, checked the outlet velocity, and designed the detention pond outlet structure.', ['s1']]]),
+      P({ id: 'ex-p3', name: 'EXAMPLE: Example Creek hydrologic and floodplain study (fictional)', begin: '2021-04-01', end: '2024-12-31', location: 'Example City, TX (fictional)', desc: SAMPLE + 'Hydrologic and hydraulic study of a creek crossing a planned roadway, with a draft map revision submittal.', fees: '300000', cost: '' }, [
+        ['10.1.1', 'I computed the existing and proposed peak flows with a hydrologic model, considering sub-basin parameters and channel routing, and compared them with the effective study.', ['r0']],
+        ['10.8.1', 'I developed the existing and proposed floodway models and prepared the draft map revision (CLOMR) exhibits. (Example: this category still shows a gap — no CFM certification is entered.)', []]])
+    ];
+    st.targets = ['10.1.1', '10.2.1', '4.2.1', '10.8.1'];
+    st.ccis = { access: true, categories: true, form: true, employee: true };
+    return st;
+  }
+  function isExampleState(st) { return !!(st && (st.example || (st.profile && st.profile.isExample) || st.projects.some(function (p) { return p.isExample; }))); }
+  function hasRealData(st) {
+    if (!st) return false; var P = st.profile || {};
+    var realProfile = !P.isExample && ['first', 'last', 'firm', 'peNumber', 'personnelNo'].some(function (k) { return String(P[k] || '').trim(); });
+    var realRec = function (a) { return (a || []).some(function (x) { return !x.isExample; }); };
+    return realProfile || realRec(st.degrees) || realRec(st.certs) || realRec(st.projects) || st.projects.some(function (p) { return p.cats.some(function (e) { return !e.isExample; }); });
+  }
+  /* remove only example records; anything you added while the example was loaded stays */
+  function clearExample(st) {
+    var s = clone(st);
+    if (s.profile.isExample) s.profile = newState().profile;
+    s.degrees = s.degrees.filter(function (x) { return !x.isExample; }); s.certs = s.certs.filter(function (x) { return !x.isExample; });
+    s.projects = s.projects.filter(function (p) { return !p.isExample || p.cats.some(function (e) { return !e.isExample; }); }).map(function (p) { p.cats = p.cats.filter(function (e) { return !e.isExample; }); if (p.isExample) { p.isExample = false; } return p; });
+    var used = {}; s.projects.forEach(function (p) { p.cats.forEach(function (e) { used[e.code] = 1; }); });
+    s.targets = s.targets.filter(function (k) { return used[k]; });
+    if (st.example) s.ccis = {};
+    delete s.example;
+    return s;
+  }
+  var EXAMPLE_HEAD = '*** EXAMPLE DATA — fictional, not real experience. Replace with your own before using. ***';
+
   /* ---- export ---- */
   function money(v) { var n = Number(String(v || '').replace(/[$,\s]/g, '')); return v === '' || v == null ? '' : isFinite(n) ? '$' + n.toLocaleString('en-US') : String(v); }
   function projectText(st, p, C) {
     var ix = C ? catIndex(C) : {};
     var L = ['Project name: ' + p.name, 'Project begin date: ' + (p.begin || ''), 'End date: ' + (p.end || ''), 'Project location: ' + p.location, 'Estimated project fees: ' + money(p.fees), 'Estimated construction cost: ' + money(p.cost), 'Project general description: ' + p.desc];
+    if (p.isExample) L.unshift(EXAMPLE_HEAD);
     p.cats.forEach(function (e) { var c = ix[e.code]; L.push('', 'Work group: ' + (c ? c.group : e.code.split('.')[0]) + '   Work category: ' + e.code + (c ? ' ' + c.name : ''), 'Work category description: ' + e.text); });
     return L.join('\n');
   }
   function summaryText(st, C) {
-    var P = st.profile, L = ['TxDOT precertification worksheet (personal helper, not an official TxDOT form)', 'Generated ' + today(), '',
+    var P = st.profile, L = (isExampleState(st) ? [EXAMPLE_HEAD] : []).concat(['TxDOT precertification worksheet (personal helper, not an official TxDOT form)', 'Generated ' + today(), '',
       'Employee: ' + [P.first, P.middle, P.last].filter(Boolean).join(' '), 'Firm: ' + P.firm + (P.firmSeq ? ' (sequence ' + P.firmSeq + ')' : ''), 'Personnel number (firm-assigned): ' + P.personnelNo, 'Field of expertise: ' + P.expertise, 'Former TxDOT employee: ' + (P.formerTxdot ? 'Y' : 'N'),
-      'P.E.: ' + [P.peNumber, P.peState, P.peDate].filter(Boolean).join(' · ')];
+      'P.E.: ' + [P.peNumber, P.peState, P.peDate].filter(Boolean).join(' · ')]);
     if (st.degrees.length) { L.push('', 'DEGREES'); st.degrees.forEach(function (d) { L.push('- ' + [d.type, d.field, d.school, d.date].filter(Boolean).join(', ')); }); }
     if (st.certs.some(function (c) { return c.type || c.number; })) { L.push('', 'CERTIFICATIONS / TRAINING'); st.certs.forEach(function (c) { var t = [c.type, c.number, c.agency, c.issue && 'issued ' + c.issue, c.exp && 'expires ' + c.exp, c.completion && 'completed ' + c.completion, c.category && 'for ' + c.category].filter(Boolean).join(', '); if (t) L.push('- ' + t); }); }
     var R = C ? readiness(st, C) : [];
     if (R.length) { L.push('', 'WORK CATEGORIES'); R.forEach(function (r) { L.push('- ' + r.cat.code + ' ' + r.cat.name + ': ' + r.reqDone + '/' + r.reqTotal + ' requirements addressed, ' + r.entries.length + ' project entr' + (r.entries.length === 1 ? 'y' : 'ies') + (r.minYears ? ', ~' + r.years + ' of ' + r.minYears + ' yr' : '') + (r.ready ? ' — ready to enter' : ' — ' + r.gaps.length + ' gap(s)')); }); }
-    st.projects.forEach(function (p, i) { L.push('', 'PROJECT ' + (i + 1), projectText(st, p, C)); });
+    st.projects.forEach(function (p, i) { L.push('', 'PROJECT ' + (i + 1), projectText(st, p, C).replace(EXAMPLE_HEAD + '\n', '')); });
     return L.join('\n');
   }
-  function exportJSON(st) { return JSON.stringify({ app: 'txdot-precert-helper', schema: SCHEMA, exported: new Date().toISOString(), data: st }, null, 1); }
+  function exportJSON(st) { return JSON.stringify({ app: 'txdot-precert-helper', schema: SCHEMA, example: isExampleState(st) ? EXAMPLE_HEAD : undefined, exported: new Date().toISOString(), data: st }, null, 1); }
   function normalize(d) {
     var s = newState();
     if (!d || typeof d !== 'object') throw new Error('Not a backup file');
     Object.keys(s.profile).forEach(function (k) { if (d.profile && k in d.profile) s.profile[k] = k === 'formerTxdot' ? !!d.profile[k] : str(d.profile[k], 200); });
-    s.degrees = (Array.isArray(d.degrees) ? d.degrees : []).map(function (x) { return { id: str(x.id || uid(), 40), type: str(x.type, 100), field: str(x.field, 200), school: str(x.school, 200), date: str(x.date, 20) }; });
-    s.certs = (Array.isArray(d.certs) ? d.certs : []).map(function (x) { return { id: str(x.id || uid(), 40), kind: x.kind === 'training' ? 'training' : x.kind === 'license' ? 'license' : 'cert', type: str(x.type, 200), code: str(x.code, 20), number: str(x.number, 100), agency: str(x.agency, 200), issue: str(x.issue, 20), exp: str(x.exp, 20), completion: str(x.completion, 20), category: str(x.category, 20), note: str(x.note, 1000) }; });
-    s.projects = (Array.isArray(d.projects) ? d.projects : []).map(function (p) { return { id: str(p.id || uid(), 40), name: str(p.name, 300), begin: str(p.begin, 20), end: str(p.end, 20), location: str(p.location, 300), desc: str(p.desc, 20000), fees: str(p.fees, 40), cost: str(p.cost, 40),
-      cats: (Array.isArray(p.cats) ? p.cats : []).map(function (e) { return { id: str(e.id || uid(), 40), code: str(e.code, 20), text: str(e.text, 20000), covers: (Array.isArray(e.covers) ? e.covers : []).map(function (c) { return str(c, 10); }) }; }) }; });
+    var fx = function (o, x) { if (x && x.isExample) o.isExample = true; return o; };
+    if (d.profile && d.profile.isExample) s.profile.isExample = true;
+    if (d.example) s.example = true;
+    s.degrees = (Array.isArray(d.degrees) ? d.degrees : []).map(function (x) { return fx({ id: str(x.id || uid(), 40), type: str(x.type, 100), field: str(x.field, 200), school: str(x.school, 200), date: str(x.date, 20) }, x); });
+    s.certs = (Array.isArray(d.certs) ? d.certs : []).map(function (x) { return fx({ id: str(x.id || uid(), 40), kind: x.kind === 'training' ? 'training' : x.kind === 'license' ? 'license' : 'cert', type: str(x.type, 200), code: str(x.code, 20), number: str(x.number, 100), agency: str(x.agency, 200), issue: str(x.issue, 20), exp: str(x.exp, 20), completion: str(x.completion, 20), category: str(x.category, 20), note: str(x.note, 1000) }, x); });
+    s.projects = (Array.isArray(d.projects) ? d.projects : []).map(function (p) { return fx({ id: str(p.id || uid(), 40), name: str(p.name, 300), begin: str(p.begin, 20), end: str(p.end, 20), location: str(p.location, 300), desc: str(p.desc, 20000), fees: str(p.fees, 40), cost: str(p.cost, 40),
+      cats: (Array.isArray(p.cats) ? p.cats : []).map(function (e) { return fx({ id: str(e.id || uid(), 40), code: str(e.code, 20), text: str(e.text, 20000), covers: (Array.isArray(e.covers) ? e.covers : []).map(function (c) { return str(c, 10); }) }, e); }) }, p); });
     s.targets = (Array.isArray(d.targets) ? d.targets : []).map(function (c) { return str(c, 20); }).filter(function (c, i, a) { return /^\d+\.\d+\.\d+$/.test(c) && a.indexOf(c) === i; });
     CCIS_STEPS.forEach(function (x) { if (d.ccis && d.ccis[x.id]) s.ccis[x.id] = true; });
     s.created = str(d.created || s.created, 40);
@@ -154,7 +207,7 @@
   }
   function importJSON(text) { var o = JSON.parse(text); return normalize(o && o.data ? o.data : o); }
 
-  var api = { today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
+  var api = { PRE_EXAMPLE_KEY: PRE_EXAMPLE_KEY, EXAMPLE_HEAD: EXAMPLE_HEAD, exampleState: exampleState, isExampleState: isExampleState, hasRealData: hasRealData, clearExample: clearExample, today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
     scopeItems: scopeItems, checklist: checklist, template: template, words: words, firstPerson: firstPerson, blanksLeft: blanksLeft, addProject: addProject, findProject: findProject, addEntry: addEntry, entries: entries, toggleCover: toggleCover, years: years,
     trainingFor: trainingFor, certFileName: certFileName, coverage: coverage, readiness: readiness, ccisProgress: ccisProgress, projectText: projectText, summaryText: summaryText, exportJSON: exportJSON, importJSON: importJSON, normalize: normalize, money: money };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PCM = api;

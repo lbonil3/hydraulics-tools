@@ -49,4 +49,33 @@ t('export text and JSON backup / restore', () => {
   assert.strictEqual(raw.profile.formerTxdot, true); assert.ok(!('evil' in raw.profile)); assert.deepStrictEqual(raw.targets, ['10.2.1']); assert.ok(raw.projects[0].id && raw.projects[0].cats[0].id);
   assert.throws(() => M.importJSON('null')); assert.throws(() => M.importJSON('{bad'));
 });
+t('v1.1 example: fictional, flagged, gap visible, exports watermarked', () => {
+  const ex = M.exampleState();
+  assert.ok(M.isExampleState(ex) && !M.hasRealData(ex), 'example is not real data');
+  assert.ok(ex.profile.isExample && /EXAMPLE/.test(ex.profile.peNumber) && ex.projects.every((p) => p.isExample && /^EXAMPLE/.test(p.name) && p.cats.every((e) => e.isExample && /^SAMPLE TEXT/.test(e.text) && M.firstPerson(e.text))));
+  assert.deepStrictEqual(ex.targets.slice(0, 3), ['10.1.1', '10.2.1', '4.2.1']);
+  const R = M.readiness(ex, C); assert.ok(R.some((r) => r.ready) && R.some((r) => !r.ready && r.gaps.length), 'both satisfied and gap');
+  assert.ok(M.ccisProgress(ex).done > 0 && M.ccisProgress(ex).done < M.CCIS_STEPS.length);
+  assert.ok(M.summaryText(ex, C).startsWith(M.EXAMPLE_HEAD)); assert.ok(M.projectText(ex, ex.projects[0], C).startsWith(M.EXAMPLE_HEAD));
+  assert.strictEqual(M.summaryText(ex, C).split(M.EXAMPLE_HEAD).length, 2, 'one header line in the summary');
+  assert.ok(JSON.parse(M.exportJSON(ex)).example); assert.ok(!JSON.parse(M.exportJSON(M.newState())).example);
+  const back = M.importJSON(M.exportJSON(ex)); assert.ok(M.isExampleState(back) && back.projects[1].cats[0].isExample);
+});
+t('v1.1 example: clear keeps real records, no data loss', () => {
+  const real = M.newState(); real.profile.first = 'Real'; const rp = M.addProject(real, { name: 'Mine' }); M.addEntry(real, rp.id, '10.2.1', C);
+  assert.ok(M.hasRealData(real) && !M.isExampleState(real) && M.hasRealData(M.newState()) === false);
+  const ex = M.exampleState();
+  const mine = M.addProject(ex, { name: 'Added during example' }); M.addEntry(ex, mine.id, '10.1.1', C);
+  M.addEntry(ex, 'ex-p1', '10.3.1', C); /* a real write-up on an example project */
+  assert.ok(M.hasRealData(ex));
+  const cl = M.clearExample(ex);
+  assert.ok(!M.isExampleState(cl) && !cl.profile.isExample && cl.profile.first === '');
+  assert.deepStrictEqual(cl.projects.map((p) => p.name).sort(), ['Added during example', 'EXAMPLE: FM 0000 widening (fictional)'].sort());
+  assert.ok(cl.projects.every((p) => p.cats.every((e) => !e.isExample)) && cl.degrees.length === 0 && cl.certs.length === 0);
+  assert.deepStrictEqual(cl.targets.sort(), ['10.1.1', '10.3.1']); assert.deepStrictEqual(cl.ccis, {});
+  assert.ok(ex.projects.length === 4, 'clearExample does not mutate its input');
+  const fresh = M.clearExample(M.exampleState()); assert.ok(!fresh.projects.length && !M.hasRealData(fresh));
+  assert.strictEqual(M.PRE_EXAMPLE_KEY, 'precert.data.v1.pre-example');
+});
+
 (async () => { let n = 0; for (const [name, f] of tests) { try { await f(); n++; } catch (e) { console.error('FAIL', name, e); process.exit(1); } } console.log('ok', n, 'tests'); })();
