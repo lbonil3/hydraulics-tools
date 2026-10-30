@@ -25,6 +25,7 @@
     'Give enough detail to show knowledge and competence, e.g. "I computed the runoff using the Rational Method considering …".'
   ];
 
+  function today() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function str(v, n) { return String(v == null ? '' : v).slice(0, n || 4000); }
@@ -127,11 +128,11 @@
     return L.join('\n');
   }
   function summaryText(st, C) {
-    var P = st.profile, L = ['TxDOT precertification worksheet (personal helper, not an official TxDOT form)', 'Generated ' + new Date().toISOString().slice(0, 10), '',
+    var P = st.profile, L = ['TxDOT precertification worksheet (personal helper, not an official TxDOT form)', 'Generated ' + today(), '',
       'Employee: ' + [P.first, P.middle, P.last].filter(Boolean).join(' '), 'Firm: ' + P.firm + (P.firmSeq ? ' (sequence ' + P.firmSeq + ')' : ''), 'Personnel number (firm-assigned): ' + P.personnelNo, 'Field of expertise: ' + P.expertise, 'Former TxDOT employee: ' + (P.formerTxdot ? 'Y' : 'N'),
       'P.E.: ' + [P.peNumber, P.peState, P.peDate].filter(Boolean).join(' · ')];
     if (st.degrees.length) { L.push('', 'DEGREES'); st.degrees.forEach(function (d) { L.push('- ' + [d.type, d.field, d.school, d.date].filter(Boolean).join(', ')); }); }
-    if (st.certs.length) { L.push('', 'CERTIFICATIONS / TRAINING'); st.certs.forEach(function (c) { L.push('- ' + [c.type, c.number, c.agency, c.issue && 'issued ' + c.issue, c.exp && 'expires ' + c.exp, c.completion && 'completed ' + c.completion, c.category && 'for ' + c.category].filter(Boolean).join(', ')); }); }
+    if (st.certs.some(function (c) { return c.type || c.number; })) { L.push('', 'CERTIFICATIONS / TRAINING'); st.certs.forEach(function (c) { var t = [c.type, c.number, c.agency, c.issue && 'issued ' + c.issue, c.exp && 'expires ' + c.exp, c.completion && 'completed ' + c.completion, c.category && 'for ' + c.category].filter(Boolean).join(', '); if (t) L.push('- ' + t); }); }
     var R = C ? readiness(st, C) : [];
     if (R.length) { L.push('', 'WORK CATEGORIES'); R.forEach(function (r) { L.push('- ' + r.cat.code + ' ' + r.cat.name + ': ' + r.reqDone + '/' + r.reqTotal + ' requirements addressed, ' + r.entries.length + ' project entr' + (r.entries.length === 1 ? 'y' : 'ies') + (r.minYears ? ', ~' + r.years + ' of ' + r.minYears + ' yr' : '') + (r.ready ? ' — ready to enter' : ' — ' + r.gaps.length + ' gap(s)')); }); }
     st.projects.forEach(function (p, i) { L.push('', 'PROJECT ' + (i + 1), projectText(st, p, C)); });
@@ -153,7 +154,7 @@
   }
   function importJSON(text) { var o = JSON.parse(text); return normalize(o && o.data ? o.data : o); }
 
-  var api = { SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
+  var api = { today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
     scopeItems: scopeItems, checklist: checklist, template: template, words: words, firstPerson: firstPerson, blanksLeft: blanksLeft, addProject: addProject, findProject: findProject, addEntry: addEntry, entries: entries, toggleCover: toggleCover, years: years,
     trainingFor: trainingFor, certFileName: certFileName, coverage: coverage, readiness: readiness, ccisProgress: ccisProgress, projectText: projectText, summaryText: summaryText, exportJSON: exportJSON, importJSON: importJSON, normalize: normalize, money: money };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PCM = api;
