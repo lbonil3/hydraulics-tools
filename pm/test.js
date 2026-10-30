@@ -569,6 +569,29 @@ t('v3.3 printable report data', () => {
   assert.ok(Array.isArray(P.deps.blocked) && Array.isArray(P.recent) && P.N.discs.length === 2);
 });
 
+t('v3.4 report outline: takeaways, attention, next steps, branch bullets, roads, dependency pairs, workload', () => {
+  const st = M.newState('Rpt'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp');
+  M.addRoad(st, pp.id, { road: 'FM 1960', start: '10+00', end: '22+00', scale: 50 }); M.syncPP(st);
+  const [s1, s2] = pp.sheets; s1.status = 'Done'; s1.owner = 'Ana'; s2.due = '2026-10-01';
+  const before = JSON.stringify(st);
+  let O = M.reportOutline(st, '2026-10-29');
+  assert.strictEqual(JSON.stringify(st), before, 'outline does not change the data');
+  assert.ok(/^50% complete overall \(1 of 2 sheets done\)$/.test(O.takeaways[0]));
+  assert.deepStrictEqual(O.attention.map((a) => a.kind), ['overdue', 'unassigned']); assert.ok(/due 2026-10-01/.test(O.attention[0].items[0]));
+  assert.ok(/^Finish A \/ /.test(O.next[0]) && O.next.some((n) => /Assign owners to 1 open sheet/.test(n)));
+  const dr = O.branches.find((b) => b.disc === 'Drainage'); assert.ok(dr.lead.endsWith('.') && dr.facts.some((f) => /^Status: 1 not started/.test(f)) && dr.facts.includes('PP sheets: 2'));
+  assert.strictEqual(typeof dr.groups['Not started'], 'number'); assert.ok(dr.subs[0].groups['In progress'][0].startsWith(pp.title + ' (1/2)'));
+  const road = dr.subs[0].roads[0]; assert.strictEqual(road.name, 'FM 1960'); assert.deepStrictEqual(road.spans, ['10+00 – 22+00']); assert.strictEqual(road.pp, 2); assert.strictEqual(road.scale, '1" = 50\'');
+  assert.deepStrictEqual(road.sheets.map((x) => x.range), ['10+00 – 16+00', '16+00 – 22+00']);
+  /* due within 7, dependency pair, needs update */
+  s2.due = '2026-11-02';
+  M.addLink(st, { t: 'sheet', id: s2.id }, { t: 'sheet', id: s1.id }, 'dep');
+  O = M.reportOutline(st, '2026-10-29');
+  assert.ok(O.attention.some((a) => a.kind === 'due7'));
+  assert.strictEqual(O.deps.length, 1); assert.ok(/^A \/ .* depends on A \/ /.test(O.deps[0].text));
+  assert.ok(O.work.find((w) => w.owner === 'Unassigned').bullets.some((b) => /^Next: 2026-11-02/.test(b)));
+  assert.ok(M.reportOutline(M.newState('E'), '2026-10-29').next.length === 1);
+});
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

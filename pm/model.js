@@ -1586,6 +1586,58 @@
     const recent = recentChanges(st, 12).map((c) => ({ t: c.t, msg: c.msg, item: lab(c.ref) }));
     return { today, meta: reportMeta(st), R, tree, deps, workload, recent, N: narrative(st, today) };
   }
+  /* v3.4 bullet outline of the printed report (derived only; the data model is unchanged) */
+  function reportOutline(st, today) {
+    today = today || todayISO();
+    const P = printReport(st, today), R = P.R, all = allSheets(st), F = flags(st);
+    const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+    const pairLab = (ref) => { const r = resolve(st, ref); if (!r) return '(missing)'; return subTag(r.sub) + ' / ' + (r.t === 'sheet' ? (r.sh.number ? '#' + r.sh.number + ' ' : '') + r.sh.title : r.t === 'road' ? r.seg.title + ' · ' + r.name : r.seg.title); };
+    const shLab = (x) => subTag(x.sub) + ' / ' + (x.sh.number ? '#' + x.sh.number + ' ' : '') + x.sh.title;
+    const updSet = new Set(F.update.map((x) => rk(x.ref)));
+    const secState = (sec) => { const p = progress(sec.sheets); return !sec.sheets.length || !p.done && !sec.sheets.some((x) => x.status !== 'Not started') ? 'Not started' : p.done === sec.sheets.length ? 'Done' : 'In progress'; };
+    const secNeedsUpd = (sec) => updSet.has(rk({ t: 'seg', id: sec.id })) || sec.sheets.some((x) => updSet.has(rk({ t: 'sheet', id: x.id })));
+    const GROUPS = ['Done', 'In progress', 'Not started', 'Needs update'];
+    const groupSecs = (secs) => { const g = Object.fromEntries(GROUPS.map((k) => [k, []])); for (const x of secs) { const lab = x.sec.title + (x.total ? ' (' + x.done + '/' + x.total + ')' : ''); g[secState(x.sec)].push(lab); if (secNeedsUpd(x.sec)) g['Needs update'].push(x.sec.title); } return g; };
+    const nextDue = (rows) => rows.filter((x) => x.sh.due && x.sh.status !== 'Done' && x.sh.due >= today).sort((a, b) => a.sh.due < b.sh.due ? -1 : 1).slice(0, 3).map((x) => x.sh.due + ' — ' + shLab(x));
+    const facts = (S, rows, extra) => { const c = Object.fromEntries(STATUSES.map((k) => [k, rows.filter((x) => x.sh.status === k).length])); const od = rows.filter((x) => isOverdue(x.sh, today)).length, bl = rows.filter((x) => F.blocked.some((b) => b.ref.t === 'sheet' && b.ref.id === x.sh.id)).length, nu = rows.filter((x) => updSet.has(rk({ t: 'sheet', id: x.sh.id }))).length;
+      const nd = nextDue(rows);
+      return [Math.round(S.pct) + '% complete — ' + S.done + ' of ' + pl(S.total, 'sheet') + ' done', 'Status: ' + STATUSES.map((k) => c[k] + ' ' + k.toLowerCase()).join(' · '), extra != null ? 'PP sheets: ' + extra : null,
+        nd.length ? 'Next due: ' + nd.join('; ') : 'Next due: none scheduled', od ? pl(od, 'overdue sheet') : null, bl ? pl(bl, 'blocked sheet') : null, nu ? pl(nu, 'sheet') + ' flagged needs update' : null].filter(Boolean); };
+    const branches = P.tree.map((T) => { const rows = all.filter((x) => x.sh.discipline === T.disc), N = P.N.discs.find((d) => d.disc === T.disc);
+      const allSecs = T.subs.flatMap((S) => S.secs);
+      return { disc: T.disc, lead: String(N ? N.text : '').split(/(?<=\.)\s/)[0], facts: facts(T.stats, rows, R.pp.byDisc[T.disc]), groups: Object.fromEntries(Object.entries(groupSecs(allSecs)).map(([k, v]) => [k, v.length])), note: N && N.note,
+        subs: T.subs.map((S) => { const r2 = rows.filter((x) => x.sub === S.sub), n2 = N && N.subs.find((y) => y.sub === S.sub);
+          return { sub: S.sub, lead: String(n2 ? n2.text.replace(/^[^—]*— \w+: /, '') : '').split(/(?<=\.)\s/)[0], facts: facts(S.stats, r2, S.stats.pp || 0), groups: groupSecs(S.secs), note: n2 && n2.note,
+            roads: S.secs.filter((x) => x.pp).flatMap((x) => x.roads.map((g) => ({ sec: x.sec.title, name: g.name, spans: g.spans, pp: g.pp,
+              scale: [...new Set(g.sheets.map((y) => sheetScale(st, S.sub, y.sh)).filter(Boolean))].map((v) => '1" = ' + v + "'").join(', '),
+              sheets: g.sheets.map((y) => ({ label: y.sh.gen ? 'PP ' + y.sh.gen.idx : y.sh.title, number: y.sh.number || '', range: y.range ? formatStation(y.range.start) + ' – ' + formatStation(y.range.end) + (y.range.manual ? ' *' : '') : 'stations not set', status: y.sh.status })) }))) }; }) }; });
+    /* attention */
+    const unassigned = all.filter((x) => !x.sh.owner && x.sh.status !== 'Done');
+    const attention = [];
+    if (R.overdue.length) attention.push({ kind: 'overdue', text: pl(R.overdue.length, 'sheet') + ' overdue', items: R.overdue.slice(0, 8).map((x) => shLab(x) + ' — due ' + x.sh.due + (x.sh.owner ? ' (' + x.sh.owner + ')' : '')) });
+    if (R.due7.length) attention.push({ kind: 'due7', text: pl(R.due7.length, 'sheet') + ' due within 7 days', items: R.due7.slice(0, 8).map((x) => shLab(x) + ' — due ' + x.sh.due + (x.sh.owner ? ' (' + x.sh.owner + ')' : '')) });
+    if (F.blocked.length) attention.push({ kind: 'blocked', text: pl(F.blocked.length, 'dependency conflict') + ' (waiting on unfinished work)', items: F.blocked.slice(0, 8).map((x) => pairLab(x.ref) + ' waits on ' + x.by.map(pairLab).join(', ')) });
+    if (F.update.length) attention.push({ kind: 'update', text: pl(F.update.length, 'item') + ' flagged needs update', items: F.update.slice(0, 8).map((x) => pairLab(x.ref) + ' — changed upstream: ' + x.from.map(pairLab).join(', ')) });
+    if (unassigned.length) attention.push({ kind: 'unassigned', text: pl(unassigned.length, 'open sheet') + ' unassigned', items: unassigned.slice(0, 8).map(shLab) });
+    const late = R.milestones.filter((m) => m.late); if (late.length) attention.push({ kind: 'milestone', text: pl(late.length, 'milestone') + ' past date and not complete', items: late.map((m) => m.m.name + ' — ' + m.m.date + ' (' + Math.round(m.pct) + '%)') });
+    const takeaways = [Math.round(R.overall.pct) + '% complete overall (' + R.overall.done + ' of ' + pl(R.overall.total, 'sheet') + ' done)', R.pp.total + ' PP sheets — Drainage ' + R.pp.byDisc.Drainage + ', SWP3 ' + R.pp.byDisc.SWP3].concat(branches.map((b) => b.disc + ': ' + b.facts[0]));
+    /* next steps */
+    const next = [];
+    R.overdue.slice(0, 3).forEach((x) => next.push('Finish ' + shLab(x) + ' (overdue since ' + x.sh.due + ')' + (x.sh.owner ? ' — ' + x.sh.owner : '')));
+    F.update.slice(0, 3).forEach((x) => next.push('Revise ' + pairLab(x.ref) + ' for the change in ' + x.from.map(pairLab).join(', ')));
+    R.due7.slice(0, 3).forEach((x) => next.push('Complete ' + shLab(x) + ' by ' + x.sh.due + (x.sh.owner ? ' — ' + x.sh.owner : '')));
+    F.ready.slice(0, 3).forEach((x) => next.push('Start ' + pairLab(x.ref) + ' (its dependencies are done)'));
+    if (unassigned.length) next.push('Assign owners to ' + pl(unassigned.length, 'open sheet'));
+    const upm = R.milestones.filter((m) => !m.late && m.pct < 100 && m.m.date).sort((a, b) => a.m.date < b.m.date ? -1 : 1)[0]; if (upm) next.push('Next milestone: ' + upm.m.name + ' on ' + upm.m.date + ' (' + Math.round(upm.pct) + '% of its sheets done)');
+    if (!next.length) next.push(R.overall.total && R.overall.done === R.overall.total ? 'All sheets are done — prepare the submittal.' : 'Set due dates and owners so the next steps can be listed.');
+    /* dependency pairs */
+    const deps = [];
+    for (const ref of allRefs(st)) for (const l of linksOf(st, ref).in) if (l.kind === 'dep') deps.push({ text: pairLab(ref) + ' depends on ' + pairLab(l.src), done: isDone(st, l.src), update: revCount(st, l.src) > (l.ack || 0) });
+    /* workload bullets */
+    const work = P.workload.map((w) => { const mine = all.filter((x) => (x.sh.owner || 'Unassigned') === w.owner && x.sh.status !== 'Done');
+      return { owner: w.owner, open: w.open, bullets: [w.open + ' open of ' + w.total, w.overdue ? pl(w.overdue, 'overdue') : null, w.due7 ? w.due7 + ' due in 7 days' : null, nextDue(mine)[0] ? 'Next: ' + nextDue(mine)[0] : null].filter(Boolean) }; });
+    return { today, takeaways, attention, next, branches, deps, work, GROUPS };
+  }
   function narrativeText(st, today) {
     const N = narrative(st, today), L = [(st.project.name || 'Project') + ' — status summary as of ' + N.today, '', N.project];
     if (N.note) L.push('Notes: ' + N.note);
@@ -1827,7 +1879,7 @@
       csvLine(['B', 'SWP3', 'SWP3 Layout', 'Kuykendahl Rd', '1000', '1480', '40', '', '', '', '', '', '', '', 'Stations as 1000 / 10+00 / 10+00.50 all work', '']),
       csvLine(['B', 'SWP3', '', '', '', '', '', 'SWP3 Summary & Notes', '', '', '', '', '', 'Dec 5, 2026', 'No section? It is picked from the title', ''])].join('\r\n') + '\r\n';
   }
-  return { setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
