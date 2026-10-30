@@ -55,6 +55,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ok(/first person/.test(await txt('.entry .wstat')) && /words/.test(await txt('.entry .wstat')), 'word count and first-person check');
   await pg.$eval('.entry [data-item="r0"]', (e) => e.click()); await sleep(200);
   ok((await data()).projects[0].cats[0].covers.includes('r0'), 'requirement ticked');
+  /* v1.3: write-up quality, category suggestions */
+  const V13 = SHOTS + 'v13/', v13 = (n) => pg.screenshot({ path: V13 + n + '-' + tag + '.png', fullPage: true }); fs.mkdirSync(V13, { recursive: true });
+  ok(await pg.$eval('.entry .qual summary', (e) => /Write-up check/.test(e.textContent)) && await pg.$eval('.entry .qual', (e) => /quantities|No quantities|methods|Short/i.test(e.textContent)), 'quality panel with flags');
+  await pg.$eval('.entry .qual', (e) => { e.open = true; }); ok(await pg.$eval('.entry .qreqs li', (e) => /ticked/.test(e.textContent)), 'tick overrides requirement term match');
+  await type('#f-pdesc-' + pid, 'Storm drain and FEMA CLOMR floodway no-rise analysis for the creek crossing.'); await tab('cats'); await tab('projects');
+  await pg.$eval('#sugg-' + pid, (e) => { e.open = true; e.scrollIntoView(); }); await sleep(100);
+  const sg = await txt('#sugg-' + pid); ok(/10\.8\.1/.test(sg) && /Why:/.test(sg) && /not a determination/.test(sg) && !/10\.2\.1 Roadway/.test(sg), 'suggestions with why, excluding categories already on the project');
+  await v13('01-suggestions-quality');
+  await pg.$eval('#sugg-' + pid + ' [data-sugg="10.8.1"]', (e) => e.click()); await sleep(250);
+  ok((await data()).projects[0].cats.some((c) => c.code === '10.8.1'), 'one-tap add category from suggestion');
   await shot('02-projects', true);
   /* 3. categories + helper */
   await tab('cats');
@@ -67,6 +77,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   /* 4. readiness */
   await tab('ready'); ok(await pg.$('#readyTree .tcat'), 'readiness tree'); ok(/SH 249 Drainage/.test(await txt('#readyTree')), 'project under the requirement');
   ok(/6\.5 of 5 years|of 5 years/.test(await txt('#readyTree')), 'experience years shown');
+  ok(await pg.$('#readyTree [data-years="pass"]') && /SH 249 Drainage — 01\/01\/2016/.test(await txt('#readyTree .yrs')), 'years check: pass, contributing projects listed');
+  await v13('02-readiness-years');
   await shot('04-readiness', true);
   /* 5. CCIS */
   await tab('ccis'); await pg.$eval('[data-step="access"]', (e) => e.click()); await sleep(100); await pg.$eval('[data-step="employee"]', (e) => e.click()); await sleep(100);
@@ -157,7 +169,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const back2 = await data();
   ok(back2.profile.last === 'Bonilla' && back2.projects.length === 1 && back2.projects[0].name === 'SH 249 Drainage' && !back2.example, 'Clear example restores my data');
   ok(await pg.evaluate(() => localStorage.getItem('precert.data.v1.pre-example') === null) && await pg.$eval('#exBanner', (e) => e.hidden), 'backup consumed, banner gone');
-  await tab('form'); const FC = await txt('#formCheck');
+  await tab('form'); ok(/Reference data: TxDOT categories dated 08\/25\/2026, form dated 09\/18\/2026, verified 2026-10-29/.test(await txt('#refLine')) && /become-precertified/.test(await pg.$eval('#checkUpdates', (e) => e.href + e.target)) && await pg.$eval('#checkUpdates', (e) => e.target === '_blank'), 'reference line + Check for updates link');
+  await pg.screenshot({ path: SHOTS + 'v13/03-form-reference-' + tag + '.png', fullPage: false });
+  const FC = await txt('#formCheck');
   ok(/Missing mandatory/.test(FC) && /Firm sequence number\*/.test(FC) && (await pg.$$('#formView .fr.miss')).length >= 1 && !/EXAMPLE DATA/.test(await txt('#formView')), 'real data: checklist highlights missing mandatory fields, no watermark');
   await pg.screenshot({ path: FD + '02-form-checklist-' + tag + '.png', fullPage: false });
   await tab('profile'); await type('#f-empSeq-p', '4321'); await sleep(250); ok((await data()).profile.employeeSeq === '4321', 'new employee sequence input saves');
