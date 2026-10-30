@@ -78,4 +78,47 @@ t('v1.1 example: clear keeps real records, no data loss', () => {
   assert.strictEqual(M.PRE_EXAMPLE_KEY, 'precert.data.v1.pre-example');
 });
 
+t('v1.2 form: dates, field mapping, mandatory check, migration', () => {
+  assert.strictEqual(M.fmtDate('2024-01-10', false), '01/10/2024'); assert.strictEqual(M.fmtDate('2024-01-10', true), '01/10/24'); assert.strictEqual(M.fmtDate('', true), ''); assert.strictEqual(M.fmtDate('Jan 2024'), 'Jan 2024');
+  const st = M.newState();
+  let ck = M.formCheck(st, C); assert.ok(!ck.ok); ['Firm name*', 'Firm sequence number*', 'First name*', 'Last name*'].forEach((k) => assert.ok(ck.missing.includes(k), k)); assert.ok(!ck.missing.includes('Employment status*'), 'default Employed');
+  assert.ok(ck.missing.some((m) => /Work Group\*/.test(m)));
+  Object.assign(st.profile, { first: 'Luis', last: 'Bonilla', firm: 'F', firmSeq: '123', peNumber: '99999', peDate: '2015-02-03', employeeSeq: '77' });
+  st.degrees.push({ id: 'd', type: 'B.S.', field: 'Civil Engineering', school: 'UH', date: '2010-05-01' });
+  st.certs.push({ id: 'c', kind: 'training', type: 'HSM training', number: 'N1', agency: 'NHI', issue: '', exp: '2027-01-01', completion: '2024-01-10', category: '4.7.1', note: '', degreeType: '', trainingType: 'engineering', trainingDate: '2024-01-10', code: '' });
+  const p = M.addProject(st, { name: 'SH 249', begin: '2019-03-01', end: '', fees: '1250000', cost: '' }); const e = M.addEntry(st, p.id, '10.2.1', C); e.text = 'I designed it.'; M.addEntry(st, p.id, '4.7.1', C); st.targets.push('10.1.1');
+  const F = M.formData(st, C);
+  assert.deepStrictEqual(F.firm, { name: 'F', seq: '123' }); assert.strictEqual(F.emp.seq, '77'); assert.strictEqual(F.emp.formerTxdot, false);
+  assert.deepStrictEqual(F.precerts, [{ group: 4, cats: ['4.7.1'] }, { group: 10, cats: ['10.1.1', '10.2.1'] }]);
+  assert.strictEqual(F.certs[0].certType, 'P.E.'); assert.strictEqual(F.certs[0].agency, 'TBPELS'); assert.strictEqual(F.certs[0].issue, '02/03/15');
+  assert.strictEqual(F.certs[1].degreeType, 'B.S.'); assert.strictEqual(F.certs[1].trainingType, 'Civil Engineering');
+  assert.deepStrictEqual([F.certs[2].category, F.certs[2].trainingDate, F.certs[2].completion, F.certs[2].exp], ['4.7.1', '01/10/2024', '01/10/24', '01/01/27']);
+  assert.strictEqual(F.projects[0].begin, '03/01/2019'); assert.strictEqual(F.projects[0].fees, '$1,250,000'); assert.deepStrictEqual(F.projects[0].cats.map((c) => [c.group, c.code]), [[10, '10.2.1'], [4, '4.7.1']]);
+  ck = M.formCheck(st, C); assert.ok(ck.ok, ck.missing.join()); assert.ok(ck.warnings.some((w) => /4\.7\.1 work category description is blank/.test(w)));
+  const T = M.formText(st, C); assert.ok(/^Precertification Application Form/.test(T) && /Firm sequence number\*: 123/.test(T) && /Middle name \(if applicable\): \(not entered\)/.test(T) && /Work Group\*: 10 {3}Work Category\*: 10\.1\.1, 10\.2\.1/.test(T) && /Certification training date \(format: MM\/DD\/YYYY\): 01\/10\/2024/.test(T));
+  assert.ok(M.formText(M.exampleState(), C).startsWith(M.EXAMPLE_HEAD));
+  /* migration: v1 / v1.1 saved data without the new fields loads with blanks */
+  const old = JSON.parse(JSON.stringify(st)); delete old.profile.employeeSeq; delete old.profile.peAgency; delete old.certs[0].trainingDate; delete old.certs[0].degreeType;
+  const mig = M.importJSON(JSON.stringify(old)); assert.strictEqual(mig.profile.employeeSeq, ''); assert.strictEqual(mig.certs[0].trainingDate, ''); assert.strictEqual(mig.profile.first, 'Luis'); assert.deepStrictEqual(mig.projects, st.projects);
+});
+t('v1.2 docx: zip round trip, fill official template, valid XML, values present (PDF via soffice when available)', () => {
+  const D = require('./docx.js'), fs = require('fs'), path = require('path'), os = require('os'), cp = require('child_process');
+  const tpl = fs.readFileSync(path.join(__dirname, 'form-template.docx'));
+  const files = D.unzip(tpl); assert.ok(files.length > 20); const z = D.unzip(D.zip(files)); assert.deepStrictEqual(z.map((f) => f.name), files.map((f) => f.name)); assert.ok(z.every((f, i) => Buffer.compare(Buffer.from(f.data), Buffer.from(files[i].data)) === 0));
+  assert.strictEqual(D.crc32(new TextEncoder().encode('123456789')), 0xCBF43926);
+  const st = M.exampleState(); st.projects[0].cats[0].text += ' <&> "quotes"';
+  const out = D.buildDocx(tpl, M.formData(st, C)), doc = new TextDecoder().decode(D.unzip(out).find((f) => f.name === 'word/document.xml').data);
+  const xmlOk = (x) => { const st2 = []; const re = /<(\/?)([\w:]+)[^>]*?(\/?)>/g; let m; while ((m = re.exec(x))) { if (m[0].startsWith('<?')) continue; if (m[3]) continue; if (m[1]) { if (st2.pop() !== m[2]) return false; } else st2.push(m[2]); } return !st2.length; };
+  assert.ok(xmlOk(doc.slice(doc.indexOf('<w:document'))), 'document.xml well-formed (tag balance)');
+  ['Example Engineering Co. (fictional)', 'Alex', 'EX-0001', 'EXAMPLE-000000', 'TBPELS', '02/01/2015', '$38,000,000', '10.2.1', 'Certification 5', 'Project 3', M.EXAMPLE_HEAD, '&lt;&amp;&gt;'].forEach((v) => assert.ok(doc.includes(v.replace(/&(?!amp;|lt;|gt;)/g, '&amp;')), 'value in docx: ' + v));
+  assert.ok(!doc.includes('Certification 6') && !doc.includes('Project 4'), 'blocks trimmed to the actual count');
+  let so = null; try { so = cp.execSync('command -v soffice').toString().trim(); } catch (e) { so = null; }
+  if (so) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcform-')); fs.writeFileSync(path.join(dir, 'f.docx'), out);
+    cp.execSync('soffice --headless --convert-to pdf --outdir ' + dir + ' ' + path.join(dir, 'f.docx'), { stdio: 'ignore', timeout: 120000 });
+    const txt = cp.execSync('pdftotext ' + path.join(dir, 'f.pdf') + ' -').toString();
+    ['Example Engineering Co. (fictional)', 'EX-0001', 'EXAMPLE-000000', '02/01/2015', '$38,000,000', '10.8.1', 'EXAMPLE DATA'].forEach((v) => assert.ok(txt.includes(v), 'PDF text has ' + v));
+  } else console.log('  (soffice not found: PDF conversion check skipped)');
+});
+
 (async () => { let n = 0; for (const [name, f] of tests) { try { await f(); n++; } catch (e) { console.error('FAIL', name, e); process.exit(1); } } console.log('ok', n, 'tests'); })();

@@ -32,7 +32,7 @@
 
   function newState() {
     return { schema: SCHEMA, created: new Date().toISOString(),
-      profile: { first: '', middle: '', last: '', firm: '', firmSeq: '', personnelNo: '', branch: '', expertise: '', employment: 'Employed', formerTxdot: false, peNumber: '', peState: 'TX', peDate: '' },
+      profile: { first: '', middle: '', last: '', firm: '', firmSeq: '', personnelNo: '', branch: '', expertise: '', employment: 'Employed', formerTxdot: false, peNumber: '', peState: 'TX', peDate: '', employeeSeq: '', peAgency: '' },
       degrees: [], certs: [], projects: [], targets: [], ccis: {} };
   }
 
@@ -125,7 +125,7 @@
   var SAMPLE = 'SAMPLE TEXT — replace with your own work. ';
   function exampleState() {
     var st = newState(); st.example = true;
-    st.profile = { first: 'Alex', middle: '', last: 'Example', firm: 'Example Engineering Co. (fictional)', firmSeq: '000000', personnelNo: 'EX-0001', branch: '01', expertise: 'Engineer', employment: 'Employed', formerTxdot: false, peNumber: 'EXAMPLE-000000', peState: 'TX', peDate: '2014-06-01', isExample: true };
+    st.profile = { first: 'Alex', middle: '', last: 'Example', firm: 'Example Engineering Co. (fictional)', firmSeq: '000000', personnelNo: 'EX-0001', branch: '01', expertise: 'Engineer', employment: 'Employed', formerTxdot: false, peNumber: 'EXAMPLE-000000', peState: 'TX', peDate: '2014-06-01', employeeSeq: '', peAgency: 'TBPELS', isExample: true };
     st.degrees = [{ id: 'ex-deg1', type: 'B.S.', field: 'Civil Engineering', school: 'Example State University (fictional)', date: '2009-05-15', isExample: true },
       { id: 'ex-deg2', type: 'M.S.', field: 'Water Resources Engineering', school: 'Example State University (fictional)', date: '2011-05-15', isExample: true }];
     st.certs = [{ id: 'ex-c1', kind: 'license', type: 'Professional Engineer (P.E.)', code: '100000', number: 'EXAMPLE-000000', agency: 'TBPELS', issue: '2014-06-01', exp: '', completion: '', category: '', note: 'EXAMPLE — not a real license', isExample: true },
@@ -168,6 +168,71 @@
   }
   var EXAMPLE_HEAD = '*** EXAMPLE DATA — fictional, not real experience. Replace with your own before using. ***';
 
+
+  /* ---- v1.2 TxDOT Precertification Application Form (form dated 09/18/2026) ---- */
+  function fmtDate(iso, yy) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); if (!m) return String(iso || '');
+    return m[2] + '/' + m[3] + '/' + (yy ? m[1].slice(2) : m[1]);
+  }
+  function fullName(P) { return [P.first, P.middle, P.last].filter(Boolean).join(' '); }
+  /* certification blocks: licence from the profile (unless already listed), degrees, then certifications / training */
+  function formCerts(st) {
+    var P = st.profile, out = [];
+    var hasLic = st.certs.some(function (c) { return c.kind === 'license' && c.number && c.number === P.peNumber; });
+    if (P.peNumber && !hasLic) out.push({ src: 'profile', category: '', degreeType: '', trainingType: 'engineering', trainingDate: '', certType: 'P.E.', issue: fmtDate(P.peDate, true), exp: '', completion: '', number: P.peNumber, agency: P.peAgency || (String(P.peState).toUpperCase() === 'TX' ? 'TBPELS' : '') });
+    st.degrees.forEach(function (d) { out.push({ src: 'degree', category: '', degreeType: d.type, trainingType: d.field, trainingDate: '', certType: '', issue: fmtDate(d.date, true), exp: '', completion: '', number: '', agency: d.school }); });
+    st.certs.forEach(function (c) { out.push({ src: c.kind, category: c.category, degreeType: c.degreeType || '', trainingType: c.trainingType || '', trainingDate: fmtDate(c.trainingDate, false), certType: c.type, issue: fmtDate(c.issue, true), exp: fmtDate(c.exp, true), completion: fmtDate(c.completion, true), number: c.number, agency: c.agency }); });
+    return out;
+  }
+  function formData(st, C) {
+    var P = st.profile, ix = C ? catIndex(C) : {}, groups = {};
+    var codes = st.targets.slice(); st.projects.forEach(function (p) { p.cats.forEach(function (e) { if (codes.indexOf(e.code) < 0) codes.push(e.code); }); });
+    codes.sort(function (a, b) { var x = a.split('.').map(Number), y = b.split('.').map(Number); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; })
+      .forEach(function (k) { var g = Number(k.split('.')[0]); (groups[g] = groups[g] || []).push(k); });
+    return {
+      example: isExampleState(st) ? EXAMPLE_HEAD : '',
+      firm: { name: P.firm, seq: P.firmSeq },
+      emp: { first: P.first, middle: P.middle, last: P.last, personnelNo: P.personnelNo, branch: P.branch, expertise: P.expertise, formerTxdot: !!P.formerTxdot, employment: P.employment, seq: P.employeeSeq || '' },
+      precerts: Object.keys(groups).map(Number).sort(function (a, b) { return a - b; }).map(function (g) { return { group: g, cats: groups[g] }; }),
+      certs: formCerts(st),
+      projects: st.projects.map(function (p) { return { name: p.name, begin: fmtDate(p.begin, false), end: fmtDate(p.end, false), location: p.location, fees: money(p.fees), cost: money(p.cost), desc: p.desc,
+        cats: p.cats.map(function (e) { return { group: Number(e.code.split('.')[0]), code: e.code, name: ix[e.code] ? ix[e.code].name : '', text: e.text }; }) }; })
+    };
+  }
+  /* mandatory (*) fields of the form + helpful warnings */
+  function formCheck(st, C) {
+    var F = formData(st, C), miss = [], warn = [];
+    [['Firm name*', F.firm.name], ['Firm sequence number*', F.firm.seq], ['First name*', F.emp.first], ['Last name*', F.emp.last], ['Employment status*', F.emp.employment]].forEach(function (x) { if (!String(x[1] || '').trim()) miss.push(x[0]); });
+    if (!F.precerts.length) miss.push('Work Group* and Work Category* (choose at least one category)');
+    if (looksLikeSSN(F.emp.personnelNo)) warn.push('Personnel number looks like an SSN — use the number your firm assigns.');
+    if (!F.projects.length) warn.push('No projects entered.');
+    F.projects.forEach(function (p, i) { var n = 'Project ' + (i + 1) + (p.name ? ' (' + p.name + ')' : ''); if (!p.name) warn.push(n + ': project name is blank.'); if (!p.cats.length) warn.push(n + ': no work category.'); p.cats.forEach(function (c) { if (!String(c.text || '').trim()) warn.push(n + ': ' + c.code + ' work category description is blank.'); if (blanksLeft(c.text)) warn.push(n + ': ' + c.code + ' description still has template blanks.'); }); });
+    F.precerts.forEach(function (g) { g.cats.forEach(function (k) { if (needsTraining(k) && !st.certs.some(function (c) { return c.category === k; })) warn.push(k + ': training certificate required (upload each as a separate PDF in CCIS).'); }); });
+    if (F.certs.length > 10) warn.push(F.certs.length + ' certifications: the form shows 10, more may be added (the generated form lists all).');
+    if (F.projects.some(function (p) { return p.cats.length > 5; })) warn.push('A project has more than five categories: the form shows five, more may be added (the generated form lists all).');
+    return { missing: miss, warnings: warn, ok: !miss.length };
+  }
+  /* copy-as-text with the form's labels verbatim */
+  function formText(st, C) {
+    var F = formData(st, C), b = function (v) { return String(v == null ? '' : v).trim() || '(not entered)'; }, L = [];
+    if (F.example) L.push(F.example);
+    L.push('Precertification Application Form (TxDOT form dated 09/18/2026) — filled by a personal helper; enter this information into CCIS. Nothing is submitted by this tool.', '',
+      'Firm Identification', 'Firm name*: ' + b(F.firm.name), 'Firm sequence number*: ' + b(F.firm.seq), '',
+      'Employee Details', 'First name*: ' + b(F.emp.first), 'Middle name (if applicable): ' + b(F.emp.middle), 'Last name*: ' + b(F.emp.last),
+      'Personnel number (Employee # assigned by firm): ' + b(F.emp.personnelNo), 'Branch number (Employee’s base branch): ' + b(F.emp.branch),
+      'Employee Expertise (Ex. engineer, surveyor, technician, etc.): ' + b(F.emp.expertise), 'Former TxDOT employee? ' + (F.emp.formerTxdot ? 'Yes' : 'No'),
+      'Employment status*: ' + b(F.emp.employment), 'Employee sequence number (if unknown, leave blank): ' + b(F.emp.seq), '', 'Precertifications in this Application');
+    F.precerts.forEach(function (g) { L.push('Work Group*: ' + g.group + '   Work Category*: ' + g.cats.join(', ')); }); if (!F.precerts.length) L.push('(not entered)');
+    L.push('', 'Employee Certifications');
+    F.certs.forEach(function (c, i) { L.push('Certification ' + (i + 1), 'Work category (If applicable): ' + b(c.category), 'Degree type (ex. B.S., M.S.): ' + b(c.degreeType), 'Training type (ex. engineering, surveying, architecture): ' + b(c.trainingType),
+      'Certification training date (format: MM/DD/YYYY): ' + b(c.trainingDate), 'Personnel/laboratory certification type (ex. P.E., CFM, RPLS, Hot Mix-Level IB): ' + b(c.certType), 'Issue date (format: MM/DD/YY): ' + b(c.issue),
+      'Expiration date (format: MM/DD/YY): ' + b(c.exp), 'Completion date (for training) (format: MM/DD/YY): ' + b(c.completion), 'Employee certification number (ex. license/registration number): ' + b(c.number), 'Issuing agency name (ex. TBPELS, TBAE, Florida PE board, National Highway Institute): ' + b(c.agency), ''); });
+    L.push('Employee Projects');
+    F.projects.forEach(function (p, i) { L.push('Project ' + (i + 1), 'Project name: ' + b(p.name), 'Project begin date: ' + b(p.begin) + '   End date: ' + b(p.end), 'Project location: ' + b(p.location), 'Estimated project fees: ' + b(p.fees), 'Estimated construction cost: ' + b(p.cost), 'Project general description**: ' + b(p.desc));
+      p.cats.forEach(function (c) { L.push('Work group: ' + c.group + '   Work category: ' + c.code + (c.name ? ' (' + c.name + ')' : ''), "Work category description** (describe applicant's work as it pertains to the category): " + b(c.text)); }); L.push(''); });
+    return L.join('\n');
+  }
+
   /* ---- export ---- */
   function money(v) { var n = Number(String(v || '').replace(/[$,\s]/g, '')); return v === '' || v == null ? '' : isFinite(n) ? '$' + n.toLocaleString('en-US') : String(v); }
   function projectText(st, p, C) {
@@ -197,7 +262,7 @@
     if (d.profile && d.profile.isExample) s.profile.isExample = true;
     if (d.example) s.example = true;
     s.degrees = (Array.isArray(d.degrees) ? d.degrees : []).map(function (x) { return fx({ id: str(x.id || uid(), 40), type: str(x.type, 100), field: str(x.field, 200), school: str(x.school, 200), date: str(x.date, 20) }, x); });
-    s.certs = (Array.isArray(d.certs) ? d.certs : []).map(function (x) { return fx({ id: str(x.id || uid(), 40), kind: x.kind === 'training' ? 'training' : x.kind === 'license' ? 'license' : 'cert', type: str(x.type, 200), code: str(x.code, 20), number: str(x.number, 100), agency: str(x.agency, 200), issue: str(x.issue, 20), exp: str(x.exp, 20), completion: str(x.completion, 20), category: str(x.category, 20), note: str(x.note, 1000) }, x); });
+    s.certs = (Array.isArray(d.certs) ? d.certs : []).map(function (x) { return fx({ id: str(x.id || uid(), 40), kind: x.kind === 'training' ? 'training' : x.kind === 'license' ? 'license' : 'cert', type: str(x.type, 200), code: str(x.code, 20), number: str(x.number, 100), agency: str(x.agency, 200), issue: str(x.issue, 20), exp: str(x.exp, 20), completion: str(x.completion, 20), category: str(x.category, 20), note: str(x.note, 1000), degreeType: str(x.degreeType, 60), trainingType: str(x.trainingType, 100), trainingDate: str(x.trainingDate, 20) }, x); });
     s.projects = (Array.isArray(d.projects) ? d.projects : []).map(function (p) { return fx({ id: str(p.id || uid(), 40), name: str(p.name, 300), begin: str(p.begin, 20), end: str(p.end, 20), location: str(p.location, 300), desc: str(p.desc, 20000), fees: str(p.fees, 40), cost: str(p.cost, 40),
       cats: (Array.isArray(p.cats) ? p.cats : []).map(function (e) { return fx({ id: str(e.id || uid(), 40), code: str(e.code, 20), text: str(e.text, 20000), covers: (Array.isArray(e.covers) ? e.covers : []).map(function (c) { return str(c, 10); }) }, e); }) }, p); });
     s.targets = (Array.isArray(d.targets) ? d.targets : []).map(function (c) { return str(c, 20); }).filter(function (c, i, a) { return /^\d+\.\d+\.\d+$/.test(c) && a.indexOf(c) === i; });
@@ -207,7 +272,7 @@
   }
   function importJSON(text) { var o = JSON.parse(text); return normalize(o && o.data ? o.data : o); }
 
-  var api = { PRE_EXAMPLE_KEY: PRE_EXAMPLE_KEY, EXAMPLE_HEAD: EXAMPLE_HEAD, exampleState: exampleState, isExampleState: isExampleState, hasRealData: hasRealData, clearExample: clearExample, today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
+  var api = { fmtDate: fmtDate, fullName: fullName, formCerts: formCerts, formData: formData, formCheck: formCheck, formText: formText, PRE_EXAMPLE_KEY: PRE_EXAMPLE_KEY, EXAMPLE_HEAD: EXAMPLE_HEAD, exampleState: exampleState, isExampleState: isExampleState, hasRealData: hasRealData, clearExample: clearExample, today: today, SCHEMA: SCHEMA, KEY: KEY, TRAINING_UPLOAD: TRAINING_UPLOAD, CCIS_STEPS: CCIS_STEPS, WRITE_TIPS: WRITE_TIPS, uid: uid, clone: clone, newState: newState, looksLikeSSN: looksLikeSSN, catIndex: catIndex, isHydro: isHydro, needsTraining: needsTraining, minYears: minYears,
     scopeItems: scopeItems, checklist: checklist, template: template, words: words, firstPerson: firstPerson, blanksLeft: blanksLeft, addProject: addProject, findProject: findProject, addEntry: addEntry, entries: entries, toggleCover: toggleCover, years: years,
     trainingFor: trainingFor, certFileName: certFileName, coverage: coverage, readiness: readiness, ccisProgress: ccisProgress, projectText: projectText, summaryText: summaryText, exportJSON: exportJSON, importJSON: importJSON, normalize: normalize, money: money };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PCM = api;
