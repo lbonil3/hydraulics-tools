@@ -126,6 +126,29 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ok(/EXAMPLE DATA/.test(await pg.evaluate(() => window.__pc || document.querySelector('#printOut').textContent)), 'print summary watermarked');
   await exShot('05-export');
   if (!MOBILE) { await pg.emulateMediaType('print'); await pg.pdf({ path: SHOTS + 'example/summary-example-' + tag + '.pdf', preferCSSPageSize: true, printBackground: true }); await pg.emulateMediaType('screen'); }
+  /* 9. v1.2 TxDOT form: view, checklist, filled .docx download, print, copy */
+  const FD = SHOTS + 'form/'; fs.mkdirSync(FD, { recursive: true });
+  await tab('form'); await pg.waitForSelector('#formView');
+  const FV = await txt('#formView');
+  ok(FV.startsWith('*** EXAMPLE DATA') && /Firm sequence number\*/.test(FV) && /Employee sequence number \(if unknown, leave blank\)/.test(FV) && /Issuing agency name \(ex\. TBPELS, TBAE, Florida PE board, National Highway Institute\)/.test(FV), 'form view: watermark + verbatim labels');
+  ok(/Certification 5/.test(FV) && /Project 3/.test(FV) && /not entered/.test(FV) && /02\/01\/2015/.test(FV), 'form view: certs, projects, CCIS dates, blanks as not entered');
+  ok(/All mandatory/.test(await txt('#formCheck')), 'example passes the mandatory checklist');
+  await pg.screenshot({ path: FD + '01-form-example-' + tag + '.png', fullPage: true });
+  await pg.$eval('#dlDocx', (e) => e.click()); let dx = null; for (let i = 0; i < 40 && !dx; i++) { await sleep(150); dx = fs.readdirSync(DL).find((f) => /EXAMPLE.*\.docx$/.test(f)); }
+  ok(dx && fs.statSync(path.join(DL, dx)).size > 50000, 'filled .docx downloaded: ' + dx);
+  const D = require('../docx.js'), docXml = new TextDecoder().decode(D.unzip(fs.readFileSync(path.join(DL, dx))).find((f) => f.name === 'word/document.xml').data);
+  ok(/EXAMPLE DATA/.test(docXml) && docXml.includes('Example Engineering Co. (fictional)') && docXml.includes('EXAMPLE-000000') && /Project 3/.test(docXml) && !/Project 4/.test(docXml), 'downloaded docx is filled from the official template');
+  fs.copyFileSync(path.join(DL, dx), FD + 'filled-form-EXAMPLE-' + tag + '.docx');
+  await pg.$eval('#printForm', (e) => e.click()); await sleep(150);
+  ok(await pg.$eval('#printOut', (e) => e.classList.contains('form') && /^\*\*\* EXAMPLE DATA/.test(e.textContent) && /Employment status\*/.test(e.textContent)), 'print container holds the watermarked form');
+  if (!MOBILE) { await pg.emulateMediaType('print'); await pg.pdf({ path: FD + 'form-print-EXAMPLE-' + tag + '.pdf', format: 'Letter', printBackground: true, margin: { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' } }); await pg.emulateMediaType('screen'); }
+  await pg.$eval('#dlFormHtml', (e) => e.click()); await sleep(500);
+  const fh = fs.readdirSync(DL).find((f) => /Application-Form-EXAMPLE.*\.html$/.test(f)); ok(fh && /EXAMPLE DATA/.test(fs.readFileSync(path.join(DL, fh), 'utf8')), 'printable form HTML watermarked');
+  await pg.evaluate(() => { window.__copied = null; if (navigator.clipboard) navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
+  await pg.$eval('#copyForm', (e) => e.click()); await sleep(150); const cp = await pg.evaluate(() => window.__copied);
+  ok(cp === null || (cp.startsWith('*** EXAMPLE DATA') && /Precertification Application Form/.test(cp)), 'copy-as-text watermarked');
+  if (MOBILE) ok(await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'form: no horizontal overflow on phone');
+  await tab('export');
   await pg.$eval('#exportJson', (e) => e.click()); await sleep(600);
   const exj = fs.readdirSync(DL).find((f) => /EXAMPLE.*\.json$/.test(f)); ok(exj && JSON.parse(fs.readFileSync(path.join(DL, exj), 'utf8')).example, 'JSON export flagged example');
   await pg.reload({ waitUntil: 'networkidle0' }); await pg.waitForSelector('#main > *'); await sleep(100);
@@ -134,6 +157,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const back2 = await data();
   ok(back2.profile.last === 'Bonilla' && back2.projects.length === 1 && back2.projects[0].name === 'SH 249 Drainage' && !back2.example, 'Clear example restores my data');
   ok(await pg.evaluate(() => localStorage.getItem('precert.data.v1.pre-example') === null) && await pg.$eval('#exBanner', (e) => e.hidden), 'backup consumed, banner gone');
+  await tab('form'); const FC = await txt('#formCheck');
+  ok(/Missing mandatory/.test(FC) && /Firm sequence number\*/.test(FC) && (await pg.$$('#formView .fr.miss')).length >= 1 && !/EXAMPLE DATA/.test(await txt('#formView')), 'real data: checklist highlights missing mandatory fields, no watermark');
+  await pg.screenshot({ path: FD + '02-form-checklist-' + tag + '.png', fullPage: false });
+  await tab('profile'); await type('#f-empSeq-p', '4321'); await sleep(250); ok((await data()).profile.employeeSeq === '4321', 'new employee sequence input saves');
+  await tab('form'); ok(/4321/.test(await txt('#formView')), 'new input reaches the form');
   /* first run: example card, restore path not needed */
   await pg.evaluate(() => { localStorage.removeItem('precert.data.v1'); }); await pg.evaluate(() => { const u = JSON.parse(localStorage.getItem('precert.ui.v1')); u.tab = 'profile'; localStorage.setItem('precert.ui.v1', JSON.stringify(u)); });
   await pg.reload({ waitUntil: 'networkidle0' }); await pg.waitForSelector('#main > *'); await sleep(100);
