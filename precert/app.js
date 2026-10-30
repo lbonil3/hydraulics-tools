@@ -22,9 +22,9 @@
   function loadUI() { var u = {}; try { u = JSON.parse(localStorage.getItem(UIKEY) || '{}') || {}; } catch (e) { u = {}; } return Object.assign({ tab: 'profile', theme: 'light', hydroOnly: true, q: '', cat: '' }, u); }
   function saveUI() { try { localStorage.setItem(UIKEY, JSON.stringify(ui)); } catch (e) { /* private mode */ } }
   var saveT = null;
-  function save() { clearTimeout(saveT); saveT = setTimeout(function () { try { localStorage.setItem(M.KEY, JSON.stringify(st)); $('#saved').textContent = 'Saved on this device'; } catch (e) { toast('Could not save on this device (storage full or private mode).'); } }, 150); }
+  function save() { clearTimeout(saveT); var sv = $('#saved'); sv.textContent = 'Saving…'; sv.className = 'saved busy'; saveT = setTimeout(function () { try { localStorage.setItem(M.KEY, JSON.stringify(st)); sv.textContent = '✓ Saved on this device ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); sv.className = 'saved done'; } catch (e) { toast('Could not save on this device (storage full or private mode).'); } }, 150); }
   function toast(t) { var el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { el.hidden = true; }, 3200); }
-  function applyTheme() { document.documentElement.dataset.theme = ui.theme; var m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = ui.theme === 'dark' ? '#0f172a' : '#f8fafc'; }
+  function applyTheme() { document.documentElement.dataset.theme = ui.theme; $('#themeBtn').textContent = ui.theme === 'dark' ? 'Light theme' : 'Dark theme'; var m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = ui.theme === 'dark' ? '#0f172a' : '#f8fafc'; }
 
   /* ---------- small widgets ---------- */
   function field(label, obj, key, opts) {
@@ -375,11 +375,19 @@
   function render() {
     if (!R[ui.tab]) ui.tab = 'profile';
     document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { var on = b.dataset.tab === ui.tab; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.classList.toggle('on', on); });
+    $('#moreBtn').classList.toggle('on', !document.querySelector('.tabs [data-tab="' + ui.tab + '"]').classList.contains('pri'));
     var main = $('#main'), y = window.scrollY; main.replaceChildren.apply(main, [R[ui.tab]()].flat(4).filter(Boolean)); main.dataset.tab = ui.tab;
     window.scrollTo(0, y); if (ui.tab === 'form') fillFormPrint(); else fillPrint(); exampleChrome();
   }
-  document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { b.addEventListener('click', function () { ui.tab = b.dataset.tab; saveUI(); render(); window.scrollTo(0, 0); }); });
+  document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { b.addEventListener('click', function () { ui.tab = b.dataset.tab; saveUI(); more(false); render(); window.scrollTo(0, 0); }); });
+  function more(open) { var n = $('.tabs'); if (open == null) open = !n.classList.contains('moreopen'); n.classList.toggle('moreopen', open); $('#moreBtn').setAttribute('aria-expanded', open ? 'true' : 'false'); }
+  $('#moreBtn').addEventListener('click', function () { more(); });
   $('#themeBtn').addEventListener('click', function () { ui.theme = ui.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); });
+  function menu(open) { var m = $('#menu'), b = $('#menuBtn'); if (open == null) open = m.hidden; m.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) { var f = m.querySelector('.mi'); if (f) f.focus(); } }
+  $('#menuBtn').addEventListener('click', function (e) { e.stopPropagation(); menu(); });
+  $('#menu').addEventListener('click', function () { setTimeout(function () { menu(false); }, 0); });
+  document.addEventListener('click', function (e) { if (!$('#menu').hidden && !e.target.closest('#menu')) menu(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#menu').hidden) { menu(false); $('#menuBtn').focus(); } });
   window.addEventListener('beforeprint', function () { if (ui.tab === 'form') fillFormPrint(); else fillPrint(); });
   $('#exBtn').addEventListener('click', function () { if (M.isExampleState(st)) clearEx(); else loadExample(); });
   $('#exClear').addEventListener('click', clearEx); $('#exRestore').addEventListener('click', restoreMine);
