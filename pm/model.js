@@ -1613,12 +1613,12 @@
               sheets: g.sheets.map((y) => ({ label: y.sh.gen ? 'PP ' + y.sh.gen.idx : y.sh.title, number: y.sh.number || '', range: y.range ? formatStation(y.range.start) + ' – ' + formatStation(y.range.end) + (y.range.manual ? ' *' : '') : 'stations not set', status: y.sh.status })) }))) }; }) }; });
     /* attention */
     const unassigned = all.filter((x) => !x.sh.owner && x.sh.status !== 'Done');
-    const attention = [];
-    if (R.overdue.length) attention.push({ kind: 'overdue', text: pl(R.overdue.length, 'sheet') + ' overdue', items: R.overdue.slice(0, 8).map((x) => shLab(x) + ' — due ' + x.sh.due + (x.sh.owner ? ' (' + x.sh.owner + ')' : '')) });
-    if (R.due7.length) attention.push({ kind: 'due7', text: pl(R.due7.length, 'sheet') + ' due within 7 days', items: R.due7.slice(0, 8).map((x) => shLab(x) + ' — due ' + x.sh.due + (x.sh.owner ? ' (' + x.sh.owner + ')' : '')) });
-    if (F.blocked.length) attention.push({ kind: 'blocked', text: pl(F.blocked.length, 'dependency conflict') + ' (waiting on unfinished work)', items: F.blocked.slice(0, 8).map((x) => pairLab(x.ref) + ' waits on ' + x.by.map(pairLab).join(', ')) });
-    if (F.update.length) attention.push({ kind: 'update', text: pl(F.update.length, 'item') + ' flagged needs update', items: F.update.slice(0, 8).map((x) => pairLab(x.ref) + ' — changed upstream: ' + x.from.map(pairLab).join(', ')) });
-    if (unassigned.length) attention.push({ kind: 'unassigned', text: pl(unassigned.length, 'open sheet') + ' unassigned', items: unassigned.slice(0, 8).map(shLab) });
+    const attention = [], c8 = (a, f) => a.slice(0, 8).map(f).concat(a.length > 8 ? ['+ ' + (a.length - 8) + ' more (see the app)'] : []);
+    if (R.overdue.length) attention.push({ kind: 'overdue', text: pl(R.overdue.length, 'sheet') + ' overdue', items: c8(R.overdue, (x) => shLab(x) + ' — due ' + x.sh.due + (x.sh.owner ? ' (' + x.sh.owner + ')' : '')) });
+    if (R.due7.length) attention.push({ kind: 'due7', text: pl(R.due7.length, 'sheet') + ' due within 7 days', items: c8(R.due7, (x) => shLab(x) + ' — due ' + x.sh.due + (x.sh.owner ? ' (' + x.sh.owner + ')' : '')) });
+    if (F.blocked.length) attention.push({ kind: 'blocked', text: pl(F.blocked.length, 'dependency conflict') + ' (waiting on unfinished work)', items: c8(F.blocked, (x) => pairLab(x.ref) + ' waits on ' + x.by.map(pairLab).join(', ')) });
+    if (F.update.length) attention.push({ kind: 'update', text: pl(F.update.length, 'item') + ' flagged needs update', items: c8(F.update, (x) => pairLab(x.ref) + ' — changed upstream: ' + x.from.map(pairLab).join(', ')) });
+    if (unassigned.length) attention.push({ kind: 'unassigned', text: pl(unassigned.length, 'open sheet') + ' unassigned', items: c8(unassigned, shLab) });
     const late = R.milestones.filter((m) => m.late); if (late.length) attention.push({ kind: 'milestone', text: pl(late.length, 'milestone') + ' past date and not complete', items: late.map((m) => m.m.name + ' — ' + m.m.date + ' (' + Math.round(m.pct) + '%)') });
     const takeaways = [Math.round(R.overall.pct) + '% complete overall (' + R.overall.done + ' of ' + pl(R.overall.total, 'sheet') + ' done)', R.pp.total + ' PP sheets — Drainage ' + R.pp.byDisc.Drainage + ', SWP3 ' + R.pp.byDisc.SWP3].concat(branches.map((b) => b.disc + ': ' + b.facts[0]));
     /* next steps */
