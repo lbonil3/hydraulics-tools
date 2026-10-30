@@ -54,10 +54,52 @@
     return s;
   }
 
+
+  /* ---------- v1.1 example mode (fictional data; real data is backed up first) ---------- */
+  function backupRaw() { try { return localStorage.getItem(M.PRE_EXAMPLE_KEY); } catch (e) { return null; } }
+  function persistNow() { clearTimeout(saveT); try { localStorage.setItem(M.KEY, JSON.stringify(st)); } catch (e) { toast('Could not save on this device.'); } }
+  function loadExample() {
+    if (M.isExampleState(st)) { toast('The example is already loaded.'); return; }
+    if (M.hasRealData(st)) {
+      if (!confirm('Load the fictional example? Your current data is saved first as a backup on this device (' + M.PRE_EXAMPLE_KEY + ') and you can restore it with "Restore my data" or "Clear example".')) return;
+      try { localStorage.setItem(M.PRE_EXAMPLE_KEY, JSON.stringify(st)); } catch (e) { toast('Could not back up your data — example not loaded.'); return; }
+    }
+    st = M.exampleState(); persistNow(); ui.tab = ui.tab === 'sources' ? 'profile' : ui.tab; saveUI(); render(); toast('Example loaded — fictional data, replace with your own.');
+  }
+  function mergeBack(base, extra) {
+    var ids = {}; base.projects.forEach(function (p) { ids[p.id] = 1; });
+    extra.projects.forEach(function (p) { if (!ids[p.id]) base.projects.push(p); });
+    ['degrees', 'certs'].forEach(function (k) { var have = {}; base[k].forEach(function (x) { have[x.id] = 1; }); extra[k].forEach(function (x) { if (!have[x.id]) base[k].push(x); }); });
+    extra.targets.forEach(function (c) { if (base.targets.indexOf(c) < 0) base.targets.push(c); });
+    return base;
+  }
+  function clearEx() {
+    var raw = backupRaw(), cleared = M.clearExample(st), kept = cleared.projects.length;
+    if (!confirm('Remove the example records?' + (raw ? ' Your backed-up data comes back.' : '') + (kept ? ' Records you added yourself stay.' : ''))) return;
+    if (raw) { try { st = mergeBack(M.normalize(JSON.parse(raw)), cleared); } catch (e) { st = cleared; } localStorage.removeItem(M.PRE_EXAMPLE_KEY); } else st = cleared;
+    persistNow(); render(); toast('Example cleared.');
+  }
+  function restoreMine() {
+    var raw = backupRaw(); if (!raw) return;
+    if (!confirm('Restore your data from before the example? The example (and anything typed into it) is replaced.')) return;
+    try { st = M.normalize(JSON.parse(raw)); } catch (e) { toast('Backup could not be read.'); return; }
+    localStorage.removeItem(M.PRE_EXAMPLE_KEY); persistNow(); render(); toast('Your data is restored.');
+  }
+  function exampleChrome() {
+    var on = M.isExampleState(st), b = $('#exBanner');
+    b.hidden = !on; $('#exRestore').hidden = !backupRaw(); document.body.classList.toggle('isex', on);
+    var eb = $('#exBtn'); eb.textContent = on ? 'Clear example' : 'Load example'; eb.dataset.mode = on ? 'clear' : 'load';
+  }
+  function exampleCard() {
+    if (M.isExampleState(st) || M.hasRealData(st)) return null;
+    return h('section', { class: 'card excard', id: 'exStart' }, h('h2', {}, 'New here? See a filled-in example'), h('p', { class: 'muted' }, 'Loads a fictional engineer (Alex Example, P.E.), a fictional firm and three fictional drainage projects with sample write-ups for 10.1.1, 10.2.1, 4.2.1 and 10.8.1, so you can see how coverage, readiness and export work. Nothing in it is real experience.'),
+      h('button', { type: 'button', class: 'btn', id: 'exLoad2', onclick: loadExample }, 'Load example'));
+  }
+
   /* ---------- 1. profile ---------- */
   function renderProfile() {
     var P = st.profile, ssnW = h('p', { class: 'warn', id: 'ssnWarn', hidden: !M.looksLikeSSN(P.personnelNo) }, '⚠ This looks like a Social Security number. Use the employee number your firm assigns, never an SSN.');
-    return [
+    return [exampleCard(),
       h('section', { class: 'card' }, h('h2', {}, 'Employee'),
         h('div', { class: 'grid' }, field('First name *', P, 'first'), field('Middle name', P, 'middle'), field('Last name *', P, 'last'), field('Firm name *', P, 'firm'), field('Firm sequence number *', P, 'firmSeq', { mode: 'numeric' }), field('Branch number', P, 'branch'),
           field('Field of expertise', P, 'expertise', { ph: 'e.g. engineer' }), field('Employment status *', P, 'employment'),
@@ -100,7 +142,7 @@
     ta.addEventListener('input', function () { e.text = ta.value; save(); upd(); }); upd();
     var items = M.checklist(c);
     return h('div', { class: 'entry', 'data-code': e.code },
-      h('div', { class: 'ehead' }, h('b', {}, catLabel(e.code)), M.needsTraining(e.code) ? h('span', { class: 'tag warnt' }, '⚑ training upload') : null,
+      h('div', { class: 'ehead' }, h('b', {}, catLabel(e.code)), e.isExample ? h('span', { class: 'tag extag' }, 'SAMPLE TEXT') : null, M.needsTraining(e.code) ? h('span', { class: 'tag warnt' }, '⚑ training upload') : null,
         h('span', { class: 'sp' }), h('button', { type: 'button', class: 'btn ghost sm tpl', onclick: function () { if (ta.value.trim() && !confirm('Add the fill-in template below your text?')) return; ta.value = (ta.value.trim() ? ta.value.trim() + '\n\n' : '') + M.template(c); e.text = ta.value; save(); upd(); ta.focus(); } }, 'Insert template'),
         h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { copy(e.text, 'Description of work'); } }, 'Copy'),
         h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { if (!confirm('Remove ' + e.code + ' from this project?')) return; p.cats.splice(p.cats.indexOf(e), 1); save(); render(); } }, 'Remove')),
@@ -113,7 +155,7 @@
   function renderProjects() {
     var list = st.projects.map(function (p, i) {
       return h('section', { class: 'card proj', 'data-project': p.id },
-        h('div', { class: 'ehead' }, h('h2', {}, 'Project ' + (i + 1) + (p.name ? ': ' + p.name : '')), h('span', { class: 'sp' }),
+        h('div', { class: 'ehead' }, h('h2', {}, 'Project ' + (i + 1) + (p.name ? ': ' + p.name : '')), p.isExample ? h('span', { class: 'tag extag' }, 'EXAMPLE') : null, h('span', { class: 'sp' }),
           h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { copy(M.projectText(st, p, C), 'Project'); } }, 'Copy for CCIS'),
           h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { if (confirm('Delete this project and its write-ups?')) { st.projects.splice(st.projects.indexOf(p), 1); save(); render(); } } }, 'Delete')),
         h('div', { class: 'grid' }, field('Project name', p, 'name', { id: 'pname' }), field('Begin date', p, 'begin', { type: 'date', id: 'pbeg' }), field('End date', p, 'end', { type: 'date', id: 'pend' }), field('Location', p, 'location', { id: 'ploc' }),
@@ -196,7 +238,7 @@
   }
   function fillPrint() {
     var R = M.readiness(st, C), P = st.profile;
-    $('#printOut').replaceChildren(h('h1', {}, 'TxDOT precertification worksheet'), h('p', { class: 'pm' }, [P.first, P.middle, P.last].filter(Boolean).join(' ') + (P.firm ? ' · ' + P.firm : '') + ' · generated ' + M.today() + ' · personal helper, not an official TxDOT form'),
+    $('#printOut').replaceChildren(M.isExampleState(st) ? h('p', { class: 'pwm' }, M.EXAMPLE_HEAD) : null, h('h1', {}, 'TxDOT precertification worksheet'), h('p', { class: 'pm' }, [P.first, P.middle, P.last].filter(Boolean).join(' ') + (P.firm ? ' · ' + P.firm : '') + ' · generated ' + M.today() + ' · personal helper, not an official TxDOT form'),
       R.length ? h('table', {}, h('thead', {}, h('tr', {}, ['Category', 'Requirements', 'Projects', 'Status'].map(function (x) { return h('th', {}, x); }))), h('tbody', {}, R.map(function (r) { return h('tr', {}, h('td', {}, r.cat.code + ' ' + r.cat.name), h('td', {}, r.reqDone + ' / ' + r.reqTotal), h('td', {}, String(r.entries.length)), h('td', {}, r.ready ? 'Ready' : r.gaps.length + ' gap(s)')); }))) : null,
       h('pre', {}, M.summaryText(st, C)));
   }
@@ -209,13 +251,13 @@
       h('div', { class: 'btns' },
         h('button', { type: 'button', class: 'btn', id: 'copyAll', onclick: function () { copy(txt, 'Summary'); } }, 'Copy all text'),
         canShare ? h('button', { type: 'button', class: 'btn', id: 'shareBtn', onclick: function () { navigator.share({ title: 'Precertification worksheet', text: txt }).catch(function () {}); } }, 'Share…') : null,
-        h('button', { type: 'button', class: 'btn', id: 'dlTxt', onclick: function () { download('precert-worksheet-' + M.today() + '.txt', txt, 'text/plain'); toast('Text file downloaded.'); } }, 'Download .txt'),
+        h('button', { type: 'button', class: 'btn', id: 'dlTxt', onclick: function () { download('precert-worksheet-' + (M.isExampleState(st) ? 'EXAMPLE-' : '') + M.today() + '.txt', txt, 'text/plain'); toast('Text file downloaded.'); } }, 'Download .txt'),
         h('button', { type: 'button', class: 'btn', id: 'dlHtml', onclick: function () { download('precert-worksheet-' + M.today() + '.html', printableHTML(), 'text/html'); toast('Printable page downloaded — open it and use Share › Print / Save to PDF.'); } }, 'Download printable page'),
         h('button', { type: 'button', class: 'btn', id: 'printBtn', onclick: function () { fillPrint(); if (typeof window.print === 'function') { try { window.print(); } catch (e) { toast('Printing is not available here — use Download printable page.'); } } else toast('Printing is not available here — use Download printable page.'); } }, 'Print / Save PDF')),
       h('p', { class: 'muted' }, 'On a phone, if Print does nothing (for example in a home-screen app), use Share or Download printable page and print from there.'),
       h('pre', { class: 'preview', id: 'summaryPre' }, txt)),
       h('section', { class: 'card' }, h('h2', {}, 'Backup'), h('p', { class: 'muted' }, 'Your data lives only in this browser (' + M.KEY + '). Export a backup regularly.'),
-        h('div', { class: 'btns' }, h('button', { type: 'button', class: 'btn', id: 'exportJson', onclick: function () { download('precert-backup-' + M.today() + '.json', M.exportJSON(st), 'application/json'); toast('Backup downloaded.'); } }, 'Export JSON backup'),
+        h('div', { class: 'btns' }, h('button', { type: 'button', class: 'btn', id: 'exportJson', onclick: function () { download('precert-backup-' + (M.isExampleState(st) ? 'EXAMPLE-' : '') + M.today() + '.json', M.exportJSON(st), 'application/json'); toast('Backup downloaded.'); } }, 'Export JSON backup'),
           h('button', { type: 'button', class: 'btn ghost', id: 'importBtn', onclick: function () { file.click(); } }, 'Import backup…'), file))];
   }
 
@@ -242,11 +284,13 @@
     if (!R[ui.tab]) ui.tab = 'profile';
     document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { var on = b.dataset.tab === ui.tab; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.classList.toggle('on', on); });
     var main = $('#main'), y = window.scrollY; main.replaceChildren.apply(main, [R[ui.tab]()].flat(4).filter(Boolean)); main.dataset.tab = ui.tab;
-    window.scrollTo(0, y); fillPrint();
+    window.scrollTo(0, y); fillPrint(); exampleChrome();
   }
   document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { b.addEventListener('click', function () { ui.tab = b.dataset.tab; saveUI(); render(); window.scrollTo(0, 0); }); });
   $('#themeBtn').addEventListener('click', function () { ui.theme = ui.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); });
   window.addEventListener('beforeprint', fillPrint);
+  $('#exBtn').addEventListener('click', function () { if (M.isExampleState(st)) clearEx(); else loadExample(); });
+  $('#exClear').addEventListener('click', clearEx); $('#exRestore').addEventListener('click', restoreMine);
   applyTheme();
   fetch('categories.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) { C = d; IX = M.catIndex(C); render(); }).catch(function (e) { $('#main').replaceChildren(h('p', { class: 'warn' }, 'Could not load the work categories (' + e.message + '). Reload the page.')); });
 })();
