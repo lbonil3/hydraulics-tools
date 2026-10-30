@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8fafc">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="icon" type="image/png" href="../icon-192.png">
+  <title>TxDOT Precertification</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="home" href="../" aria-label="Back to Hydraulics Tools home">&#8592;</a>
+  <div class="brand"><h1>TxDOT Precertification</h1><span id="saved" class="saved" aria-live="polite">Data stays on this device</span></div>
+  <button type="button" class="ibtn" id="themeBtn" aria-label="Switch light / dark theme">&#9681;</button>
+</header>
+<p class="disc" role="note"><b>Personal helper, not an official TxDOT system.</b> It prepares what you type into CCIS. Verify every requirement on TxDOT's pages. No sign-in, no credentials, nothing leaves this browser.</p>
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button type="button" role="tab" data-tab="profile">My profile</button>
+  <button type="button" role="tab" data-tab="projects">Projects</button>
+  <button type="button" role="tab" data-tab="cats">Work categories</button>
+  <button type="button" role="tab" data-tab="ready">Readiness</button>
+  <button type="button" role="tab" data-tab="ccis">CCIS steps</button>
+  <button type="button" role="tab" data-tab="export">Export</button>
+  <button type="button" role="tab" data-tab="sources">Sources</button>
+</nav>
+<main id="main" tabindex="-1"></main>
+<section id="printOut" class="printout" aria-label="Printable summary"></section>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="model.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
