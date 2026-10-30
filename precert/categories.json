@@ -1,0 +1,3194 @@
+{
+ "title": "TxDOT Precertification Work Categories",
+ "docDate": "08/25/2026",
+ "source": "https://www.txdot.gov/content/dam/docs/division/ppd/precert/precert-work-categories.docx",
+ "sourcePage": "https://www.txdot.gov/business/peps/become-precertified.html",
+ "verified": "2026-10-29",
+ "note": "Extracted verbatim from TxDOT's Precertification Work Categories document (dated 08/25/2026), verified on 2026-10-29. Requirements are the firm-level certification requirements as written by TxDOT; confirm on TxDOT's page before applying.",
+ "trainingUpload": [
+  "3.7.1",
+  "4.7.1",
+  "6.1.1",
+  "6.1.2",
+  "6.2.1",
+  "6.2.2",
+  "6.3.1",
+  "6.3.2"
+ ],
+ "groups": [
+  {
+   "group": 1,
+   "name": "Transportation Systems Planning"
+  },
+  {
+   "group": 2,
+   "name": "Environmental Studies"
+  },
+  {
+   "group": 3,
+   "name": "Schematic Development"
+  },
+  {
+   "group": 4,
+   "name": "Roadway Design"
+  },
+  {
+   "group": 5,
+   "name": "Bridge Design"
+  },
+  {
+   "group": 6,
+   "name": "Bridge Inspection - The firm must employ sufficient National Highway Institute (NHI) trained bridge inspectors and other technical personnel as required to perform inspection of bridges included in this category."
+  },
+  {
+   "group": 7,
+   "name": "Traffic Engineering and Operations Studies"
+  },
+  {
+   "group": 8,
+   "name": "Traffic Operations Design"
+  },
+  {
+   "group": 9,
+   "name": "Bicycle and Pedestrian Facilities"
+  },
+  {
+   "group": 10,
+   "name": "Hydraulic Design and Analysis"
+  },
+  {
+   "group": 11,
+   "name": "Construction Management"
+  },
+  {
+   "group": 12,
+   "name": "Materials Inspection and Testing"
+  },
+  {
+   "group": 13,
+   "name": "Rail Systems"
+  },
+  {
+   "group": 14,
+   "name": "Geotechnical Services"
+  },
+  {
+   "group": 15,
+   "name": "Surveying and Mapping"
+  },
+  {
+   "group": 16,
+   "name": "Architecture – Buildings and other structures"
+  },
+  {
+   "group": 17,
+   "name": "Facilities Engineering"
+  },
+  {
+   "group": 18,
+   "name": "Utility Engineering"
+  },
+  {
+   "group": 19,
+   "name": "Miscellaneous"
+  },
+  {
+   "group": 20,
+   "name": "Marine Vessels and Facilities"
+  },
+  {
+   "group": 21,
+   "name": "Right of Way"
+  },
+  {
+   "group": 22,
+   "name": "Owner Verification Testing and Inspection"
+  },
+  {
+   "group": 23,
+   "name": "Engineering Management Services (includes CEC, GEC, IE, PcE, PMC, and services related to the alternative delivery program)"
+  },
+  {
+   "group": 24,
+   "name": "Operations and Maintenance (O&M) of Alternative Delivery Projects"
+  }
+ ],
+ "categories": [
+  {
+   "code": "1.1.1",
+   "group": 1,
+   "name": "Policy Planning",
+   "description": "This category includes the investigation and development of transportation planning and strategies to meet current or future needs at the state or local level.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one Professional Engineer with training and experience in areas directly related to policy planning; or",
+     "head": false
+    },
+    {
+     "text": "one planner with training and experience in areas directly related to policy planning.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "1.2.1",
+   "group": 1,
+   "name": "Systems Planning",
+   "description": "This category includes development of state or local transportation plans to create complete integrated systems to support movement of people and goods.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one Professional Engineer with training and experience in areas directly related to systems planning; or",
+     "head": false
+    },
+    {
+     "text": "one planner with training and experience in areas directly related to systems planning.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "1.3.1",
+   "group": 1,
+   "name": "Subarea/Corridor Planning",
+   "description": "This category includes the study of the feasibility of all modes of transportation corridors at the state or local level to determine the cost effectiveness of the various alternatives to meet specific goals and may include actual route location as a final product.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one Professional Engineer with training and experience in areas directly related to subarea/corridor planning; or",
+     "head": false
+    },
+    {
+     "text": "one planner with training and experience in areas directly related to subarea/corridor planning.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "1.4.1",
+   "group": 1,
+   "name": "Land Planning/Engineering",
+   "description": "This category includes planning and engineering in support of assessing the impacts that proposed transportation improvements may have on public and private property.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one Professional Engineer with training and experience in comprehensive planning or areas directly related to assessing impacts to private property; or",
+     "head": false
+    },
+    {
+     "text": "one planner with training and experience in comprehensive planning or areas directly related to assessing impacts to private property.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "1.5.1",
+   "group": 1,
+   "name": "Feasibility Studies",
+   "description": "This category includes investigation of programs or specific projects to determine if they are cost effective and meet the department’s desired goals.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer who has:",
+     "head": true
+    },
+    {
+     "text": "proficiency in civil engineering; and",
+     "head": false
+    },
+    {
+     "text": "completed a minimum of two feasibility studies.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "1.6.1",
+   "group": 1,
+   "name": "Major Investment Studies",
+   "description": "This category includes the investigation of modal and financing alternatives for major transportation projects at the state or local level.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with proficiency in civil engineering and experience or education in urban planning and economic, or environmental impact assessment.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "1.7.1",
+   "group": 1,
+   "name": "Traffic Demand Modeling",
+   "description": "This category includes the development of socioeconomic data, socioeconomic forecasts, networks, traffic analysis zones (TAZs), freight input data, calibration and validation of travel demand model, sensitivity analysis, alternatives analysis, development of model documentation and training modules necessary for travel demand model development for regional, statewide, and corridor analysis of passenger and freight movements.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in travel demand modeling.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "1.8.1",
+   "group": 1,
+   "name": "Public Involvement",
+   "description": "This category includes comprehensive services in planning, scheduling, coordinating, conducting, documenting, and exhibit preparation for public involvement activities. These public involvement activities include but are not limited to meetings with affected property owners, public meetings, public hearings, and stakeholder meetings, as well as developing media packets, maintaining public contact lists, public comment inventories, and associated summary reports.",
+   "requirements": [
+    {
+     "text": "The firm must employ one public involvement professional with a minimum of five years of experience in providing oversight on public involvement activities for transportation projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "1.9.1",
+   "group": 1,
+   "name": "Geographic Information System (GIS) and Data Analysis",
+   "description": "This category includes services in the creation of cartographic product and visualizations, geospatial analysis and geoprocessing, data analysis, metadata/documentation, and geospatial database creation, organization, and maintenance. This category includes the production of cartographic elements and data to be used in various reports and presentations. Databases and visualizations produced under this category must meet TxDOT and industry standards and be organized in a manner that can be easily utilized and understood.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in Geographic Information Systems with demonstrated experience using Geographic Information System software to gather, manage, and analyze data and relate it to spatial locations.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.1.1",
+   "group": 2,
+   "name": "Traffic Noise Analysis",
+   "description": "This category includes the performance of a traffic noise analysis for a roadway project.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person that has:",
+     "head": true
+    },
+    {
+     "text": "taken a noise modeling, intensive course comparative to ENV 115 offered by TxDOT or an equivalent training course. (Specify the training provider, the course name, and date of completion.); and",
+     "head": false
+    },
+    {
+     "text": "a bachelor’s degree or equivalent experience in environmental studies, urban planning, civil or environmental engineering, or a related field; and",
+     "head": false
+    },
+    {
+     "text": "demonstrated experience in applying Traffic Noise Guidelines, traffic noise modeling software, and appropriate sound measuring equipment through the accurate completion of a traffic noise analysis for a minimum of two highway projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.2.1",
+   "group": 2,
+   "name": "Air Quality Analysis",
+   "description": "This category includes the performance of an air quality analysis for a roadway project.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person that has:",
+     "head": true
+    },
+    {
+     "text": "a bachelor’s degree or equivalent experience in environmental studies, urban planning, civil or environmental engineering, or a related field; and",
+     "head": false
+    },
+    {
+     "text": "demonstrated experience in use/application of air quality guidelines and current air quality modeling software through the accurate completion of an air quality analysis for a minimum of two highway projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.3.1",
+   "group": 2,
+   "name": "Wetland Delineation",
+   "description": "This category includes the performance of a wetland delineation according to the United States Army Corps of Engineers requirements.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person that has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of one year of field experience in wetland delineation according to USACE requirements; and",
+     "head": false
+    },
+    {
+     "text": "field experience in wetland delineation within the past five (5) years; and",
+     "head": false
+    },
+    {
+     "text": "prepared and submitted at least one delineation report that has been verified by the USACE; and",
+     "head": false
+    },
+    {
+     "text": "completed a one-week wetland delineation class. (Specify the training provider, the course name, and date of completion.)",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.3.2",
+   "group": 2,
+   "name": "Conditional/Functional Assessment",
+   "description": "This category includes the performance of a conditional/functional assessment according to the United States Army Corps of Engineers (USACE) requirements.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person who has conducted and completed a minimum of one conditional/functional assessment in Texas in accordance with the respective USACE district.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.4.1",
+   "group": 2,
+   "name": "Nationwide Permit",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one person with working knowledge of the nationwide permit process and a minimum of one year of experience in nationwide permit determination.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.4.2",
+   "group": 2,
+   "name": "Clean Water Act §404 (Title 33, United States Code §1344) Permits (including mitigation and monitoring)",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one person that has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of one year of experience in §404 Permit determinations; and",
+     "head": false
+    },
+    {
+     "text": "prepared and submitted at least one Pre-Construction Notification (PCN) for a Nationwide or other general permit that has been verified by the USACE; or",
+     "head": false
+    },
+    {
+     "text": "applied for and received at least one individual permit (IP) for the USACE.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.4.3",
+   "group": 2,
+   "name": "U. S. Coast Guard (General Bridge Act) and U.S. Army Corps of Engineers (Section 10) (Title 33, United States Code §403) Permits",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one person that has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of one year of experience and working knowledge of the Rivers and Harbors Act, (Section 9 & 10); and",
+     "head": false
+    },
+    {
+     "text": "applied for and received one navigation-related permit under Section 9 or Section 10 of the Rivers and Harbors Act.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.5.1",
+   "group": 2,
+   "name": "Geological Assessment for Edwards Aquifer Recharge Zone",
+   "description": "This category includes conducting a geologic field assessment and the preparation of a geological assessment report in support of a water pollution abatement plan (WPAP) as it relates to the Edwards Aquifer Rules.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person who:",
+     "head": true
+    },
+    {
+     "text": "is a Texas licensed professional geoscientist who has training and experience in groundwater hydrology and related fields that enable that individual to make sound professional judgments regarding the identification of sensitive features located in the recharge zone or transition zone (30 TAC 213.3); and",
+     "head": false
+    },
+    {
+     "text": "has prepared at least one geological assessment for a water pollution abatement plan in accordance with 30 TAC 213.5.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.6.5",
+   "group": 2,
+   "name": "Protected Species Evaluations",
+   "description": "This category includes assessing impacts to federally and state listed species from transportation construction projects and related activities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with:",
+     "head": true
+    },
+    {
+     "text": "a minimum of a bachelor’s degree in biology, natural resource management, or a related field;",
+     "head": false
+    },
+    {
+     "text": "a demonstrated familiarity with the plant and animal species and natural communities of Texas;",
+     "head": false
+    },
+    {
+     "text": "a minimum of five years of experience conducting assessments and surveys of protected species and their habitats; and",
+     "head": false
+    },
+    {
+     "text": "a minimum of five years of experience evaluating impacts to plant and animal species from transportation, construction, or similar infrastructure and/or development projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.6.6",
+   "group": 2,
+   "name": "U.S. Fish and Wildlife Service (USFWS)/ National Marine Fisheries Service (NMFS) Consultation",
+   "description": "This category includes the preparation of documentation for consultation under the Endangered Species Act (ESA).",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with:",
+     "head": true
+    },
+    {
+     "text": "a minimum of a bachelor’s degree in biology, natural resource management, or a related field;",
+     "head": false
+    },
+    {
+     "text": "a thorough understanding of the preparation of documents in support of consultation with USFWS/NMFS under section 7 of the ESA for projects that are federally authorized or approved or section 10 of the ESA for non-federal projects where project actions may affect a listed species or critical habitat; and",
+     "head": false
+    },
+    {
+     "text": "a minimum of seven years of experience preparing consultation documents including biological assessments and biological evaluations. During these seven years the person must have contributed to the preparation of a minimum of five consultation documents that resulted in a biological opinion or concurrence from the USFWS or NMFS.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.7.1",
+   "group": 2,
+   "name": "Parks, Recreational Areas, and Refuges §4(f) (Title 23, United States Code of Federal Regulations §771.135) and/or §6(f) (Title 49, United States Code §303) Evaluations",
+   "description": "This category includes §4(f) evaluations, identified in the Department of Transportation Act of 1966, which are conducted when a use of a Section 4(f) property is required from publicly owned parks, recreation areas, or wildlife or waterfowl refuges and §6(f) evaluations which apply when federal land and water conservation funds are used for improvements to the site.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person that has:",
+     "head": true
+    },
+    {
+     "text": "taken a Section 4(f) training course taught by NHI (National Highway Institute), NPI (National Preservation Institute), or a comparable training class offered by TxDOT; and",
+     "head": false
+    },
+    {
+     "text": "completed a minimum of one successful Parks individual, programmatic, or net benefit §4(f) evaluation; or",
+     "head": false
+    },
+    {
+     "text": "completed a minimum of two Parks de minimis §4(f) evaluations and received FHWA or other federal agency approval.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.7.2",
+   "group": 2,
+   "name": "Historic Sites §4(f) (Title 23, United States Code of Federal Regulations §771.135) Evaluations",
+   "description": "This category includes §4(f) evaluations, identified in the Department of Transportation Act of 1966, which are conducted when a use is acquired from historic sites.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person with experience under requirements of the Secretary of the Interior’s Standards and Guidelines for History or Historic Architecture, 36 CFR 61, who meets qualifications for historians, architectural historians, or closely related professions such as cultural geographers, preservation planners, or landscape historians, as defined in the SOI Standards and 13 TAC Chapter 26.",
+     "head": false
+    },
+    {
+     "text": "The employee must have completed:",
+     "head": true
+    },
+    {
+     "text": "a minimum of one successful Historic Sites individual, programmatic, or net benefit §4(f) evaluation or a minimum of two Historic Sites de minimis §4(f) evaluations and received FHWA or other federal agency approval; and",
+     "head": false
+    },
+    {
+     "text": "a Section 4(f) training course taught by NHI (National Highway Institute) or NPI (National Preservation Institute)",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.10.1",
+   "group": 2,
+   "name": "Archeological Surveys, Documentation, Excavations, Testing Reports, and Data Recovery Plans",
+   "description": "This category includes: reconnaissance or intensive archeological surveys performed in accordance with the criteria listed in the Secretary of the Interior’s Standards and Guidelines for Archeology and Historic Preservation (1982), Reports Relating to Archeological Permits in the Rules of Practice and Procedure for the Antiquities Code of Texas, and performance standards as outlined in the Council of Texas Archaeologists (CTA) Guidelines; documentation of operations that use archeological techniques to obtain and record evidence of human activity or behavior important in history or prehistory; testing and preparation of testing reports to describe the results of work following the investigation and evaluation of archeological sites and/or other historic properties; and data recovery plans that address appropriate strategies and methodologies for excavation and data recovery.",
+   "requirements": [
+    {
+     "text": "The firm must employ a principal investigator:",
+     "head": true
+    },
+    {
+     "text": "with a master’s degree in archeology, anthropology, or closely related field, who has a minimum of one year of full-time professional experience or equivalent specialized training in archeological research or administration;",
+     "head": false
+    },
+    {
+     "text": "who has a minimum of one year of supervised field and analytic experience in archeology;",
+     "head": false
+    },
+    {
+     "text": "who is a professional archeologist who meets the standards of a principal or co-principal investigator, as defined by state standards, with a minimum of one year of full-time professional experience at a supervisory level in archeological resources; and",
+     "head": false
+    },
+    {
+     "text": "who has served as principal or co-principal investigator on a minimum of five archeological projects, or equivalent scope that were successfully completed under the jurisdiction of the National Historical Preservation Act, the Antiquities Code of Texas, or an equivalent law in another state.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.12.1",
+   "group": 2,
+   "name": "Socio-Economic and Environmental Justice Analyses",
+   "description": "This category includes: analyzing U. S. Census data for the affected area; identifying changes in land use, land values, and the local tax base; identifying impacts to the business environment to include relocations, construction period impacts, accessibility issues, and effects to employees and customers; estimating the number and type of residential relocations; identifying the availability of comparable replacement housing in accordance with the Uniform Relocation Assistance and Real Property Acquisitions Policies Act of 1970; identifying impacts to community cohesion and the effects to public facilities and services.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person with:",
+     "head": true
+    },
+    {
+     "text": "a bachelor’s degree from an accredited academic institution; and",
+     "head": false
+    },
+    {
+     "text": "experience performing socio-economic analysis and/or community impacts assessments for a minimum of five CEs approved by the agency with jurisdiction; or a minimum of two environmental assessments that received a FONSI; or a minimum of one environmental impact statement that was approved by a Record of Decision",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.13.1",
+   "group": 2,
+   "name": "Hazardous Materials Initial Site Assessment",
+   "description": "This category includes the performance of an initial site assessment to identify known or possible hazardous materials and determine the potential for encountering them during project development. The assessment shall be in general accordance with the American Society for Testing and Materials Environmental Site Assessment standard practices, ASTM 1528 and 1527, or satisfy due diligence and appropriate inquiry requirements under the Comprehensive Environmental Response, Compensation, and Liability Act (CERCLA). The appropriate level of inquiry for assessing existing and previous land use, regulatory databases (list search) and files, site visit and/or field surveys, and interviews shall be made with consideration of project design and right of way requirements. This category also includes the determination of whether additional research or investigation is necessary during subsequent stages of project development, and to determine and implement measures early to avoid or minimize involvement with substantially contaminated properties.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person with:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience performing Phase I environmental site assessments or initial hazardous material assessments; and a working knowledge of pertinent federal, state, and local environmental laws and regulations, ASTM standard practices for environmental site assessments, and hazardous material assessments/investigations.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.14.1",
+   "group": 2,
+   "name": "Environmental Document Preparation",
+   "description": "This category includes the preparation of environmental documents for transportation projects as identified in §2.43(c), (d), and (e) of this title (relating to Highway Construction Projects - State Funds).",
+   "requirements": [
+    {
+     "text": "The firm must employ one person that has:",
+     "head": true
+    },
+    {
+     "text": "a bachelor’s degree in environmental studies, urban planning, civil or environmental engineering, or a related field; and",
+     "head": false
+    },
+    {
+     "text": "progressively responsible experience in the preparation of environmental documents for compliance with NEPA or an equivalent state environmental law and/or within a regulatory agency review and managing environmental documents for compliance with NEPA or an equivalent state environmental law; and",
+     "head": false
+    },
+    {
+     "text": "managed the preparation of or served as a major task manager in the preparation of, a minimum of five EA or EIS environmental documents or ten CE environmental documentation projects for transportation.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.15.1",
+   "group": 2,
+   "name": "Historical Research of Extant Historic Buildings, Structures, Landscapes, and Objects",
+   "description": "This category includes research efforts carried out in accordance with the Secretary of the Interior's Standards and Guidelines for Historic Preservation (Volume 48 of the Federal Register, 44716) to comply with §106 (54 USC 306108) of the National Historic Preservation Act of 1966, as amended, and other state and federal historic preservation related laws and regulations. Associated activities include: historical and archival research on historic properties; development of research designs to guide historical research efforts; development of historic contexts to provide an organized format for further research and evaluation of historic properties; and preparation of historic documentation on affected properties in accordance with the history and building/structure documentation requirements of the Historic American Buildings Survey , the Historic American Engineering Record, or Historic American Landscape Survey Level I or II.",
+   "requirements": [
+    {
+     "text": "The firm must employ one person with experience under requirements of the Secretary of the Interior’s Standards and Guidelines for History or Historic Architecture, 36 CFR 61, who meets qualifications for historians, architectural historians, or closely related professions such as cultural geographers, preservation planners, or landscape historians, as defined in the SOI Standards and 13 TAC Chapter 26. Required:",
+     "head": true
+    },
+    {
+     "text": "a master’s degree in architectural history, historic preservation, or a closely related field, and must include course work in American architectural history and a minimum of one year of direct experience performing research or documentation of historic buildings, structures, and objects; or",
+     "head": false
+    },
+    {
+     "text": "a bachelor’s degree in architectural history, historic preservation, or a closely related field, and must include course work in American architectural history and a minimum of two years of direct experience performing research or documentation of historic buildings, structures, and objects; or",
+     "head": false
+    },
+    {
+     "text": "a minimum of ten years of demonstrated experience performing research, or documentation of historic buildings, structures, and objects, including substantial contribution through research and publication to the body of scholarly knowledge in the field of architectural history or a related field. Also, must have course work in American architectural history.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "2.15.2",
+   "group": 2,
+   "name": "Historical Surveys and Documentation of Historic Buildings, Structures, Landscapes and Objects",
+   "description": "This category includes surveys and documentation efforts carried out in accordance with the Secretary of the Interior's Standards and Guidelines for Historic Preservation (Volume 48 of the Federal Register, 44716) to comply with §106 (54 USC 306108) of the National Historic Preservation Act of 1966, as amended, and other state and federal historic preservation related laws and regulations. Associated activities include: delineation of the area of potential effects for projects with the potential to affect historic properties; field surveys and photographic and written documentation on historic properties located within a project's area of potential effects; development of historic contexts that provide an organizational and thematic format for evaluating historic properties; determination of National Register eligibility for identified historic properties; preparation of historic documentation on affected properties; evaluation of the effect of projects on significant properties; and the development of management and preservation plans for historic properties.",
+   "requirements": [
+    {
+     "text": "The firm must employ one principal investigator:",
+     "head": true
+    },
+    {
+     "text": "with a master’s degree in architectural history, historic preservation, or a closely related field, and must include course work in American architectural history and demonstrated experience performing research or documentation of historic buildings, structures, and objects; OR a bachelor’s with the above requirements and a minimum of two years of demonstrated experience performing research or documentation of historic buildings, structures, and objects; OR a minimum of ten years of demonstrated experience performing research, or documentation of historic buildings, structures, and objects, including substantial contribution through research and publication to the body of scholarly knowledge in the field of architectural history or a related field; and",
+     "head": false
+    },
+    {
+     "text": "who has served as principal or co-principal investigator on a minimum of five non-archeological, historical resource projects that were successfully completed under the jurisdiction of the National Historical Preservation Act, the Antiquities Code of Texas, or an equivalent law in another state; and",
+     "head": false
+    },
+    {
+     "text": "with range of direct involvement in administration, supervision and performance of fieldwork, research, writing, or other technical functions. Must also demonstrate survey project management performance, report production direction, finalizing recommendations of eligibility and effects under §106 (54 USC 306108) of the National Historic Preservation Act of 1966, and responsibility addressing errors and omissions.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "3.2.1",
+   "group": 3,
+   "name": "Route Studies and Schematic Design",
+   "description": "This category includes the preliminary alignment and layout of roadways as described in Category 4.2.1.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in:",
+     "head": true
+    },
+    {
+     "text": "design of roadways; and",
+     "head": false
+    },
+    {
+     "text": "capacity and level of service analysis.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "3.7.1",
+   "group": 3,
+   "name": "Traffic Operational Analysis",
+   "description": "This category includes development and engineering support of computer-based modeling and forecasting to assist in the evaluation of traffic operations of roadway systems so as to analyze the traffic operations of roadway designs and/or to compare the operations of alternative roadway designs, such as those required for interstate access justification reports (IAJR) or other engineering analyses reports. This category includes analyses of current and forecasted traffic operations in accordance with TxDOT-approved traffic modeling and simulation methods, procedures, and tools. This category also includes interpreting and analyzing current traffic operations, developing forecasted traffic models to corridor layout, analyzing and evaluating model performance, researching and validating supporting data, and analyzing and adjusting models and data for actual conditions and proposed changes, as well as producing traffic operation analysis files, reports (IAJRs, etc.), and/or data to be presented, published, or summarized.",
+   "requirements": [
+    {
+     "text": "The firm must employ at least one individual who:",
+     "head": true
+    },
+    {
+     "text": "is a Professional Engineer in the state of Texas;",
+     "head": false
+    },
+    {
+     "text": "has a minimum of five years of demonstrated project experience in the use and application of traffic operational analysis tools such as TRB's Highway Capacity Manual, and current traffic operational analysis software and tools, such as Highway Capacity Software (HCS), VISSIM, SIDRA, CORSIM, and SYNCHRO for a minimum of two highway or interchange/intersection projects; and",
+     "head": false
+    },
+    {
+     "text": "has, within the last five years, attended the following training for traffic operational analysis applications:",
+     "head": true
+    },
+    {
+     "text": "Highway Capacity Analysis (HCM/HCS) – McTrans",
+     "head": false
+    },
+    {
+     "text": "Synchro Studio 11 or latest Intermediate & Advanced Training – provided by Cubic-Trafficware or other approved trainer",
+     "head": false
+    },
+    {
+     "text": "VISSIM Advanced Training (PTV VISSIM for Reviewers or equivalent)- PTV or other approved trainer",
+     "head": false
+    },
+    {
+     "text": "Note: Certificate(s) for required training must be submitted at the time of precertification application and every five years after completion of the training according to the Employee Certificate Submittal Requirements.",
+     "head": false
+    },
+    {
+     "text": "For additional information about these requirements, see the FAQ for work categories 3.7.1 & 4.7.1.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "4.2.1",
+   "group": 4,
+   "name": "Roadway Design",
+   "description": "This category includes design of urban and rural roadways that involve repair, resurfacing, rehabilitation, major reconstruction, or substantial capacity improvements through a developed area. Associated activities include utility relocation plans, stormwater permits, maintenance of traffic plans, and traffic engineering applications.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of roadway design experience.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "4.4.1",
+   "group": 4,
+   "name": "Freeway Interchanges",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in the design of interchanges.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "4.5.1",
+   "group": 4,
+   "name": "Constructability Review",
+   "description": "This category includes providing independent quality review of the plans, specifications, and estimates (PS&E) package to ensure constructability of all roadway and structural elements. This work will include, but not be limited to: review sequence of work and traffic control plan, roadway and structure plans, temporary and permanent drainage, and storm water pollution prevention plan (SW3P); ensuring compliance with environmental permits, issues and commitments (EPIC); identification of utility conflicts; ensuring accuracy and appropriate use of bid items, quantities, general notes, standard and special specifications, special provisions, contract schedule, and standard sheets; and providing detailed comments in an approved format. In addition, this category includes assisting with the preparation of Construction Management Plans (CMP) pre-letting, and providing oversight in monitoring the CMP and recording the status of any of these items that remain-to-be-cleared post letting.",
+   "requirements": [
+    {
+     "text": "The firm must employ one licensed Professional Engineer with minimum of five years of experience in highway design and in providing oversight on roadway and bridge construction projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "4.6.1",
+   "group": 4,
+   "name": "3-D Visualization and Animation Services",
+   "description": "This category includes services for the preparation of design-level mapping and topographically accurate 3-D visualizations and animations of transportation facilities for use in public presentations.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of experience in developing 3-D visualizations and animations of transportation facilities for public presentations. In addition, this individual must have completed 3-D design visualizations and animations for a minimum of one urban freeway or interchange project.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "4.7.1",
+   "group": 4,
+   "name": "Traffic Safety Analysis",
+   "description": "This category includes development and engineering support of computer-based modeling and forecasting to assist in the evaluation of the safety of roadway systems so as to analyze the safety of roadway designs and/or to compare the safety of alternative roadway designs. This category includes crash analyses of historical, expected, and predicted crashes in accordance with AASHTO's Highway Safety Manual (HSM) procedures and tools. This category also includes interpreting and analyzing historical crash records, developing predictive safety models, applying predictive crash models to corridor layout, analyzing and evaluating model performance, researching and validating supporting data, and analyzing and adjusting models and data for actual conditions and proposed changes. This category also includes producing safety analysis files, reports, and/or data to be presented, published, or summarized.",
+   "requirements": [
+    {
+     "text": "The firm must employ at least one individual who:",
+     "head": true
+    },
+    {
+     "text": "is a Professional Engineer in the state of Texas;",
+     "head": false
+    },
+    {
+     "text": "has a minimum of five years of demonstrated project experience in the use and application of AASHTO’s Highway Safety Manual (HSM), Crash Diagnosis, Crash Modification Factors (CMF), and current predictive safety analysis software and tools (such as IHSDM/ ISATe) for a minimum of two highway or interchange/ intersection projects; and",
+     "head": false
+    },
+    {
+     "text": "has, within the last five years, attended the following training for safety analysis applications:",
+     "head": true
+    },
+    {
+     "text": "Highway Safety Analysis Training (McTrans)",
+     "head": false
+    },
+    {
+     "text": "NHI 380100 “Using Interactive Highway Safety Design Model (IHSDM)” or other approved course",
+     "head": false
+    },
+    {
+     "text": "Notes: Certificate(s) for required training must be submitted at the time of precertification application and every five years after completion of the training according to the Employee Certificate Submittal Requirements. For additional information about these requirements, see the FAQ for work categories 3.7.1 & 4.7.1.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "5.2.1",
+   "group": 5,
+   "name": "Bridge Design",
+   "description": "This category includes the design of conventional and non-conventional, non-complex and complex bridges, bridge replacements, complex and simple bridge widenings, railroad overpasses and underpasses, non-complex and complex superstructure and substructure design, and pedestrian bridges. This category also includes the design of bridges with substructures requiring ship impact design, design of dolphins for bridge pier protection, and steel truss spans. This category includes non-standard retaining wall design, but cannot be the only project type listed to obtain 5.2.1 precertification.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of structural bridge design experience.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "5.3.1",
+   "group": 5,
+   "name": "Multi-Level Interchange Design",
+   "description": "This category includes design of bridges with three levels or more.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of structural bridge design experience including a minimum of three Multi-Level Interchange Design projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "5.5.1",
+   "group": 5,
+   "name": "Bridge Class Culvert, Non-Bridge Class Culvert, and Inlet Design",
+   "description": "This category includes the structural design of bridge class culverts, non-bridge class culverts, and inlets.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of structural bridge design experience in bridge class culvert, non-bridge class culvert, and inlet design.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "5.6.1",
+   "group": 5,
+   "name": "Structural Engineering for Overhead Sign Supports",
+   "description": "This category includes structural engineering studies, analysis and design of overhead sign structures over roadways.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of structural design experience in overhead sign supports.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.1.1",
+   "group": 6,
+   "name": "Routine Bridge Inspection Team Leader",
+   "description": "This category includes the inspection of on-system and off-system bridges, inspection and load rating for culverts, pre-stressed beam bridges, cast-in-place concrete bridges, steel girder bridges, steel truss bridges, and timber bridges.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one team leader who has one of the following qualifications:",
+     "head": true
+    },
+    {
+     "text": "is a Professional Engineer in the state of Texas, who has successfully completed National Highway Institute (NHI) training course # 130055, “Safety Inspection of In-Service Bridges” or # 130056, \"Safety Inspection of In-Service Bridges for Professional Engineers\" and has a minimum of one year experience in National Bridge Inspection Standards (NBIS) bridge inspections; or",
+     "head": false
+    },
+    {
+     "text": "has a minimum of five years of NBIS bridge inspection experience, and has successfully completed National Highway Institute (NHI) training course # 130055, “Safety Inspection of In-Service Bridges”; or",
+     "head": false
+    },
+    {
+     "text": "has all of the following:",
+     "head": true
+    },
+    {
+     "text": "a bachelor’s degree in engineering from a college or university accredited by or determined as substantially equivalent by the Accreditation Board for Engineering and Technology; and",
+     "head": false
+    },
+    {
+     "text": "successfully passed the National Council of Examiners for Engineering and Surveying Fundamentals of Engineering examination; and",
+     "head": false
+    },
+    {
+     "text": "a minimum of two years of NBIS bridge inspection experience; and",
+     "head": false
+    },
+    {
+     "text": "has successfully completed NHI training course # 130055, “Safety Inspection of In-Service Bridges”; or",
+     "head": false
+    },
+    {
+     "text": "has all of the following:",
+     "head": true
+    },
+    {
+     "text": "an associate’s degree in engineering or engineering technology from a college or university accredited by or determined as substantially equivalent by the Accreditation Board for Engineering and Technology; and",
+     "head": false
+    },
+    {
+     "text": "a minimum of four years of NBIS bridge inspection experience; and",
+     "head": false
+    },
+    {
+     "text": "has successfully completed NHI training course # 130055, “Safety Inspection of In-Service Bridges”",
+     "head": false
+    },
+    {
+     "text": "Note: Certificate(s) for required training must be submitted according to the Employee Certificate Submittal Requirements.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.1.2",
+   "group": 6,
+   "name": "Routine Bridge Inspection Project Manager",
+   "description": "This category includes the oversight of the inspection and documentation of on-system and off-system bridges and inspection and load rating for culverts, pre-stressed beam bridges, cast-in-place concrete bridges, steel girder bridges, steel truss bridges, and timber bridges.",
+   "requirements": [
+    {
+     "text": "The project manager must have the following:",
+     "head": true
+    },
+    {
+     "text": "is a Professional Engineer in the state of Texas; and",
+     "head": false
+    },
+    {
+     "text": "has a minimum of seven years of experience in performing National Bridge Inspection Standards (NBIS) bridge inspections or management of NBIS bridge inspection contracts; and",
+     "head": false
+    },
+    {
+     "text": "has successfully completed National Highway Institute (NHI) training course # 130055, “Safety Inspection of In-Service Bridges” or # 130056, “Safety Inspection of In-Service Bridges for Professional Engineers”.",
+     "head": false
+    },
+    {
+     "text": "Note: Certificate(s) for required training must be submitted according to the Employee Certificate Submittal Requirements.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.2.1",
+   "group": 6,
+   "name": "Complex Bridge Inspection Team Leader",
+   "description": "This category includes the inspection of on-system and off-system bridges and inspection and load rating for precast segmental structures, steel arch structures, cable stayed structures, fracture critical inspections, and movable bridges.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one team leader who has all of the following qualifications:",
+     "head": true
+    },
+    {
+     "text": "meets the certification requirements defined for a team leader in Category 6.1.1; and",
+     "head": false
+    },
+    {
+     "text": "has a minimum of six years of experience in bridge inspection or design, including one year of NBIS inspection or design of bridges included in this category: and",
+     "head": false
+    },
+    {
+     "text": "has successfully completed the comprehensive National Highway Institute (NHI) training course #130055, “Safety Inspection of In-Service Bridges” or # 130056, “Safety Inspection of In-Service Bridges for Professional Engineers.”; and",
+     "head": false
+    },
+    {
+     "text": "has completed NHI #130078 “Fracture Critical Inspection Techniques for Steel Bridges” course.",
+     "head": false
+    },
+    {
+     "text": "Note: Certificate(s) for required training must be submitted according to the Employee Certificate Submittal Requirements.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.2.2",
+   "group": 6,
+   "name": "Complex Bridge Inspection Project Manager",
+   "description": "This category includes the oversight of the inspection and documentation of on-system and off-system bridges, inspection and load rating for precast segmental structures, steel arch structures, cable stayed structures, fracture critical inspections, and movable bridges.",
+   "requirements": [
+    {
+     "text": "The project manager must have the following:",
+     "head": true
+    },
+    {
+     "text": "is a Professional Engineer in the state of Texas; and",
+     "head": false
+    },
+    {
+     "text": "has a minimum of seven years of experience in performing National Bridge Inspection Standards (NBIS) inspections, or a minimum of seven years of experience in management of NBIS bridge inspection contracts, or a minimum of seven years of bridge design which includes a minimum of one year of experience in inspection or design of the types of bridges included in this category; and",
+     "head": false
+    },
+    {
+     "text": "has successfully completed National Highway Institute (NHI) training course # 130055, “Safety Inspection of In-Service Bridges” or # 130056, “Safety Inspection of In-Service Bridges for Professional Engineers.”; and",
+     "head": false
+    },
+    {
+     "text": "has successfully completed NHI #130078 “Fracture Critical Inspection Techniques for Steel Bridges” course.",
+     "head": false
+    },
+    {
+     "text": "Note: Certificate(s) for required training must be submitted according to the Employee Certificate Submittal Requirements.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.3.1",
+   "group": 6,
+   "name": "Tunnel Inspection Team Leader",
+   "description": "This category includes the inspection and load rating of on-system and off-system tunnels of any construction method.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one team leader who has all of the following qualifications:",
+     "head": true
+    },
+    {
+     "text": "is a Professional Engineer in the state of Texas; and",
+     "head": false
+    },
+    {
+     "text": "has successfully completed the National Highway Institute (NHI) training course # 130110, “Tunnel Safety Inspection”; and",
+     "head": false
+    },
+    {
+     "text": "has a minimum of one year of experience in either National Tunnel Inspection Standards (NTIS) or National Bridge Inspection Standards (NBIS) bridge inspections.",
+     "head": false
+    },
+    {
+     "text": "Note: Certificate(s) for required training must be submitted according to the Employee Certificate Submittal Requirements.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.3.2",
+   "group": 6,
+   "name": "Tunnel Inspection Project Manager",
+   "description": "This category includes the oversight of the inspection, documentation, and load rating of on-system and off-system tunnels of any construction method.",
+   "requirements": [
+    {
+     "text": "The project manager must have the following:",
+     "head": true
+    },
+    {
+     "text": "is a Professional Engineer in the state of Texas; and",
+     "head": false
+    },
+    {
+     "text": "has a minimum of seven years of experience in performing NTIS or NBIS inspections or management of NTIS or NBIS bridge inspection contracts, including a minimum of one year of complex tunnel or complex bridge inspection experience; and",
+     "head": false
+    },
+    {
+     "text": "has successfully completed the comprehensive National Highway Institute (NHI) training course #130110, “Tunnel Safety Inspection\".",
+     "head": false
+    },
+    {
+     "text": "Note: Certificate(s) for required training must be submitted according to the Employee Certificate Submittal Requirements.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.4.1",
+   "group": 6,
+   "name": "Underwater Bridge Inspection Team Leader",
+   "description": "This category includes diving to conduct underwater bridge inspections of on-system and off-system bridges.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one team leader who has the qualifications defined for a team leader in Category 6.1.1; and",
+     "head": false
+    },
+    {
+     "text": "who has a commercial diver certification with a minimum of two years National Bridge Inspection Standards (NBIS) underwater bridge inspection experience.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.5.1",
+   "group": 6,
+   "name": "Non-Destructive Testing",
+   "description": "This category includes the performance of various types of non-destructive testing on structural steel members on in-service structures.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in performing various types of non-destructive testing on structural steel members on in-service structures. This individual must be Level 2 certified in Ultrasonic Testing by The American Society for Nondestructive Testing (ASNT).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.5.2",
+   "group": 6,
+   "name": "Non-Destructive Testing for Common and Specialized Structures",
+   "description": "This category includes condition assessment and field- testing services, if needed, for the development of rehabilitation plans. Required inspection services include, but are not limited to, bridge deck sounding, thermal imaging, half-cell potential measurement, and other non-destructive testing (NDT) methods as needed on in-service structures.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in evaluating existing structures. This individual must demonstrate experience using non-destructive testing methods including, but not limited to, ultrasonic testing, magnetic flux cable scanning, thermography, automatic sounding, acoustic imaging, and other non- destructive testing methods as needed on in-service structures.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.6.1",
+   "group": 6,
+   "name": "Assessment and Preservation of Common Bridge Types",
+   "description": "This category includes condition assessment, load rating, and field and laboratory testing services, if needed, for the development of rehabilitation plans, specifications, and quantity estimates for existing bridges. Required assessment services include, but are not limited to, assessment of existing superstructures, substructures, foundation elements, retaining structures, streambeds, appurtenances, and any other items that may have an adverse effect on the structure. This category also includes study on causes and rehabilitations of certain deteriorations.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience coordinating and leading bridge assessment and preparation of bridge preservation plans for common bridge types. This individual is responsible for developing, signing, and sealing engineering reports for bridge condition assessments and bridge rehabilitation plans and specifications.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "6.6.2",
+   "group": 6,
+   "name": "Assessment and Preservation of Specialized Structures",
+   "description": "This category includes condition assessment, load rating, and field and laboratory testing services, if needed, for the development of rehabilitation plans, specifications, and estimates for specialized existing structures, e.g., cable-stayed bridges. Required inspection services include, but are not limited to, inspection of existing superstructures, substructures, foundation elements, retaining structures, streambeds, appurtenances, and any other items that may have an adverse effect on the structure.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience coordinating and leading bridge assessment and preparation of bridge preservation plans for specialized structures such as, but not limited to, cable-stayed bridges, curved steel girders, and post-tensioned elements. This individual is responsible for developing, signing, and sealing engineering reports for bridge condition assessments and bridge rehabilitation plans and specifications.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "7.1.1",
+   "group": 7,
+   "name": "Traffic Engineering Studies",
+   "description": "This category is defined as the study of the traffic operations of a roadway. Associated activities include preparation of or performance of traffic counts, signal warrants, collision diagrams, travel time and delay, capacity and level of service analysis, intersection analysis, signing, and pavement marking.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with demonstrated experience performing traffic engineering studies.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "7.3.1",
+   "group": 7,
+   "name": "Traffic Signal Timing",
+   "description": "This category includes analysis, development, and implementation of timing for traffic signals. Associated activities include data collection, intersection analysis, computerized timing programs (development of phase intervals and sequence), and timing implementation.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one Professional Engineer with demonstrated experience in traffic signal timing and the application and interpretation of traffic flow and signal timing models; and",
+     "head": false
+    },
+    {
+     "text": "who has experience using traffic engineering software applications, loading timings into field equipment, and loading databases into central computers for retiming.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "7.4.1",
+   "group": 7,
+   "name": "Traffic Control Systems Analysis, Design, and Implementation",
+   "description": "This category includes the use of electrical engineering, electronics engineering, computer science and traffic engineering to analyze, design, and implement real-time traffic control systems.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with experience in the analysis, design, and implementation of real-time traffic control systems.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "7.5.1",
+   "group": 7,
+   "name": "Intelligent Transportation System",
+   "description": "This category includes conducting ITS planning studies. Associated activities include the study of transportation systems, identification of ITS applications to mitigate transportation problems, development of short term and long term ITS implementation plans, and assessment of the impact of ITS projects on the transportation system.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with experience in transportation engineering and experience in activities associated with the development of ITS",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "8.1.1",
+   "group": 8,
+   "name": "Signing, Pavement Marking, and Channelization",
+   "description": "This category includes the design and preparation of plans for signing, pavement marking, and channelization.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "8.2.1",
+   "group": 8,
+   "name": "Illumination",
+   "description": "This category includes the design and preparation of plans for continuous roadway lighting, safety lighting, underpass lighting, tunnel lighting, and high mast lighting.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience in design and production of illumination plans meeting IESNA and AASHTO guidelines; and",
+     "head": false
+    },
+    {
+     "text": "experience in electrical engineering and the National Electric Code.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "8.3.1",
+   "group": 8,
+   "name": "Signalization",
+   "description": "This category includes the design and preparation of plans for traffic signalization.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in the design and production of traffic signalization.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "8.4.1",
+   "group": 8,
+   "name": "ITS Control Systems Analysis, Design, and Implementation",
+   "description": "This category of work includes the use of transportation engineering, electronics engineering, and computer science to analyze, design and implement transportation control systems. Associated activities include system performance and cost analysis, system hardware and software design, communication system design, development of management plans, supervision of system installation and operation, system testing and debugging, preparation of system documentation, and the training of operations personnel.",
+   "requirements": [
+    {
+     "text": "The firm must employ:",
+     "head": true
+    },
+    {
+     "text": "one Professional Engineer, with a background in electrical engineering, system engineering, or software engineering, with a minimum of three years of experience in either the design and production of ITS plans or the operation of ITS; and",
+     "head": false
+    },
+    {
+     "text": "who has experience in systems engineering, communications, system integration, or software development for ITS applications and ITS equipment.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "8.6.1",
+   "group": 8,
+   "name": "Rail-Highway Design",
+   "description": "This category includes the study of the operations of rail-highway crossings. Associated activities include diagnostic inspections with railroad companies, and design and analysis of corridors, railroad protective devices, advance warning signs and pavement markings, traffic signal preemption, geometric or operational improvements, bridge widenings, and grade separations.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience performing design, analysis, and studies of highway-rail grade crossings.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "9.2.1",
+   "group": 9,
+   "name": "Active Transportation Planning",
+   "description": "This category includes evaluating systemwide bicycle and/or pedestrian needs and identifying and prioritizing recommendations to develop non-motorized networks at the state, regional, or local level.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer or Certified Planner who can demonstrate:",
+     "head": true
+    },
+    {
+     "text": "a minimum of five years of progressively responsible experience conducting transportation planning studies that include bicycle and pedestrian modes;",
+     "head": false
+    },
+    {
+     "text": "experience managing the preparation of, or served as a task lead in the preparation of a minimum of two bicycle- or pedestrian-focused active transportation plans.; and",
+     "head": false
+    },
+    {
+     "text": "experience / extensive knowledge on current bicycle and pedestrian design requirements and guidelines provided by the American Association of State Highway and Transportation Officials (AASHTO), Federal Highway Administration (FHWA), Americans with Disability Act Accessibility Guidelines (ADAAG), and Proposed Accessibility Guidelines for Pedestrian Facilities in the Public Right-of-Way (PROWAG).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "9.3.1",
+   "group": 9,
+   "name": "Pedestrian Facility Design",
+   "description": "This category includes the design of facilities within the pedestrian circulation path, including but not limited to curb ramps, sidewalks, median refuges, pavement markings, and pedestrian crossings including pedestrian signals and push buttons.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer, Registered Architect, or Professional/Registered Landscape Architect who has a minimum of five years of experience in the design and production of pedestrian facility plans meeting Americans with Disability Act Accessibility Guidelines (ADAAG), American Association of State Highway and Transportation Officials (AASHTO) guidelines, and Proposed Accessibility Guidelines for Pedestrian Facilities in the Public Right-of-Way (PROWAG). This individual must also have knowledge of drainage design.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "9.3.2",
+   "group": 9,
+   "name": "Accessibility Design",
+   "description": "This category includes the design of new accessible facilities or update of existing facilities for accessibility on State Right-of-Way.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual who has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience in the design of accessible facilities meeting ADAAG requirements and AASHTO and PROWAG guidelines; and",
+     "head": false
+    },
+    {
+     "text": "experience providing oversight on pedestrian facility construction projects",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "9.4.1",
+   "group": 9,
+   "name": "Bikeway Design",
+   "description": "This category includes the design and preparation of plans for dedicated bikeways, including bike lanes, buffered bike lanes, separated bike lanes (i.e., cycle tracks, protected bike lanes), and shared use paths. Associated design activities include, but are not limited to, pavement markings, signage, signals, barriers, pavement design, and drainage.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer, Registered Architect, or Professional/Registered Landscape Architect who demonstrates a minimum of three years of experience designing and producing plans meeting the requirements of AASHTO and MUTCD for the design of dedicated bikeways (on-street (e.g. bike lane) and off-street (e.g. shared use paths)). In addition, this individual must also demonstrate experience with drainage design and designing intersection or conflict area treatments that safely accommodate movements of bicyclists and motor vehicles.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.1.1",
+   "group": 10,
+   "name": "Hydrologic Studies",
+   "description": "This category includes rainfall/runoff determination, reservoir/detention/channel routing, and stream gauge analysis.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in hydrologic analysis.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.2.1",
+   "group": 10,
+   "name": "Roadway Hydraulic Design",
+   "description": "This category includes hydraulic analysis and design for storm drain systems, roadside channels, and culverts. This category also includes detention and water quality design.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in hydraulic analysis, design, and state/federal permitting in the tasks associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.3.1",
+   "group": 10,
+   "name": "Bridge Hydraulic Design",
+   "description": "This category includes hydraulic analysis and design for bridge class structures over waterways and floodplains. This category also includes minor channel modifications.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in hydraulic analysis, design, and state/federal permitting in the tasks associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.4.1",
+   "group": 10,
+   "name": "Storm Water Pump Station-Hydraulic Design",
+   "description": "This category includes site considerations and hydrology, pump station storage, pump configuration and mass curve routing, and discharge lines and pump selection.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in hydraulic analysis and design of pump stations.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.4.2",
+   "group": 10,
+   "name": "Pump Stations-Electrical",
+   "description": "This category includes the design of pump motor control centers, controls, generators, and large distribution equipment stations for conveyance of storm water",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in the design of large motor control centers and generating equipment, the National Electrical Code, and control systems.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.4.3",
+   "group": 10,
+   "name": "Pump Stations-Structures",
+   "description": "This category includes the structural design of walls, roofs, foundations, and wells of pump stations for conveyance of storm water.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in the design of structural pump stations.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.5.1",
+   "group": 10,
+   "name": "Bridge Scour Evaluations and Analysis",
+   "description": "This category includes hydrologic analysis, channel and bridge hydraulic analysis, and sediment transport modeling for evaluating the potential for scour of bridges.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in river geomorphology, sediment transport and scour analysis, and flood plain analysis.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.6.1",
+   "group": 10,
+   "name": "Coastal Hydraulic Design",
+   "description": "This category includes: wave mechanics, determination of tides and water levels, revetment design for coastal embankments, wave loads on rigid structures, coastal geology and sediments, roadway overwash, shoreline change and stabilization, tidal inlets, and tidal scour of bridges. This category also includes providing technical or regulatory support for Coast Guard, FEMA, and USACE permits.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in coastal engineering in the tasks associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.7.1",
+   "group": 10,
+   "name": "Riverine Hydraulic Design",
+   "description": "This category includes the design of river and stream hydraulic projects with stream stability and restoration components. Additionally includes construction management and inspection of these hydraulic projects.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in hydraulic analysis, design, and state/federal permitting in the tasks associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "10.8.1",
+   "group": 10,
+   "name": "Federal Emergency Management Agency (FEMA) Regulations and Permits",
+   "description": "This category includes providing technical or regulatory support on FEMA topics such as floodway modeling or application for FEMA map revisions (CLOMR and LOMR).",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with five years of experience with FEMA map revisions. This individual must also be nationally accredited as a Certified Floodplain Manager (CFM).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.1.1",
+   "group": 11,
+   "name": "Roadway Construction Management and Inspection",
+   "description": "This category includes the performance of construction management duties for all categories of roadways and highways, and bridges as described in Category 5.2.1.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of responsible charge experience as a project engineer on roadway and bridge construction projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.2.1",
+   "group": 11,
+   "name": "Bridge Construction, Management, and Inspection",
+   "description": "This category includes the performance of construction management and inspection duties for bridges and multi-level interchanges, as described in Categories 5.2.1 and 5.3.1.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in the construction of bridges.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.2.2",
+   "group": 11,
+   "name": "Bridge Deck Construction Inspection",
+   "description": "This category involves construction inspection of bridge decks for bridges and multi-level interchanges as described in Categories 5.2.1 and 5.3.1",
+   "requirements": [
+    {
+     "text": "The firm must employ one construction inspector with the following:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience in construction of bridges; and",
+     "head": false
+    },
+    {
+     "text": "completion of the Bridge Deck Construction Inspection Program (DCIP-1001) administered by the Concrete Bridge Engineering Institute at the University of Texas at Austin.",
+     "head": false
+    },
+    {
+     "text": "Note: Certificate(s) for required training must be submitted according to the Employee Certificate Submittal Requirements.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.3.1",
+   "group": 11,
+   "name": "Construction Superintendent",
+   "description": "This category involves oversight of construction inspection to ensure roadways, bridges, drainage structures and related structures, traffic control, and environmental requirements are built in accordance with plans and specifications. This category includes tracking work progress, resolving problems, and leading the work of professional and technical employees in construction.",
+   "requirements": [
+    {
+     "text": "The firm must employ one construction superintendent who has a minimum of five years of experience in construction inspection, including a minimum of three years of experience as a construction project manager.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.4.1",
+   "group": 11,
+   "name": "Environmental Inspections",
+   "description": "This category includes conducting environmental inspections at roadway construction project sites for Storm Water Pollution Prevention Plan (SW3P), the Environmental Permits Issues and Commitments (EPIC) Sheet, Construction General Permit (CGP), and District Standard Operating Procedures (SOP).",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of construction storm water inspection experience. The person must have a working knowledge of the Texas Commission on Environmental Quality’s development and storm water quality Best Management Practices.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.5.1",
+   "group": 11,
+   "name": "Construction Scheduling Project Manager",
+   "description": "This category involves management of construction project scheduling, analysis, and review. This category includes managing the task leads for highway construction projects using the critical path method technique for project scheduling.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of responsible charge experience in managing scheduling for a highway construction project using the critical path method technique. This individual must be knowledgeable and experienced in the critical path method techniques used in highway construction using Primavera or equivalent. This individual must also be knowledgeable and experienced in one of the following schedule comparison software such as Claim Digger, Schedule Analyzer, Acumen Fuse, or equivalent performing the following:",
+     "head": true
+    },
+    {
+     "text": "scheduling and tracking a project’s progress;",
+     "head": false
+    },
+    {
+     "text": "identifying the schedule activities that control the overall construction time or the critical path;",
+     "head": false
+    },
+    {
+     "text": "identifying and measuring the impact any change has on a project schedule; and",
+     "head": false
+    },
+    {
+     "text": "providing recommendations to resolve the time, scope, and cost aspects of project changes or delays.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.6.1",
+   "group": 11,
+   "name": "Construction Schedule Support",
+   "description": "General – This category includes the performance of scheduling, analyzing, monitoring, and evaluating highway construction project progress using the critical path method technique for project scheduling.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of responsible charge experience in scheduling, analyzing, monitoring, and evaluating a construction project progress using the critical path method technique. This individual must be knowledgeable and experienced with the critical path method techniques used in highway construction using Primavera or equivalent. This individual must also be knowledgeable and experienced in one of the following schedule comparison software such as Claim Digger, Schedule Analyzer, Acumen Fuse, or equivalent performing the following:",
+     "head": true
+    },
+    {
+     "text": "scheduling and tracking a project’s progress;",
+     "head": false
+    },
+    {
+     "text": "identifying the schedule activities that control the overall construction time or the critical path;",
+     "head": false
+    },
+    {
+     "text": "identifying and measuring the impact any change has on a project schedule; and",
+     "head": false
+    },
+    {
+     "text": "providing recommendations to resolve the time, scope, and cost aspects of project changes or delays.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.7.1",
+   "group": 11,
+   "name": "Construction Schedule Support",
+   "description": "Relating to Scheduling of Roadway Design – This category involves providing technical support in regard to developing project contract time determination schedules using the critical path method technique for project scheduling. This work will include, but not be limited to, transferring the Sequence of Work and Traffic Control Plan into the project schedule and appropriate usage of production rates and work calendars.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in roadway design on two separate projects. Experience may include design of urban and rural roadways that involve repair, resurfacing, rehabilitation, major reconstruction, or substantial capacity improvements. Associated activities include project scheduling, substantial drainage evaluation and design features, traffic engineering applications, utility relocation plans, and maintenance of traffic plans. This individual must be knowledgeable and experienced in the critical path method techniques used in highway construction using Microsoft Project and Primavera or equivalent.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.8.1",
+   "group": 11,
+   "name": "Construction Schedule Support",
+   "description": "Relating to Construction Management of Projects Including Bridges or Multi-Level Interchanges – This category includes providing technical support for the performance of analyzing, monitoring, and evaluating highway construction project progress, with emphasis on construction management and inspection elements for projects including bridges or multi-level interchanges, using the critical path method technique for project scheduling.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of responsible charge experience as a project engineer on roadway construction projects, and three years of bridge construction experience. Roadway project experience may include the performance of construction management duties, including scheduling, for all categories of roadways and highways. Bridge construction experience may include the performance of construction management duties, including scheduling, for bridges and multi-level interchanges. This individual must be knowledgeable and experienced in the critical path method techniques used in highway construction using Microsoft Project and Primavera or equivalent.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.9.1",
+   "group": 11,
+   "name": "Railroad Coordination Management During Construction",
+   "description": "This category includes the coordination and inspection of all construction operations involving rail-highway at-grade and overpass crossings. Associated activities include communication of daily construction tasks associated with rail grade crossings, coordination with the pertinent rail entities, scheduling of rail highway traffic control, and all other construction related activities in or around highway rail crossing facilities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience performing construction coordination and inspection of a variety of highway-rail at-grade and overpass crossings. This individual must also be familiar with the requirements for a railroad construction exhibit and demonstrate experience using the Railroad Preemption Calculation form.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "11.10.1",
+   "group": 11,
+   "name": "Construction Record Keeper",
+   "description": "This category includes maintenance and processing of construction project records and documents. This category includes: maintaining project records; processing and filing project paperwork; monitoring records to verify compliance with state and federal laws; verifying accuracy and processing payments due to the contractor for completed work; and acting as liaison with construction inspectors and contractor’s staff. This category also includes attending weekly project meetings, providing status of record keeping activities, and coordinating and communicating with the TxDOT Area Office or District Construction Office personnel. Documents will be filed and maintained electronically using a method approved by TxDOT.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of experience in roadway construction record keeping. This individual must also demonstrate experience in the development, implementation, and management of electronic document control, document sharing, and filing systems.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.1.1",
+   "group": 12,
+   "name": "Asphaltic Concrete Production",
+   "description": "This category includes testing of asphaltic concrete material in a laboratory.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual who has:",
+     "head": true
+    },
+    {
+     "text": "A minimum of three years of experience in testing roadway construction materials; and",
+     "head": false
+    },
+    {
+     "text": "The proper Hot Mix Asphalt Specialist Certification (Level 1A).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.1.2",
+   "group": 12,
+   "name": "Portland Cement Concrete",
+   "description": "This category includes testing of Portland cement concrete material in a laboratory.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual who has:",
+     "head": true
+    },
+    {
+     "text": "A minimum of three years of experience in testing roadway and bridge construction materials; and",
+     "head": false
+    },
+    {
+     "text": "The proper concrete certification (ACI certification Strength).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.1.3",
+   "group": 12,
+   "name": "Materials Engineering",
+   "description": "This category includes materials engineering for roadway and bridge construction materials.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in testing roadway and bridge construction materials.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.1.4",
+   "group": 12,
+   "name": "Asphaltic Concrete Placement",
+   "description": "This category includes testing of asphalt concrete materials in the field.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual who has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience in testing roadway construction materials; and",
+     "head": false
+    },
+    {
+     "text": "the proper Hot Mix Asphalt Specialist Certification (Level 1B).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.1.5",
+   "group": 12,
+   "name": "Portland Cement Concrete Placement",
+   "description": "This category includes testing of Portland cement concrete material in the field.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual who has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience in testing roadway and bridge construction materials; and",
+     "head": false
+    },
+    {
+     "text": "the proper concrete certification (ACI Certification Grade 1).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.1.6",
+   "group": 12,
+   "name": "Embankment/Subgrade/Backfill/Base Production",
+   "description": "This category includes testing of embankment, subgrade, backfill, and/or base material in a laboratory.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual who has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience in testing roadway construction materials; and",
+     "head": false
+    },
+    {
+     "text": "the proper Materials Analyst Specialist Certification (SB101 minimum).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.1.7",
+   "group": 12,
+   "name": "Embankment/Subgrade/Backfill/Base Placement",
+   "description": "This category includes the testing of embankment, subgrade, backfill, and/or base material in the field.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual who has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience in testing roadway construction materials; and",
+     "head": false
+    },
+    {
+     "text": "the proper Materials Analyst Specialist Certification (SB102).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.2.1",
+   "group": 12,
+   "name": "Concrete Plant Inspection and Testing",
+   "description": "This category includes inspection of the following types of facilities and inspection of materials and finished products within these facilities: producers and batch plants.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of responsible experience in inspection and testing of bridge and roadway construction.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.2.2",
+   "group": 12,
+   "name": "Prefabricated Structural Materials Fabrication Plant Inspection and Testing",
+   "description": "This category includes, but is not limited to, in-process and finished product inspection and testing of precast concrete such as prestressed concrete girders, bridge deck panels, and piling, structural steel bridge members, and inspection of fabrication operations and quality control personnel.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of relevant experience in inspection and testing of relevant precast concrete, structural steel, and various other related bridge and roadway products produced in prefabricated structural material fabrication plants. The Professional Engineer must have a general understanding and proper interpretation of applicable PCI, AASHTO/NSBA, AASHTO/AWS, and ASNT related documents.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.2.3",
+   "group": 12,
+   "name": "Precast Concrete Fabrication Plant Inspection and Testing Technician",
+   "description": "This category includes in-process and finished product inspection and testing of precast prestressed concrete members including, but not limited to prestressed concrete girders, bridge deck panels, piling, and various other precast products along with the inspection of fabrication operations and quality control personnel.",
+   "requirements": [
+    {
+     "text": "The firm must employ a minimum of one PCI Level II-certified technician with a minimum of three years of experience in inspection and testing of relevant precast concrete bridge members.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.2.4",
+   "group": 12,
+   "name": "Structural Steel Fabrication Plant Inspection and Testing Technician",
+   "description": "This category includes in-process and finished product inspection and testing of structural steel bridge members at the fabrication plant along with the inspection of fabrication operations and quality control personnel.",
+   "requirements": [
+    {
+     "text": "The firm must employ a minimum of one AASHTO/AWS CWI with current ASNT NDT Level II certifications in UT, MT, and RT (film interpretation). The technician must also have a minimum of three years of experience in inspection and testing of structural steel bridge members.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.2.5",
+   "group": 12,
+   "name": "Hot Mix Asphalt (HMA) Plant Inspection and Testing",
+   "description": "This category includes inspection of hot mix asphalt plants and inspection of materials during production and placement.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of responsible experience in inspection and testing of hot mix asphalt plants or inspection and testing of hot mix asphalt materials during production and placement.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.3.3",
+   "group": 12,
+   "name": "Coatings Inspection Task Leader",
+   "description": "This category includes providing oversight of coating inspection, coatings materials testing, and cathodic protection.",
+   "requirements": [
+    {
+     "text": "The firm must employ one task leader who:",
+     "head": true
+    },
+    {
+     "text": "has experience providing inspection oversight and management including: developing and implementing site-specific inspection plans according to the NACE International and SSPC: The Society for Protective Coatings industry standards for coatings inspection; verifying qualifications of inspectors; and providing continuing education, training, and general guidance to inspectors; and",
+     "head": false
+    },
+    {
+     "text": "is certified by NACE International as NACE Level 3 Coating Inspector or certified by SSPC as a BCI Level 2 Coating Inspector; and",
+     "head": false
+    },
+    {
+     "text": "has experience on at least three bridge painting projects involving lead abatement.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.3.4",
+   "group": 12,
+   "name": "Materials Testing Task Leader",
+   "description": "This category includes materials testing for coatings and related materials.",
+   "requirements": [
+    {
+     "text": "The firm must employ one task leader who has a minimum of ten years of experience in laboratory testing including a minimum of three years testing coatings type materials.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.3.5",
+   "group": 12,
+   "name": "Cathodic Protection Task Leader",
+   "description": "This category includes plan review and inspection of cathodic protection systems.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Task Leader with a minimum of three years of experience as a Cathodic Protection Technologist (NACE CP 3) and with the ability to provide review of cathodic protection plans and inspection of cathodic protection systems.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.4.1",
+   "group": 12,
+   "name": "Pavement Design Services",
+   "description": "This category includes: developing the pavement structural design in accordance with TxDOT’s Pavement Manual, TxDOT's Geotechnical Manual, and the individual district pavement design standard operating procedures (SOP) including recommendations for other pavement type alternatives; preparing a pavement design report according to Chapter 2, Section 9.2 of the Pavement Manual; comparing the benefits and limitations of the pavement alternatives including a life cycle cost analysis; developing the proposed pavement structural design considering the typical sections, layouts, standards, special specifications, and general notes for the Plans, Specifications, and Estimates (PS&E) package; and ensuring constructability of all roadway and structural elements, accuracy, and appropriate use of Items, quantities, General Notes, Standard and Special Specifications, Special Provisions, Contract Time/Schedule, Standards, etc.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer, with a minimum of five years of experience in pavement structural design in Texas and in analyzing the impact of pavement alternates as they pertain to the construction schedule. This individual must also demonstrate knowledge and experience with pavement design relative to planning, design, construction, and maintenance.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "12.5.1",
+   "group": 12,
+   "name": "Pavement Evaluation",
+   "description": "This category includes conducting a functional and structural adequacy evaluation of the existing pavement in accordance with TxDOT’s Pavement Manual, TxDOT's Geotechnical Manual, and the individual TxDOT District's pavement design standard operating procedures (SOP). The evaluation must include visual pavement condition surveys, non-destructive testing for the evaluation of pavement functional properties (such as roughness and skid), non-destructive testing such as, but not limited to, Falling Weight Deflectometer (FWD), Dynamic Cone Penetrometer (DCP), and Ground Penetrating Radar (GPR) for the evaluation of pavement structural properties, and destructive testing such as, but not limited to, trenching, coring, augering, and shelby tube testing for the evaluation of pavement structural properties. This category also includes preparing a pavement evaluation report. The report must clearly identify and show validation results to identify the cause of pavement deterioration, identify defects within the pavement structure, and provide recommendations on follow-up testing requirements and pavement rehabilitation options to address the identified functional and structural defects.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in pavement design, evaluation, and testing. This individual must also demonstrate experience with identifying pavement deficiencies and recommending or implementing efficient mitigation strategies.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "13.1.1",
+   "group": 13,
+   "name": "Rail Route and Design Studies",
+   "description": "This category includes conducting route and design studies and providing corridor program support associated with multi-modal system design and development.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in managing rail or multimodal freight and passenger studies and projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "13.2.1",
+   "group": 13,
+   "name": "Rail Infrastructure Analysis",
+   "description": "This category includes the inventory, inspection, and analysis of rail infrastructure conditions. This category also includes development of detailed recommendations to address infrastructure deficiencies, operational improvements, congestion, and rail/vehicular conflicts.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in the inspection, evaluation, and analysis of rail infrastructure conditions and the development of recommendations for improvements to address deficiencies that were identified during the analysis.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "13.3.1",
+   "group": 13,
+   "name": "Rail Infrastructure Project Development",
+   "description": "This category includes the development of detailed engineering plans, specifications, and estimates for rail construction and rehabilitation projects to address infrastructure deficiencies, rail/vehicular conflicts, system congestion, and operational issues.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in developing rail construction or rehabilitation project plans, specifications, and estimates.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "13.4.1",
+   "group": 13,
+   "name": "Rail Traffic Management Systems",
+   "description": "This category includes integration of alternative rail alignments into existing rail traffic management systems, and development of new rail traffic management systems, vehicular traffic control systems at rail-roadway crossings, and other traffic management support systems.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in designing or developing rail traffic management systems.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "13.5.1",
+   "group": 13,
+   "name": "Rail Construction Management",
+   "description": "This category includes management, inspection, and supervision services for freight or passenger rail construction or rehabilitation projects. This category includes plan and submittal reviews, daily on-site construction oversight, construction record keeping, and quality assurance/quality control (QA/QC).",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in railroad construction management.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "14.1.1",
+   "group": 14,
+   "name": "Soil Exploration",
+   "description": "This category includes acquisition and reporting of subsurface material to be used for the planning, design, construction, and performance of transportation facilities. The field classification of materials and acquisition of soil and rock samples is also included.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of one year of experience in the activities normally associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "14.2.1",
+   "group": 14,
+   "name": "Geotechnical Testing",
+   "description": "This category includes sampling and conducting tests on soil and rock according to the department’s approved procedures for the purpose of classifying materials and/or identifying their physical properties.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of one year of experience in the activities normally associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "14.3.1",
+   "group": 14,
+   "name": "Transportation Foundation Studies",
+   "description": "This category includes producing reports which contain selection of the type and depth of foundation for bridges, retaining walls, signs, and other types of transportation foundations. Working with bearing capacity, predicted settlement, stabilization, and construction on soft ground will be required.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in the activities normally associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "14.4.1",
+   "group": 14,
+   "name": "Building Foundation Studies",
+   "description": "This category includes producing reports which contain selection of the type and depth of foundation for buildings. Working with bearing capacity, predicted settlement, stabilization, and construction on soft ground will be required.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in the activities normally associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "14.5.1",
+   "group": 14,
+   "name": "Evaluation & Design of Geotechnical Related Structures",
+   "description": "This category includes producing reports on the evaluation of and/or preparing design recommendations for any of the following: slope failures; rock cuts; stability analyses of existing and proposed retaining walls; highway rest area pavements and buildings; ferry landings and associated structures; bridge foundations; overhead sign foundations; high mast illumination foundations; and other transportation related structural foundations. The work will include the following: bearing capacity, predicted settlement, stabilization, stability analyses, shear strength parameters, influence of water conditions, foundation repair measures, foundation design, and repair measures.",
+   "requirements": [
+    {
+     "text": "The firm must employ one licensed Professional Engineer with a minimum of five years of experience as a project manager or task leader in the evaluation and the design of the geotechnical related structures listed in this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.1.1",
+   "group": 15,
+   "name": "Right of Way Surveys",
+   "description": "This category includes performance of on the ground surveys to establish land boundaries, preparation of parcel descriptions and parcel plats, and preparation of right of way maps.",
+   "requirements": [
+    {
+     "text": "The firm must employ one registered Professional Land Surveyor with current registration in the State of Texas who has a minimum of one year of experience in right of way surveying.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.2.1",
+   "group": 15,
+   "name": "Design Survey",
+   "description": "This category includes performance of surveys associated with the gathering of survey data for topography, cross-sections, and other related work required for the design a project.",
+   "requirements": [
+    {
+     "text": "The firm must employ one registered Professional Land Surveyor with current registration in the State of Texas who has a minimum of one year of experience in surveying for design.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.2.2",
+   "group": 15,
+   "name": "Construction Survey",
+   "description": "This category includes performance of surveys associated with layout and staking of a project for construction.",
+   "requirements": [
+    {
+     "text": "The firm must employ one registered Professional Land Surveyor with current registration in the State of Texas who has a minimum of one year of experience in roadway construction staking.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.3.1",
+   "group": 15,
+   "name": "Aerial Photogrammetry",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one American Society for Photogrammetry and Remote Sensing (ASPRS) Certified photogrammetrist. This individual must also have a minimum of one year of experience in aerial photogrammetry.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.3.2",
+   "group": 15,
+   "name": "Terrestrial Photogrammetry",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one of the following:",
+     "head": true
+    },
+    {
+     "text": "one American Society for Photogrammetry and Remote Sensing (ASPRS) Certified Photogrammetrist; or",
+     "head": false
+    },
+    {
+     "text": "one ASPRS Certified Mapping Scientist - Remote Sensing; or",
+     "head": false
+    },
+    {
+     "text": "one Registered Professional Land Surveyor with current registration in the State of Texas.",
+     "head": false
+    },
+    {
+     "text": "This individual must also have a minimum of one year of experience in terrestrial photogrammetry.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.3.3",
+   "group": 15,
+   "name": "Terrestrial LiDAR",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one Registered Professional Land Surveyor with current registration in the State of Texas with a minimum of one year of experience in terrestrial LiDAR data acquisition and processing.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.3.4",
+   "group": 15,
+   "name": "Mobile LiDAR",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one Registered Professional Land Surveyor with current registration in the State of Texas or one American Society for Photogrammetry and Remote Sensing (ASPRS) Certified Mapping Scientist, LiDAR. This individual must have a minimum of one year of experience in mobile LiDAR data acquisition and processing.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.3.5",
+   "group": 15,
+   "name": "Horizontal and Vertical Control",
+   "description": "This category involves the establishment of horizontal and vertical control for survey projects.",
+   "requirements": [
+    {
+     "text": "The firm must employ one registered Professional Land Surveyor with current registration in the State of Texas with a minimum of one year of experience in control surveying.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.3.6",
+   "group": 15,
+   "name": "Airborne LiDAR",
+   "description": "",
+   "requirements": [
+    {
+     "text": "The firm must employ one Registered Professional Land Surveyor with current registration in the State of Texas or one American Society for Photogrammetry and Remote Sensing (ASPRS) Certified Mapping Scientist - LiDAR. This individual must have a minimum of one year of experience in airborne LiDAR data acquisition and processing.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "15.5.1",
+   "group": 15,
+   "name": "State Land Surveying",
+   "description": "This category includes the performance of land surveying associated with “the location or relocation of original land grant boundaries and corners; the calculation of area and the preparation of field note descriptions of both surveyed and unsurveyed land or any land in which the state or the public free school fund has an interest; the preparation of maps showing such results; and the field notes and/or maps of which are to be filed in the General Land Office,” as quoted in the Professional Land Surveying Practices Act.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Licensed State Land Surveyor with a minimum of 3 years of experience in state land surveying as defined in the category description.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "16.1.1",
+   "group": 16,
+   "name": "Architecture",
+   "description": "This category includes architectural services for buildings and other related structures such as, but not limited to, radio towers, fuel island canopies, equipment slabs, and equipment and/or material storage structures",
+   "requirements": [
+    {
+     "text": "The firm must employ one Registered Architect with a minimum of three years of experience in the areas identified in this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "16.2.1",
+   "group": 16,
+   "name": "Building and Facilities Architecture",
+   "description": "This category includes architectural studies, analyses, cost estimating, designs, facility condition assessments, assessment and correction of building envelope issues, master planning, and other related tasks to support the construction of new buildings and the repair or renovation of existing buildings, facilities, site work, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Registered Architect, with a minimum of five years of experience in the activities associated with this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "16.3.1",
+   "group": 16,
+   "name": "Landscape Architecture",
+   "description": "This category includes the design of the landscape including vegetation, irrigation, hardscape, sidewalks, trails, and miscellaneous site features for new and renovated facilities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Registered or Licensed Landscape Architect, with a minimum of five years of experience in designing landscaping including vegetation, irrigation, hardscape, sidewalks, and miscellaneous site features.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "16.4.1",
+   "group": 16,
+   "name": "Interior Design",
+   "description": "This category includes the performance of services relating to function and quality of interior spaces, included design analysis, space planning of non-load-bearing interior construction, and application of aesthetic principles. This includes the development of plans, specifications, and estimates for the design of non-load-bearing interior spaces.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Registered Interior Designer, with a minimum of three years of experience in the areas identified in this category.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "17.1.1",
+   "group": 17,
+   "name": "Structural Engineering",
+   "description": "This category includes the design and investigation of the structural aspects of buildings, structures, site improvements, and foundations for new and renovated facilities. This category also includes geotechnical investigation and design related to the structural design of foundations.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience designing buildings, structures, site improvements, and foundations, including the investigation and correction of compromised foundations.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "17.2.1",
+   "group": 17,
+   "name": "Mechanical Engineering",
+   "description": "This category involves mechanical engineering studies, analyses, designs, and other related tasks in support of buildings, facilities and infrastructure, including, but not limited to, design of piping, heating, ventilation, and air conditioning systems (HVAC) for new and renovated facilities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in Mechanical Engineering including performing mechanical engineering studies, analyses, designs and other related tasks in support of buildings, facilities and infrastructure, including, but not limited to design of piping, heating, ventilation, and air conditioning systems (HVAC) for new and renovated facilities.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "17.3.1",
+   "group": 17,
+   "name": "Plumbing Engineering",
+   "description": "This category involves design of piping systems and plumbing for buildings, facilities, and infrastructure for new and renovated facilities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in design of piping systems and plumbing for buildings, facilities, and infrastructure for new and renovated facilities.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "17.4.1",
+   "group": 17,
+   "name": "Electrical Engineering",
+   "description": "This category includes the design of electrical distribution systems, site and facility illumination systems, fire alarms, site and facility security systems, performance of arc flash studies, and interfacing with utility providers for new and renovated facilities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience designing and specifying fire alarm systems, electrical distribution systems, site and facility illumination systems, and site and facility security systems for commercial and industrial buildings and properties. This experience must also include the performance of arc flash studies.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "17.4.2",
+   "group": 17,
+   "name": "Telecommunication and Data Network Design",
+   "description": "This category includes the design of telecommunication and data networks, technology systems, and related infrastructures for new and renovated facilities. Design work performed under this category must comply with all local, state, and federal codes, the National Electrical Code (NEC), and with procedures established under the American National Standards Institute (ANSI) / Telecommunications Industry Association (TIA) / Electronic Industries Alliance (EIA) 568B-3, 569 A, 606, and 607 recommendations. This category also includes grounding and bonding performed as outlined in ANSI/TIA/EIA 607 standard and the Building Industry Consulting Services International (BICSI) Telecommunication Distribution Methods Manual (TDMM). Associated design activities include building automation systems; building management systems; energy management systems; low voltage/Power over Ethernet (PoE) lighting; electronic security systems; intercom, paging, and mass notification systems; sound masking; digital signage and wayfinding; asset management (RFID); and vertical transportation (e.g. elevators).",
+   "requirements": [
+    {
+     "text": "The firm must employ one Registered Communications Distribution Designer (RCDD) in the information and communications technology (ICT) industry with a minimum of five years of experience designing and specifying voice and data communication networks in the tasks included in this category for new and renovated facilities.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "17.5.1",
+   "group": 17,
+   "name": "Civil Engineering",
+   "description": "This category includes, but is not limited to, the design of drainage systems, site grading, surface and subsurface utilities, on-site sewage treatment facilities, water supply systems (including wells), interfacing with water and wastewater providers, and other site features for new and renovated facilities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in Civil Engineering with drainage systems, site grading, surface and subsurface utilities, on-site sewage treatment facilities, water supply systems including wells, and other site features for new and renovated facilities.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "17.6.1",
+   "group": 17,
+   "name": "Hazardous Building Materials Assessment (Asbestos)",
+   "description": "This category includes hazardous building materials inspection for asbestos-containing materials, risk assessment, analyses, testing, removal design, removal monitoring, and other related tasks in support of new and renovated buildings, facilities, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must be a licensed asbestos consultant agency and employ one licensed asbestos consultant with a minimum of five years of experience in survey of public buildings for asbestos containing materials, preparation of plans and specifications for asbestos removal, monitoring asbestos removal, and other related tasks in support of new and renovated buildings, facilities, and infrastructure.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "17.6.2",
+   "group": 17,
+   "name": "Hazardous Building Materials Assessment (Lead)",
+   "description": "This category includes hazardous building materials inspection for lead materials, risk assessment, analyses, testing, removal design, removal monitoring, and other related tasks in support of new and renovated buildings, facilities, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must employ at least one individual that meets the certification and license requirements of the Texas Department of State Health Services with a minimum of three years of experience in performing lead risk assessments to determine whether renovation, demolition, and remodeling activities may pose a lead hazard in compliance with Texas Environmental Lead Reduction Rules and other related tasks in the support of renovation or demolition of buildings, facilities, and infrastructure.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "18.2.1",
+   "group": 18,
+   "name": "Subsurface Utility Engineering (Utility Engineering Investigation)",
+   "description": "This category involves the determination of vertical and horizontal locations of subsurface utilities by non-destructive methods.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in subsurface utility engineering investigations.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "18.3.1",
+   "group": 18,
+   "name": "Utility Adjustment Coordination",
+   "description": "This category involves holding utility coordination meetings with individual utility companies, coordination and communication with utilities, and utility agreement and billing preparation.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of experience in utility coordination and agreement preparation as a lead worker.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "18.4.1",
+   "group": 18,
+   "name": "Utility Engineering",
+   "description": "This category involves utility conflict identification as determined from utility engineering investigations, roadway design plans, and coordination with TxDOT engineers and utility companies. Also includes the evaluation of alternatives, in addition to review of utility plans for compatibility of proposed utility adjustments and installations with the highway design features, compliance with utility accommodation rules, and reasonableness of cost. May include public meetings for involvement of utility companies in the cooperative process and conflict resolution.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in utility engineering.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "18.5.1",
+   "group": 18,
+   "name": "Utility Construction Management and Verification",
+   "description": "This category involves utility adjustment monitoring, including utility installation verification, records management, and status reporting.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of three years of experience in utility construction management and verification.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "18.6.1",
+   "group": 18,
+   "name": "Utility Management & Coordination Oversight",
+   "description": "This category involves oversight of others holding utility coordination meetings with individual utility companies, coordination, and communication with utilities and utility agreement and billing preparation.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of experience in utility coordination and agreement preparation.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "18.7.1",
+   "group": 18,
+   "name": "Utility Relocation Design",
+   "description": "This category includes the design of utility facility adjustments or relocations that meet the specific terms stated under Title 43, Texas Administrative Code, Section 21.37(g). This design work will only be used for utility relocations or adjustments that are 100% reimbursable by the State and must meet the design standards acceptable to the State.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of demonstrated experience performing utility relocation design.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "19.2.1",
+   "group": 19,
+   "name": "Value Engineering",
+   "description": "This category involves facilitation of a multidisciplinary team of subject matter experts studying transportation related projects or processes to determine the most cost-effective use of resources to accomplish the given functions.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Certified Value Specialist (CVS) who meets the following:",
+     "head": true
+    },
+    {
+     "text": "has a minimum of three years of experience as a lead CVS Facilitator in the value engineering process;",
+     "head": false
+    },
+    {
+     "text": "is a Professional Engineer; and",
+     "head": false
+    },
+    {
+     "text": "can demonstrate knowledge of and experience with transportation related federal, state, and local regulations, public involvement, project management, risk analysis, and cost estimating related to transportation projects as evidenced by facilitating a minimum of three transportation related value engineering studies.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "19.3.1",
+   "group": 19,
+   "name": "Financial Plan Review and Development (Design-Bid-Build)",
+   "description": "This category includes review and summary preparation of project funding, construction costs, and other project costs (right-of-way, utilities, engineering, agency, etc.). This also includes preparation and/or assistance in the preparation of the initial financial plan and financial plan annual updates.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of two years of experience directly related to the preparation of financial plans for design-bid-build transportation projects and a minimum of five financial plans prepared by this individual. One year of the experience may be substituted by two years of experience in the review of financial plans or having reviewed five financial plans.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "19.4.1",
+   "group": 19,
+   "name": "Technical Writing",
+   "description": "This category involves creating technical guidance materials, including but not limited to technical papers and reports. The writing must be technically accurate, useful, concise, complete, clear, consistent, targeted, well-organized, and be developed to standards set forth by applicable federal, state, and agency laws, regulations, policies, and/or directives. Experience in this category includes producing documentation that effectively communicates complex technical information to the intended audience.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of experience in technical writing. This experience should include publication of at least one technical document, such as technical guidelines, policy documents, manual, or reports.",
+     "head": false
+    },
+    {
+     "text": "Experience must demonstrate:",
+     "head": true
+    },
+    {
+     "text": "Ability to write clear, concise, and accurate technical content.",
+     "head": false
+    },
+    {
+     "text": "Proficiency in organizing and structuring technical documents.",
+     "head": false
+    },
+    {
+     "text": "Strong editing and proofreading skills to ensure grammatical and technical accuracy.",
+     "head": false
+    },
+    {
+     "text": "Ability to understand and synthesize existing internal documentation and precedent.",
+     "head": false
+    },
+    {
+     "text": "Ability to tailor writing to target audience, ensuring the content is accessible and useful.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "20.1.1",
+   "group": 20,
+   "name": "Ferry Vessel Analysis, Design, and Inspection",
+   "description": "This category includes analysis of existing vessels, preparation of design plans, specifications, and estimates, plan review, and site inspection for modifications to ferry vessels.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Architect or Professional Engineer, specializing in naval design with a background in naval architecture and marine engineering. This individual must have a minimum of ten years of experience directly related to the design and construction of ferry vessels per the American Bureau of Shipping certification and the United States Coast Guard requirements.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "20.2.1",
+   "group": 20,
+   "name": "Structural Engineering for Buildings, Facilities, and Infrastructure Supporting Marine Shore-Side Functions",
+   "description": "This category includes structural engineering studies, analyses, designs, and other related tasks in support of new or renovated buildings, facilities, marine structures, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of seven years of experience in structural engineering, directly related to the design and construction of engineered systems for buildings, facilities, marine structures, and infrastructure.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "20.3.1",
+   "group": 20,
+   "name": "Civil Engineering for Buildings, Facilities, and Infrastructure Supporting Marine Shore-Side Functions",
+   "description": "This category includes civil engineering studies, analyses, designs, and other related tasks in support of new or renovated buildings, facilities, marine structures, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in civil engineering, directly related to the design and construction of engineered systems for buildings, facilities, marine structures, and infrastructure.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "20.4.1",
+   "group": 20,
+   "name": "Electrical Engineering for Buildings, Facilities, and Infrastructure Supporting Marine Shore-Side Functions",
+   "description": "This category includes electrical engineering studies, analyses, designs, and other related tasks in support of new or renovated buildings, facilities, marine structures, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in electrical engineering, directly related to the design and construction of engineered systems for buildings, facilities, marine structures, and infrastructure.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "20.5.1",
+   "group": 20,
+   "name": "Plumbing Engineering for Buildings, Facilities, and Infrastructure Supporting Marine Shore-Side Functions",
+   "description": "This category includes plumbing engineering studies, analyses, designs, and other related tasks in support of new or renovated buildings, facilities, marine structures, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in plumbing engineering, directly related to the design and construction of engineered systems for buildings, facilities, marine structures, and infrastructure.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "20.6.1",
+   "group": 20,
+   "name": "Hydrodynamic Modeling",
+   "description": "This category includes developing a hydrodynamic model of the existing and proposed marine conditions and other related data-collecting tasks in support of new or renovated buildings, facilities, marine structures, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in hydrodynamic modeling.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "20.7.1",
+   "group": 20,
+   "name": "Hydrographic Survey",
+   "description": "This category includes sidescan sonar, bathymetric, and other related data collecting tasks in support of new or renovated buildings, facilities, marine structures, and infrastructure.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in hydrographic survey. This individual must be certified as a hydrographer by the National Society of Professional Surveyors (NSPS) or The Hydrographic Society of America (THSOA).",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "21.1.1",
+   "group": 21,
+   "name": "Right of Way (ROW) Acquisition Services",
+   "description": "This category includes overseeing the process to develop ROW acquisition packets so parcels can be acquired by the State for the development of projects.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of demonstrated experience in ROW acquisition services and acquisition packet preparation.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "21.2.1",
+   "group": 21,
+   "name": "Right of Way (ROW) Acquisition Services Project Management",
+   "description": "This category includes managing the ROW acquisition process to develop ROW acquisition packets so parcels can be acquired by the State for the development of projects. This category includes, but is not limited to managing professional and support personnel that are performing ROW appraisal, negotiation, relocation assistance, condemnation support, and disposal of property services.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual that has one of the following active credentials:",
+     "head": true
+    },
+    {
+     "text": "Project Management Professional (PMP) from the Project Management Institute; or",
+     "head": false
+    },
+    {
+     "text": "Senior Right of Way Agent (SR/WA) from the International Right of Way Association",
+     "head": false
+    },
+    {
+     "text": "This individual must also demonstrate a minimum of seven years of experience providing ROW acquisition project management services. This experience must include management of the ROW acquisition process for a governmental agency including a minimum of 100 parcels subject to Eminent Domain.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "21.3.1",
+   "group": 21,
+   "name": "Right of Way (ROW) Appraisal Services",
+   "description": "This category includes scheduling, tracking, delivery, and review of the entire appraisal process for projects subject to eminent domain from ordering initial appraisal documents, site inspections, development and maintenance of project sales and rental comparable book for the project, matching individual appraisers to specific complex appraisal assignments, managing the appraisal review process, and ordering and delivery of update appraisal assignments.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual that has both of the following certifications:",
+     "head": true
+    },
+    {
+     "text": "State-Certification as a General Real Estate Appraiser issued by the Texas Appraiser Licensing and Certification Board; and",
+     "head": false
+    },
+    {
+     "text": "Department-Certification from TxDOT.",
+     "head": false
+    },
+    {
+     "text": "In addition, this individual must have one of the following active professional credentials:",
+     "head": true
+    },
+    {
+     "text": "Right of Way Appraisal Certification (R/W-AC) from the International Right of Way Association; or",
+     "head": false
+    },
+    {
+     "text": "Member of the Appraisal Institute (MAI) from the Appraisal Institute; or",
+     "head": false
+    },
+    {
+     "text": "Project Management Professional (PMP) Certification from the Project Management Institute",
+     "head": false
+    },
+    {
+     "text": "This individual must also demonstrate a minimum of five years of experience in providing ROW appraisal services and management of the ROW appraisal process for a governmental agency. This experience must include performance or management of appraisal services including a minimum of 100 parcels subject to Eminent Domain.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "21.4.1",
+   "group": 21,
+   "name": "Right of Way (ROW) Negotiation Services",
+   "description": "This category includes managing the ROW negotiation process and providing ROW negotiation services for real estate parcels subject to Eminent Domain and the Uniform Act.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual that has one of the following professional licenses:",
+     "head": true
+    },
+    {
+     "text": "Real Estate License issued by the Texas Real Estate Commission; or",
+     "head": false
+    },
+    {
+     "text": "An active license to practice law in the State of Texas.",
+     "head": false
+    },
+    {
+     "text": "This individual must also have one of the following professional credentials in negotiation services:",
+     "head": true
+    },
+    {
+     "text": "Senior Right of Way Agent (SR/WA) from the International Right of Way Association;",
+     "head": false
+    },
+    {
+     "text": "Right of Way Negotiation and Acquisition Certification (R/W-NAC) from the International Right of Way Association; or",
+     "head": false
+    },
+    {
+     "text": "Right of Way Uniform Act Certification (R/W-URAC) from the International Right of Way Association.",
+     "head": false
+    },
+    {
+     "text": "This individual must also demonstrate a minimum of five years of experience in the performance of ROW negotiation services. This experience must include performance of ROW negotiations including a minimum of 100 parcels subject to Eminent Domain.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "21.5.1",
+   "group": 21,
+   "name": "Relocation Assistance Services",
+   "description": "This category includes providing relocation assistance services for parcels subject to Eminent Domain.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual that has one of the following professional credentials in relocation assistance services:",
+     "head": true
+    },
+    {
+     "text": "Senior Right of Way Agent (SR/WA) from the International Right of Way Association; or",
+     "head": false
+    },
+    {
+     "text": "Right of Way Relocation Assistance Certification (R/W-RAC) from the International Right of Way Association; or",
+     "head": false
+    },
+    {
+     "text": "Right of Way Uniform Act Certification (R/W-URAC) from the International Right of Way Association; or",
+     "head": false
+    },
+    {
+     "text": "An active license to practice law in the State of Texas.",
+     "head": false
+    },
+    {
+     "text": "This individual must also demonstrate a minimum of five years of experience in the performance of relocation assistance services. This experience must include performance of relocation assistance services including a minimum of 100 parcels subject to Eminent Domain.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "21.6.1",
+   "group": 21,
+   "name": "Condemnation Support Services",
+   "description": "This category includes providing condemnation support services to a condemning authority for parcels subject to Eminent Domain.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual that has one of the following professional credentials in condemnation support services:",
+     "head": true
+    },
+    {
+     "text": "Senior Right of Way Agent (SR/WA) from the International Right of Way Association; or",
+     "head": false
+    },
+    {
+     "text": "An active license to practice law in the State of Texas.",
+     "head": false
+    },
+    {
+     "text": "This individual must also demonstrate a minimum of five years of experience in the performance of condemnation support services. This experience must include performance of condemnation support services including a minimum of 25 parcels subject to Eminent Domain.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "21.7.1",
+   "group": 21,
+   "name": "Disposal of Property Services",
+   "description": "This category includes managing and providing disposal of property services for parcels subject to Eminent Domain.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual that has active Project Management Professional (PMP) Certification from the Project Management Institute and has a minimum of five years of experience in managing and providing disposal of property services. This experience must include performance of disposal of property services including a minimum of 20 parcels subject to Eminent Domain.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "22.1.1",
+   "group": 22,
+   "name": "Owner Verification Testing and Inspection-Project Manager",
+   "description": "This category includes managing the inspection, sampling, and testing verification of highway construction (including construction of urban freeways, interchanges, and complex bridges) in order to monitor and audit Design-Build contracts including, but not limited to, Construction Quality Management Plan (CQMP), Guide Schedule of Sampling & Testing for Design-Build Projects (DB Guide Schedule), and Owner Verification Testing and Inspection Plan (OVTIP) to ensure compliance with the Quality Assurance program for Comprehensive Development Agreement/Design-Build Projects (CDA/DB QAP), the Design-Build Agreement (DBA), and Capital Maintenance Agreement. This includes monitoring, oversight, and audit of design and construction documents, environmental inspections, safety programs and practices, and coordination with the Independent Quality Firm (IQF). This category also includes preparing owner verification quarterly reports, performing verification of IQF testing results, and conducting nonverification investigations.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer, as project manager, with a minimum of five years of direct management experience in scheduling and leading technical staff and advisors in the Owner's verification staff for alternative delivery projects. This experience must include quality management including preparation and implementation of quality plans, statistical validations and verifications of testing results, review of analysis results, and preparation of monthly progress reports, owner verification reports, and procedures in construction.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "22.2.1",
+   "group": 22,
+   "name": "Chief Inspector",
+   "description": "This category includes oversight of construction inspection to ensure roadways, bridges, drainage structures and related structures, traffic control, and environmental requirements are built in accordance with plans and specifications. This category includes tracking work progress, resolving problems, ensuring all required OV inspections are performed in accordance with the OVTIP and CDA/DB QAP, leading the work of professional and technical employees in construction, and ensuring the Independent Quality Firm's inspections are performed in accordance with the CDA/DB QAP, specifications, and CQMP.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual, as chief inspector, with a minimum of ten years of experience in construction inspection on major freeway transportation projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "22.3.1",
+   "group": 22,
+   "name": "Owner Verification",
+   "description": "Laboratory Manager – This category includes the evaluation of the sampling and testing procedures, personnel, equipment, and laboratory used as part of the acceptance decision. This includes conducting inspections and reviewing procedures and certifications to verify that all testing requirements are met and ensuring adherence to the CDA/DB QAP.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of",
+     "head": false
+    },
+    {
+     "text": "demonstrated experience in:",
+     "head": true
+    },
+    {
+     "text": "the sampling and testing of highway materials;",
+     "head": false
+    },
+    {
+     "text": "either managing an accredited materials testing laboratory or serving as a",
+     "head": false
+    },
+    {
+     "text": "laboratory quality assurance manager; and",
+     "head": false
+    },
+    {
+     "text": "• monitoring technician qualification procedures.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "22.4.1",
+   "group": 22,
+   "name": "QA/QC Process Verification for OVTI",
+   "description": "This category includes providing Quality Assurance/Quality Control (QA/QC) process verification to ensure that approved project management plans will meet the contract requirements. This category also includes monitoring and auditing DB contractor's Inspection, sampling, and testing and any other DB contractor's processes/activities related to or that may affect the OV Inspections, sampling and testing. In addition, this category includes audits of DB contractor's records, documentation, Procedures, and processes to verify DB contractor's compliance with the Contract Documents and CQMP.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in the areas of process quality assurance/quality control; reviewing testing and inspection reports; monitoring Developer’s QA/QC processes for compliance; and providing quality reports to the State.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.1.1",
+   "group": 23,
+   "name": "Alternative Delivery Procurement Manager",
+   "description": "This category includes performing transportation planning and engineering support to deliver alternative delivery procurement of public-private partnerships, including comprehensive development agreements, design/build, and other innovative delivery methods involving a best-value approach. Associated activities include risk assessment, independent cost estimates, capital/maintenance cost estimation, and preparation of procurement and negotiation documents. This category also includes managing technical, legal, and financial teams to support the development of contract documents including Request for Information (RFI), Instructions to Proposers (ITP), Request for Qualification (RFQ), Request for Proposal (RFP), addendums, Design-Build Agreement, Term Sheets, Reference Information Documents (RIDs), General Conditions, Design-Build Standard Specifications and Provisions, and Capital Maintenance Documents, providing engineering concepts/review, conducting industry meetings, and performing proposal review. Support services will include program and project-specific tasks. This category includes ensuring that alternative delivery procurement documents, designs and activities adhere to and fulfill FHWA and TxDOT requirements, standards and policies.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer, as procurement manager, with a minimum of three years of experience in the procurement of alternative delivery transportation projects, managing a project team of professional and administrative staff, and coordinating with technical, legal, and/or financial teams that work on the procurement of Alternative Delivery transportation projects. This experience must include the development of program and project specific procurement documents, such as, Request for Information (RFI), Request for Qualifications (RFQ), Request for Proposal (RFP), addendums, Design Build Agreements, Term Sheets, Reference Information Documents (RIDs), General Conditions, Design-Build Standard specifications and provisions, and Capital Maintenance Contracts, engineering concepts/review, conducting industry meetings, risk assessments and allocations, and cost estimates for all phases of a project including operations and maintenance. This individual must also have thorough knowledge of documentation and design standards required by FHWA and TxDOT including, but not limited to, Project Management Plans, Financial Plans, Interstate Access Justification Reports, Requests for Design Exceptions, and design requirements, such as those in specified in TxDOT manuals and ensure that these requirements are appropriately included in procurement documents.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.2.1",
+   "group": 23,
+   "name": "Alternative Delivery Design & Construction Support Engineer",
+   "description": "This category includes analysis, planning, and engineering support for the optimization of design and construction as it pertains to Alternative Delivery Projects (ADP), including comprehensive development agreements, design/build, and other innovative delivery methods involving a best-value approach during all phases of procurement and implementation. This category includes tolled and non-tolled facilities. Associated activities include: development of documents in support of design and construction; Quality Control/Quality Assurance (QC/QA) for design and construction; contract interpretation and compliance; demonstrated knowledge of Texas Department of Transportation’s (TxDOT) Quality Assurance Program for Design-Build projects; and program implementation including design and construction oversight and compliance. Additional activities include performing other engineering support for the development of design/build agreements. This category includes ensuring that alternative delivery design and construction documents and activities adhere to and fulfill FHWA and TxDOT requirements, standards, and policies.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in: the design and preparation of plans; performing technical reviews of design drawings and other professional services work products; performing quality control/quality assurance on professional service contract documents; and the preparation of construction related documents. This experience must include a minimum of two years of experience performing the tasks described above on Alternative Delivery Projects. This individual must have thorough knowledge of the Design-Build Quality Assurance Program and experience in: interpreting, developing, and performing technical reviews of construction quality control and quality assurance plans; interpreting technical contract documents; and performing compliance reviews and process improvement plans. This individual must also have thorough knowledge of documentation and design standards required by FHWA and TxDOT including, but not limited to, Project Management Plans, Requests for Design Exceptions, Financial Plans, Interstate Access Justification Reports, and design requirements, such as those specified in TxDOT manuals.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.3.1",
+   "group": 23,
+   "name": "Operations and Maintenance Support",
+   "description": "This category includes analysis, planning, and engineering support for the optimization of operations and maintenance as it pertains to Alternative Delivery projects during all phases of procurement and implementation. This category includes tolled and non-tolled facilities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of two years of demonstrated experience as a task leader in performing and overseeing operations and maintenance tasks. This experience must be directly related to the support of transportation operations and analysis of routine and capital maintenance, cost analysis of operations and routine maintenance, and capital and life-cycle cost maintenance analysis for Alternative Delivery projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.4.1",
+   "group": 23,
+   "name": "Debt-based and Equity- based Traffic and Revenue Studies (Engineering)",
+   "description": "This category includes development and engineering support of computer-based travel demand modeling and forecasting to evaluate the demand and capacity for travel on major roadway systems for use in traffic and traffic and revenue (T&R) analysis. This includes traffic operational analysis for toll projects, to determine a toll project’s potential for supporting the sale of revenue debt and procurement of projects through design/build and concession models from conceptual grade study through investment grade study.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience and training directly related to the development and optimization of traffic and revenue analysis, traffic operational analysis, travel demand modeling, and traffic forecasting.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.4.2",
+   "group": 23,
+   "name": "Debt-based and Equity- based Traffic and Revenue Studies (Planning)",
+   "description": "This category includes support in the development of travel demand modeling and forecasting to evaluate the demand and capacity for travel on major roadway systems and support of traffic and revenue (T&R) analysis and planning to determine a toll project’s potential for supporting the sale of revenue debt and procurement of toll projects through design/build and concession models from conceptual grade study through investment grade study.",
+   "requirements": [
+    {
+     "text": "The firm must employ one planner with a minimum of five years of experience and training directly related to the development and optimization of traffic and revenue analysis, travel demand modeling, and traffic forecasting.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.4.3",
+   "group": 23,
+   "name": "Debt-based and Equity-based Traffic and Revenue Studies (Modeling and Forecasting)",
+   "description": "This category includes the development of socioeconomic data, socioeconomic forecasts, networks, traffic analysis zones (TAZs), freight input data, calibration and validation of travel demand model, running toll sensitivity models to identify the optimum toll rates, performing alternatives analysis to evaluate the impact of different network configurations, tolling policies (or other changes in assumptions) on the toll projects, and running travel demand modeling as part of risk assessment for major roadway projects and toll projects.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience and training directly related to the development and optimization of traffic and revenue analysis, travel demand modeling, traffic forecasting, and risk assessment.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.4.4",
+   "group": 23,
+   "name": "Traffic Projections",
+   "description": "This category includes performing complex transportation projections and travel demand modeling. Associated activities under this category include corridor traffic analysis, development of travel demand forecasts, traffic and transit modeling calibration and validation provided by the Metropolitan Planning Organization (MPO), adjusting modeled data for analysis of projected demographic, economic, and land use activities, interpreting actual conditions and land use changes and applying modeled traffic data to corridor layout, analyzing and evaluating model performance and traffic data forecasted for model, researching and validating supporting data, analyzing toll rates and leakage, analyzing legal restrictions, projecting toll revenues, projecting future traffic densities, and adjusting modeled data for actual conditions and land use changes. This category may also include producing reports and/or data to be presented, published, or summarized.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of demonstrated experience in performing traffic projection studies and travel demand modeling.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.4.5",
+   "group": 23,
+   "name": "Debt-based and Equity- based Traffic and Revenue Studies (Management)",
+   "description": "This category includes the management of traffic and revenue analysis, planning, and engineering support to determine a toll project’s potential for supporting the sale of revenue debt, and procurement of toll projects through design/build and concession models from conceptual grade study through investment grade study.",
+   "requirements": [
+    {
+     "text": "The firm must employ a project manager with a minimum of five years of experience and training directly related to the development and optimization of traffic and revenue analysis, including two years of experience supporting the sale of revenue bonds and procurement of toll projects through design/build and concession models.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.5.1",
+   "group": 23,
+   "name": "Alternative Delivery Cost Estimator",
+   "description": "This category includes the review, oversight, and potential development of total project costs for Alternative Delivery projects in planning, procurement, and implementation phases. Associated activities include supporting the development of estimates to be included with the Engineer’s Report, which may be used for the sale of revenue bonds, supporting the development of documents in support of funding and/or Federal Highway Administration guidelines, supporting feasibility studies, Right of Way (ROW) cost estimate, and cost validation associated with proposal submissions.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience in developing detailed, risk-based project cost estimates for projects including design and construction of large, complex, Alternative Delivery projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.6.1",
+   "group": 23,
+   "name": "Document Control Using the Electronic Content Management System (ECMS)",
+   "description": "This category includes the use of an approved electronic content management system (ECMS) (such as Microsoft SharePoint), for document control on projects managed by the General Engineering Consultant (GEC). This category also includes, but is not limited to, developing customized workflows; organizing the filing structure for all project-related documents; ensuring that confidential documents are classified properly and secured effectively; managing meta-data; preserving documents in accordance with the applicable records retention requirements; and performing data and document migration activities.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual who has:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience using and managing Microsoft SharePoint sites; or",
+     "head": false
+    },
+    {
+     "text": "a minimum of four years of experience using and managing other ECMS systems, including the development of customized workflows.",
+     "head": false
+    },
+    {
+     "text": "This individual must also be knowledgeable in the techniques of managing meta-data.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.7.1",
+   "group": 23,
+   "name": "Project Finance Support",
+   "description": "This category includes the collection of data and the preparation of an engineer’s report presenting the description of, among other things, the location, engineering design features, construction cost estimate, construction schedule and estimated operations and maintenance expenses of a project and their opinion as to the reasonableness of the estimates to support financing the project which may include issuance of toll revenue bonds and other financing mechanisms. This work also includes preparation of additional reports to stakeholders (such as bondholders) regarding the project’s progress during construction (including adherence to construction schedule and cost estimates) and during operations stating the assessment of the project’s condition and maintenance necessary to keep the project in good condition.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of experience in developing General Engineering Consultant (GEC) reports in support of toll revenue bonds and other financing mechanisms.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.8.1",
+   "group": 23,
+   "name": "Claims Analysis and Management",
+   "description": "This category includes analyzing, mitigating, and developing plans for resolving claims from the Developer. This category includes preparing claims sponsored by the State and providing support during the claims and negotiations processes. This category also includes assisting in the resolution of other disputes, conflicts, or issues to ensure efficient and timely resolution.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of experience in claims analysis and management and dispute resolution.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.9.1",
+   "group": 23,
+   "name": "General Engineering Consultant (GEC) Project Services (Contract Project Manager)",
+   "description": "This category includes providing a contract project manager to perform oversight of planning and engineering support for procurement, scheduling, budgeting, administration, design, construction, operations, and maintenance of Design-Build (DB) projects. Associated activities include review of environmental studies; advanced planning; public involvement; toll system and intelligent transportation system planning, design, and implementation; surveying; right of way and utility support; hydraulic studies; geotechnical services; plans, specifications, and estimate development; development of documents in support of funding and/or Federal Highway Administration guidelines; program implementation including design and construction oversight as well as maintenance transition oversight; cost estimating; and support in the development of procurement documents and tasks.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer, as contract Project Manager, to lead the team of professional and administrative staff, managing technical, legal, and financial teams including development. The contract Project Manager must have:",
+     "head": true
+    },
+    {
+     "text": "a minimum of three years of experience in Alternative Delivery GEC and/or Independent Engineer (IE) project management;",
+     "head": false
+    },
+    {
+     "text": "a minimum of one design-build GEC or IE project during implementation (design and construction); and",
+     "head": false
+    },
+    {
+     "text": "experience in transitioning a project to maintenance oversight.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.10.1",
+   "group": 23,
+   "name": "Public Involvement for Alternative Delivery Projects",
+   "description": "This category includes comprehensive services in planning, scheduling, coordinating, conducting, documenting, and preparing exhibits for public involvement activities. These public involvement activities include, but are not limited to, meetings with affected property owners, public meetings, public hearings, and stakeholder meetings, as well as developing media packets, maintaining public contact lists, public comment inventories, and associated summary reports. This category also includes, but is not limited to, providing information through voice, written, video, or electronic means, answering public and media inquiries, preventing and resolving miscommunications, communicating messages, and preparing and organizing meetings, ground breakings, and ribbon cuttings.",
+   "requirements": [
+    {
+     "text": "The firm must employ one public information professional with a minimum of three years of experience in providing oversight on public involvement activities for transportation projects including demonstrated media and public communication experience with outreach programs and social media.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.11.1",
+   "group": 23,
+   "name": "Plan Review",
+   "description": "This category includes performing design and constructability review of Design Build (DB) or Design-BidBuild (DBB) packages for highway construction projects and providing detailed comments in an approved format. This review includes, but is not limited to, the review of: typical sections; plans and profiles of all roadway and structure elements; Storm Water Pollution Prevention Plan (SWP3); traffic control plan, narratives, work sequencing, advanced warning sign placements, and details; and signing and pavement markings. This category also includes ensuring accuracy and appropriate use of Items, Quantities, General Notes, Specifications, Contract Time/Schedule, and Standards.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of seven years of experience that includes both design and construction. The design experience must include developing or reviewing highway plan packages (plan sheets, specifications, and estimates) and performing roadway design of major roadway projects. The construction experience must represent a minimum of two years out of the seven years total required for this category. In addition, this construction experience must include providing oversight on construction of major roadway and bridge projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.12.1",
+   "group": 23,
+   "name": "QA/QC Process Verification",
+   "description": "This category includes providing Quality Assurance/Quality Control (QA/QC) process verification to ensure that approved project management plans will meet the contract requirements. This category also includes monitoring, overseeing, and auditing design-build projects.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in the areas of process quality assurance/quality control and independent auditing.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "23.13.1",
+   "group": 23,
+   "name": "Project Office Operations",
+   "description": "This category includes establishing and maintaining a project office to support staff for the selected project. Associated activities include development of procedures, communications, and document control, logistical support for the management of the alternative delivery projects, and other support functions.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of three years of experience in establishing, organizing, managing a small project office, handling highly confidential materials, and implementing and maintaining an electronic document control and filing system.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.1.1",
+   "group": 24,
+   "name": "Operations and Maintenance (O&M) Project Manager (PM)",
+   "description": "This category includes project management support for the oversight of O&M services including, but not limited to, review of asset conditions of pavement, bridges, signs, roadside devices, structures, drainage, and earthwork/slopes. This category also includes: assisting the State in providing Quality Assurance/Quality Control process verification to ensure that approved project management plans are in compliance; assessing DB contractor compliance; performing corridor compliance reporting; developing and implementing improvements to the alternative delivery project operation and maintenance program; and performing other technical services as necessary.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience on maintenance projects on major roadway projects of size, scope, and complexity comparable to Alternative Delivery projects. This experience must also include performing quality assurance and quality control on major roadway projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.2.1",
+   "group": 24,
+   "name": "Financial Plan Review and Development",
+   "description": "This category includes review and summary preparation of revenue, capital costs, operational costs, maintenance costs, and other expenses of alternative delivery projects including toll road projects and managed lane projects. This also includes preparation and/or assistance in the preparation of the initial financial plan and financial plan annual updates.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience directly related to the preparation of financial plans for approval by Federal agencies for complex transportation projects with debt. This individual must also have experience in the review of maintenance, capital costs, and budgets.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.3.1",
+   "group": 24,
+   "name": "Maintenance Cost Estimating",
+   "description": "This category includes detailed review of maintenance cost estimates for adequate maintenance of toll road projects and managed lane projects. This also includes justification of variances from estimated costs.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience performing cost estimating for routine and/or capital maintenance of roadway projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.4.1",
+   "group": 24,
+   "name": "Operation and Maintenance (O&M) Assessment",
+   "description": "This category includes condition assessment of transportation facilities, bridges, signs, drainage elements, roadside devices, toll elements, etc. This also includes review, analysis, and verification of condition assessment reports prepared by others.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of two years of experience directly related to operation and maintenance assessment or inspection of complex transportation facilities including Design Build projects. This individual must demonstrate experience performing operations and maintenance assessment on a minimum of one design-build project.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.4.2",
+   "group": 24,
+   "name": "Operation and Maintenance (O&M) Inspection",
+   "description": "This category includes inspection of transportation facilities, bridges, signs, drainage elements, roadside devices, toll elements, etc. This also includes preparation of condition assessment reports to be reviewed by others.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience directly related to performing operation and maintenance inspection of complex transportation facilities including Design Build projects. This individual must demonstrate experience performing operations and maintenance inspection on a minimum of one design-build project.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.5.1",
+   "group": 24,
+   "name": "Operations and Maintenance Program Support",
+   "description": "This category includes providing: project management support for the oversight of the maintained elements, including pavement, bridges, signs, roadside devices, structures, drainage, and earthwork/slopes; providing corridor performance reviews, which include monitoring and reporting services of the Operations and Maintenance phase; assisting the State in the development and implementation of Operations and Maintenance policies and procedures, training, and contract compliance; providing Quality Assurance/Quality Control process verification to ensure that approved project management plans are in compliance; providing services to assist the State in assessing DB Contractor compliance, corridor compliance reporting, and other technical services as requested; and providing document control support and public involvement support for the Alternative Delivery project.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of two years of experience in managing the Operations and Maintenance of complex alternative delivery projects including monitoring, reporting, and oversight.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.6.1",
+   "group": 24,
+   "name": "Structural Inspection and Assessment",
+   "description": "This category includes inspection, condition assessment, and recommendations for repairs of overhead sign structures, traffic signal pole assemblies, high mast light towers and assemblies, and drainage structures. This category also includes review, analysis, and verification of condition assessment reports prepared by others.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of experience coordinating and leading structural inspections of overhead sign structures, traffic signal pole assemblies, high mast light towers and assemblies, and drainage structures.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.6.2",
+   "group": 24,
+   "name": "Toll Elements Inspection and Assessment",
+   "description": "This category includes preparing condition assessment of tolling infrastructure for toll road projects and managed lanes projects and visual inspections of toll equipment and appurtenances in toll building facilities and at toll zones including the inspection of mechanical components and electrical components. This category also includes review and analysis of condition assessment reports of tolling infrastructure prepared by others.",
+   "requirements": [
+    {
+     "text": "The firm must employ one individual with a minimum of five years of experience in providing toll and Intelligent Transportation System (ITS) equipment maintenance inspection and/or condition assessment.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.6.3",
+   "group": 24,
+   "name": "Toll Facilities Inspection and Assessment",
+   "description": "This category includes the condition assessment of the existing toll facilities, the review of existing maintenance and inspection reports, and the visual inspection of toll building facilities, including the inspection of architectural elements, toll booth structures, mechanical components, and electrical components.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of training and experience inspecting toll building facilities and preparing condition assessment reports.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.7.1",
+   "group": 24,
+   "name": "Toll Plaza Design",
+   "description": "This category includes the structural design of toll gantry structures and foundations and appurtenances, including tolling equipment and maintenance pad design. Associated activities include development of design plans, including cost estimates, traffic control plans, signing, and pavement markings/markers.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of demonstrated experience as a project engineer for the preparation of toll plaza design plans for toll road projects or managed lane projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.8.1",
+   "group": 24,
+   "name": "Toll Plaza Construction Management",
+   "description": "This category includes the performance of construction management duties for toll project plazas. Associated activities include construction oversight and inspection of the following: toll plaza infrastructure, toll gantry structures and foundations, and appurtenances, including tolling equipment and maintenance pads. This category also includes coordination with the toll plaza system inspection staff.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer with a minimum of five years of demonstrated experience as an inspector project engineer for toll plaza infrastructures and elements of toll road projects or managed lane projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.8.2",
+   "group": 24,
+   "name": "Toll Plaza System Inspection",
+   "description": "This category includes the performance of construction inspection duties for toll project plaza systems. This category includes construction oversight and inspection of the following: toll plaza systems installation and operation, system verification testing, and system implementation.",
+   "requirements": [
+    {
+     "text": "The firm must employ one inspector who has a minimum of two years of inspection experience directly related to the inspection of toll systems for toll road projects or managed lane projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.9.1",
+   "group": 24,
+   "name": "Toll Traffic Impacts-Engineering Analysis",
+   "description": "This category includes the engineering and operational analysis to optimize a toll road project's or managed lane project’s operations and revenue potential. Associated activities include engineering analyses of the toll road’s traffic and operational characteristics in advance of implementation.",
+   "requirements": [
+    {
+     "text": "The firm must employ one Professional Engineer, with a minimum of five years of demonstrated experience directly related to the development and optimization of toll road projects or managed lane projects.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.9.2",
+   "group": 24,
+   "name": "Toll Traffic Impacts-Planning Analysis",
+   "description": "This category includes the feasibility, planning, and operational analysis support to optimize a toll road project's or managed lane project’s operations and revenue potential. Associated activities include planning analyses of the toll road’s traffic and operational characteristics in advance of implementation.",
+   "requirements": [
+    {
+     "text": "The firm must employ one planner, with a minimum five years of demonstrated experience directly related to toll traffic analyses.",
+     "head": false
+    }
+   ]
+  },
+  {
+   "code": "24.10.1",
+   "group": 24,
+   "name": "Toll Facility Traffic Operational Analysis",
+   "description": "This category includes analyzing historical toll traffic data and performing traffic trend analyses on existing toll facilities’ performance and roadway operations. Associated activities include identifying roadway performance and operational improvement opportunities for toll roads or managed lanes.",
+   "requirements": [
+    {
+     "text": "The firm must employ one planner, with a minimum of five years of demonstrated experience directly related to the analysis of historical toll traffic data, roadway performance, and toll traffic trends for toll roads or managed lanes.",
+     "head": false
+    }
+   ]
+  }
+ ]
+}
