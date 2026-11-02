@@ -1312,6 +1312,9 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (n.kids.length) items.push([n.collapsed ? 'Expand' : 'Collapse', '→ ←', () => toggleNode(n)]);
     if (n.type === 'disc') items.push(['Add a sheet…', 'n', () => { select_('disc', id); focusAdd('qaTitle'); }]);
     if (n.type === 'seg') items.push([n.pp ? 'Add a road…' : 'Add a sheet…', 'n', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd(n.pp ? 'addRoadName' : 'addSheetTitle'); }]);
+    if (n.type === 'road') items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: n.g.entries.map((r) => r.id) })]);
+    if (n.type === 'seg' && n.pp && M.roadsOf(n.sub, n.seg).length) items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: M.roadsOf(n.sub, n.seg).map((r) => r.id) })]);
+    if (n.type === 'seg' && M.damSection(n.sub) === n.seg) items.push(['Copy P&P sheets here…', '', () => openDamCopy({ subs: [n.sub.id] })]);
     if (['seg', 'road', 'sheet'].includes(type)) {
       const k = type + ':' + id;
       items.push(['Add a connector…', '', () => { select_(type, id); pickState = { key: k, q: '', open: true, kind: 'dep', dir: 'in' }; renderDrawer(); focusAdd('lkSearch'); }]);
@@ -1365,6 +1368,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('div', { class: 'g2' }, field('Owner / lead', owner), field('Due date', due), field('Milestone', ms), h('div', { class: 'f pstat' }, h('span', { class: 'lab' }, 'Status'), h('span', { class: 'stpill ' + (R.total && R.done === R.total ? 'st-done' : R.done || R.pct ? 'st-in-progress' : 'st-not-started'), id: 'prStatus' }, !R.total ? 'No sheets yet' : R.done === R.total ? 'All done' : R.done || R.pct ? 'In progress' : 'Not started'))),
       h('datalist', { id: 'prStaff' }, [...new Set(st.staff.map((x) => x.name).concat(R.owners))].map((x) => h('option', { value: x }))),
       field('Notes', notes),
+      opts.actions ? h('div', { class: 'row pacts' }, opts.actions) : null,
       h('h4', { class: 'ph' }, 'Roll-up' + (R.t === 'root' ? '' : ' of this ' + kind)),
       h('div', { class: 'ptiles', id: 'prTiles' },
         tile('sheets', R.total), tile('done', R.done), tile('complete', Math.round(R.pct) + '%'),
@@ -1613,7 +1617,9 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       crumb([[d, () => select_('dtop', d)], [M.subLabel(sub), toDisc(sub, d)]]),
       h('h2', {}, seg.title),
       h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, h('div', {}, plural(seg.sheets.length, 'sheet') + ' · ' + p.done + ' done'), pp ? h('div', { id: 'secPPLine' }, ppLine(sub, seg)) : null)),
-      propsBox('seg:' + seg.id, { name: h('p', { class: 'muted small' }, 'Section names are shared by A–D: ', h('button', { type: 'button', class: 'link', onclick: () => openSettings('secs') }, 'Edit section lists')) }),
+      propsBox('seg:' + seg.id, { name: h('p', { class: 'muted small' }, 'Section names are shared by A–D: ', h('button', { type: 'button', class: 'link', onclick: () => openSettings('secs') }, 'Edit section lists')),
+        actions: pp && M.roadsOf(sub, seg).length ? damBtn({ subs: [sub.id], roads: M.roadsOf(sub, seg).map((r) => r.id) }) : M.damSection(sub) === seg ? [damBtn({ subs: [sub.id] }, 'Copy P&P sheets here…'), damSyncBtn([sub.id])] : null }),
+      M.damSection(sub) === seg ? damBox(sub, seg) : null,
       pp ? h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, 'Roads in this section'),
         h('p', { class: 'muted small' }, 'PP sheets = ceil(length ÷ feet per sheet): 20 scale = 240 ft, 40 = 480, 50 = 600, 100 = 1,200 ft per sheet. Edit the cells directly.'),
         roadTable(sub, seg), addRoadForm(sub, seg),
@@ -1741,7 +1747,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       propsBox('road:' + road.id, { name: (() => { const i = h('input', { id: 'prAlign', value: M.roadAlign(road), maxlength: 60, autocomplete: 'off', placeholder: 'optional, e.g. BL FM 1960' });
         i.addEventListener('change', () => { const r = commit(() => M.updateRoad(st, road.id, { alignment: i.value })); if (r) toast(M.roadAlign(r.road) ? 'Alignment: ' + M.roadAlign(r.road) + '.' : 'Alignment cleared.'); });
         i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); i.dispatchEvent(new Event('change')); } });
-        return field('Alignment name', i, 'Optional name of the design alignment this road entry follows.'); })() }),
+        return field('Alignment name', i, 'Optional name of the design alignment this road entry follows.'); })(), actions: damBtn({ subs: [sub.id], roads: (grp ? grp.entries : [road]).map((r) => r.id) }) }),
       h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, grp && grp.entries.length > 1 ? 'Station ranges of this road (' + grp.entries.length + ')' : 'Road entry'),
         roadTable(sub, sec, grp ? grp.entries : [road]),
         grp && grp.entries.length > 1 ? h('div', { class: 'row' }, grp.entries.map((r) => h('button', { type: 'button', class: 'btn sm ' + (r === road ? '' : 'sec'), 'aria-pressed': String(r === road), onclick: () => select_('road', r.id) }, r.name))) : null),
@@ -1839,7 +1845,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subTag(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]].concat(groad ? [[groad.road.name, () => select_('road', groad.road.id)]] : [])),
       field('Title', inp('title', { id: 'shTitle' })),
       sh.gen ? h('p', { class: 'pill' }, 'Generated PP sheet ' + sh.gen.idx + ' of ' + sh.gen.of + (M.sheetScale(st, sub, sh) ? ' · ' + M.sheetScale(st, sub, sh) + ' scale' : '') + (M.sheetAlign(st, sub, seg, sh) ? ' · Alignment ' + M.sheetAlign(st, sub, seg, sh) : '')) : null,
-      M.isPPSec(seg) ? (() => { const e = staEditor(sh, { ids: true }); const ws = M.rangeWarnings(st, sub, seg).filter((w) => w.sheet === sh.id);
+      sh.dam ? damPill(sub, seg, sh) : null,
+      M.isPPSec(seg) || sh.dam ? (() => { const e = staEditor(sh, { ids: true }); const ws = M.rangeWarnings(st, sub, seg).filter((w) => w.sheet === sh.id);
         return h('section', { class: 'box', id: 'shStaBox' }, h('h3', {}, 'Station range'),
           h('div', { class: 'g2' }, field('Start station', e.a), field('End station', e.b)),
           h('p', { class: 'muted small', id: 'shStaHint' }, e.rg ? (e.rg.manual ? 'Manual range' + (e.c ? ' (computed ' + M.formatStation(e.c.start) + ' – ' + M.formatStation(e.c.end) + ')' : '') : 'Computed from the road stations and scale') + ' · ' + fmtFt(e.rg.end - e.rg.start) : 'No range' + (sh.gen ? '' : ' — optional for sheets you added yourself'), ' ', e.reset),
@@ -1905,6 +1912,74 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     setTimeout(() => { const f = $('#modalBody').querySelector('input,select,button,textarea'); (f || $('#modalClose')).focus(); }, 20);
   }
   function closeModal() { pendingImport = false; if (pendingMig && migrationNotice.done) { migrationNotice.done(); return; } if (pendingMig32 && migrationNotice32.done) { migrationNotice32.done(); return; } $('#modal').hidden = true; $('#modalBody').replaceChildren(); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+  /* ---------- v3.7 copy P&P sheet breaks to Drainage Area Map sheets ---------- */
+  function damBtn(preset, label) { return h('button', { type: 'button', class: 'btn sec sm damcopy', onclick: () => openDamCopy(preset) }, label || 'Copy to Drainage Area Maps…'); }
+  function damSyncBtn(subs) {
+    const o = M.damOutOfSync(st, subs);
+    return o.count ? h('button', { type: 'button', class: 'btn sm', id: 'damSyncBtn', title: 'Linked DAM sheets of ' + o.roads.map((r) => r.road).join(', ') + ' no longer match the road stations', onclick: () => { const r = commit(() => M.resyncDam(st, subs)); if (r) toast('DAM sheets re-synced: ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed' + (r.kept ? ', ' + r.kept + ' edited kept' : '') + '. Undo with Ctrl+Z.'); } }, '⟳ Re-sync DAM sheets (' + o.count + ')') : null;
+  }
+  function damBox(sub, sec) {
+    const cps = sec.sheets.filter((q) => q.dam), roads = [...new Set(cps.map((q) => q.dam.road).filter(Boolean))];
+    if (!cps.length) return h('p', { class: 'muted small', id: 'damHint' }, 'Tip: “Copy P&P sheets here…” makes one Drainage Area Map sheet per Plan & Profile sheet break of a road (same stations and alignment).');
+    return h('p', { class: 'muted small', id: 'damHint' }, plural(cps.length, 'DAM sheet') + ' copied from ' + plural(roads.length, 'road entry') + ' · ' + cps.filter((q) => q.dam.linked !== false).length + ' linked (re-sync follows station changes).');
+  }
+  function damPill(sub, seg, sh) {
+    const road = sh.dam.road && M.findRoad(st, sh.dam.road), linked = sh.dam.linked !== false && road;
+    const o = linked ? M.planDam(st, { subs: [sub.id], roads: [road.road.id], linkedOnly: true }) : null, stale = o && (o.create + o.update + o.remove);
+    return h('div', { class: 'pill dampill', id: 'damPill' }, 'Drainage Area Map copy ' + sh.dam.idx + ' of ' + sh.dam.of + (road ? ' · ' + road.road.road : '') + (M.sheetAlign(st, sub, seg, sh) ? ' · Alignment ' + M.sheetAlign(st, sub, seg, sh) : '') + (M.sheetScale(st, sub, sh) ? ' · ' + M.sheetScale(st, sub, sh) + ' scale' : '') + (linked ? ' · linked' : ' · not linked'),
+      stale ? h('span', { class: 'fl fl-upd' }, ' ⟳ road changed') : null,
+      h('span', { class: 'row' }, road ? h('button', { type: 'button', class: 'link', onclick: () => select_('road', road.road.id) }, 'Open road') : null,
+        stale ? h('button', { type: 'button', class: 'link', id: 'damResync1', onclick: () => { const r = commit(() => M.applyDam(st, M.planDam(st, { subs: [sub.id], roads: [road.road.id], linkedOnly: true }))); if (r) toast('Re-synced ' + road.road.road + ': ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed.'); } }, 'Re-sync') : null,
+        linked ? h('button', { type: 'button', class: 'link', id: 'damUnlink', onclick: () => { commit(() => M.unlinkDam(st, sh.id)); toast('Unlinked: re-sync will no longer change this sheet.'); } }, 'Unlink') : null));
+  }
+  function openDamCopy(preset) {
+    preset = preset || {};
+    const all = M.damSources(st);
+    const subsWith = M.orderedSubs(st).filter((sub) => all.some((x) => x.sub === sub));
+    const selSubs = new Set(preset.subs && preset.subs.length ? preset.subs : subsWith.map((x) => x.id));
+    const selRoads = new Set(preset.roads && preset.roads.length ? preset.roads : all.filter((x) => x.sec.discipline === 'Drainage').map((x) => x.road.id));
+    const state = { scale: '', mode: 'update', link: true };
+    const body = h('div', { class: 'stack damcopy-modal' });
+    const go = () => {
+      const roads = all.filter((x) => selSubs.has(x.sub.id) && selRoads.has(x.road.id)).map((x) => x.road.id);
+      let P = null, err = '';
+      try { P = roads.length ? M.planDam(st, { subs: [...selSubs], roads, scale: state.scale || null, mode: state.mode }) : null; } catch (e) { err = e.message; }
+      const hasEx = all.some((x) => selSubs.has(x.sub.id) && selRoads.has(x.road.id) && M.damCopiesOf(x.sub, x.road.id).length);
+      const subBox = h('fieldset', { class: 'damsubs', id: 'damSubs' }, h('legend', {}, 'Sub-projects'),
+        M.orderedSubs(st).map((sub) => { const n = all.filter((x) => x.sub === sub).length;
+          return h('label', { class: 'chk' }, h('input', { type: 'checkbox', value: sub.id, checked: selSubs.has(sub.id), disabled: !n, onchange: (e) => { if (e.target.checked) { selSubs.add(sub.id); all.filter((x) => x.sub === sub && x.sec.discipline === 'Drainage').forEach((x) => selRoads.add(x.road.id)); } else selSubs.delete(sub.id); go(); } }), ' ' + M.subLabel(sub) + ' (' + plural(n, 'road') + ')'); }));
+      const shown = all.filter((x) => selSubs.has(x.sub.id));
+      const roadBox = h('fieldset', { class: 'damroads', id: 'damRoads' }, h('legend', {}, 'Roads (Plan & Profile road entries)'),
+        shown.length ? shown.map((x) => { const p = M.roadPP(st, x.sub, x.road), ex = M.damCopiesOf(x.sub, x.road.id).length;
+          return h('label', { class: 'chk damroad' }, h('input', { type: 'checkbox', value: x.road.id, checked: selRoads.has(x.road.id), onchange: (e) => { if (e.target.checked) selRoads.add(x.road.id); else selRoads.delete(x.road.id); go(); } }),
+            ' ', h('span', { class: 'code' }, x.sub.code), ' ' + x.sec.title + ' · ', h('b', {}, x.road.road), M.roadAlign(x.road) ? h('span', { class: 'ralign' }, ' (' + M.roadAlign(x.road) + ')') : null,
+            h('span', { class: 'muted small' }, ' · ' + (M.hasSta(x.road) ? 'Sta ' + M.formatStation(x.road.start) + '–' + M.formatStation(x.road.end) + ' · ' + plural(p.count, 'PP sheet') : 'no stations yet') + (ex ? ' · ' + ex + ' DAM already' : ''))); }) : h('p', { class: 'muted' }, 'No road entries in the chosen sub-projects.'),
+        shown.length > 1 ? h('div', { class: 'row' }, h('button', { type: 'button', class: 'link', onclick: () => { shown.forEach((x) => selRoads.add(x.road.id)); go(); } }, 'All'), h('button', { type: 'button', class: 'link', onclick: () => { shown.forEach((x) => selRoads.delete(x.road.id)); go(); } }, 'None')) : null);
+      const sc = select([['', 'Same as the P&P sheets (same sheet breaks)']].concat(scaleOpts(false)), state.scale, { id: 'damScale', 'aria-label': 'DAM scale', onchange: (e) => { state.scale = e.target.value; go(); } });
+      const mode = select([['update', 'Update existing DAM copies (edited sheets are kept)'], ['skip', 'Skip roads that already have DAM copies']], state.mode, { id: 'damMode', 'aria-label': 'When DAM copies already exist', onchange: (e) => { state.mode = e.target.value; go(); } });
+      const link = h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'damLink', checked: state.link, onchange: (e) => { state.link = e.target.checked; } }), ' Keep linked to the road, so “Re-sync” can follow later station / scale changes');
+      const lines = P ? P.items.flatMap((it) => it.create.map((c) => '+ ' + it.sub.code + ' · ' + c.title).concat(it.update.map((u) => '↻ ' + it.sub.code + ' · ' + (u.edited ? u.sheet.title + ' (range only, title edited)' : u.title)), it.remove.map((q) => '− ' + it.sub.code + ' · ' + q.title), it.skipped || it.reason ? [(it.skipped ? '· skip ' : '· ') + it.sub.code + ' · ' + it.road.road + ': ' + it.reason] : [])) : [];
+      const n = P ? P.create + P.update + P.remove : 0;
+      const sum = !P ? (err || 'Pick at least one road.') : (P.create || !(P.update || P.remove || P.keep || P.unchanged || P.skipped) ? 'Creates ' + plural(P.create, 'DAM sheet') : 'No new DAM sheets') + (P.update ? ', updates ' + P.update : '') + (P.remove ? ', removes ' + P.remove + ' unedited' : '') + (P.keep ? ', keeps ' + P.keep + ' edited' : '') + (P.unchanged ? ' · ' + P.unchanged + ' already up to date' : '') + (P.skipped ? ' · ' + plural(P.skipped, 'road') + ' skipped' : '') + '.';
+      const btn = h('button', { type: 'button', class: 'btn', id: 'damGo', disabled: !n, onclick: () => {
+        const r = commit(() => M.applyDam(st, M.planDam(st, { subs: [...selSubs], roads, scale: state.scale || null, mode: state.mode }), { link: state.link }));
+        if (!r) return;
+        closeModal();
+        const first = r.ids.length && M.findSheet(st, r.ids[0]);
+        if (first) { openBranch(first.sub.id, first.seg.discipline, first.seg.id); saveUI(); renderAll(); select_('seg', first.seg.id); }
+        toast('Drainage Area Maps: ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed' + (r.kept ? ', ' + r.kept + ' edited kept' : '') + '. Undo with Ctrl+Z.');
+      } }, !n ? 'Nothing to copy' : P.create && !P.update && !P.remove ? 'Create ' + plural(P.create, 'DAM sheet') : 'Apply ' + plural(n, 'change'));
+      const ae = document.activeElement, keep = ae && body.contains(ae) ? (ae.id ? '#' + ae.id : ae.value ? 'input[value="' + ae.value + '"]' : null) : null;
+      body.replaceChildren(
+        h('p', { class: 'muted' }, 'Makes one sheet in each sub-project’s Drainage Area Map section for every Plan & Profile sheet break of the chosen roads: same road, alignment and station ranges, named “DAM – Road (Alignment) STA start–end”. Pick another scale to get different sheet breaks.'),
+        subBox, roadBox, h('div', { class: 'g2' }, field('DAM scale', sc), hasEx ? field('If DAM copies exist', mode) : h('span')), link,
+        h('div', { class: 'box', id: 'damPreview' }, h('b', { id: 'damSum' }, sum), lines.length ? h('ul', { class: 'small damlist' }, lines.slice(0, 14).map((x) => h('li', {}, x)), lines.length > 14 ? h('li', { class: 'muted' }, '+ ' + (lines.length - 14) + ' more') : null) : null),
+        h('div', { class: 'row' }, btn, h('button', { type: 'button', class: 'btn sec', onclick: closeModal }, 'Cancel')));
+      if (keep) { const f = body.querySelector(keep); if (f) f.focus(); }
+    };
+    go();
+    openModal('Copy P&P sheets to Drainage Area Maps', body);
+  }
   function openPP() {
     const what = {};
     const body = h('div', {});
@@ -1934,6 +2009,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn', disabled: !Object.keys(what).length, onclick: () => { commit(() => { for (const [id, v] of Object.entries(what)) { const sub = M.findSub(st, id); sub.scale = v; M.log(st, M.subTag(sub) + ' default scale → ' + v + ' (from calculator)'); } }); toast('Default scales applied. Use “Generate PP sheets” in the P&P sections to update sheet entries.'); openPP(); } }, 'Apply what-if scales'),
           h('button', { type: 'button', class: 'btn sec', onclick: () => download('pm-pp-summary-' + M.todayISO() + '.csv', '\ufeff' + M.ppCSV(st, { subScale: what }), 'text/csv') }, 'Export PP summary CSV'),
+          M.allRoads(st).length ? h('button', { type: 'button', class: 'btn sec', id: 'ppDamBtn', onclick: () => openDamCopy({}) }, 'Copy to Drainage Area Maps…') : null,
           h('button', { type: 'button', class: 'btn sec', onclick: () => { closeModal(); openSettings(); } }, 'Edit scale table')));
     };
     draw();

@@ -705,6 +705,68 @@ t('v3.6 road alignment name: optional, editable, copied on split/copy, in CSV ex
   const old = JSON.parse(JSON.stringify(st)); delete old.subs[0].roads[0].alignment; old.subs[0].roads[1].alignment = 42;
   const L = M.migrate(old); assert.ok(!('alignment' in L.subs[0].roads[0]) && !('alignment' in L.subs[0].roads[1]));
 });
+t('v3.7 copy P&P sheet breaks to Drainage Area Map sheets: plan, create, re-run, re-sync, scale, unlink, compat', () => {
+  const st = M.newState('P'); const [A, B] = st.subs; const ppA = M.secOf(A, 'dr-pp'), damA = M.secOf(A, 'dr-dam');
+  const r = M.addRoad(st, ppA.id, { road: 'FM 1960', start: '10+00', end: '34+00', alignment: 'BL FM 1960' }).road;
+  const rb = M.addRoad(st, M.secOf(B, 'dr-pp').id, { road: 'Kuykendahl', start: '0+00', end: '7+00' }).road;
+  M.syncPP(st);
+  const before = JSON.stringify(st);
+  const P = M.planDam(st, { subs: [A.id] });
+  assert.strictEqual(JSON.stringify(st), before, 'planDam does not change data');
+  assert.strictEqual(P.create, M.roadPP(st, A, r).count, 'one DAM sheet per PP sheet break');
+  assert.deepStrictEqual(P.items[0].create.map((c) => c.title), ['DAM – FM 1960 (BL FM 1960) STA 10+00–22+00', 'DAM – FM 1960 (BL FM 1960) STA 22+00–34+00']);
+  const out = M.applyDam(st, P, { link: true });
+  assert.strictEqual(out.created, 2);
+  const dams = damA.sheets.filter((x) => x.dam);
+  const pps = ppA.sheets.filter((x) => x.gen && x.gen.road === r.id);
+  assert.deepStrictEqual(dams.map((x) => M.sheetRange(x)), pps.map((x) => M.sheetRange(x)), 'same station ranges as the PP sheets');
+  assert.ok(dams.every((x) => x.road === 'FM 1960' && x.discipline === 'Drainage' && x.dam.linked && x.status === 'Not started'));
+  assert.deepStrictEqual(dams.map((x) => x.number), ['1', '2'], 'numbered in the Drainage Area Map range');
+  assert.strictEqual(M.sheetAlign(st, A, damA, dams[0]), 'BL FM 1960'); assert.strictEqual(M.sheetScale(st, A, dams[0]), 100);
+  /* re-run: no duplicates */
+  const P2 = M.planDam(st, { subs: [A.id] }); assert.strictEqual(P2.create + P2.update + P2.remove, 0); assert.strictEqual(P2.unchanged, 2);
+  const P3 = M.planDam(st, { subs: [A.id], mode: 'skip' }); assert.strictEqual(P3.skipped, 1); assert.strictEqual(P3.create, 0);
+  /* a hand-made sheet with the same title is not duplicated */
+  M.addSheet(st, M.secOf(B, 'dr-dam').id, { title: 'DAM – Kuykendahl STA 0+00–7+00' });
+  assert.strictEqual(M.planDam(st, { subs: [B.id] }).create, 0);
+  /* road gets longer → linked copies out of sync → re-sync; edited title kept, range updated */
+  dams[0].title = 'DAM 1 custom'; M.updateSheet(st, dams[1].id, { owner: 'Ana' });
+  M.updateRoad(st, r.id, { end: '40+00' }); M.syncPP(st);
+  assert.ok(M.damOutOfSync(st).count > 0);
+  const rs = M.resyncDam(st); assert.strictEqual(rs.created, 1);
+  const d2 = damA.sheets.filter((x) => x.dam);
+  assert.deepStrictEqual(d2.map((x) => x.title), ['DAM 1 custom', 'DAM – FM 1960 (BL FM 1960) STA 22+00–34+00', 'DAM – FM 1960 (BL FM 1960) STA 34+00–40+00']);
+  assert.strictEqual(d2[1].owner, 'Ana', 'user fields survive a re-sync'); assert.strictEqual(M.damOutOfSync(st).count, 0);
+  /* road shorter → untouched extra removed, edited extra kept */
+  M.updateRoad(st, r.id, { end: '20+00' }); M.syncPP(st);
+  const sh = M.resyncDam(st); assert.strictEqual(sh.removed, 1); assert.strictEqual(sh.kept, 1);
+  /* another scale → different breaks; the scale is remembered for re-sync */
+  M.updateRoad(st, r.id, { end: '34+00' }); M.syncPP(st);
+  const S = M.planDam(st, { roads: [r.id], scale: 50 }); M.applyDam(st, S);
+  const d3 = damA.sheets.filter((x) => x.dam && x.dam.road === r.id);
+  assert.strictEqual(d3.length, Math.ceil(2400 / 600)); assert.ok(d3.every((x) => x.dam.scale === 50)); assert.strictEqual(M.damOutOfSync(st).count, 0);
+  assert.throws(() => M.planDam(st, { scale: 'abc' }), /Unknown scale/);
+  /* unlink → re-sync leaves it alone; delete road → copies stay, unlinked */
+  M.unlinkDam(st, d3[0].id); M.updateRoad(st, r.id, { end: '30+00' }); M.syncPP(st);
+  assert.ok(!M.damOutOfSync(st).plan.items.some((it) => it.update.some((u) => u.sheet.id === d3[0].id)));
+  const n0 = damA.sheets.length; M.deleteRoad(st, r.id); assert.strictEqual(damA.sheets.length, n0); assert.ok(damA.sheets.filter((x) => x.dam).every((x) => !x.dam.linked));
+  /* duplicate is a plain sheet; data round trip + old data without .dam */
+  const dup = M.duplicateSheet(st, d3[1].id); assert.ok(!('dam' in dup));
+  const back = M.migrate(JSON.parse(JSON.stringify(st))); assert.strictEqual(back.subs[0].segments.find((g) => g.key === 'dr-dam').sheets.filter((x) => x.dam).length, damA.sheets.filter((x) => x.dam).length);
+  const junk = JSON.parse(JSON.stringify(st)); junk.subs[0].segments.find((g) => g.key === 'dr-dam').sheets[0].dam = 'x'; assert.ok(!('dam' in M.migrate(junk).subs[0].segments.find((g) => g.key === 'dr-dam').sheets[0]));
+  assert.ok(!JSON.stringify(M.newState('Q')).includes('"dam"'), 'new projects carry no DAM fields');
+});
+t('v3.7 DAM copies follow split / merge of the road entry', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp'), dam = M.secOf(A, 'dr-dam');
+  const r = M.addRoad(st, pp.id, { road: 'FM 1', start: '10+00', end: '34+00' }).road; M.syncPP(st);
+  M.applyDam(st, M.planDam(st, {}));
+  const sp = M.splitSegment(st, r.id, '22+00'); M.syncPP(st);
+  assert.deepStrictEqual(dam.sheets.filter((x) => x.dam).map((x) => x.dam.road), [r.id, sp.b.id]);
+  assert.strictEqual(M.damOutOfSync(st).count > 0, true, 'idx / of changed for the new part');
+  M.resyncDam(st); assert.strictEqual(M.damOutOfSync(st).count, 0);
+  M.mergeSegments(st, r.id, sp.b.id); M.syncPP(st); M.resyncDam(st);
+  assert.deepStrictEqual(dam.sheets.filter((x) => x.dam).map((x) => [x.dam.road, x.dam.idx]), [[r.id, 1], [r.id, 2]]);
+});
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

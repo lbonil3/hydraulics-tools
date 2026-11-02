@@ -395,6 +395,28 @@ function v2Fixture() {
   ok(Dd.roads.length === 2 && Dd.segments.find((g) => g.key === 'dr-hds-x').sheets.some((s) => s.title === 'Culvert Layout' && s.owner === 'Ana Ruiz'), 'old v2 CSV imported into sections');
   await shot('12-after-csv');
 
+  /* 10b. v3.7 copy P&P sheets to Drainage Area Maps */
+  const damCount = (d) => d.subs.reduce((a, sub) => a + sub.segments.reduce((x, g) => x + g.sheets.filter((sh) => sh.dam).length, 0), 0);
+  const dam0 = damCount(await data());
+  await click('#ppBtn'); await sleep(200); await click('#ppDamBtn'); await sleep(250);
+  ok(await has('#damSubs') && await has('#damRoads') && await has('#damScale') && await has('#damPreview'), 'DAM copy dialog: sub-projects, roads, scale, preview');
+  const damN = +((await txt('#damSum')).match(/Creates (\d+)/) || [])[1];
+  ok(damN > 0 && /Create \d+ DAM sheet/.test(await txt('#damGo')), 'DAM preview counts the sheets before creating (' + damN + ')');
+  await shot('12b-dam-copy');
+  await click('#damGo'); await sleep(300);
+  D = await data();
+  const damSh = D.subs.flatMap((sub) => sub.segments.flatMap((g) => g.sheets.filter((sh) => sh.dam).map((sh) => ({ g, sh }))));
+  ok(damCount(D) === dam0 + damN && damSh.every((x) => x.g.key === 'dr-dam' && /^DAM – .+ STA \d+\+\d\d–\d+\+\d\d$/.test(x.sh.title)), 'DAM sheets created in the Drainage Area Map sections with DAM – Road STA names');
+  await click('#ppBtn'); await sleep(200); await click('#ppDamBtn'); await sleep(250);
+  ok(/Nothing to copy/.test(await txt('#damGo')), 're-run finds nothing new (no duplicates)');
+  await click('#modalClose'); await sleep(150);
+  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(300);
+  ok(damCount(await data()) === dam0, 'Ctrl+Z removes the DAM copies');
+  await pg.keyboard.down('Control'); await pg.keyboard.down('Shift'); await pg.keyboard.press('z'); await pg.keyboard.up('Shift'); await pg.keyboard.up('Control'); await sleep(300);
+  ok(damCount(await data()) === dam0 + damN, 'redo brings them back');
+  D = await data();
+
   /* 11. persistence, v2 untouched, no external requests, errors */
   await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
   ok(!(await pg.$('#migV3')), 'migration notice only once');

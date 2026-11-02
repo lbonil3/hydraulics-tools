@@ -743,3 +743,17 @@ details.menu.active>summary{border-color:var(--brand);background:var(--brand-sof
 .nalign{font-size:11.5px}
 #roadTable .c-alignment,#stTable .c-alignment{min-width:110px}
 .f.pstat .stpill{padding:3px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px;font-weight:600}
+/* v3.7 copy P&P sheets to Drainage Area Maps */
+.damcopy-modal fieldset{border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:0}
+.damcopy-modal legend{font-size:12px;font-weight:700;color:var(--muted);padding:0 4px}
+.damsubs{display:flex;flex-wrap:wrap;gap:6px 16px}
+.damroads{max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.damroad{display:block;line-height:1.55;padding:3px 0}
+.damroad input{vertical-align:middle;margin:0 6px 0 0}
+.damroad .code{vertical-align:middle}
+.damlist{margin:6px 0 0;padding-left:18px;max-height:220px;overflow:auto}
+.damlist li{margin:2px 0}
+.dampill{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.dampill .row{gap:10px;margin:0}
+.row.pacts{margin:4px 0 2px}
+@media (max-width:900px){.damroad{min-height:44px;padding:6px 0}.damroad input{width:20px;height:20px}}

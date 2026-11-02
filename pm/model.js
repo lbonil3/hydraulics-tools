@@ -314,7 +314,7 @@
   }
   function isTouched(sh) {
     return sh.status !== 'Not started' || !!sh.owner || !!sh.notes || (Number(sh.pct) || 0) > 0 || (Number(sh.hoursActual) || 0) > 0 ||
-      Object.values(sh.qc || {}).some(Boolean) || !!(sh.gen && sh.gen.titleEdited) || !!sh.sta;
+      Object.values(sh.qc || {}).some(Boolean) || !!(sh.gen && sh.gen.titleEdited) || !!sh.sta || !!(sh.dam && sh.dam.title && sh.title !== sh.dam.title);
   }
   /* Plan (no mutation): which generated sheets to create / update / remove for one road entry */
   function planGenerate(st, roadId) {
@@ -386,6 +386,7 @@
   function sheetRange(sh) {
     if (sh.sta && Number.isFinite(sh.sta.start) && Number.isFinite(sh.sta.end)) return { start: sh.sta.start, end: sh.sta.end, manual: true };
     if (sh.gen && Number.isFinite(sh.gen.start) && Number.isFinite(sh.gen.end)) return { start: sh.gen.start, end: sh.gen.end, manual: false };
+    if (sh.dam && Number.isFinite(sh.dam.start) && Number.isFinite(sh.dam.end)) return { start: sh.dam.start, end: sh.dam.end, manual: false };
     return null;
   }
   function rangeText(rg) { return rg ? 'Sta ' + formatStation(rg.start) + ' – ' + formatStation(rg.end) : 'no range'; }
@@ -403,9 +404,13 @@
     });
   }
   function otherSheets(sub, sec) { return sec.sheets.filter((sh) => sheetGroupSlug(sub, sec, sh) == null); }
-  function sheetScale(st, sub, sh) { if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); if (r) return segScale(sub, r); } return null; }
+  function sheetScale(st, sub, sh) {
+    if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); if (r) return segScale(sub, r); }
+    if (sh.dam) { if (sh.dam.scale) return Number(sh.dam.scale); const r = sub.roads.find((x) => x.id === sh.dam.road); if (r) return segScale(sub, r); }
+    return null;
+  }
   /* computed range of a generated sheet (ignores the manual override) */
-  function computedRange(sh) { return sh.gen && Number.isFinite(sh.gen.start) ? { start: sh.gen.start, end: sh.gen.end } : null; }
+  function computedRange(sh) { return sh.gen && Number.isFinite(sh.gen.start) ? { start: sh.gen.start, end: sh.gen.end } : sh.dam && Number.isFinite(sh.dam.start) ? { start: sh.dam.start, end: sh.dam.end } : null; }
   function setSheetRange(st, sheetId, start, end) {
     const hit = findSheet(st, sheetId); if (!hit) throw new Error('No such sheet');
     const blankA = blank(start), blankB = blank(end);
@@ -428,6 +433,7 @@
     return hit.sh;
   }
   function refreshGenTitle(st, sub, sec, sh) {
+    if (sh.dam && !sh.gen) { const rg = sheetRange(sh), road = sub.roads.find((x) => x.id === sh.dam.road); if (rg && road && sh.title === sh.dam.title) { sh.title = damTitle(road, rg); sh.dam.title = sh.title; } return; }
     if (!sh.gen || sh.gen.titleEdited) return;
     const road = sub.roads.find((x) => x.id === sh.gen.road); if (!road) return;
     const rg = sheetRange(sh); if (!rg) return;
@@ -521,6 +527,7 @@
   /* alignment of the road entry a sheet sits on: generated → its road entry; tagged → the alignment(s) of that road in the section */
   function sheetAlign(st, sub, sec, sh) {
     if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); return roadAlign(r); }
+    if (sh.dam && sh.dam.road) { const r = sub.roads.find((x) => x.id === sh.dam.road); if (r) return roadAlign(r); }
     if (sh.road && sec) return groupAligns(roadsOf(sub, sec).filter((r) => rgSlug(r.road) === rgSlug(sh.road))).join(' / ');
     return '';
   }
@@ -576,6 +583,7 @@
     hit.sub.roads = hit.sub.roads.filter((r) => r !== hit.road);
     const n = hit.sec.sheets.filter((s) => s.gen && s.gen.road === roadId).length;
     hit.sec.sheets = hit.sec.sheets.filter((s) => !(s.gen && s.gen.road === roadId));
+    for (const g of hit.sub.segments) for (const s of g.sheets) if (s.dam && s.dam.road === roadId) { s.dam.linked = false; s.dam.road = null; } /* DAM copies stay, unlinked */
     pruneLinks(st); log(st, 'Deleted road ' + subTag(hit.sub) + ' · ' + hit.sec.title + ' · ' + hit.road.name + (n ? ' and its ' + n + ' PP sheets' : ''));
     return true;
   }
@@ -656,6 +664,7 @@
     const hit = findSheet(st, sheetId);
     if (!hit) throw new Error('No such sheet');
     const copy = { ...clone(hit.sh), id: uid(), title: hit.sh.title + ' (copy)', status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], gen: null };
+    delete copy.dam; /* a duplicate is a plain sheet, not a linked DAM copy */
     hit.seg.sheets.splice(hit.seg.sheets.indexOf(hit.sh) + 1, 0, copy);
     log(st, 'Duplicated sheet ' + hit.sh.title, { t: 'sheet', id: copy.id });
     return copy;
@@ -994,7 +1003,8 @@
       for (const sec of sub.segments) {
         sec.sheets = Array.isArray(sec.sheets) ? sec.sheets : [];
         sec.revs = Array.isArray(sec.revs) ? sec.revs : [];
-        for (const sh of sec.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; sh.discipline = sec.discipline; }
+        for (const sh of sec.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; sh.discipline = sec.discipline;
+          if ('dam' in sh && !(sh.dam && typeof sh.dam === 'object' && Number.isFinite(sh.dam.start) && Number.isFinite(sh.dam.end))) delete sh.dam; }
       }
       const secIds = new Set(sub.segments.map((s) => s.id));
       for (const r of sub.roads) {
@@ -1226,7 +1236,7 @@
   function rangeFor(st, sh) {
     const R = st.settings.numbering || [];
     const hit = findSheet(st, sh.id), sk = hit && hit.seg && hit.seg.key;
-    return (sk && R.find((r) => r.key === 'sec:' + sk)) || (sh.gen && R.find((r) => r.key === 'series:' + sh.gen.series)) || R.find((r) => r.key === 'tpl:' + String(sh.title).trim().toLowerCase()) || R.find((r) => r.key === 'disc:' + sh.discipline) || null;
+    return (sk && R.find((r) => r.key === 'sec:' + sk)) || (sh.gen && R.find((r) => r.key === 'series:' + sh.gen.series)) || (sh.dam && R.find((r) => r.key === 'tpl:drainage area map')) || R.find((r) => r.key === 'tpl:' + String(sh.title).trim().toLowerCase()) || R.find((r) => r.key === 'disc:' + sh.discipline) || null;
   }
   function suggestNumber(st, sh, taken) {
     const r = rangeFor(st, sh); if (!r) return null;
@@ -1415,6 +1425,7 @@
     b.name = segLabel(b);
     const moving = sec.sheets.filter((sh) => sh.gen && sh.gen.road === road.id && sh.gen.start >= x);
     for (const sh of moving) sh.gen.road = b.id;
+    for (const g of sub.segments) for (const sh of g.sheets) if (sh.dam && sh.dam.road === road.id && sh.dam.start >= x) sh.dam.road = b.id;
     road.end = x; road.name = segLabel(road);
     sub.roads.push(b); sortRoads(sub);
     const hadGen = moving.length || sec.sheets.some((q) => q.gen && q.gen.road === road.id);
@@ -1436,6 +1447,8 @@
     const sec = A.sec;
     const off = Math.max(0, ...sec.sheets.filter((q) => q.gen && q.gen.road === a.id).map((q) => q.gen.idx));
     for (const sh of sec.sheets) if (sh.gen && sh.gen.road === b.id) { sh.gen.idx += off; sh.gen.road = a.id; }
+    const doff = Math.max(0, ...A.sub.segments.flatMap((g) => g.sheets).filter((q) => q.dam && q.dam.road === a.id).map((q) => q.dam.idx));
+    for (const g of A.sub.segments) for (const sh of g.sheets) if (sh.dam && sh.dam.road === b.id) { sh.dam.idx += doff; sh.dam.road = a.id; }
     for (const l of st.links) for (const e of [l.src, l.dst]) if (e.t === 'road' && e.id === b.id) e.id = a.id;
     st.links = st.links.filter((l) => !(l.src.t === l.dst.t && l.src.id === l.dst.id));
     a.end = b.end; a.name = segLabel(a);
@@ -1914,6 +1927,110 @@
       csvLine(['B', 'SWP3', 'SWP3 Layout', 'Kuykendahl Rd', '1000', '1480', '40', '', '', '', '', '', '', '', 'Stations as 1000 / 10+00 / 10+00.50 all work', '']),
       csvLine(['B', 'SWP3', '', '', '', '', '', 'SWP3 Summary & Notes', '', '', '', '', '', 'Dec 5, 2026', 'No section? It is picked from the title', ''])].join('\r\n') + '\r\n';
   }
+  /* ---- v3.7 copy Plan & Profile sheet breaks to Drainage Area Map sheets ----
+     A DAM copy is an ordinary sheet in the sub-project's Drainage Area Map section with an optional
+     sh.dam = { road, idx, of, start, end, scale (null = the road's scale), linked, title }. The range shows like a
+     PP sheet range (sheetRange); a manual range (sh.sta) still wins. Linked copies can be re-synced from the road. */
+  function damSection(sub) { return secOf(sub, 'dr-dam') || sub.segments.find((g) => g.discipline === 'Drainage' && /drainage area map/i.test(g.title) && !/overall/i.test(g.title)) || null; }
+  function damTitle(road, r) { const a = roadAlign(road); return 'DAM – ' + String(road.road || 'Road').trim() + (a ? ' (' + a + ')' : '') + ' STA ' + formatStation(r.start) + '–' + formatStation(r.end); }
+  function damRanges(st, sub, road, scale) {
+    if (!hasSta(road)) return [];
+    const sc = scale ? Number(scale) : segScale(sub, road);
+    let r = ppRanges(parseStation(road.start), parseStation(road.end), ftPerSheet(st.settings, sc), st.settings.overlapFt);
+    if (road.reverse) r = r.slice().reverse().map((x, i) => Object.assign({}, x, { idx: i + 1 }));
+    return r;
+  }
+  function damCopiesOf(sub, roadId) { return sub.segments.flatMap((g) => g.sheets.filter((sh) => sh.dam && sh.dam.road === roadId).map((sh) => ({ sh, sec: g }))).sort((a, b) => a.sh.dam.idx - b.sh.dam.idx); }
+  /* every road entry that can be copied: roads of Plan & Profile sections */
+  function damSources(st, subIds) {
+    const out = [];
+    for (const sub of orderedSubs(st)) { if (subIds && !subIds.includes(sub.id)) continue; for (const sec of sub.segments.filter(isPPSec)) for (const road of roadsOf(sub, sec)) out.push({ sub, sec, road }); }
+    return out;
+  }
+  /* plan only (no change). opts: { roads:[roadId] (default every P&P road of the chosen subs), subs:[subId], scale (null = same as the P&P sheets), mode:'update'|'skip', linkedOnly } */
+  function planDam(st, opts) {
+    opts = opts || {};
+    const mode = opts.mode === 'skip' ? 'skip' : 'update';
+    const scale = opts.scale ? Number(opts.scale) : null;
+    if (scale != null && !(ftPerSheet(st.settings, scale) > 0)) throw new Error('Unknown scale ' + opts.scale + '.');
+    const src = damSources(st, opts.subs).filter((x) => !opts.roads || opts.roads.includes(x.road.id));
+    const P = { mode, scale, items: [], create: 0, update: 0, remove: 0, keep: 0, unchanged: 0, skipped: 0, noSta: 0, noTarget: 0, dupTitle: 0 };
+    for (const { sub, sec, road } of src) {
+      const target = damSection(sub);
+      const it = { sub, sec, road, target, create: [], update: [], remove: [], keep: [], unchanged: 0, skipped: false, reason: '' };
+      P.items.push(it);
+      if (!target) { it.reason = 'no Drainage Area Map section'; P.noTarget++; continue; }
+      if (!hasSta(road)) { it.reason = 'no stations yet'; P.noSta++; continue; }
+      let ex = damCopiesOf(sub, road.id);
+      if (opts.linkedOnly) { ex = ex.filter((x) => x.sh.dam.linked !== false); if (!ex.length) { it.skipped = true; it.reason = 'not linked'; continue; } }
+      if (ex.length && mode === 'skip') { it.skipped = true; it.reason = 'already has ' + ex.length + ' DAM sheet' + (ex.length === 1 ? '' : 's'); P.skipped++; continue; }
+      if (ex.length && ex.every((x) => x.sh.dam.linked === false) && !opts.linkedOnly && mode === 'update') { /* unlinked copies are left alone */ it.skipped = true; it.reason = 'existing DAM copies are unlinked'; P.skipped++; continue; }
+      const sc = opts.linkedOnly ? (ex[0] ? ex[0].sh.dam.scale || null : null) : scale;
+      const ranges = damRanges(st, sub, road, sc);
+      const used = new Set();
+      for (const r of ranges) {
+        const title = damTitle(road, r);
+        const m = ex.find((x) => !used.has(x) && x.sh.dam.idx === r.idx);
+        if (m) {
+          used.add(m);
+          const d = m.sh.dam, edited = d.title && m.sh.title !== d.title;
+          if (d.start !== r.start || d.end !== r.end || d.of !== r.of || (d.scale || null) !== (sc || null) || (!edited && m.sh.title !== title)) it.update.push({ sheet: m.sh, range: r, title, edited });
+          else it.unchanged++;
+          continue;
+        }
+        if (target.sheets.some((q) => !q.dam && String(q.title).trim().toLowerCase() === title.toLowerCase())) { it.unchanged++; P.dupTitle++; continue; } /* same sheet already typed by hand */
+        it.create.push({ range: r, title });
+      }
+      for (const x of ex) if (!used.has(x)) (isTouched(x.sh) ? it.keep : it.remove).push(x.sh);
+      it.scale = sc;
+      P.create += it.create.length; P.update += it.update.length; P.remove += it.remove.length; P.keep += it.keep.length; P.unchanged += it.unchanged;
+    }
+    return P;
+  }
+  function applyDam(st, plan, opts) {
+    opts = opts || {};
+    const link = opts.link !== false;
+    const out = { created: 0, updated: 0, removed: 0, kept: 0, ids: [] };
+    for (const it of plan.items) {
+      if (it.skipped || !it.target || (!it.create.length && !it.update.length && !it.remove.length)) { out.kept += (it.keep || []).length; continue; }
+      const live = findRoad(st, it.road.id); if (!live) continue;
+      const sub = live.sub, road = live.road, target = damSection(sub);
+      for (const c of it.create) {
+        const sh = newSheet({ title: c.title, discipline: target.discipline, series: target.title, road: road.road });
+        sh.dam = { road: road.id, idx: c.range.idx, of: c.range.of, start: c.range.start, end: c.range.end, scale: it.scale || null, linked: link, title: c.title };
+        target.sheets.push(sh); sh.number = suggestNumber(st, sh) || '';
+        out.created++; out.ids.push(sh.id);
+      }
+      for (const u of it.update) {
+        const hit = findSheet(st, u.sheet.id); if (!hit) continue;
+        const sh = hit.sh, d = sh.dam;
+        Object.assign(d, { road: road.id, idx: u.range.idx, of: u.range.of, start: u.range.start, end: u.range.end, scale: it.scale || null });
+        if (!u.edited) { sh.title = u.title; d.title = u.title; }
+        sh.road = road.road; out.updated++;
+      }
+      const kill = new Set(it.remove.map((x) => x.id));
+      if (kill.size) { for (const g of sub.segments) g.sheets = g.sheets.filter((q) => !kill.has(q.id)); out.removed += kill.size; }
+      out.kept += it.keep.length;
+      sortDam(sub, target);
+    }
+    if (out.removed) pruneLinks(st);
+    log(st, 'Drainage Area Map copies of P&P sheets: +' + out.created + ' new, ' + out.updated + ' updated, ' + out.removed + ' removed' + (out.kept ? ', ' + out.kept + ' edited kept' : ''));
+    return out;
+  }
+  /* keep a section's own sheets first, then DAM copies by road order and sheet index */
+  function sortDam(sub, sec) {
+    const order = new Map(sub.segments.filter(isPPSec).flatMap((g) => roadsOf(sub, g)).map((r, i) => [r.id, i]));
+    const plain = sec.sheets.filter((q) => !q.dam), dam = sec.sheets.filter((q) => q.dam);
+    dam.sort((a, b) => ((order.get(a.dam.road) ?? 1e9) - (order.get(b.dam.road) ?? 1e9)) || a.dam.idx - b.dam.idx);
+    sec.sheets = plain.concat(dam);
+  }
+  /* linked DAM copies whose road stations / scale changed since they were made */
+  function damOutOfSync(st, subIds) {
+    const P = planDam(st, { subs: subIds, linkedOnly: true, mode: 'update' });
+    return { plan: P, count: P.create + P.update + P.remove, roads: P.items.filter((x) => x.create.length || x.update.length || x.remove.length).map((x) => x.road) };
+  }
+  function resyncDam(st, subIds) { const o = damOutOfSync(st, subIds); return o.count ? applyDam(st, o.plan, { link: true }) : { created: 0, updated: 0, removed: 0, kept: 0, ids: [] }; }
+  function unlinkDam(st, sheetId) { const h = findSheet(st, sheetId); if (!h || !h.sh.dam) throw new Error('Not a DAM copy.'); h.sh.dam.linked = false; log(st, 'Unlinked ' + h.sh.title + ' from its road', { t: 'sheet', id: sheetId }); return h.sh; }
   /* ---- v3.6 branch properties: optional owner / due / milestone / notes on the project, a discipline, a sub-project branch,
      a section or a road entry. Stored in the optional st.props map keyed like the tree nodes
      ('root', 'dtop:<discipline>', 'disc:<subId>:<discipline>', 'seg:<id>', 'road:<id>'). Notes of sections and road entries
@@ -2018,7 +2135,7 @@
       if (!Object.keys(e).length) delete st.props[k];
     }
   }
-  return { roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
