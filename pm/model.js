@@ -105,6 +105,14 @@
   }
   function hasSta(x) { return x.start != null && x.start !== '' && x.end != null && x.end !== '' && Number.isFinite(parseStation(x.start)) && Number.isFinite(parseStation(x.end)); }
   function segLength(seg) { const a = parseStation(seg.start), b = parseStation(seg.end); return Number.isFinite(a) && Number.isFinite(b) && b > a ? Math.round((b - a) * 100) / 100 : 0; }
+  /* v3.6 optional alignment name of a road entry (e.g. "BL FM 1960", "CL Ramp A"). Old data has none. */
+  function cleanAlign(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
+  function roadAlign(r) { return r && typeof r.alignment === 'string' ? cleanAlign(r.alignment) : ''; }
+  /* road name with its alignment for display / exports: "FM 1960 (Alignment: BL FM 1960)" */
+  function roadWithAlign(r, name) { const n = name != null ? name : r ? r.road : '', a = roadAlign(r); return a ? n + ' (Alignment: ' + a + ')' : n; }
+  /* distinct alignments of a group of road entries, in order */
+  function groupAligns(entries) { return [...new Set((entries || []).map(roadAlign).filter(Boolean))]; }
+  function checkAlign(v) { const a = cleanAlign(v); if (a.length > 60) throw new Error('Keep the alignment name to 60 characters or fewer.'); return a; }
   /* label: a section → its title; a road entry → "<Road> Sta <start>–<end>" (just the road name while it has no stations) */
   function segLabel(x) {
     if (x && x.kind === 'section') return x.title;
@@ -510,6 +518,12 @@
     return null;
   }
   /* road name shown for a sheet: generated → its road entry, else the sheet's road tag */
+  /* alignment of the road entry a sheet sits on: generated → its road entry; tagged → the alignment(s) of that road in the section */
+  function sheetAlign(st, sub, sec, sh) {
+    if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); return roadAlign(r); }
+    if (sh.road && sec) return groupAligns(roadsOf(sub, sec).filter((r) => rgSlug(r.road) === rgSlug(sh.road))).join(' / ');
+    return '';
+  }
   function sheetRoad(st, sub, sh) { if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); if (r) return r.road; } return sh.road || ''; }
   function log(st, msg, ref) {
     st.log.unshift(ref ? { t: new Date().toISOString(), msg, ref: { t: ref.t, id: ref.id } } : { t: new Date().toISOString(), msg });
@@ -528,6 +542,7 @@
     if (!isPPSec(hit.seg)) throw new Error('“' + hit.seg.title + '” has no road entries. Use a Plan & Profile section (or turn on roads for it in Settings → Sections).');
     const s = stationsOf(f);
     const road = { id: uid(), kind: 'road', name: '', road: String(f.road || f.name || '').trim(), start: s.start, end: s.end, scale: f.scale ? Number(f.scale) : null, reverse: !!f.reverse, sec: hit.seg.id, notes: f.notes || '', revs: [] };
+    if (f.alignment != null && checkAlign(f.alignment)) road.alignment = checkAlign(f.alignment);
     const v = validateSegment({ ...road, secKey: hit.seg.key }, roadsInKey(st, hit.seg.key));
     if (v.errs.length) throw new Error(v.errs.join(' '));
     road.name = segLabel(road);
@@ -546,7 +561,9 @@
     const v = validateSegment({ ...next, secKey: hit.sec.key }, roadsInKey(st, hit.sec.key));
     if (v.errs.length) throw new Error(v.errs.join(' '));
     next.road = String(next.road || '').trim();
+    if ('alignment' in f) { const a = checkAlign(f.alignment); if (a) next.alignment = a; else delete next.alignment; }
     Object.assign(hit.road, next, { name: segLabel(next) });
+    if ('alignment' in f && !next.alignment) delete hit.road.alignment;
     for (const sh of hit.sec.sheets) if (sh.gen && sh.gen.road === roadId) sh.road = hit.road.road;
     sortRoads(hit.sub);
     log(st, 'Updated road ' + subTag(hit.sub) + ' · ' + hit.sec.title + ' · ' + hit.road.name, { t: 'road', id: roadId });
@@ -717,7 +734,7 @@
   /* milestones */
   function addMilestone(st, name, date) { const m = { id: uid(), name: String(name || '').trim() || 'Milestone', date: date || '' }; st.milestones.push(m); sortMilestones(st); return m; }
   function sortMilestones(st) { st.milestones.sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')); }
-  function removeMilestone(st, id) { st.milestones = st.milestones.filter((m) => m.id !== id); for (const r of allSheets(st)) if (r.sh.milestone === id) r.sh.milestone = ''; }
+  function removeMilestone(st, id) { st.milestones = st.milestones.filter((m) => m.id !== id); for (const r of allSheets(st)) if (r.sh.milestone === id) r.sh.milestone = ''; pruneProps(st); }
 
   /* ---- queries ---- */
   function allSheets(st) {
@@ -821,13 +838,13 @@
   }
   function toCSV(st, rows) {
     const ms = Object.fromEntries(st.milestones.map((m) => [m.id, m.name]));
-    const head = ['Sub-project', 'Discipline', 'Section', 'Road', 'Sheet No', 'Sheet', 'Series', 'Sheet Sta From', 'Sheet Sta To', 'Status', '% Complete', 'Owner', 'Due', 'Milestone', 'Hours Budget', 'Hours Actual', 'QC Done', 'Depends On', 'Generated', 'Notes'];
+    const head = ['Sub-project', 'Discipline', 'Section', 'Road', 'Alignment', 'Sheet No', 'Sheet', 'Series', 'Sheet Sta From', 'Sheet Sta To', 'Status', '% Complete', 'Owner', 'Due', 'Milestone', 'Hours Budget', 'Hours Actual', 'QC Done', 'Depends On', 'Generated', 'Notes'];
     const lines = [head.join(',')];
     for (const r of rows) {
       const sh = r.sh;
       const qcDone = st.settings.qcSteps.filter((q) => sh.qc && sh.qc[q]).length + '/' + st.settings.qcSteps.length;
       const deps = linksOf(st, { t: 'sheet', id: sh.id }).in.filter((l) => l.kind === 'dep').map((l) => refLabel(st, l.src)).join('; ');
-      lines.push([subTag(r.sub), r.seg.discipline, r.seg.title, sheetRoad(st, r.sub, sh), sh.number, sh.title, sh.series,
+      lines.push([subTag(r.sub), r.seg.discipline, r.seg.title, sheetRoad(st, r.sub, sh), sheetAlign(st, r.sub, r.seg, sh), sh.number, sh.title, sh.series,
         sh.gen ? formatStation(sh.gen.start) : '', sh.gen ? formatStation(sh.gen.end) : '', sh.status, sh.pct, sh.owner, sh.due, ms[sh.milestone] || '',
         sh.hoursBudget, sh.hoursActual, qcDone, deps, sh.gen ? 'yes' : '', sh.notes].map(csvCell).join(','));
     }
@@ -835,14 +852,14 @@
   }
   function ppCSV(st, opts) {
     const S = ppSummary(st, opts);
-    const L = [['Sub-project', 'Discipline', 'Section', 'Road', 'Start Sta', 'End Sta', 'Length ft', 'Scale', 'Ft per sheet', 'Overlap ft', 'PP sheets'].join(',')];
+    const L = [['Sub-project', 'Discipline', 'Section', 'Road', 'Alignment', 'Start Sta', 'End Sta', 'Length ft', 'Scale', 'Ft per sheet', 'Overlap ft', 'PP sheets'].join(',')];
     const row = (a) => L.push(a.map(csvCell).join(','));
-    for (const r of S.rows) row([subTag(r.sub), r.discipline, r.sec.title, r.road.road, formatStation(r.road.start), formatStation(r.road.end), r.length, r.scale, r.ft, st.settings.overlapFt, r.count]);
-    for (const sub of st.subs) for (const sec of sub.segments.filter(isPPSec)) { const n = S.rows.filter((r) => r.sec === sec).reduce((a, b) => a + b.count, 0); if (n) row([subTag(sub) + ' total', sec.discipline, sec.title, '', '', '', '', '', '', '', n]); }
-    for (const b of S.bySub) for (const d of DISCIPLINES) row([subTag(b.sub) + ' total', d, '', '', '', '', '', '', '', '', b.disc[d]]);
-    for (const b of S.bySub) row([subTag(b.sub) + ' total', 'All', '', '', '', '', b.length, '', '', '', b.total]);
-    for (const d of DISCIPLINES) row(['Project total', d, '', '', '', '', '', '', '', '', S.byDisc[d]]);
-    row(['Project total', 'All', '', '', '', '', S.length, '', '', '', S.total]);
+    for (const r of S.rows) row([subTag(r.sub), r.discipline, r.sec.title, r.road.road, roadAlign(r.road), formatStation(r.road.start), formatStation(r.road.end), r.length, r.scale, r.ft, st.settings.overlapFt, r.count]);
+    for (const sub of st.subs) for (const sec of sub.segments.filter(isPPSec)) { const n = S.rows.filter((r) => r.sec === sec).reduce((a, b) => a + b.count, 0); if (n) row([subTag(sub) + ' total', sec.discipline, sec.title, '', '', '', '', '', '', '', '', n]); }
+    for (const b of S.bySub) for (const d of DISCIPLINES) row([subTag(b.sub) + ' total', d, '', '', '', '', '', '', '', '', '', b.disc[d]]);
+    for (const b of S.bySub) row([subTag(b.sub) + ' total', 'All', '', '', '', '', '', b.length, '', '', '', b.total]);
+    for (const d of DISCIPLINES) row(['Project total', d, '', '', '', '', '', '', '', '', '', S.byDisc[d]]);
+    row(['Project total', 'All', '', '', '', '', '', S.length, '', '', '', S.total]);
     return L.join('\r\n') + '\r\n';
   }
 
@@ -982,6 +999,7 @@
       const secIds = new Set(sub.segments.map((s) => s.id));
       for (const r of sub.roads) {
         r.kind = 'road'; r.revs = Array.isArray(r.revs) ? r.revs : [];
+        if ('alignment' in r) { const a = typeof r.alignment === 'string' ? cleanAlign(r.alignment).slice(0, 60) : ''; if (a) r.alignment = a; else delete r.alignment; }
         if (!secIds.has(r.sec)) r.sec = (secOf(sub, 'dr-pp') || sub.segments.find(isPPSec) || sub.segments[0]).id;
         r.name = segLabel(r);
       }
@@ -989,6 +1007,7 @@
     }
     for (const t of st.index) if (!t.sec || !secDef(st, t.sec)) { t.sec = mapSection(st, t.title, t.discipline); ensureSection(st, t.sec); }
     pruneLinks(st);
+    pruneProps(st);
     return st;
   }
   function backupFile(st) { return { fmt: 'pm-plain-backup', v: SCHEMA, exported: new Date().toISOString(), data: st }; }
@@ -1079,6 +1098,7 @@
   }
   function pruneLinks(st) {
     st.links = st.links.filter((l) => resolve(st, l.src) && resolve(st, l.dst));
+    pruneProps(st);
   }
   function blockers(st, ref) { return linksOf(st, ref).in.filter((l) => l.kind === 'dep' && !isDone(st, l.src)).map((l) => l.src); }
   function needsUpdate(st, ref) { return linksOf(st, ref).in.filter((l) => revCount(st, l.src) > (l.ack || 0)); }
@@ -1373,7 +1393,7 @@
     try {
       rows.forEach((r, i) => {
         try {
-          const f = {}; for (const k of ['road', 'start', 'end', 'scale']) if (k in r && r[k] != null) f[k] = k === 'scale' ? (r[k] === '' ? null : Number(String(r[k]).replace(/^1"\s*=\s*|'$/g, ''))) : r[k];
+          const f = {}; for (const k of ['road', 'start', 'end', 'scale', 'alignment']) if (k in r && r[k] != null) f[k] = k === 'scale' ? (r[k] === '' ? null : Number(String(r[k]).replace(/^1"\s*=\s*|'$/g, ''))) : r[k];
           const id = r.roadId || r.segId;
           const x = id ? updateRoad(st, id, f) : addRoad(st, r.secId, f);
           id ? out.updated++ : out.added++; out.warns.push(...x.warns);
@@ -1391,6 +1411,7 @@
     if (!Number.isFinite(x)) throw new Error('Split station must look like 10+00, 1000 or 10+00.50.');
     if (!(x > road.start && x < road.end)) throw new Error('Split station must be between ' + formatStation(road.start) + ' and ' + formatStation(road.end) + '.');
     const b = { id: uid(), kind: 'road', name: '', road: road.road, start: x, end: road.end, scale: road.scale, reverse: !!road.reverse, sec: road.sec, notes: road.notes || '', revs: [] };
+    if (roadAlign(road)) b.alignment = roadAlign(road);
     b.name = segLabel(b);
     const moving = sec.sheets.filter((sh) => sh.gen && sh.gen.road === road.id && sh.gen.start >= x);
     for (const sh of moving) sh.gen.road = b.id;
@@ -1418,6 +1439,7 @@
     for (const l of st.links) for (const e of [l.src, l.dst]) if (e.t === 'road' && e.id === b.id) e.id = a.id;
     st.links = st.links.filter((l) => !(l.src.t === l.dst.t && l.src.id === l.dst.id));
     a.end = b.end; a.name = segLabel(a);
+    if (!roadAlign(a) && roadAlign(b)) a.alignment = roadAlign(b);
     A.sub.roads = A.sub.roads.filter((g) => g !== b);
     if (sec.sheets.some((q) => q.gen && q.gen.road === a.id)) applyGenerate(st, a.id, planGenerate(st, a.id), { removeTouched: false, quiet: true });
     log(st, 'Merged into ' + a.name, { t: 'road', id: a.id });
@@ -1428,7 +1450,7 @@
     const hit = findRoad(st, roadId), to = findSub(st, toSubId);
     if (!hit) throw new Error('No such road entry'); if (!to) throw new Error('No such sub-project');
     const tsec = secOf(to, hit.sec.key);
-    const r = addRoad(st, tsec.id, { road: hit.road.road, start: hit.road.start, end: hit.road.end, scale: hit.road.scale, notes: hit.road.notes, reverse: hit.road.reverse });
+    const r = addRoad(st, tsec.id, { road: hit.road.road, start: hit.road.start, end: hit.road.end, scale: hit.road.scale, notes: hit.road.notes, reverse: hit.road.reverse, alignment: roadAlign(hit.road) });
     const src = hit.sec.sheets.filter((sh) => sh.gen && sh.gen.road === roadId);
     if (opts && opts.sheets) for (const sh of src) {
       const c = { ...clone(sh), id: uid(), status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], number: '' };
@@ -1489,7 +1511,8 @@
   }
   function roadTxt(st, sub, r) {
     const p = roadPP(st, sub, r);
-    return hasSta(r) ? r.road + ' Sta ' + formatStation(r.start) + '–' + formatStation(r.end) + ' (' + Math.round(p.length).toLocaleString('en-US') + ' ft at 1"=' + p.scale + "', " + pl(p.count, 'PP sheet') + ')' : r.road + ' (stations not set yet)';
+    const nm = roadAlign(r) ? r.road + ' [alignment ' + roadAlign(r) + ']' : r.road;
+    return hasSta(r) ? nm + ' Sta ' + formatStation(r.start) + '–' + formatStation(r.end) + ' (' + Math.round(p.length).toLocaleString('en-US') + ' ft at 1"=' + p.scale + "', " + pl(p.count, 'PP sheet') + ')' : nm + ' (stations not set yet)';
   }
   function narrative(st, today) {
     today = today || todayISO();
@@ -1586,7 +1609,7 @@
     const tree = DISCIPLINES.map((d) => ({ disc: d, stats: R.discs.find((x) => x.disc === d), subs: orderedSubs(st).map((sub) => ({ sub, stats: branchStats(st, sub, d, null, today),
       secs: sectionsOf(sub, d).map((sec) => {
         const p = progress(sec.sheets), pp = isPPSec(sec);
-        const roads = pp ? roadGroups(sub, sec).map((g) => ({ name: g.name, spans: g.entries.map((r) => hasSta(r) ? formatStation(r.start) + ' – ' + formatStation(r.end) : 'stations not set'),
+        const roads = pp ? roadGroups(sub, sec).map((g) => ({ name: g.name, aligns: groupAligns(g.entries), spans: g.entries.map((r) => hasSta(r) ? formatStation(r.start) + ' – ' + formatStation(r.end) : 'stations not set'),
           pp: g.entries.reduce((a, r) => a + roadPP(st, sub, r).count, 0), sheets: sheetsOfGroup(sub, sec, g).map((sh) => ({ sh, range: sheetRange(sh) })) })) : [];
         return { sec, pp, total: sec.sheets.length, done: p.done, pct: p.pct, ppTotal: pp ? segPP(st, sub, sec).total : 0, roads, other: (pp ? otherSheets(sub, sec) : sec.sheets).map((sh) => ({ sh, range: sheetRange(sh) })) };
       }) })) }));
@@ -1617,7 +1640,7 @@
       return { disc: T.disc, lead: String(N ? N.text : '').split(/(?<=\.)\s/)[0], facts: facts(T.stats, rows, R.pp.byDisc[T.disc]), groups: Object.fromEntries(Object.entries(groupSecs(allSecs)).map(([k, v]) => [k, v.length])), note: N && N.note,
         subs: T.subs.map((S) => { const r2 = rows.filter((x) => x.sub === S.sub), n2 = N && N.subs.find((y) => y.sub === S.sub);
           return { sub: S.sub, lead: String(n2 ? n2.text.replace(/^[^—]*— \w+: /, '') : '').split(/(?<=\.)\s/)[0], facts: facts(S.stats, r2, S.stats.pp || 0), groups: groupSecs(S.secs), note: n2 && n2.note,
-            roads: S.secs.filter((x) => x.pp).flatMap((x) => x.roads.map((g) => ({ sec: x.sec.title, name: g.name, spans: g.spans, pp: g.pp,
+            roads: S.secs.filter((x) => x.pp).flatMap((x) => x.roads.map((g) => ({ sec: x.sec.title, name: g.name, aligns: g.aligns || [], spans: g.spans, pp: g.pp,
               scale: [...new Set(g.sheets.map((y) => sheetScale(st, S.sub, y.sh)).filter(Boolean))].map((v) => '1" = ' + v + "'").join(', '),
               sheets: g.sheets.map((y) => ({ label: y.sh.gen ? 'PP ' + y.sh.gen.idx : y.sh.title, number: y.sh.number || '', range: y.range ? formatStation(y.range.start) + ' – ' + formatStation(y.range.end) + (y.range.manual ? ' *' : '') : 'stations not set', status: y.sh.status })) }))) }; }) }; });
     /* attention */
@@ -1683,6 +1706,7 @@
     ['depends', 'Depends on', ['depends on', 'depends', 'prerequisite', 'prerequisites', 'after']],
     ['sstart', 'Sheet start station', ['sheet start station', 'sheet start', 'sheet from', 'sheet sta start']],
     ['send', 'Sheet end station', ['sheet end station', 'sheet end', 'sheet to', 'sheet sta end']],
+    ['alignment', 'Alignment', ['alignment', 'alignment name', 'align', 'road alignment', 'baseline', 'centerline']],
   ];
   function parseCSV(text) {
     let t = String(text || '').replace(/^\uFEFF/, '');
@@ -1784,7 +1808,7 @@
         if (!secTxt) it.warns.push('→ section “' + sdef.title + '”.');
         targets = [sdef];
       }
-      it.f = { sub, road, start: a, end: b, scale, disc, status, due, title, series, ppidx, number: get(r, 'number'), owner: get(r, 'owner'), notes: get(r, 'notes'), depends: get(r, 'depends'), sheetStart: Number.isFinite(sa2) ? sa2 : null, sheetEnd: Number.isFinite(sb2) ? sb2 : null, sec: targets[0] || null };
+      it.f = { alignment: cleanAlign(get(r, 'alignment')).slice(0, 60), sub, road, start: a, end: b, scale, disc, status, due, title, series, ppidx, number: get(r, 'number'), owner: get(r, 'owner'), notes: get(r, 'notes'), depends: get(r, 'depends'), sheetStart: Number.isFinite(sa2) ? sa2 : null, sheetEnd: Number.isFinite(sb2) ? sb2 : null, sec: targets[0] || null };
       if (it.f.number && it.kind !== 'road') { if (nums.has(it.f.number)) it.warns.push('Duplicate sheet number ' + it.f.number + ' (also ' + nums.get(it.f.number) + ').'); else nums.set(it.f.number, 'row ' + it.line); }
       if (!it.errors.length && it.kind === 'sheet') {
         const sk = sub.id + '|' + sdef.key + '|' + title.toLowerCase();
@@ -1835,7 +1859,9 @@
     for (const g of plan.groups) {
       const rows = g.rows.filter((x) => !x.errors.length); if (!rows.length) continue;
       let road = g.existing;
-      if (!road) { const sec = secOf(g.sub, g.sdef.key); road = addRoad(st, sec.id, { road: g.road, start: g.start, end: g.end, scale: g.scale || undefined, notes: (rows.find((x) => x.kind === 'road') || {}).f ? rows.find((x) => x.kind === 'road').f.notes : '' }).road; made.roads++; }
+      const al = (rows.find((x) => x.f && x.f.alignment) || { f: {} }).f.alignment || '';
+      if (!road) { const sec = secOf(g.sub, g.sdef.key); road = addRoad(st, sec.id, { road: g.road, start: g.start, end: g.end, scale: g.scale || undefined, alignment: al, notes: (rows.find((x) => x.kind === 'road') || {}).f ? rows.find((x) => x.kind === 'road').f.notes : '' }).road; made.roads++; }
+      else if (al && !roadAlign(road)) road.alignment = al; /* merge: fill a missing alignment, never overwrite one */
       roadOf.set(g, road);
       const wantPP = hasSta(road) && (rows.some((x) => x.kind === 'pp') || (plan.opts.defaults && rows.some((x) => x.kind === 'road')));
       if (wantPP) { const p = planGenerate(st, road.id); applyGenerate(st, road.id, p, { removeTouched: false, quiet: true }); made.pp += p.create.length; }
@@ -1864,17 +1890,17 @@
     return made;
   }
   function csvLine(a) { return a.map(csvCell).join(','); }
-  const CSV_HEAD = ['Sub-project', 'Discipline', 'Section', 'Road', 'Start station', 'End station', 'Scale', 'Sheet title', 'Series', 'PP index', 'Sheet number', 'Status', 'Owner', 'Due date', 'Notes', 'Depends on', 'Sheet start station', 'Sheet end station'];
+  const CSV_HEAD = ['Sub-project', 'Discipline', 'Section', 'Road', 'Start station', 'End station', 'Scale', 'Sheet title', 'Series', 'PP index', 'Sheet number', 'Status', 'Owner', 'Due date', 'Notes', 'Depends on', 'Sheet start station', 'Sheet end station', 'Alignment'];
   function exportImportCSV(st) {
     const L = [csvLine(CSV_HEAD)];
     const deps = (sh) => linksOf(st, { t: 'sheet', id: sh.id }).in.filter((l) => l.kind === 'dep' && l.src.t === 'sheet').map((l) => { const r = resolve(st, l.src); return r ? r.sh.title : ''; }).filter(Boolean).join('; ');
     for (const sub of st.subs) for (const sec of sub.segments) {
       const rs = roadsOf(sub, sec), byId = new Map(rs.map((r) => [r.id, r]));
-      for (const g of rs) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', '', '', '', '', '', '', g.notes || '', '', '', '']));
+      for (const g of rs) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', '', '', '', '', '', '', g.notes || '', '', '', '', roadAlign(g)]));
       for (const sh of sec.sheets) {
         const g = sh.gen && byId.get(sh.gen.road), rg = sheetRange(sh), rs2 = rg ? [formatStation(rg.start), formatStation(rg.end)] : ['', ''];
-        if (g) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', sh.gen.series, sh.gen.idx, sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2)));
-        else L.push(csvLine([subTag(sub), sec.discipline, sec.title, sh.road || '', '', '', '', sh.title, sh.gen ? '' : sh.series || '', '', sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2)));
+        if (g) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', sh.gen.series, sh.gen.idx, sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2, [roadAlign(g)])));
+        else L.push(csvLine([subTag(sub), sec.discipline, sec.title, sh.road || '', '', '', '', sh.title, sh.gen ? '' : sh.series || '', '', sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2, [sh.road ? sheetAlign(st, sub, sec, sh) : ''])));
       }
     }
     return '\uFEFF' + L.join('\r\n') + '\r\n';
@@ -1888,7 +1914,111 @@
       csvLine(['B', 'SWP3', 'SWP3 Layout', 'Kuykendahl Rd', '1000', '1480', '40', '', '', '', '', '', '', '', 'Stations as 1000 / 10+00 / 10+00.50 all work', '']),
       csvLine(['B', 'SWP3', '', '', '', '', '', 'SWP3 Summary & Notes', '', '', '', '', '', 'Dec 5, 2026', 'No section? It is picked from the title', ''])].join('\r\n') + '\r\n';
   }
-  return { reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  /* ---- v3.6 branch properties: optional owner / due / milestone / notes on the project, a discipline, a sub-project branch,
+     a section or a road entry. Stored in the optional st.props map keyed like the tree nodes
+     ('root', 'dtop:<discipline>', 'disc:<subId>:<discipline>', 'seg:<id>', 'road:<id>'). Notes of sections and road entries
+     stay in their existing .notes field. Sheets keep their own fields. Old data without st.props reads as empty. ---- */
+  const PROP_FIELDS = ['owner', 'due', 'milestone', 'notes'];
+  function propTarget(st, key) {
+    const k = String(key || ''), i = k.indexOf(':'), t = i < 0 ? k : k.slice(0, i), rest = i < 0 ? '' : k.slice(i + 1);
+    if (k === 'root') return { t: 'root', key: k, label: st.project.name };
+    if (t === 'dtop') return DISCIPLINES.includes(rest) ? { t, key: k, disc: rest, label: rest } : null;
+    if (t === 'disc') { const j = rest.lastIndexOf(':'), sub = findSub(st, rest.slice(0, j)), d = rest.slice(j + 1); return sub && DISCIPLINES.includes(d) ? { t, key: k, sub, disc: d, label: subTag(sub) + ' · ' + d } : null; }
+    if (t === 'seg') { const x = findSeg(st, rest); return x ? { t, key: k, sub: x.sub, seg: x.seg, disc: x.seg.discipline, obj: x.seg, label: subTag(x.sub) + ' · ' + x.seg.title } : null; }
+    if (t === 'road') { const x = findRoad(st, rest); return x && x.sec ? { t, key: k, sub: x.sub, seg: x.sec, road: x.road, disc: x.sec.discipline, obj: x.road, label: subTag(x.sub) + ' · ' + segLabel(x.road) } : null; }
+    return null;
+  }
+  function getProps(st, key) {
+    const tg = propTarget(st, key);
+    const raw = (st.props && st.props[key]) || {};
+    const out = { owner: String(raw.owner || ''), due: String(raw.due || ''), milestone: String(raw.milestone || ''), notes: String(raw.notes || '') };
+    if (tg && tg.obj) out.notes = String(tg.obj.notes || '');
+    return out;
+  }
+  function checkProps(st, f) {
+    const errs = [];
+    if (f.due != null && f.due !== '' && !(/^\d{4}-\d{2}-\d{2}$/.test(f.due) && !isNaN(Date.parse(f.due + 'T00:00:00')))) errs.push('Due date must be a date (YYYY-MM-DD).');
+    if (f.milestone != null && f.milestone !== '' && !st.milestones.some((m) => m.id === f.milestone)) errs.push('Unknown milestone.');
+    if (f.owner != null && String(f.owner).length > 80) errs.push('Owner name is too long.');
+    if (f.notes != null && String(f.notes).length > 10000) errs.push('Notes are too long.');
+    return errs;
+  }
+  /* set some of owner / due / milestone / notes; empty values are removed so the data stays small */
+  function setProps(st, key, f) {
+    const tg = propTarget(st, key);
+    if (!tg) throw new Error('Nothing to edit here.');
+    f = f || {};
+    const errs = checkProps(st, f); if (errs.length) throw new Error(errs.join(' '));
+    const cur = getProps(st, key), changed = [];
+    for (const k of PROP_FIELDS) {
+      if (!(k in f)) continue;
+      const v = k === 'notes' ? String(f[k] == null ? '' : f[k]) : String(f[k] == null ? '' : f[k]).trim();
+      if (v === cur[k]) continue;
+      changed.push(k);
+      if (k === 'notes' && tg.obj) { tg.obj.notes = v; continue; }
+      if (!st.props || typeof st.props !== 'object') st.props = {};
+      const e = Object.assign({}, st.props[key]);
+      if (v) e[k] = v; else delete e[k];
+      if (Object.keys(e).length) st.props[key] = e; else delete st.props[key];
+    }
+    if (changed.length) log(st, tg.label + ': ' + changed.join(', ') + ' updated', tg.obj ? { t: tg.t, id: tg.obj.id } : null);
+    return { changed };
+  }
+  /* sheets under a node */
+  function propSheets(st, tg) {
+    if (tg.t === 'root') return allSheets(st).map((r) => r.sh);
+    if (tg.t === 'dtop') return st.subs.flatMap((sub) => sectionsOf(sub, tg.disc).flatMap((g) => g.sheets));
+    if (tg.t === 'disc') return sectionsOf(tg.sub, tg.disc).flatMap((g) => g.sheets);
+    if (tg.t === 'seg') return tg.seg.sheets.slice();
+    if (tg.t === 'road') { const g = roadGroups(tg.sub, tg.seg).find((x) => x.entries.includes(tg.road)); return g ? sheetsOfGroup(tg.sub, tg.seg, g) : tg.seg.sheets.filter((x) => x.gen && x.gen.road === tg.road.id); }
+    return [];
+  }
+  /* roll-up for the properties panel: counts, % complete, hours, dates, flags and the connectors that touch the branch */
+  function rollup(st, key, today) {
+    today = today || todayISO();
+    const tg = propTarget(st, key); if (!tg) return null;
+    const sheets = propSheets(st, tg), p = progress(sheets);
+    const ids = new Set(sheets.map((x) => 'sheet:' + x.id));
+    if (tg.t === 'seg' || tg.t === 'root' || tg.t === 'dtop' || tg.t === 'disc') for (const sub of st.subs) for (const g of sub.segments) {
+      const inside = tg.t === 'root' || (tg.t === 'dtop' && g.discipline === tg.disc) || (tg.t === 'disc' && sub === tg.sub && g.discipline === tg.disc) || (tg.t === 'seg' && g === tg.seg);
+      if (inside) { ids.add('seg:' + g.id); for (const r of roadsOf(sub, g)) ids.add('road:' + r.id); }
+    }
+    if (tg.t === 'road') ids.add('road:' + tg.road.id);
+    const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+    const dues = sheets.map((x) => x.due).filter(Boolean).sort();
+    const pr = getProps(st, key);
+    const lin = [], lout = [], internal = [];
+    for (const l of st.links) {
+      const a = ids.has(rk(l.src)), b = ids.has(rk(l.dst));
+      if (a && b) internal.push(l); else if (b) lin.push(l); else if (a) lout.push(l);
+    }
+    return {
+      t: tg.t, label: tg.label, total: sheets.length, done: p.done, pct: p.pct,
+      hoursBudget: Math.round(sheets.reduce((a, x) => a + num(x.hoursBudget), 0) * 10) / 10,
+      hoursActual: Math.round(sheets.reduce((a, x) => a + num(x.hoursActual), 0) * 10) / 10,
+      overdue: sheets.filter((x) => isOverdue(x, today)).length,
+      blocked: sheets.filter((x) => x.status !== 'Done' && blockers(st, { t: 'sheet', id: x.id }).length).length,
+      update: sheets.filter((x) => needsUpdate(st, { t: 'sheet', id: x.id }).length).length,
+      unassigned: sheets.filter((x) => !x.owner).length,
+      owners: [...new Set(sheets.map((x) => x.owner).filter(Boolean))].sort(),
+      firstDue: dues[0] || '', lastDue: dues[dues.length - 1] || '',
+      lateVsDue: pr.due ? sheets.filter((x) => x.due && x.due > pr.due && x.status !== 'Done').length : 0,
+      overdueSelf: !!(pr.due && pr.due < today && !(sheets.length && p.done === sheets.length)),
+      linksIn: lin, linksOut: lout, linksInternal: internal,
+      blockingIn: lin.filter((l) => l.kind === 'dep' && !isDone(st, l.src)).length,
+    };
+  }
+  /* drop properties whose branch is gone (deleted section or road entry) and anything that is not a known field */
+  function pruneProps(st) {
+    if (!st.props || typeof st.props !== 'object' || Array.isArray(st.props)) { delete st.props; return; }
+    for (const k of Object.keys(st.props)) {
+      const e = st.props[k], tg = propTarget(st, k);
+      if (!tg || !e || typeof e !== 'object') { delete st.props[k]; continue; }
+      for (const f of Object.keys(e)) if (!['owner', 'due', 'milestone', 'notes'].includes(f) || typeof e[f] !== 'string' || !e[f] || (f === 'notes' && tg.obj) || (f === 'milestone' && !(st.milestones || []).some((m) => m.id === e[f]))) delete e[f];
+      if (!Object.keys(e).length) delete st.props[k];
+    }
+  }
+  return { roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
