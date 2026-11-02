@@ -8,6 +8,7 @@
   const KEY = 'pm.data.v3', UIKEY = 'pm.ui.v3', OLDKEY = 'pm.vault.v1', V2KEY = 'pm.data.v2', V2BAK = 'pm.data.v2.pre-v3-backup', V2UI = 'pm.ui.v2', V31BAK = 'pm.data.v3.pre-v3.2-backup';
   const BACKUP_DAYS = 14;
   const $ = (s, r) => (r || document).querySelector(s);
+  const G = window.PMLinkGeom;
   const SVGNS = 'http://www.w3.org/2000/svg';
 
   let st = null;
@@ -22,7 +23,7 @@
   let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, rpt: ui.rpt, filt })); }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, rpt: ui.rpt, hideStart: ui.hideStart, filt })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -179,12 +180,15 @@
     set('#fOwner', [['', 'All owners'], ['(unassigned)', 'Unassigned']].concat(owners), filt.owner);
     set('#fDisc', [['', 'Drainage + SWP3'], 'Drainage', 'SWP3'], filt.discipline);
     set('#fFlag', [['', 'All sheets'], ['update', '⟳ Needs update'], ['blocked', '⛓ Blocked'], ['ready', '▶ Ready to start'], ['linked', '↔ Has connectors']], filt.flag);
+    const nf = [filt.status, filt.owner, filt.discipline, filt.flag].filter(Boolean).length, fc = $('#filtCount');
+    if (fc) { fc.hidden = !nf; fc.textContent = String(nf); $('#filtMenu').classList.toggle('active', !!nf); }
   }
 
   /* ---------- render ---------- */
   function renderAll() {
     if (!VIEWS.includes(ui.view)) ui.view = 'tree';
     saveUI();
+    document.body.classList.toggle('view-list', ui.view === 'list');
     $('#appTitle').textContent = st.project.name || 'Project Tracker';
     fillFilterSelects();
     renderRail();
@@ -747,9 +751,10 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   function renderTree() {
     const empty = !st.subs.some((x) => x.roads.length || x.segments.some((g) => g.sheets.length));
     let eh = $('#emptyHint');
-    if (empty && !eh) {
+    if (empty && ui.hideStart && eh) { eh.remove(); eh = null; }
+    if (empty && !eh && !ui.hideStart) {
       const first = M.orderedSubs(st)[0], pp = M.secOf(first, 'dr-pp') || first.segments.find(M.isPPSec);
-      eh = h('div', { id: 'emptyHint', class: 'emptyhint' }, h('b', {}, 'Start here'),
+      eh = h('div', { id: 'emptyHint', class: 'emptyhint' }, h('button', { type: 'button', class: 'ehx', 'aria-label': 'Close the start card', title: 'Close', onclick: () => { ui.hideStart = true; saveUI(); const e = $('#emptyHint'); if (e) e.remove(); } }, '×'), h('b', {}, 'Start here'),
         h('p', {}, 'Each discipline has sub-projects A–D, and each of those has the drainage sections. Open a section and press ', h('b', {}, '+'), ' to add sheets. In a Plan & Profile section you only type the road name; stations can come later. ', h('kbd', {}, 'Ctrl/Cmd+K'), ' jumps anywhere, ', h('kbd', {}, '?'), ' shows shortcuts.'),
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn sm', id: 'emptyStd', onclick: () => { const n = commit(() => st.subs.reduce((a, s) => a + M.addStandardSet(st, s.id).length, 0)); if (n) { for (const s of st.subs) DISCS.forEach((d) => openBranch(s.id, d)); saveUI(); renderAll(); toast('Added ' + plural(n, 'standard sheet') + ' (one per section) to A–D. Undo with Ctrl+Z.'); } } }, '+ Standard sheet set for A–D'),
@@ -776,9 +781,12 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     lastNodes = nodes;
     drawLinks(nodes, maxX, maxY);
     $('#stage').dataset.w = maxX; $('#stage').dataset.h = maxY; $('#stage').dataset.ry = nodes[0].y + nodes[0].h / 2;
-    if (firstFit) { firstFit = false; requestAnimationFrame(() => fit(true)); } else applyView();
+    /* v3.5: re-fit after big changes (standard sheet set, CSV import, expand / collapse all) so nothing is left off screen */
+    const bigChange = lastCount && Math.abs(nodes.length - lastCount) >= 12;
+    lastCount = nodes.length;
+    if (firstFit) { firstFit = false; requestAnimationFrame(() => fit(true)); } else if (bigChange) { applyView(); autoFit = true; requestAnimationFrame(() => { if (autoFit) fit(true); }); } else applyView();
   }
-  let lastNodes = [];
+  let lastNodes = [], lastCount = 0, autoFit = false;
   /* endpoint: the node itself, or its nearest visible ancestor when collapsed. Road entries attach to their section. */
   function nodeFor(map, ref) {
     const r = M.resolve(st, ref);
@@ -788,6 +796,14 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     return (r.t === 'sheet' && map.get('sheet:' + r.sh.id)) || (bk && map.get(bk)) || map.get('seg:' + r.seg.id) || map.get('disc:' + r.sub.id + ':' + d) || map.get('dtop:' + d) || map.get('root') || null;
   }
   function selKey() { return sel ? (sel.type === 'root' ? 'root' : sel.type + ':' + sel.id) : null; }
+  /* v3.5 connectors: rounded orthogonal routes on the left of the nodes (where the handle is), drawn behind the nodes,
+     one lane per overlapping span (PMLinkGeom), coloured by state: blocking (prerequisite open) / done / needs update / update link. */
+  function linkState(l) {
+    if (M.revCount(st, l.src) > (l.ack || 0)) return 'upd';
+    if (l.kind === 'update') return 'info';
+    return M.isDone(st, l.src) ? 'ok' : 'blk';
+  }
+  const LSTATE = { blk: 'prerequisite not done yet (blocking)', ok: 'prerequisite done', upd: 'needs update: the source was revised', info: 'update link' };
   function drawLinks(nodes, maxX, maxY) {
     const svg = $('#links'), g = $('#linkG');
     g.replaceChildren();
@@ -803,61 +819,126 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       const mark = (k, c) => { const n = nodeFor(map, { t: k.split(':')[0], id: k.split(':')[1] }); const el = n && document.querySelector('.node[data-key="' + n.key + '"]'); if (el) el.classList.add(c); };
       imp.up.forEach((k) => mark(k, 'imp-up')); imp.down.forEach((k) => mark(k, 'imp-down')); mark(impactKey, 'imp-self');
     }
-    const fan = new Map();
+    /* one drawn connector per visible node pair (collapsed branches fold several links into one) */
+    const pairs = new Map();
     for (const l of st.links) {
       const a = nodeFor(map, l.src), b = nodeFor(map, l.dst);
       if (!a || !b || a === b) continue;
       const related = sk && (M.rk(l.src) === sk || M.rk(l.dst) === sk || a.key === sk || b.key === sk);
       const inImpact = imp && ([M.rk(l.src), M.rk(l.dst)].every((k) => k === impactKey || imp.up.has(k) || imp.down.has(k)));
       if (ui.linkSel && !related && !inImpact) continue;
-      const n = (fan.get(a.key) || 0) + 1; fan.set(a.key, n);
-      const x1 = a.x + a.w + 16, y1 = a.y + a.h / 2 + Math.min(n, 4) * 3 - 6, x2 = b.x + b.w + 16, y2 = b.y + b.h / 2;
-      const bulge = 50 + Math.min(260, Math.abs(y2 - y1) * 0.18) + Math.abs(x2 - x1) * 0.1;
-      const cx = Math.max(x1, x2) + bulge;
-      const cls = ['lnk', M.isCross(st, l) ? 'cross' : 'same', l.kind === 'update' ? 'upd' : 'dep'];
-      if (M.wrongWay(st, l)) cls.push('wrong');
-      if (M.revCount(st, l.src) > (l.ack || 0)) cls.push('stale');
-      if (related || inImpact) cls.push('on');
-      const path = s('path', { d: 'M' + x1 + ' ' + y1 + ' C' + cx + ' ' + y1 + ',' + cx + ' ' + y2 + ',' + x2 + ' ' + y2, class: cls.join(' '), 'marker-end': 'url(#arw)', 'data-a': a.key, 'data-b': b.key, 'data-id': l.id });
-      const t = s('title'); t.textContent = M.refLabel(st, l.src) + (l.kind === 'dep' ? '  →  needed first by  →  ' : '  →  update  →  ') + M.refLabel(st, l.dst); path.append(t);
-      g.append(path);
+      const pk = a.key + '>' + b.key;
+      const pr = pairs.get(pk) || { id: pk, a, b, links: [], related: false, inImpact: false };
+      pr.links.push(l); pr.related = pr.related || !!related; pr.inImpact = pr.inImpact || !!inImpact; pairs.set(pk, pr);
     }
+    const list = [...pairs.values()];
+    const rank = { upd: 3, blk: 2, info: 1, ok: 0 };
+    const routes = new Map(G.layout(list).map((r) => [r.id, r]));
+    for (const pr of list) {
+      const r = routes.get(pr.id), l0 = pr.links[0];
+      const stt = pr.links.map(linkState).sort((x, y) => rank[y] - rank[x])[0];
+      const cross = pr.links.some((l) => M.isCross(st, l)), wrong = pr.links.some((l) => M.wrongWay(st, l)), upd = pr.links.every((l) => l.kind === 'update');
+      const cls = ['lnk', 'ls-' + stt, cross ? 'cross' : 'same', upd ? 'upd' : 'dep'];
+      if (wrong) cls.push('wrong');
+      if (pr.related || pr.inImpact) cls.push('on');
+      const srcs = pr.links.map((l) => M.rk(l.src)).join(' '), dsts = pr.links.map((l) => M.rk(l.dst)).join(' ');
+      const grp = s('g', { class: cls.join(' '), 'data-a': pr.a.key, 'data-b': pr.b.key, 'data-src': srcs, 'data-dst': dsts, 'data-id': l0.id });
+      grp.append(s('path', { class: 'lhalo', d: r.d }), s('path', { class: 'lline', d: r.d, 'marker-end': 'url(#arw-' + stt + ')' }),
+        s('circle', { class: 'lport' + (cross ? ' hollow' : ''), cx: r.p1.x, cy: r.p1.y, r: 3.2 }));
+      const t = s('title');
+      t.textContent = pr.links.map((l) => M.refLabel(st, l.src) + (l.kind === 'dep' ? '  →  needed first by  →  ' : '  →  update  →  ') + M.refLabel(st, l.dst) + '  (' + LSTATE[linkState(l)] + (M.isCross(st, l) ? ', cross-project' : '') + (M.wrongWay(st, l) ? ', points upstream' : '') + ')').join('\n');
+      grp.append(t);
+      g.append(grp);
+    }
+    if (hovKey) hoverLinks(hovKey, true);
   }
+  /* hover: light up the whole dependency chain (everything upstream and downstream), dim the rest */
+  let hovKey = null;
   function hoverLinks(key, on) {
-    document.querySelectorAll('#linkG path').forEach((p) => { if (p.dataset.a === key || p.dataset.b === key) p.classList.toggle('hov', on); });
+    const svg = $('#links');
+    document.querySelectorAll('.node.chain, .node.chain-up, .node.chain-down').forEach((e) => e.classList.remove('chain', 'chain-up', 'chain-down'));
+    document.querySelectorAll('#linkG .lnk.hov').forEach((p) => p.classList.remove('hov'));
+    svg.classList.remove('chaining');
+    hovKey = on ? key : null;
+    if (!on || !ui.links || document.body.classList.contains('linking')) return;
+    const m = /^(sheet|seg):(.+)$/.exec(key);
+    let up = new Set(), down = new Set();
+    if (m) { const I = M.impact(st, { t: m[1], id: m[2] }); up = I.up; down = I.down; }
+    const self = m ? key : null, upS = new Set(up), dnS = new Set(down); if (self) { upS.add(self); dnS.add(self); }
+    let any = false;
+    document.querySelectorAll('#linkG .lnk').forEach((p) => {
+      const S = p.dataset.src.split(' '), D = p.dataset.dst.split(' ');
+      const hit = p.dataset.a === key || p.dataset.b === key || S.some((x, i) => (upS.has(x) && upS.has(D[i])) || (dnS.has(x) && dnS.has(D[i])));
+      if (hit) { p.classList.add('hov'); any = true; }
+    });
+    if (!any) return;
+    svg.classList.add('chaining');
+    const map = new Map(lastNodes.map((n) => [n.key, n]));
+    const mark = (k, c) => { const n = nodeFor(map, { t: k.split(':')[0], id: k.split(':').slice(1).join(':') }); const el = n && document.querySelector(keyQuery(n.key)); if (el && n.key !== key) el.classList.add('chain', c); };
+    up.forEach((k) => mark(k, 'chain-up')); down.forEach((k) => mark(k, 'chain-down'));
   }
-  /* drag from a node's connector handle onto another sheet or section to link them (target depends on source) */
+  /* drag from a node's connector handle onto another sheet or section to link them.
+     Live preview follows the pointer; over a target it snaps to the final route (valid) or turns red with the reason (self / loop / exists). */
+  const WHY = { self: 'Same item', exists: 'Already connected', cycle: 'Would create a loop', missing: 'Not available' };
   function startLinkDrag(e, n, ref, handleEl) {
     e.preventDefault(); e.stopPropagation();
-    const line = $('#dragLine');
+    const line = $('#dragLine'), dsvg = $('#dragSvg'), tip = $('#dragTip');
     const stage = $('#stage');
     const toStage = (cx, cy) => { const r = stage.getBoundingClientRect(); return { x: (cx - r.left) / view.k, y: (cy - r.top) / view.k }; };
-    const x0 = n.x + n.w, y0 = n.y + n.h;
+    const x0 = n.x, y0 = n.y + n.h / 2;
     const handle = handleEl || e.currentTarget;
     try { handle.setPointerCapture(e.pointerId); } catch (ex) { /* synthetic */ }
-    document.body.classList.add('linking');
-    let over = null;
+    document.body.classList.add('linking'); hoverLinks(null, false);
+    const srcEl = document.querySelector(keyQuery(n.key)); if (srcEl) srcEl.classList.add('dragsrc');
+    dsvg.setAttribute('width', stage.dataset.w * 1 + 400); dsvg.setAttribute('height', stage.dataset.h * 1 + 60);
+    let over = null, verdict = null, done = false;
+    const cands = lastNodes.filter((x) => (x.type === 'sheet' || x.type === 'seg') && x.key !== n.key);
+    const pick = (ev, p) => {
+      const hitEl = document.elementsFromPoint(ev.clientX, ev.clientY).map((x) => x.closest && x.closest('.node')).find((x) => x && /^(sheet|seg):/.test(x.dataset.key));
+      if (hitEl) return hitEl;
+      /* snap: within 18 screen px of a node */
+      let best = null, bd = 18 / view.k;
+      for (const c of cands) { const dx = Math.max(c.x - p.x, 0, p.x - (c.x + c.w)), dy = Math.max(c.y - p.y, 0, p.y - (c.y + c.h)), d = Math.hypot(dx, dy); if (d < bd) { bd = d; best = c; } }
+      return best ? document.querySelector(keyQuery(best.key)) : null;
+    };
+    const clear = () => { if (over) over.classList.remove('droptarget', 'ok', 'bad'); };
     const move = (ev) => {
       const p = toStage(ev.clientX, ev.clientY);
-      line.setAttribute('d', 'M' + x0 + ' ' + y0 + ' L' + p.x + ' ' + p.y);
-      const t = document.elementsFromPoint(ev.clientX, ev.clientY).map((x) => x.closest && x.closest('.node')).find((x) => x && /^(sheet|seg):/.test(x.dataset.key) && x.dataset.key !== n.key);
-      if (over && over !== t) over.classList.remove('droptarget');
-      over = t || null; if (over) over.classList.add('droptarget');
-    };
-    const up = (ev) => {
-      handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); handle.removeEventListener('pointercancel', up);
-      document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
-      if (ev.type !== 'pointercancel') move(ev);
-      line.setAttribute('d', ''); document.body.classList.remove('linking');
+      const t = pick(ev, p);
+      if (t !== over) { clear(); over = t; }
+      verdict = null;
+      line.classList.remove('ok', 'bad'); line.setAttribute('marker-end', 'url(#arw-drag)');
       if (over) {
-        over.classList.remove('droptarget');
-        const [t, id] = over.dataset.key.split(':');
-        const r = commit(() => M.addLink(st, ref, { t, id }, 'dep'));
-        if (r) toast('Connected: ' + M.refLabel(st, { t, id }) + ' depends on ' + M.refLabel(st, ref) + '.' + (r.warns.length ? ' ⚠ ' + r.warns.join(' ') : ' Change the kind in the drawer.'));
-      }
+        const [tt, id] = over.dataset.key.split(':');
+        verdict = over.dataset.key === n.key ? { ok: false, reason: 'self' } : M.linkCheck(st, ref, { t: tt, id }, 'dep');
+        over.classList.add('droptarget', verdict.ok ? 'ok' : 'bad');
+        line.classList.add(verdict.ok ? 'ok' : 'bad'); line.setAttribute('marker-end', 'url(#arw-' + (verdict.ok ? 'dragok' : 'dragbad') + ')');
+        const tn = lastNodes.find((x) => x.key === over.dataset.key);
+        if (verdict.ok && tn) { const r = G.layout([{ id: 'p', a: n, b: tn }])[0]; line.setAttribute('d', r.d); }
+        else line.setAttribute('d', G.preview(x0, y0, p.x, p.y));
+        tip.hidden = false; tip.className = 'dragtip ' + (verdict.ok ? 'ok' : 'bad');
+        tip.textContent = verdict.ok ? 'Release: ' + M.refLabel(st, { t: tt, id }) + ' will depend on this' : WHY[verdict.reason] || 'Not allowed';
+      } else { line.setAttribute('d', G.preview(x0, y0, p.x, p.y)); tip.hidden = false; tip.className = 'dragtip'; tip.textContent = 'Drop on a sheet or section'; }
+      const vr = $('#viewport').getBoundingClientRect();
+      tip.style.left = Math.min(ev.clientX - vr.left + 14, vr.width - 240) + 'px'; tip.style.top = Math.max(ev.clientY - vr.top - 34, 4) + 'px';
     };
+    const finish = (ev, cancel) => {
+      if (done) return; done = true;
+      handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); handle.removeEventListener('pointercancel', up);
+      document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('keydown', key, true);
+      if (!cancel && ev && ev.type !== 'pointercancel') move(ev);
+      line.setAttribute('d', ''); line.classList.remove('ok', 'bad'); tip.hidden = true; document.body.classList.remove('linking'); if (srcEl) srcEl.classList.remove('dragsrc');
+      const target = over, v = verdict; clear();
+      if (cancel || !target || !v) return;
+      const [t, id] = target.dataset.key.split(':');
+      if (!v.ok && v.reason === 'self') return;
+      const r = commit(() => M.addLink(st, ref, { t, id }, 'dep'));
+      if (r) toast('Connected: ' + M.refLabel(st, { t, id }) + ' depends on ' + M.refLabel(st, ref) + '.' + (r.warns.length ? ' ⚠ ' + r.warns.join(' ') : ' Change the kind in the drawer.'));
+    };
+    const up = (ev) => finish(ev, ev.type === 'pointercancel');
+    const key = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); finish(null, true); } };
     handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
-    document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+    document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.addEventListener('keydown', key, true);
   }
   function hiddenCount(n) { let k = 0, sh = 0; (function walk(x) { for (const c of x.kids) { k++; if (c.type === 'sheet') sh++; walk(c); } })(n); return { k, sh }; }
   function toggleNode(n, v) { ui.collapsed[n.key] = v == null ? !n.collapsed : v; saveUI(); renderTree(); setTimeout(() => { const e = document.querySelector('.node[data-key="' + n.key + '"]'); if (e) e.focus({ preventScroll: true }); }, 0); }
@@ -980,6 +1061,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   function applyView() { $('#stage').style.transform = 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + view.k + ')'; }
   /* Fit: whole tree on screen. readable=true (first view): fit width only, never below 0.55 zoom, top aligned. */
   function fit(readable) {
+    autoFit = false; /* an explicit fit wins over the automatic one */
     const vp = $('#viewport').getBoundingClientRect();
     const w = Number($('#stage').dataset.w) + 60, hh = Number($('#stage').dataset.h) + 40;
     if (!vp.width) return;
@@ -2030,6 +2112,12 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key || '').toLowerCase() === 'k') { e.preventDefault(); if ($('#cmdk')) $('#cmdk').remove(); else openPalette(); }
   });
   $('#cmdkBtn').addEventListener('click', openPalette);
+  /* v3.5 header menus (Filters / Plan / People / Output): one open at a time, close on item click, outside click or Escape */
+  const menus = [...document.querySelectorAll('.top details.menu')];
+  menus.forEach((d) => d.addEventListener('toggle', () => { if (d.open) menus.forEach((o) => { if (o !== d) o.open = false; }); }));
+  document.addEventListener('click', (e) => { menus.forEach((d) => { if (d.open && !d.contains(e.target)) d.open = false; }); });
+  document.querySelectorAll('.top .menupop .mitem').forEach((b) => b.addEventListener('click', () => { const d = b.closest('details'); if (d) d.open = false; }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') menus.forEach((d) => { if (d.open) { d.open = false; d.querySelector('summary').focus(); } }); });
   document.addEventListener('keydown', (e) => {
     const k = (e.key || '').toLowerCase(), tg = document.activeElement && document.activeElement.tagName;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 'z' || k === 'y') && !/INPUT|TEXTAREA|SELECT/.test(tg) && $('#modal').hidden) {

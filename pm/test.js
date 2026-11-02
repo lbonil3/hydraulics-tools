@@ -592,6 +592,50 @@ t('v3.4 report outline: takeaways, attention, next steps, branch bullets, roads,
   assert.ok(O.work.find((w) => w.owner === 'Unassigned').bullets.some((b) => /^Next: 2026-11-02/.test(b)));
   assert.ok(M.reportOutline(M.newState('E'), '2026-10-29').next.length === 1);
 });
+t('v3.5 connector geometry: ports on the left edge, rounded orthogonal routes, lanes that never overlap', () => {
+  const Gm = require('./linkgeom.js');
+  const nd = (key, y, h) => ({ key, x: 860, y, w: 310, h: h || 70 });
+  const a = nd('a', 0), b = nd('b', 80), c = nd('c', 160), d = nd('d', 240);
+  /* ports: on the left edge, out above in, both clear of the centred handle */
+  const po = Gm.port(a, 'out', 0, 1), pi = Gm.port(a, 'in', 0, 1);
+  assert.strictEqual(po.x, 860); assert.strictEqual(pi.x, 860);
+  assert.ok(po.y < a.y + a.h / 2 - 7 && pi.y > a.y + a.h / 2 + 7, 'ports avoid the 14px handle at the middle');
+  /* route: starts at the source port, ends at the target port, stays left of the nodes */
+  const r = Gm.layout([{ id: 1, a, b: d }])[0];
+  assert.ok(r.d.startsWith('M860 '), r.d); assert.ok(/ H860$/.test(r.d), 'ends going right into the target edge: ' + r.d);
+  assert.ok(r.X < 860 && r.X >= 860 - Gm.OPT.gutter - Gm.OPT.laneGap * Gm.OPT.maxLanes);
+  assert.ok(/Q/.test(r.d), 'rounded corners');
+  /* nested spans: the shorter one hugs the nodes, the longer one goes further out; overlapping spans never share a lane */
+  const L = Gm.layout([{ id: 'long', a, b: d }, { id: 'short', a: b, b: c }, { id: 'mid', a, b: c }]);
+  const by = Object.fromEntries(L.map((x) => [x.id, x]));
+  assert.ok(by.short.lane < by.mid.lane && by.mid.lane < by.long.lane, JSON.stringify(L.map((x) => [x.id, x.lane])));
+  const lanes = Gm.assignLanes([{ id: 1, x: 0, y1: 0, y2: 100 }, { id: 2, x: 0, y1: 50, y2: 150 }, { id: 3, x: 0, y1: 200, y2: 300 }]);
+  assert.notStrictEqual(lanes[1], lanes[2], 'overlapping spans get different lanes'); assert.strictEqual(lanes[3], 0, 'a free span reuses the first lane');
+  assert.deepStrictEqual(Gm.assignLanes([{ id: 1, x: 0, y1: 0, y2: 100 }, { id: 2, x: 500, y1: 0, y2: 100 }]), { 1: 0, 2: 0 }, 'lanes are per column');
+  /* two links leaving the same node: the outer (longer, downward) one leaves from the higher port so its stub does not cross the inner run */
+  assert.ok(by.long.p1.y < by.mid.p1.y, 'outer stub above inner stub');
+  /* upward link: vertical goes up */
+  const u = Gm.layout([{ id: 'u', a: d, b: a }])[0]; assert.ok(u.p2.y < u.p1.y && /V/.test(u.d));
+  /* same height: straight */
+  assert.ok(!/Q/.test(Gm.route({ x: 860, y: 10 }, { x: 860, y: 10 }, 830)));
+  /* preview starts at the handle and ends at the pointer */
+  const pv = Gm.preview(860, 35, 1000, 300); assert.ok(pv.startsWith('M860 35') && pv.endsWith('1000 300'));
+});
+t('v3.5 linkCheck: same answers as addLink (self, duplicate, loop) without changing the data', () => {
+  const st = M.newState('Lk'); const A = st.subs[0]; const pp = M.secOf(A, 'dr-pp');
+  M.addRoad(st, pp.id, { road: 'FM 1', start: '10+00', end: '28+00', scale: 50 }); M.syncPP(st);
+  const [s1, s2, s3] = pp.sheets.map((x) => ({ t: 'sheet', id: x.id }));
+  const before = JSON.stringify(st);
+  assert.deepStrictEqual(M.linkCheck(st, s1, s1), { ok: false, reason: 'self' });
+  assert.deepStrictEqual(M.linkCheck(st, s1, s2), { ok: true, reason: '' });
+  assert.strictEqual(JSON.stringify(st), before, 'linkCheck does not change the data');
+  M.addLink(st, s1, s2, 'dep'); M.addLink(st, s2, s3, 'dep');
+  assert.strictEqual(M.linkCheck(st, s1, s2).reason, 'exists');
+  assert.strictEqual(M.linkCheck(st, s3, s1).reason, 'cycle');
+  assert.throws(() => M.addLink(st, s3, s1, 'dep'), /circular/);
+  assert.strictEqual(M.linkCheck(st, s3, s1, 'update').ok, true, 'update links may point back');
+  assert.strictEqual(M.linkCheck(st, s1, { t: 'sheet', id: 'nope' }).reason, 'missing');
+});
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {
