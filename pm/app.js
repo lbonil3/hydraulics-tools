@@ -145,7 +145,7 @@
     hist.step(dir);
     st = M.migrate(JSON.parse(hist.cur));
     try { localStorage.setItem(KEY, hist.cur); $('#saved').textContent = 'Saved on this device'; } catch (e) { toast('Save failed: ' + e.message); }
-    if (sel && !(sel.type === 'sheet' ? M.findSheet(st, sel.id) : sel.type === 'seg' ? M.findSeg(st, sel.id) : sel.type === 'road' ? M.findRoad(st, sel.id) : true)) sel = null;
+    if (sel && !(sel.type === 'sheet' ? M.findSheet(st, sel.id) : sel.type === 'seg' ? M.findSeg(st, sel.id) : sel.type === 'road' ? M.findRoad(st, sel.id) : sel.type === 'dbr' ? M.findDamBranch(st, sel.id) : true)) sel = null;
     renderAll(); histButtons();
     toast((dir < 0 ? 'Undid' : 'Redid') + (what ? ': ' + what.split('\u0000')[0] : '') + ' · ' + hist.undo.length + ' more to undo');
   }
@@ -671,8 +671,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
 
   /* ----- tree (v3): Project → Drainage / SWP3 → sub-projects A–D → sections → sheets. Road entries are data inside P&P sections, not nodes. ----- */
   const COLX = [0, 280, 560, 860, 1200, 1530];
-  const W = { root: 250, dtop: 250, disc: 270, seg: 310, sheet: 320, road: 290, oth: 290 };
-  const H = { root: 112, dtop: 100, disc: 92, seg: 70, segpp: 104, sheet: 56, road: 88, oth: 56 };
+  const W = { root: 250, dtop: 250, disc: 270, seg: 310, sheet: 320, road: 290, oth: 290, dbr: 290 };
+  const H = { root: 112, dtop: 100, disc: 92, seg: 70, segpp: 104, sheet: 56, road: 88, oth: 56, dbr: 88 };
   const GAP = 10;
   function isCollapsed(key, def) { return key in ui.collapsed ? ui.collapsed[key] : def; }
   const DISCS = ['Drainage', 'SWP3'];
@@ -684,7 +684,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   function keyQuery(key) { return '.node[data-key="' + key + '"]'; }
   function rowRoad(r) { return M.sheetRoad(st, r.sub, r.sh); }
   /* v3.2: tree key of the road branch (or "Other sheets") a sheet of a road section hangs under; null for other sections */
-  function sheetBranchKey(sub, seg, sh) { if (!M.isPPSec(seg)) return null; const g = M.sheetGroupSlug(sub, seg, sh); return g ? 'rd:' + seg.id + ':' + g : 'oth:' + seg.id; }
+  function sheetBranchKey(sub, seg, sh) { const db = M.damBranchOf(seg, sh); if (db) return 'dbr:' + db.id; if (!M.isPPSec(seg)) return null; const g = M.sheetGroupSlug(sub, seg, sh); return g ? 'rd:' + seg.id + ':' + g : 'oth:' + seg.id; }
   function roadBranchKey(hit) { return hit && hit.sec ? M.rgKey(hit.sec, hit.road.road) : null; }
   function staTxt(rg) { return rg ? M.formatStation(rg.start) + ' – ' + M.formatStation(rg.end) : 'no range'; }
   function bigProject() { return M.allSheets(st).length > 80; }
@@ -708,6 +708,14 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
             }
             const oth = M.otherSheets(sub, seg);
             if (oth.length) { const on = { key: 'oth:' + seg.id, type: 'oth', sub, seg, disc: d, depth: 4, kids: [] }; on.collapsed = isCollapsed(on.key, big); for (const sh of oth) on.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 5, kids: [] }); gn.kids.push(on); }
+          } else if (M.damBranches(seg).length) { /* v3.8: Drainage Area Map > Road > sheets */
+            for (const sh of M.damLoose(seg)) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
+            for (const br of M.damBranches(seg)) {
+              const bn = { key: 'dbr:' + br.id, type: 'dbr', sub, seg, br, disc: d, depth: 4, kids: [] };
+              bn.collapsed = isCollapsed(bn.key, big);
+              for (const sh of M.damBranchSheets(seg, br)) bn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, br, disc: d, depth: 5, kids: [] });
+              gn.kids.push(bn);
+            }
           } else for (const sh of seg.sheets) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
           dn.kids.push(gn);
         }
@@ -734,6 +742,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (n.type === 'seg') return n.seg.sheets.map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'road') return M.sheetsOfGroup(n.sub, n.seg, n.g).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'oth') return M.otherSheets(n.sub, n.seg).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
+    if (n.type === 'dbr') return M.damBranchSheets(n.seg, n.br).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'disc') return M.sectionsOf(n.sub, n.disc).flatMap((seg) => seg.sheets.map((sh) => ({ sub: n.sub, seg, sh })));
     if (n.type === 'dtop') return M.allSheets(st).filter((r) => r.seg.discipline === n.disc);
     return M.allSheets(st);
@@ -744,7 +753,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     const any = rows.some(sheetMatches);
     const q = filt.q.trim().toLowerCase();
     const roadTxt = n.type === 'seg' ? M.roadsOf(n.sub, n.seg).map((r) => r.name).join(' ') : '';
-    const selfHit = !!q && (n.type === 'dtop' ? n.disc.toLowerCase().includes(q) : n.type === 'disc' ? (M.subLabel(n.sub) + ' ' + n.disc).toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.title + ' ' + roadTxt).toLowerCase().includes(q) : n.type === 'road' ? (n.g.name + ' ' + n.g.entries.map((r) => r.name).join(' ')).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
+    const selfHit = !!q && (n.type === 'dtop' ? n.disc.toLowerCase().includes(q) : n.type === 'disc' ? (M.subLabel(n.sub) + ' ' + n.disc).toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.title + ' ' + roadTxt).toLowerCase().includes(q) : n.type === 'road' ? (n.g.name + ' ' + n.g.entries.map((r) => r.name).join(' ')).toLowerCase().includes(q) : n.type === 'dbr' ? (n.br.road + ' ' + (n.br.alignment || '')).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
     const onlyQ = !filt.status && !filt.owner && !filt.discipline && !filt.flag;
     return { dim: !(any || (selfHit && onlyQ)), hit: selfHit && (n.type !== 'sheet' || any) };
   }
@@ -960,6 +969,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     else if (sel.type === 'disc') { const [sid, d] = sel.id.split(':'); p = { sub: sid, disc: d }; }
     else if (sel.type === 'seg') { const r = M.findSeg(st, sel.id); p = r && { sub: r.sub.id, seg: sel.id, disc: r.seg.discipline }; }
     else if (sel.type === 'road') { const r = M.findRoad(st, sel.id); p = r && { sub: r.sub.id, seg: r.sec.id, disc: r.sec.discipline, rg: roadBranchKey(r) }; }
+    else if (sel.type === 'dbr') { const r = M.findDamBranch(st, sel.id); p = r && { sub: r.sub.id, seg: r.seg.id, disc: r.seg.discipline, rg: 'dbr:' + sel.id }; }
     else if (sel.type === 'sheet') { const r = M.findSheet(st, sel.id); p = r && { sub: r.sub.id, seg: r.seg.id, disc: r.seg.discipline, rg: sheetBranchKey(r.sub, r.seg, r.sh) }; }
     if (!p) return;
     ui.collapsed = M.focusBranch(st, p); if (p.disc && !shownDiscs().includes(p.disc)) ui.branch = 'both';
@@ -967,7 +977,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     saveUI(); renderAll(); fit(); toast('Focused this branch · others collapsed');
   }
   function addBtn(n, label, fn) { return h('button', { type: 'button', class: 'nbtn add', 'aria-label': label, title: label, onclick: (e) => { e.stopPropagation(); fn(); } }, '+'); }
-  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'dtop' ? n.disc + ' branch' : n.type === 'disc' ? n.disc + ' sub-project ' + M.subTag(n.sub) : n.type === 'seg' ? M.subTag(n.sub) + ' ' + n.disc + ' section ' + n.seg.title : n.type === 'road' ? 'road ' + n.g.name + ' in ' + n.seg.title : n.type === 'oth' ? 'other sheets in ' + n.seg.title : 'sheet ' + n.sh.title + (n.depth === 5 ? ' ' + staTxt(M.sheetRange(n.sh)) : ''); }
+  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'dtop' ? n.disc + ' branch' : n.type === 'disc' ? n.disc + ' sub-project ' + M.subTag(n.sub) : n.type === 'seg' ? M.subTag(n.sub) + ' ' + n.disc + ' section ' + n.seg.title : n.type === 'road' ? 'road ' + n.g.name + ' in ' + n.seg.title : n.type === 'oth' ? 'other sheets in ' + n.seg.title : n.type === 'dbr' ? 'DAM road ' + n.br.road + ' in ' + n.seg.title : 'sheet ' + n.sh.title + (n.depth === 5 ? ' ' + staTxt(M.sheetRange(n.sh)) : ''); }
   function flagRow(b, extra) {
     return h('div', { class: 'nrow' }, b.overdue ? h('span', { class: 'flag', title: 'Overdue' }, '⚑ ' + b.overdue) : null,
       b.blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked sheets' }, '⛓ ' + b.blocked) : null,
@@ -1017,6 +1027,13 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('div', { class: 'ns' }, h('b', {}, pp + ' PP'), ' · ' + (len ? fmtFt(len) + ' · ' : '') + scales.map((x) => x + ' scale').join('/') + (es.length > 1 ? ' · ' + es.length + ' ranges' : '')),
         h('div', { class: 'ns rranges mono', title: es.map((r) => r.name).join('\n') }, es.map((r) => M.hasSta(r) ? M.formatStation(r.start) + '–' + M.formatStation(r.end) : 'no stations yet').join(', ')),
         h('div', { class: 'nrow' }, shs.length ? bar(p.pct, 'Progress ' + n.g.name) : h('span', { class: 'ns' }, 'No sheets yet'), warns.length ? h('span', { class: 'fl fl-upd', title: warns.map((w) => w.msg).join('\n') }, '⚠ ' + warns.length) : null)), ring(p.pct, 40)];
+    } else if (n.type === 'dbr') {
+      const shs = n.kids.map((k) => k.sh), p = M.progress(shs), linked = M.damBranchLinked(n.br);
+      const rgs = shs.map((x) => M.sheetRange(x)).filter(Boolean), lo = rgs.length ? Math.min(...rgs.map((r) => r.start)) : null, hi = rgs.length ? Math.max(...rgs.map((r) => r.end)) : null;
+      body = [h('span', { class: 'rdicon', 'aria-hidden': 'true' }, '⛕'), h('div', { class: 'nb' }, h('div', { class: 'nt sm', title: n.br.road + (n.br.alignment ? ' — alignment ' + n.br.alignment : '') }, n.br.road, n.br.alignment ? h('span', { class: 'nalign' }, ' · ' + n.br.alignment) : null),
+        h('div', { class: 'ns' }, h('b', {}, plural(shs.length, 'DAM sheet')), linked ? ' · linked to P&P' : ' · not linked'),
+        h('div', { class: 'ns rranges mono' }, rgs.length ? M.formatStation(lo) + '–' + M.formatStation(hi) : 'no stations'),
+        h('div', { class: 'nrow' }, shs.length ? bar(p.pct, 'Progress ' + n.br.road) : h('span', { class: 'ns' }, 'No sheets yet'))), ring(p.pct, 40)];
     } else if (n.type === 'oth') {
       const shs = n.kids.map((k) => k.sh), p = M.progress(shs);
       body = [h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, 'Other sheets'), h('div', { class: 'ns' }, plural(shs.length, 'sheet') + ' · no road · ' + p.done + ' done'))];
@@ -1030,8 +1047,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       const road = M.sheetRoad(st, n.sub, sh);
       body = [h('span', { class: 'chip ' + DINFO[n.disc].cls, title: n.disc }, DINFO[n.disc].short),
         n.depth === 5 ? (() => { const rg = M.sheetRange(sh), sc = M.sheetScale(st, n.sub, sh);
-          return h('div', { class: 'nb' }, h('div', { class: 'nt sm' + (rg ? ' sta' : ''), title: sh.title }, sh.gen ? 'PP ' + sh.gen.idx + ': ' + (rg ? 'STA ' + staTxt(rg) : 'no range') + (rg && rg.manual ? ' ✎' : '') : sh.title),
-            h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.number ? ' · #' + sh.number : '') + (sh.gen ? '' : ' · ' + (rg ? 'STA ' + staTxt(rg) : 'no range')) + (sc ? ' · ' + sc + ' scale' : '') + (sh.due ? ' · ' + sh.due : '')),
+          return h('div', { class: 'nb' }, h('div', { class: 'nt sm' + (rg ? ' sta' : ''), title: sh.title }, sh.gen || (sh.dam && n.br) ? (sh.gen ? 'PP ' + sh.gen.idx : 'DAM ' + sh.dam.idx) + ': ' + (rg ? 'STA ' + staTxt(rg) : 'no range') + (rg && rg.manual ? ' ✎' : '') : sh.title),
+            h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.number ? ' · #' + sh.number : '') + (sh.gen || (sh.dam && n.br) ? '' : ' · ' + (rg ? 'STA ' + staTxt(rg) : 'no range')) + (sc ? ' · ' + sc + ' scale' : '') + (sh.due ? ' · ' + sh.due : '')),
             blocked || upd ? h('div', { class: 'nflags' }, blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked by ' + blocked + ' unfinished prerequisite(s)' }, '⛓ Blocked by ' + blocked) : null,
               upd ? h('span', { class: 'fl fl-upd', title: 'An upstream item changed' }, '⟳ Update needed') : null) : null); })() :
         h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, sh.title),
@@ -1042,10 +1059,10 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         od ? h('span', { class: 'flag', title: 'Overdue' }, '⚑') : null,
         sh.owner ? h('span', { class: 'av', title: sh.owner }, initials(sh.owner)) : h('span', { class: 'av none', title: 'Unassigned' }, '–')];
     }
-    const id = n.type === 'root' ? 'root' : n.type === 'dtop' ? n.disc : n.type === 'disc' ? n.sub.id + ':' + n.disc : n.type === 'seg' || n.type === 'oth' ? n.seg.id : n.type === 'road' ? n.g.entries[0].id : n.sh.id;
+    const id = n.type === 'root' ? 'root' : n.type === 'dtop' ? n.disc : n.type === 'disc' ? n.sub.id + ':' + n.disc : n.type === 'seg' || n.type === 'oth' ? n.seg.id : n.type === 'road' ? n.g.entries[0].id : n.type === 'dbr' ? n.br.id : n.sh.id;
     const stype = n.type === 'oth' ? 'seg' : n.type;
     const selected = sel && ((n.type !== 'oth' && sel.type === n.type && sel.id === id) || (n.type === 'road' && sel.type === 'road' && n.g.entries.some((r) => r.id === sel.id)));
-    const el = h('div', { class: 'node n-' + n.type + (n.pp ? ' n-pp' : '') + (n.collapsed && n.kids.length ? ' collapsed' : '') + (n.disc ? ' d-' + DINFO[n.disc].cls : '') + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) : '') + (n.type === 'seg' && !n.seg.sheets.length && !(n.pp && M.roadsOf(n.sub, n.seg).length) ? ' empty' : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
+    const el = h('div', { class: 'node n-' + n.type + (n.type === 'dbr' ? ' n-road' : '') + (n.pp ? ' n-pp' : '') + (n.collapsed && n.kids.length ? ' collapsed' : '') + (n.disc ? ' d-' + DINFO[n.disc].cls : '') + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) : '') + (n.type === 'seg' && !n.seg.sheets.length && !(n.pp && M.roadsOf(n.sub, n.seg).length) ? ' empty' : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
       tabindex: 0, role: 'button', 'data-key': n.key, 'aria-label': nodeLabel(n),
       onclick: () => select_(stype, id),
       ondblclick: (e) => { if (e.target.closest('button, input, .handle, .nren')) return; e.preventDefault(); openProps(stype, id, { focus: true }); },
@@ -1315,6 +1332,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (n.type === 'road') items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: n.g.entries.map((r) => r.id) })]);
     if (n.type === 'seg' && n.pp && M.roadsOf(n.sub, n.seg).length) items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: M.roadsOf(n.sub, n.seg).map((r) => r.id) })]);
     if (n.type === 'seg' && M.damSection(n.sub) === n.seg) items.push(['Copy P&P sheets here…', '', () => openDamCopy({ subs: [n.sub.id] })]);
+    if (n.type === 'dbr' && M.damBranchLinked(n.br)) items.push(['Update from the P&P road…', '', () => openDamCopy({ subs: [n.sub.id], roads: n.br.src.slice() })]);
     if (['seg', 'road', 'sheet'].includes(type)) {
       const k = type + ':' + id;
       items.push(['Add a connector…', '', () => { select_(type, id); pickState = { key: k, q: '', open: true, kind: 'dep', dir: 'in' }; renderDrawer(); focusAdd('lkSearch'); }]);
@@ -1382,7 +1400,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       extLinks.length ? h('ul', { class: 'dlist lklist' }, extLinks.slice(0, 8).map(depRow)) : null,
       extLinks.length > 8 ? h('p', { class: 'muted small' }, (extLinks.length - 8) + ' more — see the Dependencies CSV in List view') : null);
   }
-  const DKIND = { root: 'Project', dtop: 'Discipline', sub: 'Sub-project', disc: 'Sub-project branch', seg: 'Section', road: 'Road entry', sheet: 'Sheet' };
+  const DKIND = { root: 'Project', dtop: 'Discipline', sub: 'Sub-project', disc: 'Sub-project branch', seg: 'Section', road: 'Road entry', dbr: 'DAM road', sheet: 'Sheet' };
   function renderDrawer() {
     const d = $('#drawer');
     let content = null;
@@ -1392,6 +1410,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       else if (sel.type === 'sub') { const sub = M.findSub(st, sel.id); content = sub && subDrawer(sub); }
       else if (sel.type === 'seg') { const hit = M.findSeg(st, sel.id); content = hit && segDrawer(hit); }
       else if (sel.type === 'road') { const hit = M.findRoad(st, sel.id); content = hit && hit.sec && roadDrawer(hit); }
+      else if (sel.type === 'dbr') { const hit = M.findDamBranch(st, sel.id); content = hit && dbrDrawer(hit); }
       else if (sel.type === 'disc') { const [sid, dd] = sel.id.split(':'); const sub = M.findSub(st, sid); content = sub && DISCS.includes(dd) && discDrawer(sub, dd); }
       else if (sel.type === 'sheet') { const hit = M.findSheet(st, sel.id); content = hit && sheetDrawer(hit); }
     }
@@ -1923,12 +1942,30 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (!cps.length) return h('p', { class: 'muted small', id: 'damHint' }, 'Tip: “Copy P&P sheets here…” makes one Drainage Area Map sheet per Plan & Profile sheet break of a road (same stations and alignment).');
     return h('p', { class: 'muted small', id: 'damHint' }, plural(cps.length, 'DAM sheet') + ' copied from ' + plural(roads.length, 'road entry') + ' · ' + cps.filter((q) => q.dam.linked !== false).length + ' linked (re-sync follows station changes).');
   }
+  /* v3.8 DAM road branch: Drainage Area Map > Road > sheets */
+  function dbrDrawer({ sub, seg, br }) {
+    const shs = M.damBranchSheets(seg, br), p = M.progress(shs), srcs = br.src.map((id) => M.findRoad(st, id)).filter(Boolean);
+    const o = srcs.length ? M.planDam(st, { subs: [sub.id], roads: br.src.slice(), linkedOnly: true }) : null, stale = o ? o.create + o.update + o.remove : 0;
+    return h('div', { class: 'dbody' },
+      crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subTag(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]]),
+      h('h2', {}, br.road, br.alignment ? h('small', { class: 'ralign' }, ' · Alignment ' + br.alignment) : null),
+      h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, h('div', {}, plural(shs.length, 'DAM sheet') + ' · ' + p.done + ' done'),
+        h('div', { class: 'muted small', id: 'dbrSrc' }, srcs.length ? ['Copied from ', srcs.map((x, i) => [i ? ', ' : '', h('button', { type: 'button', class: 'link', onclick: () => select_('road', x.road.id) }, x.sec.title + ' · ' + x.road.name)])] : 'Not linked to a P&P road (sheets stay as they are).'))),
+      propsBox('dbr:' + br.id, { name: h('p', { class: 'muted small' }, srcs.length ? 'The name and alignment follow the P&P road.' : 'Unlinked branch.'),
+        actions: [srcs.length ? damBtn({ subs: [sub.id], roads: br.src.slice() }, 'Update from the P&P road…') : null,
+          stale ? h('button', { type: 'button', class: 'btn sm', id: 'dbrResync', onclick: () => { const r = commit(() => M.applyDam(st, M.planDam(st, { subs: [sub.id], roads: br.src.slice(), linkedOnly: true }))); if (r) toast('Re-synced ' + br.road + ': ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed. Undo with Ctrl+Z.'); } }, '⟳ Re-sync (' + stale + ')') : null] }),
+      sheetRangesBox(sub, seg, shs),
+      h('div', { class: 'row' },
+        srcs.length ? h('button', { type: 'button', class: 'btn sec sm', id: 'dbrUnlink', onclick: () => { commit(() => M.unlinkDamBranch(st, br.id)); toast('Unlinked ' + br.road + ': its sheets stay, re-sync no longer changes them.'); } }, 'Unlink from the road') : null,
+        h('button', { type: 'button', class: 'btn danger sm', id: 'dbrDel', onclick: () => { if (confirm('Remove the DAM road branch “' + br.road + '”? Its ' + plural(shs.length, 'sheet') + ' stay in ' + seg.title + '.')) { commit(() => M.deleteDamBranch(st, br.id)); select_('seg', seg.id); } } }, 'Remove branch (keep sheets)')));
+  }
   function damPill(sub, seg, sh) {
     const road = sh.dam.road && M.findRoad(st, sh.dam.road), linked = sh.dam.linked !== false && road;
     const o = linked ? M.planDam(st, { subs: [sub.id], roads: [road.road.id], linkedOnly: true }) : null, stale = o && (o.create + o.update + o.remove);
     return h('div', { class: 'pill dampill', id: 'damPill' }, 'Drainage Area Map copy ' + sh.dam.idx + ' of ' + sh.dam.of + (road ? ' · ' + road.road.road : '') + (M.sheetAlign(st, sub, seg, sh) ? ' · Alignment ' + M.sheetAlign(st, sub, seg, sh) : '') + (M.sheetScale(st, sub, sh) ? ' · ' + M.sheetScale(st, sub, sh) + ' scale' : '') + (linked ? ' · linked' : ' · not linked'),
       stale ? h('span', { class: 'fl fl-upd' }, ' ⟳ road changed') : null,
-      h('span', { class: 'row' }, road ? h('button', { type: 'button', class: 'link', onclick: () => select_('road', road.road.id) }, 'Open road') : null,
+      h('span', { class: 'row' }, M.damBranchOf(seg, sh) ? h('button', { type: 'button', class: 'link', id: 'damOpenBr', onclick: () => select_('dbr', M.damBranchOf(seg, sh).id) }, 'DAM road ' + M.damBranchOf(seg, sh).road) : null,
+        road ? h('button', { type: 'button', class: 'link', onclick: () => select_('road', road.road.id) }, 'Open road') : null,
         stale ? h('button', { type: 'button', class: 'link', id: 'damResync1', onclick: () => { const r = commit(() => M.applyDam(st, M.planDam(st, { subs: [sub.id], roads: [road.road.id], linkedOnly: true }))); if (r) toast('Re-synced ' + road.road.road + ': ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed.'); } }, 'Re-sync') : null,
         linked ? h('button', { type: 'button', class: 'link', id: 'damUnlink', onclick: () => { commit(() => M.unlinkDam(st, sh.id)); toast('Unlinked: re-sync will no longer change this sheet.'); } }, 'Unlink') : null));
   }
@@ -1966,12 +2003,12 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         if (!r) return;
         closeModal();
         const first = r.ids.length && M.findSheet(st, r.ids[0]);
-        if (first) { openBranch(first.sub.id, first.seg.discipline, first.seg.id); saveUI(); renderAll(); select_('seg', first.seg.id); }
+        if (first) { const fb = M.damBranchOf(first.seg, first.sh); openBranch(first.sub.id, first.seg.discipline, first.seg.id, fb ? 'dbr:' + fb.id : null); saveUI(); renderAll(); select_(fb ? 'dbr' : 'seg', fb ? fb.id : first.seg.id); }
         toast('Drainage Area Maps: ' + r.created + ' new, ' + r.updated + ' updated, ' + r.removed + ' removed' + (r.kept ? ', ' + r.kept + ' edited kept' : '') + '. Undo with Ctrl+Z.');
       } }, !n ? 'Nothing to copy' : P.create && !P.update && !P.remove ? 'Create ' + plural(P.create, 'DAM sheet') : 'Apply ' + plural(n, 'change'));
       const ae = document.activeElement, keep = ae && body.contains(ae) ? (ae.id ? '#' + ae.id : ae.value ? 'input[value="' + ae.value + '"]' : null) : null;
       body.replaceChildren(
-        h('p', { class: 'muted' }, 'Makes one sheet in each sub-project’s Drainage Area Map section for every Plan & Profile sheet break of the chosen roads: same road, alignment and station ranges, named “DAM – Road (Alignment) STA start–end”. Pick another scale to get different sheet breaks.'),
+        h('p', { class: 'muted' }, 'Makes one sheet in each sub-project’s Drainage Area Map section for every Plan & Profile sheet break of the chosen roads: same road, alignment and station ranges, named “DAM – Road (Alignment) STA start–end”, under a road branch like the P&P tree (Drainage Area Map › Road › sheets). Pick another scale to get different sheet breaks.'),
         subBox, roadBox, h('div', { class: 'g2' }, field('DAM scale', sc), hasEx ? field('If DAM copies exist', mode) : h('span')), link,
         h('div', { class: 'box', id: 'damPreview' }, h('b', { id: 'damSum' }, sum), lines.length ? h('ul', { class: 'small damlist' }, lines.slice(0, 14).map((x) => h('li', {}, x)), lines.length > 14 ? h('li', { class: 'muted' }, '+ ' + (lines.length - 14) + ' more') : null) : null),
         h('div', { class: 'row' }, btn, h('button', { type: 'button', class: 'btn sec', onclick: closeModal }, 'Cancel')));
@@ -2331,8 +2368,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     else if (/^[1-6]$/.test(e.key)) { ui.view = VIEWS[Number(e.key) - 1]; saveUI(); renderAll(); }
     else if (e.key === 'n') {
       e.preventDefault();
-      if (sel && (sel.type === 'seg' || sel.type === 'sheet' || sel.type === 'road')) {
-        const g = sel.type === 'seg' ? M.findSeg(st, sel.id).seg : sel.type === 'road' ? M.findRoad(st, sel.id).sec : M.findSheet(st, sel.id).seg;
+      if (sel && (sel.type === 'seg' || sel.type === 'sheet' || sel.type === 'road' || sel.type === 'dbr')) {
+        const g = sel.type === 'seg' ? M.findSeg(st, sel.id).seg : sel.type === 'road' ? M.findRoad(st, sel.id).sec : sel.type === 'dbr' ? M.findDamBranch(st, sel.id).seg : M.findSheet(st, sel.id).seg;
         select_('seg', g.id); focusAdd(M.isPPSec(g) && sel.type !== 'sheet' ? 'addRoadName' : 'addSheetTitle');
       } else {
         const sub = sel && sel.type === 'sub' ? M.findSub(st, sel.id) : sel && sel.type === 'disc' ? M.findSub(st, sel.id.split(':')[0]) : M.orderedSubs(st)[0];

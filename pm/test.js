@@ -767,6 +767,70 @@ t('v3.7 DAM copies follow split / merge of the road entry', () => {
   M.mergeSegments(st, r.id, sp.b.id); M.syncPP(st); M.resyncDam(st);
   assert.deepStrictEqual(dam.sheets.filter((x) => x.dam).map((x) => [x.dam.road, x.dam.idx]), [[r.id, 1], [r.id, 2]]);
 });
+t('v3.8 DAM road branches: Drainage Area Map > Road > sheets; re-run reuses, unlink / delete road keep the branch, props, migrate', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp'), tl = M.secOf(A, 'dr-tl') || pp, dam = M.secOf(A, 'dr-dam');
+  const r1 = M.addRoad(st, pp.id, { road: 'FM 1960', start: '10+00', end: '34+00', alignment: 'BL FM 1960' }).road;
+  const r2 = M.addRoad(st, pp.id, { road: 'FM 1960', start: '50+00', end: '60+00', alignment: 'BL FM 1960' }).road;
+  const r3 = M.addRoad(st, pp.id, { road: 'Kuykendahl', start: '0+00', end: '7+00' }).road;
+  M.addSheet(st, dam.id, { title: 'Drainage Area Map' }); M.syncPP(st);
+  M.applyDam(st, M.planDam(st, { subs: [A.id] }), { link: true }); M.syncPP(st);
+  const bs = ['FM 1960', 'Kuykendahl'].map((n) => M.damBranches(dam).find((b) => b.road === n));
+  assert.deepStrictEqual(M.damBranches(dam).map((b) => b.road), ['Kuykendahl', 'FM 1960'], 'branches follow the road order');
+  assert.deepStrictEqual(bs.map((b) => [b.road, b.alignment || '', b.src.length]), [['FM 1960', 'BL FM 1960', 2], ['Kuykendahl', '', 1]], 'one branch per road name, mirrors name + alignment, linked to the source entries');
+  assert.strictEqual(M.damBranchSheets(dam, bs[0]).length, 3); assert.strictEqual(M.damBranchSheets(dam, bs[1]).length, 1);
+  assert.deepStrictEqual(M.damLoose(dam).map((x) => x.title), ['Drainage Area Map'], 'own sheets stay directly under the section');
+  assert.strictEqual(dam.sheets.length, 5, 'sheets stay in the section, so section / sub-project counts do not change');
+  // re-run: no duplicate branches or sheets
+  const P2 = M.planDam(st, { subs: [A.id] }); assert.strictEqual(P2.create + P2.update + P2.remove, 0);
+  M.applyDam(st, M.planDam(st, { subs: [A.id], scale: 50 }), { link: true }); assert.strictEqual(M.damBranches(dam).length, 2, 'scale change reuses the branch');
+  M.applyDam(st, M.planDam(st, { subs: [A.id] }), { link: true });
+  // properties + roll-up
+  const key = 'dbr:' + bs[0].id;
+  M.setProps(st, key, { owner: 'Ana R.', due: '2026-12-01', notes: 'DAM FM' });
+  assert.deepStrictEqual([M.getProps(st, key).owner, bs[0].notes, M.rollup(st, key).total, M.rollup(st, key).t], ['Ana R.', 'DAM FM', 3, 'dbr']);
+  assert.strictEqual(M.rollup(st, 'seg:' + dam.id).total, 5);
+  // rename mirrors; re-sync refreshes titles
+  M.updateRoad(st, r3.id, { road: 'Kuykendahl Rd' }); M.syncPP(st);
+  assert.strictEqual(bs[1].road, 'Kuykendahl Rd'); assert.strictEqual(M.damBranchSheets(dam, bs[1])[0].road, 'Kuykendahl Rd');
+  M.resyncDam(st); assert.strictEqual(M.damBranchSheets(dam, bs[1])[0].title, 'DAM – Kuykendahl Rd STA 0+00–7+00');
+  // mixed linked + unlinked: no duplicates
+  const fm = M.damBranchSheets(dam, bs[0]); M.unlinkDam(st, fm[0].id);
+  const Pm = M.planDam(st, { subs: [A.id] }); assert.strictEqual(Pm.create, 0, 'an unlinked copy covering the range is not duplicated');
+  // unlink whole branch
+  M.unlinkDamBranch(st, bs[1].id); M.syncPP(st);
+  assert.deepStrictEqual([bs[1].src.length, M.damBranchSheets(dam, bs[1]).every((x) => x.dam.linked === false)], [0, true]);
+  // delete the source road: branch stays, unlinked, sheets kept
+  M.deleteRoad(st, r1.id); M.deleteRoad(st, r2.id); M.syncPP(st);
+  assert.deepStrictEqual([M.damBranches(dam).length, bs[0].road, bs[0].src.length, M.damBranchSheets(dam, bs[0]).length], [2, 'FM 1960', 0, 3]);
+  assert.strictEqual(M.getProps(st, key).owner, 'Ana R.', 'branch properties survive');
+  // round-trip + junk
+  const j = M.migrate(JSON.parse(JSON.stringify(st)));
+  assert.strictEqual(JSON.stringify(j.subs[0].segments.find((g) => g.key === 'dr-dam').damRoads), JSON.stringify(dam.damRoads));
+  const junk = JSON.parse(JSON.stringify(st)); const jd = junk.subs[0].segments.find((g) => g.key === 'dr-dam');
+  jd.damRoads.push(null, { id: 5 }, { id: jd.damRoads[0].id }); jd.sheets.find((x) => x.dam).dam.branch = 'nope';
+  const jm = M.migrate(junk), jdd = jm.subs[0].segments.find((g) => g.key === 'dr-dam');
+  assert.strictEqual(jdd.damRoads.length, 2); assert.strictEqual(jdd.sheets.filter((x) => x.dam && x.dam.branch === null).length, 1);
+  // remove a branch: sheets stay flat
+  M.deleteDamBranch(st, bs[1].id); assert.strictEqual(M.damBranches(dam).length, 1); assert.strictEqual(dam.sheets.length, 5); assert.strictEqual(M.getProps(st, 'dbr:' + bs[1].id).owner, '');
+  // collapse / focus keys
+  assert.strictEqual(M.collapseLevel(st, 4)['dbr:' + bs[0].id], true);
+  // CSV export unchanged in shape
+  assert.ok(M.exportImportCSV(st).split('\n').some((l) => /DAM – FM 1960/.test(l)));
+});
+t('v3.8 flat DAM copies from v3.7 move into a road branch on load, nothing lost', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp'), dam = M.secOf(A, 'dr-dam');
+  M.addRoad(st, pp.id, { road: 'FM 1960', start: '10+00', end: '34+00', alignment: 'BL FM 1960' }); const rk = M.addRoad(st, pp.id, { road: 'Kuyk', start: '0+00', end: '7+00' }).road; M.syncPP(st);
+  M.applyDam(st, M.planDam(st, {})); M.deleteRoad(st, rk.id); M.syncPP(st);
+  const old = JSON.parse(JSON.stringify(st)); const od = old.subs[0].segments.find((g) => g.key === 'dr-dam');
+  delete od.damRoads; for (const sh of od.sheets) if (sh.dam) delete sh.dam.branch; /* exactly what v3.7 saved */
+  const ids = od.sheets.map((x) => x.id).sort();
+  const m = M.migrate(old), md = m.subs[0].segments.find((g) => g.key === 'dr-dam');
+  assert.deepStrictEqual(md.sheets.map((x) => x.id).sort(), ids, 'no sheet lost');
+  assert.deepStrictEqual(M.damBranches(md).map((b) => [b.road, b.alignment || '', b.src.length, M.damBranchSheets(md, b).length]).sort(), [['FM 1960', 'BL FM 1960', 1, 2], ['Kuyk', '', 0, 1]], 'deleted-road copies get an unlinked branch from their title');
+  const again = M.migrate(JSON.parse(JSON.stringify(m)));
+  assert.strictEqual(JSON.stringify(again.subs[0].segments.find((g) => g.key === 'dr-dam').damRoads), JSON.stringify(md.damRoads), 'migration runs once');
+  assert.strictEqual(M.planDam(m, {}).create, 0, 're-run after migration makes no duplicates');
+});
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

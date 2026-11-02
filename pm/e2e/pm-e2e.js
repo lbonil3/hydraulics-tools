@@ -407,6 +407,11 @@ function v2Fixture() {
   D = await data();
   const damSh = D.subs.flatMap((sub) => sub.segments.flatMap((g) => g.sheets.filter((sh) => sh.dam).map((sh) => ({ g, sh }))));
   ok(damCount(D) === dam0 + damN && damSh.every((x) => x.g.key === 'dr-dam' && /^DAM – .+ STA \d+\+\d\d–\d+\+\d\d$/.test(x.sh.title)), 'DAM sheets created in the Drainage Area Map sections with DAM – Road STA names');
+  const dbr = D.subs.flatMap((sub) => sub.segments.flatMap((g) => (g.damRoads || []).map((b) => ({ g, b }))));
+  ok(dbr.length > 0 && damSh.every((x) => (x.g.damRoads || []).some((b) => b.id === x.sh.dam.branch)), 'v3.8: every DAM copy hangs under a DAM road branch (DAM › Road › sheets)');
+  ok(/^dam road$/i.test(await txt('#drawer .dkind')) && await has('#drawer #propsBox'), 'after copying, the DAM road branch opens with its Properties');
+  await click('#vTree'); await sleep(250);
+  ok(await has('.node.n-dbr'), 'the DAM road branch is in the tree');
   await click('#ppBtn'); await sleep(200); await click('#ppDamBtn'); await sleep(250);
   ok(/Nothing to copy/.test(await txt('#damGo')), 're-run finds nothing new (no duplicates)');
   await click('#modalClose'); await sleep(150);
