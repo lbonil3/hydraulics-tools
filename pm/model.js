@@ -467,6 +467,7 @@
       const r = applyGenerate(st, road.id, p, { removeTouched: false, quiet: true });
       for (const k in tot) tot[k] += r[k];
     }
+    for (const sub of st.subs) syncDamBranches(sub);
     if ((tot.created || tot.updated || tot.removed) && !(opts && opts.quiet)) log(st, 'PP sheets follow the road stations: +' + tot.created + ' new, ' + tot.updated + ' updated, ' + tot.removed + ' removed' + (tot.keptTouched ? ' (' + tot.keptTouched + ' edited extra kept)' : ''));
     return tot;
   }
@@ -612,6 +613,7 @@
     if (to.seg === hit.seg) return hit.sh;
     hit.seg.sheets = hit.seg.sheets.filter((s) => s !== hit.sh);
     to.seg.sheets.push(hit.sh); hit.sh.discipline = to.seg.discipline;
+    if (hit.sh.dam) hit.sh.dam.branch = null;
     log(st, hit.sh.title + ': section → ' + to.seg.title, { t: 'sheet', id: hit.sh.id });
     return hit.sh;
   }
@@ -1006,6 +1008,7 @@
         for (const sh of sec.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; sh.discipline = sec.discipline;
           if ('dam' in sh && !(sh.dam && typeof sh.dam === 'object' && Number.isFinite(sh.dam.start) && Number.isFinite(sh.dam.end))) delete sh.dam; }
       }
+      normDamBranches(sub);
       const secIds = new Set(sub.segments.map((s) => s.id));
       for (const r of sub.roads) {
         r.kind = 'road'; r.revs = Array.isArray(r.revs) ? r.revs : [];
@@ -1346,7 +1349,7 @@
     for (const d of DISCIPLINES) c['dtop:' + d] = level < 2;
     for (const sub of st.subs) {
       for (const d of DISCIPLINES) c['disc:' + sub.id + ':' + d] = level < 3;
-      for (const g of sub.segments) { c['seg:' + g.id] = level < 4; if (isPPSec(g)) { for (const rg of roadGroups(sub, g)) c[rg.key] = level < 5; c['oth:' + g.id] = level < 5; } }
+      for (const g of sub.segments) { c['seg:' + g.id] = level < 4; if (isPPSec(g)) { for (const rg of roadGroups(sub, g)) c[rg.key] = level < 5; c['oth:' + g.id] = level < 5; } for (const b of damBranches(g)) c['dbr:' + b.id] = level < 5; }
     }
     return c;
   }
@@ -1965,6 +1968,7 @@
       if (opts.linkedOnly) { ex = ex.filter((x) => x.sh.dam.linked !== false); if (!ex.length) { it.skipped = true; it.reason = 'not linked'; continue; } }
       if (ex.length && mode === 'skip') { it.skipped = true; it.reason = 'already has ' + ex.length + ' DAM sheet' + (ex.length === 1 ? '' : 's'); P.skipped++; continue; }
       if (ex.length && ex.every((x) => x.sh.dam.linked === false) && !opts.linkedOnly && mode === 'update') { /* unlinked copies are left alone */ it.skipped = true; it.reason = 'existing DAM copies are unlinked'; P.skipped++; continue; }
+      const unl = ex.filter((x) => x.sh.dam.linked === false); ex = ex.filter((x) => x.sh.dam.linked !== false); /* unlinked copies are never changed, but they count as existing */
       const sc = opts.linkedOnly ? (ex[0] ? ex[0].sh.dam.scale || null : null) : scale;
       const ranges = damRanges(st, sub, road, sc);
       const used = new Set();
@@ -1979,6 +1983,7 @@
           continue;
         }
         if (target.sheets.some((q) => !q.dam && String(q.title).trim().toLowerCase() === title.toLowerCase())) { it.unchanged++; P.dupTitle++; continue; } /* same sheet already typed by hand */
+        if (unl.some((x) => x.sh.dam.start === r.start && x.sh.dam.end === r.end)) { it.unchanged++; continue; } /* an unlinked copy already covers this range */
         it.create.push({ range: r, title });
       }
       for (const x of ex) if (!used.has(x)) (isTouched(x.sh) ? it.keep : it.remove).push(x.sh);
@@ -1995,9 +2000,10 @@
       if (it.skipped || !it.target || (!it.create.length && !it.update.length && !it.remove.length)) { out.kept += (it.keep || []).length; continue; }
       const live = findRoad(st, it.road.id); if (!live) continue;
       const sub = live.sub, road = live.road, target = damSection(sub);
+      const br = ensureDamBranch(target, road);
       for (const c of it.create) {
         const sh = newSheet({ title: c.title, discipline: target.discipline, series: target.title, road: road.road });
-        sh.dam = { road: road.id, idx: c.range.idx, of: c.range.of, start: c.range.start, end: c.range.end, scale: it.scale || null, linked: link, title: c.title };
+        sh.dam = { road: road.id, idx: c.range.idx, of: c.range.of, start: c.range.start, end: c.range.end, scale: it.scale || null, linked: link, title: c.title, branch: br.id };
         target.sheets.push(sh); sh.number = suggestNumber(st, sh) || '';
         out.created++; out.ids.push(sh.id);
       }
@@ -2005,6 +2011,7 @@
         const hit = findSheet(st, u.sheet.id); if (!hit) continue;
         const sh = hit.sh, d = sh.dam;
         Object.assign(d, { road: road.id, idx: u.range.idx, of: u.range.of, start: u.range.start, end: u.range.end, scale: it.scale || null });
+        if (hit.seg === target && !damBranchOf(target, sh)) d.branch = br.id;
         if (!u.edited) { sh.title = u.title; d.title = u.title; }
         sh.road = road.road; out.updated++;
       }
@@ -2013,6 +2020,7 @@
       out.kept += it.keep.length;
       sortDam(sub, target);
     }
+    for (const sub of st.subs) syncDamBranches(sub);
     if (out.removed) pruneLinks(st);
     log(st, 'Drainage Area Map copies of P&P sheets: +' + out.created + ' new, ' + out.updated + ' updated, ' + out.removed + ' removed' + (out.kept ? ', ' + out.kept + ' edited kept' : ''));
     return out;
@@ -2023,6 +2031,91 @@
     const plain = sec.sheets.filter((q) => !q.dam), dam = sec.sheets.filter((q) => q.dam);
     dam.sort((a, b) => ((order.get(a.dam.road) ?? 1e9) - (order.get(b.dam.road) ?? 1e9)) || a.dam.idx - b.dam.idx);
     sec.sheets = plain.concat(dam);
+    if (Array.isArray(sec.damRoads)) { const first = (br) => Math.min(1e9, ...br.src.map((id) => order.has(id) ? order.get(id) : 1e9)); sec.damRoads.sort((a, b) => first(a) - first(b) || String(a.road).localeCompare(String(b.road))); }
+  }
+  /* ---- v3.8 DAM road branches: Drainage Area Map > Road > sheets ----
+     A DAM section may hold sec.damRoads = [{ id, road, alignment?, src:[source road entry ids], notes }] (optional field).
+     A copied sheet points at its branch with sh.dam.branch. A branch mirrors its source road (name + alignment) while it has
+     source roads; when they are deleted it stays, unlinked, with its sheets. One branch per road name, like the P&P tree. */
+  function damBranches(sec) { return sec && Array.isArray(sec.damRoads) ? sec.damRoads : []; }
+  function damBranchOf(sec, sh) { return sh && sh.dam && sh.dam.branch ? damBranches(sec).find((b) => b.id === sh.dam.branch) || null : null; }
+  function damBranchSheets(sec, br) { return sec.sheets.filter((sh) => sh.dam && sh.dam.branch === br.id).sort((a, b) => (Number.isFinite(a.dam.start) ? a.dam.start : 1e12) - (Number.isFinite(b.dam.start) ? b.dam.start : 1e12) || a.dam.idx - b.dam.idx); }
+  function damLoose(sec) { const ids = new Set(damBranches(sec).map((b) => b.id)); return sec.sheets.filter((sh) => !(sh.dam && ids.has(sh.dam.branch))); }
+  function findDamBranch(st, id) {
+    for (const sub of st.subs) for (const seg of sub.segments) { const br = damBranches(seg).find((b) => b.id === id); if (br) return { sub, seg, br }; }
+    return null;
+  }
+  function damBranchLinked(br) { return !!(br && br.src && br.src.length); }
+  function newDamBranch(sec, name, alignment) {
+    const br = { id: uid(), road: String(name || '').trim() || 'Road', src: [], notes: '' };
+    const a = checkAlign(alignment || ''); if (a) br.alignment = a;
+    if (!Array.isArray(sec.damRoads)) sec.damRoads = [];
+    sec.damRoads.push(br); return br;
+  }
+  /* the branch a copy of this road goes to: one already linked to it, else one with the same road name, else a new one */
+  function ensureDamBranch(sec, road) {
+    const bs = damBranches(sec);
+    let br = bs.find((b) => b.src.includes(road.id)) || bs.find((b) => rgSlug(b.road) === rgSlug(road.road));
+    if (!br) br = newDamBranch(sec, road.road, roadAlign(road));
+    if (!br.src.includes(road.id)) br.src.push(road.id);
+    return br;
+  }
+  /* sources follow the linked sheets (split / merge / delete road), names mirror the first live source road */
+  function syncDamBranches(sub) {
+    const live = new Map(sub.roads.map((r) => [r.id, r]));
+    for (const sec of sub.segments) for (const br of damBranches(sec)) {
+      const src = new Set(br.src.filter((id) => live.has(id)));
+      for (const sh of sec.sheets) if (sh.dam && sh.dam.branch === br.id && sh.dam.linked !== false && live.has(sh.dam.road)) src.add(sh.dam.road);
+      br.src = [...src];
+      const r = br.src.map((id) => live.get(id))[0];
+      if (r) { br.road = String(r.road || '').trim() || br.road; const a = roadAlign(r); if (a) br.alignment = a; else delete br.alignment; }
+      for (const sh of sec.sheets) if (sh.dam && sh.dam.branch === br.id && sh.dam.linked !== false && live.has(sh.dam.road)) sh.road = live.get(sh.dam.road).road;
+    }
+  }
+  /* load: keep valid branches; copies made before v3.8 (flat, no branch key) move into the branch of their road */
+  function normDamBranches(sub) {
+    const roads = new Map(sub.roads.map((r) => [r.id, r]));
+    for (const sec of sub.segments) {
+      if ('damRoads' in sec) {
+        const seen = new Set();
+        sec.damRoads = Array.isArray(sec.damRoads) ? sec.damRoads.filter((b) => b && typeof b === 'object' && typeof b.id === 'string' && b.id && !seen.has(b.id) && seen.add(b.id)) : [];
+        for (const b of sec.damRoads) {
+          b.road = String(b.road || '').trim().slice(0, 120) || 'Road';
+          const a = typeof b.alignment === 'string' ? checkAlign(b.alignment) : ''; if (a) b.alignment = a; else delete b.alignment;
+          b.src = Array.isArray(b.src) ? [...new Set(b.src.filter((id) => typeof id === 'string' && roads.has(id)))] : [];
+          b.notes = typeof b.notes === 'string' ? b.notes : '';
+        }
+        if (!sec.damRoads.length) delete sec.damRoads;
+      }
+      for (const sh of sec.sheets) {
+        if (!sh.dam) continue;
+        if (sh.dam.branch !== undefined) { if (sh.dam.branch !== null && !damBranchOf(sec, sh)) sh.dam.branch = null; continue; }
+        if (sec !== damSection(sub)) { sh.dam.branch = null; continue; }
+        const r = roads.get(sh.dam.road), m = /^DAM – (.+?)(?: \((.+)\))? STA /.exec(String(sh.dam.title || sh.title || ''));
+        const name = (r && r.road) || sh.road || (m && m[1]) || '';
+        if (!String(name).trim()) { sh.dam.branch = null; continue; }
+        let br = damBranches(sec).find((b) => (r && b.src.includes(r.id)) || rgSlug(b.road) === rgSlug(name));
+        if (!br) br = newDamBranch(sec, name, r ? roadAlign(r) : (m && m[2]) || '');
+        if (r && sh.dam.linked !== false && !br.src.includes(r.id)) br.src.push(r.id);
+        sh.dam.branch = br.id;
+      }
+    }
+  }
+  /* unlink a whole branch: its sheets stay, they just stop following the road */
+  function unlinkDamBranch(st, id) {
+    const hit = findDamBranch(st, id); if (!hit) throw new Error('No such DAM road branch.');
+    let n = 0; for (const sh of damBranchSheets(hit.seg, hit.br)) if (sh.dam.linked !== false) { sh.dam.linked = false; n++; }
+    hit.br.src = [];
+    log(st, 'Unlinked DAM road ' + subTag(hit.sub) + ' · ' + hit.br.road + ' (' + n + ' sheets)', null);
+    return n;
+  }
+  /* remove a branch; its sheets stay in the section (flat) */
+  function deleteDamBranch(st, id) {
+    const hit = findDamBranch(st, id); if (!hit) return false;
+    for (const sh of damBranchSheets(hit.seg, hit.br)) sh.dam.branch = null;
+    hit.seg.damRoads = damBranches(hit.seg).filter((b) => b !== hit.br); if (!hit.seg.damRoads.length) delete hit.seg.damRoads;
+    pruneProps(st); log(st, 'Removed DAM road branch ' + subTag(hit.sub) + ' · ' + hit.br.road);
+    return true;
   }
   /* linked DAM copies whose road stations / scale changed since they were made */
   function damOutOfSync(st, subIds) {
@@ -2042,6 +2135,7 @@
     if (t === 'dtop') return DISCIPLINES.includes(rest) ? { t, key: k, disc: rest, label: rest } : null;
     if (t === 'disc') { const j = rest.lastIndexOf(':'), sub = findSub(st, rest.slice(0, j)), d = rest.slice(j + 1); return sub && DISCIPLINES.includes(d) ? { t, key: k, sub, disc: d, label: subTag(sub) + ' · ' + d } : null; }
     if (t === 'seg') { const x = findSeg(st, rest); return x ? { t, key: k, sub: x.sub, seg: x.seg, disc: x.seg.discipline, obj: x.seg, label: subTag(x.sub) + ' · ' + x.seg.title } : null; }
+    if (t === 'dbr') { const x = findDamBranch(st, rest); return x ? { t, key: k, sub: x.sub, seg: x.seg, br: x.br, disc: x.seg.discipline, obj: x.br, label: subTag(x.sub) + ' · ' + x.seg.title + ' · ' + x.br.road } : null; }
     if (t === 'road') { const x = findRoad(st, rest); return x && x.sec ? { t, key: k, sub: x.sub, seg: x.sec, road: x.road, disc: x.sec.discipline, obj: x.road, label: subTag(x.sub) + ' · ' + segLabel(x.road) } : null; }
     return null;
   }
@@ -2087,6 +2181,7 @@
     if (tg.t === 'dtop') return st.subs.flatMap((sub) => sectionsOf(sub, tg.disc).flatMap((g) => g.sheets));
     if (tg.t === 'disc') return sectionsOf(tg.sub, tg.disc).flatMap((g) => g.sheets);
     if (tg.t === 'seg') return tg.seg.sheets.slice();
+    if (tg.t === 'dbr') return damBranchSheets(tg.seg, tg.br);
     if (tg.t === 'road') { const g = roadGroups(tg.sub, tg.seg).find((x) => x.entries.includes(tg.road)); return g ? sheetsOfGroup(tg.sub, tg.seg, g) : tg.seg.sheets.filter((x) => x.gen && x.gen.road === tg.road.id); }
     return [];
   }
@@ -2098,9 +2193,10 @@
     const ids = new Set(sheets.map((x) => 'sheet:' + x.id));
     if (tg.t === 'seg' || tg.t === 'root' || tg.t === 'dtop' || tg.t === 'disc') for (const sub of st.subs) for (const g of sub.segments) {
       const inside = tg.t === 'root' || (tg.t === 'dtop' && g.discipline === tg.disc) || (tg.t === 'disc' && sub === tg.sub && g.discipline === tg.disc) || (tg.t === 'seg' && g === tg.seg);
-      if (inside) { ids.add('seg:' + g.id); for (const r of roadsOf(sub, g)) ids.add('road:' + r.id); }
+      if (inside) { ids.add('seg:' + g.id); for (const r of roadsOf(sub, g)) ids.add('road:' + r.id); for (const b of damBranches(g)) ids.add('dbr:' + b.id); }
     }
     if (tg.t === 'road') ids.add('road:' + tg.road.id);
+    if (tg.t === 'dbr') ids.add('dbr:' + tg.br.id);
     const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
     const dues = sheets.map((x) => x.due).filter(Boolean).sort();
     const pr = getProps(st, key);
@@ -2135,7 +2231,7 @@
       if (!Object.keys(e).length) delete st.props[k];
     }
   }
-  return { damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
