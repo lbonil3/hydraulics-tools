@@ -160,6 +160,25 @@ function v2Fixture() {
   ok(JSON.stringify(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).map((s) => [s.gen.start, s.gen.end])) === '[[0,600],[600,1200],[1200,1300]]', 'ranges 0+00–6+00, 6+00–12+00, 12+00–13+00 (last partial)');
   ok(/Lateral A-3 Sta 0\+00 to 6\+00 \(PP 1 of 3\)/.test(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets[0].title), 'PP sheet title includes road + stations');
   await shot('04-section-roads');
+  /* v3.6: a real pointer click / tap on a tree node opens its properties (the viewport used to swallow the click) */
+  if (await has('#viewport') && await pg.evaluate(() => getComputedStyle(document.getElementById('treeWrap') || document.body).display !== 'none' && !!document.querySelector('.node.n-seg'))) {
+    const prevSel = await pg.evaluate(() => { const e = document.querySelector('.node.sel'); return e ? e.dataset.key : null; });
+    await pg.evaluate(() => { const b = document.querySelector('#drawer .ibtn[aria-label="Close details"]'); if (b) b.click(); });
+    const pt = await pg.evaluate(() => { const v = document.getElementById('viewport').getBoundingClientRect(); const e = [...document.querySelectorAll('.node.n-seg, .node.n-disc')].find((x) => { const r = x.getBoundingClientRect(); return r.width && r.top > v.top + 20 && r.bottom < v.bottom - 70 && r.left > v.left && r.right < v.right - 30; });
+      if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width * 0.4, y: r.top + r.height * 0.6 }; });
+    if (pt) {
+      if (MODE === 'iphone') await pg.touchscreen.tap(pt.x, pt.y); else await pg.mouse.click(pt.x, pt.y);
+      await sleep(300);
+      ok(await has('#drawer:not([hidden]) #propsBox'), 'real click / tap on a tree branch opens its properties');
+      if (MODE !== 'iphone') {
+        await pg.mouse.click(pt.x, pt.y, { button: 'right' }); await sleep(200);
+        ok(/Properties/.test(await txt('#nodeMenu')), 'right-click menu on a tree node has Properties');
+        await pg.keyboard.press('Escape'); await sleep(120);
+        ok(!(await has('#nodeMenu')) && await has('#drawer:not([hidden])'), 'Esc closes the node menu, details stay open');
+      }
+    }
+    if (prevSel) { await pg.evaluate((k) => { const e = document.querySelector('.node[data-key="' + k + '"]'); if (e) e.click(); }, prevSel); await sleep(250); }
+  }
   /* road drawer + undo */
   await clickText('#roadTable .link', /Open/);
   ok(/Road entry/i.test(await txt('#drawer .dkind')) && await has('#stStart'), 'road drawer with stations editor');

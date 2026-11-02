@@ -704,3 +704,42 @@ details.menu.active>summary{border-color:var(--brand);background:var(--brand-sof
 }
 @media (min-width:1500px){.brand{flex-basis:320px}}
 @media (min-width:1360px){body.view-list .listbar::before{content:'Filters & views';font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}}
+/* ---------- v3.6 branch properties: node pill (Properties / ⋯), context menu, properties box ---------- */
+.npill{position:absolute;top:-12px;right:26px;display:flex;gap:3px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:2}
+.node:hover .npill,.node:focus-within .npill,.node.sel .npill{opacity:1;pointer-events:auto}
+.node:not(.sel):not(:focus-within) .npill .pbtn:not(.more){display:none}
+.pbtn{height:22px;padding:0 9px;border-radius:11px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);font-size:11.5px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);line-height:1;white-space:nowrap}
+.pbtn:hover,.pbtn:focus-visible{color:var(--brand);border-color:var(--brand)}
+.node.sel .pbtn:not(.more){background:var(--brand);border-color:var(--brand);color:#fff}
+.pbtn.more{min-width:28px;padding:0 6px;font-size:14px;letter-spacing:1px}
+@media (hover:none){.node:hover:not(.sel) .npill{opacity:0;pointer-events:none}}
+.ctxmenu{position:fixed;z-index:60;min-width:220px;max-width:320px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;gap:1px;animation:ctxin .12s ease}
+@keyframes ctxin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.ctxhead{font-size:11.5px;color:var(--muted);padding:4px 10px 6px;border-bottom:1px solid var(--line);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctxitem{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:8px;background:none;color:var(--text);font:inherit;font-size:13.5px;cursor:pointer}
+.ctxitem:hover,.ctxitem:focus-visible{background:var(--brand-soft);color:var(--brand-ink);outline:none}
+.ctxitem.first{font-weight:700}
+.ctxitem kbd{font-size:11px;color:var(--muted)}
+@media (max-width:900px){
+  .ctxmenu{left:8px!important;right:8px;bottom:8px;top:auto!important;max-width:none;border-radius:16px;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+  .ctxitem{min-height:48px;font-size:15px}
+  .pbtn{height:30px;padding:0 12px;font-size:13px}.npill{top:-16px}
+}
+.box.props{border-color:color-mix(in srgb,var(--brand) 35%,var(--line))}
+.box.props h3{margin-top:0}
+.box.props .ph{margin:14px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.box.props.flash{animation:pflash 1s ease}
+@keyframes pflash{0%{box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 45%,transparent)}100%{box-shadow:none}}
+.ptiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.ptile{display:flex;flex-direction:column;align-items:flex-start;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--bg,transparent);min-width:0}
+.ptile b{font-size:15px;line-height:1.2;white-space:nowrap}
+.ptile span{font-size:11px;line-height:1.2;color:var(--muted);max-width:100%;overflow-wrap:anywhere}
+.ptile.bad b{color:var(--bad,#dc2626)}.ptile.warn b{color:var(--warn,#d97706)}
+.f.pstat .lab{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.f.pstat .stpill{display:inline-block;margin-top:4px}
+@media (max-width:420px){.ptiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* v3.6 road alignment name */
+.nalign,.ralign{color:var(--muted);font-weight:500}
+.nalign{font-size:11.5px}
+#roadTable .c-alignment,#stTable .c-alignment{min-width:110px}
+.f.pstat .stpill{padding:3px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px;font-weight:600}

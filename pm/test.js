@@ -301,11 +301,11 @@ t('CSV exports: sheets (section + road columns, formula guard), PP summary per s
   M.applyGenerate(st, r1.id, M.planGenerate(st, r1.id));
   M.addSheet(st, K(st, A, 'dr-std').id, { title: '=HYPERLINK("x")', notes: 'a\nb' });
   const [head, , , row] = M.toCSV(st, M.allSheets(st)).split('\r\n');
-  assert.ok(head.startsWith('Sub-project,Discipline,Section,Road,Sheet No,Sheet'));
+  assert.ok(head.startsWith('Sub-project,Discipline,Section,Road,Alignment,Sheet No,Sheet'));
   assert.ok(row.includes('"\'=HYPERLINK(""x"")"') && row.endsWith('"a\nb"'));
   const pp = M.ppCSV(st);
-  assert.ok(pp.includes('A,Drainage,Drainage Plan & Profile,FM 1960,10+00,25+50,1550,100,1200,0,2'));
-  assert.ok(pp.includes('A total,Drainage,Drainage Plan & Profile,,,,,,,,2') && pp.includes('Project total,All,,,,,2030,,,,3'));
+  assert.ok(pp.includes('A,Drainage,Drainage Plan & Profile,FM 1960,,10+00,25+50,1550,100,1200,0,2'));
+  assert.ok(pp.includes('A total,Drainage,Drainage Plan & Profile,,,,,,,,,2') && pp.includes('Project total,All,,,,,,2030,,,,3'));
 });
 t('sheet index + numbering ranges + auto-number in project order', () => {
   const { st, A, B, r1 } = setup();
@@ -538,7 +538,7 @@ t('v3.2 road branches + per-sheet station ranges: computed, live, override, warn
   const lv = M.collapseLevel(st, 4); assert.strictEqual(lv[M.roadGroups(A, pA)[0].key], true); assert.strictEqual(lv['seg:' + pA.id], false);
   /* CSV: sheet stations exported, override survives a round trip */
   M.setSheetRange(st, shs()[0].id, '10+00', '15+50');
-  const csv = M.exportImportCSV(st); assert.match(csv, /Sheet start station,Sheet end station/); assert.match(csv, /,10\+00,15\+50\r\n/);
+  const csv = M.exportImportCSV(st); assert.match(csv, /Sheet start station,Sheet end station,Alignment/); assert.match(csv, /,10\+00,15\+50,\r\n/);
   const rows = M.parseCSV(csv).rows; const st2 = M.newState('R'); const plan = M.planCSV(st2, rows.slice(1), M.detectMapping(rows[0]), { mode: 'merge' });
   assert.strictEqual(plan.summary.errors, 0); M.applyCSV(st2, plan); M.syncPP(st2);
   const A2 = st2.subs[0], s2 = M.secOf(A2, 'dr-pp'); const g2 = M.sheetsOfGroup(A2, s2, M.roadGroups(A2, s2)[0]);
@@ -635,6 +635,75 @@ t('v3.5 linkCheck: same answers as addLink (self, duplicate, loop) without chang
   assert.throws(() => M.addLink(st, s3, s1, 'dep'), /circular/);
   assert.strictEqual(M.linkCheck(st, s3, s1, 'update').ok, true, 'update links may point back');
   assert.strictEqual(M.linkCheck(st, s1, { t: 'sheet', id: 'nope' }).reason, 'missing');
+});
+t('v3.6 branch properties: optional owner/due/milestone/notes per branch, roll-up, old data still loads', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp'), dam = M.secOf(A, 'dr-dam');
+  const r = M.addRoad(st, pp.id, { road: 'FM 1', start: '10+00', end: '34+00' }).road; M.applyGenerate(st, r.id, M.planGenerate(st, r.id));
+  M.addSheet(st, dam.id, { title: 'DAM 1' });
+  pp.sheets.forEach((sh, i) => M.updateSheet(st, sh.id, { hoursBudget: 10, hoursActual: 4 + i, owner: i ? 'Ana' : '', due: '2026-11-0' + (i + 1), status: i ? 'Done' : 'In progress' }));
+  /* old data (no st.props) reads as empty everywhere */
+  assert.strictEqual(st.props, undefined);
+  for (const k of ['root', 'dtop:Drainage', 'disc:' + A.id + ':Drainage', 'seg:' + pp.id, 'road:' + r.id]) assert.deepStrictEqual(M.getProps(st, k), { owner: '', due: '', milestone: '', notes: '' }, k);
+  assert.strictEqual(M.propTarget(st, 'disc:nope:Drainage'), null); assert.strictEqual(M.propTarget(st, 'dtop:Roads'), null);
+  /* set: stored only in st.props (sections / roads keep notes in their own .notes) */
+  const ms = st.milestones[1].id;
+  M.setProps(st, 'disc:' + A.id + ':Drainage', { owner: ' Luis ', due: '2026-11-03', milestone: ms, notes: 'Branch note' });
+  assert.deepStrictEqual(st.props['disc:' + A.id + ':Drainage'], { owner: 'Luis', due: '2026-11-03', milestone: ms, notes: 'Branch note' });
+  M.setProps(st, 'seg:' + pp.id, { owner: 'Mei', notes: 'Survey pending' });
+  assert.strictEqual(pp.notes, 'Survey pending'); assert.deepStrictEqual(st.props['seg:' + pp.id], { owner: 'Mei' });
+  assert.throws(() => M.setProps(st, 'seg:' + pp.id, { due: '11/3/2026' }), /Due date/);
+  assert.throws(() => M.setProps(st, 'seg:' + pp.id, { milestone: 'nope' }), /milestone/);
+  assert.throws(() => M.setProps(st, 'sheet:x', { owner: 'a' }), /Nothing to edit/);
+  M.setProps(st, 'seg:' + pp.id, { owner: '' }); assert.ok(!('seg:' + pp.id in st.props), 'empty entries are removed');
+  /* roll-up */
+  const R = M.rollup(st, 'disc:' + A.id + ':Drainage', '2026-11-02');
+  assert.strictEqual(R.total, pp.sheets.length + 1); assert.strictEqual(R.done, pp.sheets.length - 1);
+  assert.strictEqual(R.hoursBudget, 10 * pp.sheets.length); assert.strictEqual(R.unassigned, 2);
+  assert.strictEqual(R.overdue, 1, 'the in-progress sheet due 11-01 is overdue');
+  assert.strictEqual(R.firstDue, '2026-11-01');
+  M.addLink(st, { t: 'seg', id: M.secOf(st.subs[1], 'dr-dam').id }, { t: 'seg', id: pp.id }, 'dep');
+  M.addLink(st, { t: 'seg', id: dam.id }, { t: 'road', id: r.id }, 'dep');
+  const R2 = M.rollup(st, 'disc:' + A.id + ':Drainage', '2026-11-02');
+  assert.strictEqual(R2.linksIn.length, 1); assert.strictEqual(R2.linksInternal.length, 1); assert.strictEqual(R2.blockingIn, 1);
+  assert.strictEqual(M.rollup(st, 'road:' + r.id).total, pp.sheets.length);
+  /* removed milestone / road → stale properties pruned; JSON round trip keeps them */
+  M.setProps(st, 'road:' + r.id, { owner: 'Ana', milestone: ms });
+  const back = M.migrate(JSON.parse(JSON.stringify(st))); assert.deepStrictEqual(back.props, st.props);
+  M.removeMilestone(st, ms); assert.ok(!st.props['disc:' + A.id + ':Drainage'].milestone && !st.props['road:' + r.id].milestone);
+  M.deleteRoad(st, r.id); assert.ok(!('road:' + r.id in st.props));
+});
+t('v3.6 road alignment name: optional, editable, copied on split/copy, in CSV exports, report and import; old data loads', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp');
+  const r = M.addRoad(st, pp.id, { road: 'FM 1960', start: '10+00', end: '34+00', alignment: '  BL   FM 1960 ' }).road;
+  assert.strictEqual(r.alignment, 'BL FM 1960');
+  const r2 = M.addRoad(st, pp.id, { road: 'Kuykendahl', start: '5+00', end: '9+00' }).road;
+  assert.ok(!('alignment' in r2), 'no alignment → no field (data stays as before)');
+  assert.strictEqual(M.roadAlign(r2), ''); assert.strictEqual(M.roadWithAlign(r), 'FM 1960 (Alignment: BL FM 1960)');
+  M.updateRoad(st, r2.id, { alignment: 'CL Kuyk' }); assert.strictEqual(r2.alignment, 'CL Kuyk');
+  M.applyStationRows(st, [{ roadId: r2.id, alignment: '' }]); assert.ok(!('alignment' in r2), 'cleared');
+  assert.throws(() => M.updateRoad(st, r2.id, { alignment: 'x'.repeat(61) }), /60 characters/);
+  M.applyGenerate(st, r.id, M.planGenerate(st, r.id));
+  const sh = pp.sheets.find((x) => x.gen && x.gen.road === r.id);
+  assert.strictEqual(M.sheetAlign(st, A, pp, sh), 'BL FM 1960');
+  /* exports */
+  const csv = M.toCSV(st, M.allSheets(st)).split('\r\n');
+  assert.ok(csv[0].startsWith('Sub-project,Discipline,Section,Road,Alignment,Sheet No'));
+  assert.ok(csv.some((l) => l.startsWith('A,Drainage,Drainage Plan & Profile,FM 1960,BL FM 1960,')));
+  assert.ok(M.ppCSV(st).includes('A,Drainage,Drainage Plan & Profile,FM 1960,BL FM 1960,10+00,34+00,'));
+  const ex = M.exportImportCSV(st); assert.match(ex, /Sheet end station,Alignment\r\n/); assert.match(ex, /,FM 1960,10\+00,34\+00,[^\r]*,BL FM 1960\r\n/);
+  /* report outline + narrative */
+  const O = M.reportOutline(st, '2026-11-02'); assert.match(JSON.stringify(O), /"aligns":\["BL FM 1960"\]/);
+  assert.match(M.narrativeText(st, '2026-11-02'), /FM 1960 \[alignment BL FM 1960\]/);
+  /* split / copy keep it */
+  const sp = M.splitSegment(st, r.id, '20+00'); assert.strictEqual(sp.b.alignment, 'BL FM 1960');
+  const cp = M.copySegment(st, r.id, st.subs[1].id, {}); assert.strictEqual(cp.road.alignment, 'BL FM 1960');
+  /* CSV import round trip keeps it */
+  const rows = M.parseCSV(ex).rows; const st2 = M.newState('R');
+  const plan = M.planCSV(st2, rows.slice(1), M.detectMapping(rows[0]), { mode: 'merge' }); assert.strictEqual(plan.summary.errors, 0); M.applyCSV(st2, plan);
+  assert.strictEqual(st2.subs[0].roads.find((x) => x.road === 'FM 1960').alignment, 'BL FM 1960');
+  /* old data: no field, junk values dropped on load */
+  const old = JSON.parse(JSON.stringify(st)); delete old.subs[0].roads[0].alignment; old.subs[0].roads[1].alignment = 42;
+  const L = M.migrate(old); assert.ok(!('alignment' in L.subs[0].roads[0]) && !('alignment' in L.subs[0].roads[1]));
 });
 (async () => {
   let passed = 0;
