@@ -1,6 +1,6 @@
 # National Radar
 
-Phone-first static page (vanilla JS, no build step, works offline). Three views of the same public feeds, selected by the buttons under the banner:
+Static page (vanilla JS, no build step, works offline), usable on phone and laid out for desktop. Three views of the same public feeds, selected by the buttons under the banner:
 
 - **PS&E / H&H, fee > $5M (default).** Consultant engineering services for PS&E / final design and hydrology and hydraulics (drainage, stormwater, floodplain, culverts, storm drains, coastal and resilience, water and wastewater design), all states, whose SOURCE states a fee or contract value. The threshold is an editable control (default strictly greater than $5,000,000, a one-tap "include exactly" toggle, and a visible note listing records at exactly the cutoff). Tabs: All, Upcoming / open, Forecast, Awarded, **Large projects, fee not published**, **Design-build**, Watchlist.
 - **Preset: water, fee > $20M** and **Preset: roadway + drainage**: the two earlier, stricter lanes (below), unchanged.
@@ -15,6 +15,14 @@ Phone-first static page (vanilla JS, no build step, works offline). Three views 
 - **Exclusions kept.** Construction contracts and supplies, construction management / inspection / program-support / IT services (no design), non-civil contexts, outside the US. Counts per reason are on the Data tab ("Excluded: construction" and others).
 - **Sources added for this lens:** USAspending prime awards and IDIQ ceilings (base_and_all_options from the award detail), USAspending design-build awards, NYC City Record and Chicago contracts at a $5M floor, City of Austin Professional Services master agreements, TxDOT Project Information. All older sources (SAM extract, TxDOT Projected Contracts, DHS APFS, Acquisition Gateway, Caltrans, WSDOT) feed this lens too.
 - `node national-radar/test-pse.js` covers strict `>` vs `>=`, the exact-$5M note, badge logic, hide-unconfirmed, and that design-build values and project costs never satisfy a fee filter.
+
+## Map tab (`mapview.js`, `test-mapview.js`)
+
+- **Desktop (1024 px and wider):** compact header; the lens threshold controls and the filters open as right-side drawers (Esc closes); the map takes about 65% of the width with the records panel on the right, which scrolls on its own and lists the records for the current tab, filters and selected states. Phone keeps the stacked layout with 44 px tap targets.
+- **Bubbles:** fee tabs size bubbles by the sum of values the sources state (sqrt scale, labelled; design-build values and project costs are labelled NOT fees); Advance notices and records that state no value use an amber count scale (sqrt, no cap). Sizes and labels are in screen pixels. The legend changes per tab; the pin entry only appears when a record has coordinates.
+- **Selection:** hover (or keyboard focus) shows state, record count, sum of stated values and "n of m with a stated value"; click selects, Ctrl/Shift-click or Multi-select adds; other states stay visible but dimmed; the selection bar has Clear. "Nationwide / no state (n)" filters records without a state.
+- **Crowded Northeast:** MA, RI, CT, NJ, DE, MD and DC (VT / NH only if they collide) are drawn as callout bubbles in the Atlantic with a leader line; wheel / + / − zoom, drag to pan, Reset. Callouts switch off past 1.8x zoom, where states have room.
+- Optional state shading by record count, and "Map as table" (state, records, with a stated value, sum). No data or fee rule is computed here; the map aggregates the same records and values the list shows.
 
 ## Earlier water lane (preset)
 
@@ -37,6 +45,7 @@ Uncertain records go to **Needs review**; open or upcoming water-sector engineer
 | model.js | rules, normalizers, dedupe, filters, CSV (shared by the browser, the build script and the tests) |
 | app.js, index.html, style.css | the UI |
 | proj.js, us-geo.js | map projection and state outlines (US Census TIGERweb, public domain) |
+| mapview.js, test-mapview.js | map encoding (per-tab scales, legend, tooltip text) and Northeast callout layout; tests |
 | sources.js | text for sources tested but not used, and the rules in plain words |
 | data/national.json | the snapshot, written by scripts/build-national.js |
 | pse.js, test-pse.js | PS&E / H&H lens, design-build and pipeline evaluator, filters, CSV; tests |

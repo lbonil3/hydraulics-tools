@@ -25,6 +25,7 @@
   <div class="fresh" id="fresh" role="status" aria-live="polite"><span class="dot" id="freshDot"></span><span id="freshTxt">Loading data…</span></div>
 </header>
 
+<div class="chrome" id="chrome">
 <section class="banner" id="banner" aria-label="Read this first">
   <p id="bannerTxt"><b>Loading…</b></p>
   <button type="button" class="linkbtn" id="btnHow" aria-expanded="false" aria-controls="how">What counts, and what does not</button>
@@ -38,6 +39,7 @@
 </nav>
 <nav class="scopes" id="scopes" aria-label="What to show"></nav>
 <section class="pse-ctl" id="pseCtl" aria-label="Fee and design-build controls" hidden>
+  <div class="drawhead desk"><b>Lens controls</b><button type="button" class="btn small" id="ctlClose">Close</button></div>
   <div class="pc" id="pcFee">
     <label class="pcl" for="feeIn">Consultant fee threshold <span class="hint">(stated fee, in $ millions)</span></label>
     <div class="pcrow">
@@ -78,9 +80,11 @@
 <section class="filters" aria-label="Filters">
   <div class="row">
     <input id="q" type="search" inputmode="search" enterkeyhint="search" placeholder="Search title, agency, state, vendor…" aria-label="Search" autocomplete="off">
+    <button type="button" class="btn desk" id="btnCtl" aria-expanded="false" aria-controls="pseCtl">Lens controls</button>
     <button type="button" class="btn" id="btnMore" aria-expanded="false" aria-controls="adv">Filters <span id="advCount"></span></button>
   </div>
   <div id="adv" hidden>
+    <div class="drawhead desk"><b>Filters</b><button type="button" class="btn small" id="advClose">Close</button></div>
     <h3>State</h3><div class="chips" id="fState"></div>
     <h3>Agency</h3><div class="chips" id="fAgency"></div>
     <h3>Status <span class="hint">(as the source states it)</span></h3><div class="chips" id="fStatus"></div>
@@ -97,16 +101,34 @@
   </div>
   <div class="active" id="activeNote" hidden></div>
 </section>
+</div>
 
 <main id="main">
   <section id="v-map" class="view" aria-label="US map">
-    <div class="mapwrap">
-      <svg id="usmap" viewBox="0 0 975 610" role="img" aria-label="Map of the United States. Bubbles show state totals. Use the List tab for an accessible list."></svg>
-      <div class="legend" id="legend"></div>
+    <div class="mapgrid">
+      <div class="mapcol">
+        <div class="selbar" id="selBar" aria-live="polite"></div>
+        <div class="maptools" role="toolbar" aria-label="Map tools">
+          <span id="noneChip"></span>
+          <button type="button" class="chip" id="btnMulti" aria-pressed="false" title="Or hold Ctrl / Shift while clicking">Multi-select</button>
+          <button type="button" class="chip" id="btnShade" aria-pressed="true">Shade states</button>
+          <button type="button" class="chip" id="btnTable" aria-pressed="false">Map as table</button>
+          <span class="zoom" role="group" aria-label="Zoom"><button type="button" class="chip zb" id="zIn" aria-label="Zoom in">+</button><button type="button" class="chip zb" id="zOut" aria-label="Zoom out">&minus;</button><button type="button" class="chip" id="zReset">Reset</button></span>
+        </div>
+        <div class="mapwrap" id="mapWrap">
+          <svg id="usmap" viewBox="0 0 1040 610" role="group" aria-label="Map of the United States. Each bubble is a state: tab to it and press Enter to select. Map as table gives the same numbers as a table."></svg>
+          <div class="maptip" id="mapTip" role="tooltip" hidden></div>
+          <div class="maptable" id="mapTable" hidden></div>
+        </div>
+        <div class="legend" id="legend"></div>
+        <p class="note" id="mapNote"></p>
+      </div>
+      <aside class="mapres" id="mapRes" aria-label="Records in this view">
+        <h2 class="sec">Records in this view <span class="hint" id="topHint"></span></h2>
+        <div id="mapTop" class="cards"></div>
+        <button type="button" class="btn wide" id="btnMapMore" hidden>Show more</button>
+      </aside>
     </div>
-    <p class="note" id="mapNote"></p>
-    <h2 class="sec">Top of this view <span class="hint" id="topHint"></span></h2>
-    <div id="mapTop" class="cards"></div>
   </section>
 
   <section id="v-list" class="view" hidden aria-label="List">
@@ -144,7 +166,7 @@
   </section>
 </main>
 
-<nav class="tabs" aria-label="Views">
+<nav class="tabs" id="tabs" aria-label="Views">
   <button type="button" data-tab="map" class="on">Map</button>
   <button type="button" data-tab="list">List</button>
   <button type="button" data-tab="timeline">Timeline</button>
@@ -168,6 +190,7 @@
 <script src="cost.js"></script>
 <script src="roadway.js"></script>
 <script src="pse.js"></script>
+<script src="mapview.js"></script>
 <script src="sources.js"></script>
 <script src="app.js"></script>
 </body>
