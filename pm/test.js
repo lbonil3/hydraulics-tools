@@ -831,6 +831,49 @@ t('v3.8 flat DAM copies from v3.7 move into a road branch on load, nothing lost'
   assert.strictEqual(JSON.stringify(again.subs[0].segments.find((g) => g.key === 'dr-dam').damRoads), JSON.stringify(md.damRoads), 'migration runs once');
   assert.strictEqual(M.planDam(m, {}).create, 0, 're-run after migration makes no duplicates');
 });
+t('v3.9 Hydraulic Data Sheets by count: generic titles, add more, reduce, edited titles kept, no road, compat', () => {
+  const st = M.newState('P'); const A = st.subs[0]; M.addStandardSet(st, A.id);
+  const g = M.secOf(A, 'dr-hds-inlet'), x = M.secOf(A, 'dr-hds-x');
+  assert.ok(M.isHydSec(g) && M.isHydSec(x) && !M.isHydSec(M.secOf(A, 'dr-pp')) && !M.isPPSec(g), 'hydraulic sections need no roads');
+  const road = M.addSheet(st, x.id, { title: 'Culvert Hydraulics Sta 22+40', road: 'FM 1960' }); /* existing road-tagged sheet */
+  const before = JSON.stringify(st), P = M.planHydCount(st, g.id, 3);
+  assert.strictEqual(JSON.stringify(st), before, 'plan does not change data');
+  assert.deepStrictEqual([P.cur, P.create, !!P.adopt], [1, 2, true], 'the standard sheet becomes sheet 1, no duplicate');
+  const r = M.setHydCount(st, g.id, 3);
+  assert.deepStrictEqual([r.created, r.adopted, g.sheets.length], [2, 1, 3]);
+  assert.deepStrictEqual(g.sheets.map((q) => q.title), ['Hydraulic Data Sheet - Inlet Computations (1 of 3)', 'Hydraulic Data Sheet - Inlet Computations (2 of 3)', 'Hydraulic Data Sheet - Inlet Computations (3 of 3)']);
+  assert.ok(g.sheets.every((q) => !q.road && !q.gen && q.discipline === 'Drainage' && q.number), 'no road, numbered');
+  g.sheets[1].title = 'Inlet Computations – FM 1960'; /* user edits a title */
+  M.setHydCount(st, g.id, 5);
+  assert.deepStrictEqual(g.sheets.map((q) => q.title), ['Hydraulic Data Sheet - Inlet Computations (1 of 5)', 'Inlet Computations – FM 1960', 'Hydraulic Data Sheet - Inlet Computations (3 of 5)', 'Hydraulic Data Sheet - Inlet Computations (4 of 5)', 'Hydraulic Data Sheet - Inlet Computations (5 of 5)'], 'adding continues numbering; edited title kept');
+  assert.strictEqual(new Set(g.sheets.map((q) => q.number)).size, 5, 'no duplicate sheet numbers');
+  assert.strictEqual(M.bulkAddTemplates(st, g.id).length + M.addStandardSet(st, A.id).filter((q) => q.title === g.title).length, 0, '+ Standard does not add a duplicate once counted');
+  assert.strictEqual(M.planHydCount(st, g.id, 5).create + M.planHydCount(st, g.id, 5).remove.length, 0, 'same count = no change');
+  g.sheets[4].status = 'In progress';
+  const Pd = M.planHydCount(st, g.id, 3);
+  assert.deepStrictEqual([Pd.remove.length, Pd.progress.length], [2, 1], 'reducing lists the sheets with work');
+  assert.throws(() => M.setHydCount(st, g.id, 3), /have work/);
+  g.sheets[4].status = 'Not started'; M.setHydCount(st, g.id, 4); assert.strictEqual(g.sheets.length, 4, 'untouched sheets are removed without a guard');
+  M.setHydCount(st, g.id, 3, { force: true }); assert.strictEqual(g.sheets.length, 3);
+  assert.deepStrictEqual(g.sheets.map((q) => q.hyd.of), [3, 3, 3]);
+  // deleting one renumbers the rest
+  M.deleteSheet(st, g.sheets[0].id); M.syncPP(st);
+  assert.deepStrictEqual(g.sheets.map((q) => q.title), ['Inlet Computations – FM 1960', 'Hydraulic Data Sheet - Inlet Computations (2 of 2)']);
+  // other hydraulic sections untouched; road-tagged sheet stays
+  assert.ok(x.sheets.includes(road) && road.road === 'FM 1960' && !road.hyd);
+  M.setHydCount(st, x.id, 2);
+  assert.ok(x.sheets.includes(road) && x.sheets.filter((q) => q.hyd).length === 2, 'road-tagged sheets are not counted or removed');
+  // errors, duplicate, move, compat
+  assert.throws(() => M.planHydCount(st, g.id, -1)); assert.throws(() => M.planHydCount(st, g.id, 2.5)); assert.throws(() => M.planHydCount(st, g.id, 'x'));
+  assert.ok(!M.duplicateSheet(st, g.sheets[1].id).hyd, 'a duplicate is a plain sheet');
+  const j = M.migrate(JSON.parse(JSON.stringify(st)));
+  assert.deepStrictEqual(M.secOf(j.subs[0], 'dr-hds-inlet').sheets.map((q) => q.title), g.sheets.map((q) => q.title), 'round-trip');
+  const junk = JSON.parse(JSON.stringify(st)); M.secOf(junk.subs[0], 'dr-hds-inlet').sheets[0].hyd = 'bad';
+  assert.ok(!M.secOf(M.migrate(junk).subs[0], 'dr-hds-inlet').sheets[0].hyd, 'bad hyd data dropped');
+  const old = JSON.parse(JSON.stringify(st)); for (const sub of old.subs) for (const sg of sub.segments) for (const q of sg.sheets) delete q.hyd;
+  assert.strictEqual(M.migrate(old).subs[0].segments.reduce((a, sg) => a + sg.sheets.length, 0), st.subs[0].segments.reduce((a, sg) => a + sg.sheets.length, 0), 'old data loads unchanged');
+  assert.ok(M.exportImportCSV(st).includes('Hydraulic Data Sheet - Crossing (1 of 2)'), 'CSV export');
+});
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

@@ -757,3 +757,9 @@ details.menu.active>summary{border-color:var(--brand);background:var(--brand-sof
 .dampill .row{gap:10px;margin:0}
 .row.pacts{margin:4px 0 2px}
 @media (max-width:900px){.damroad{min-height:44px;padding:6px 0}.damroad input{width:20px;height:20px}}
+/* v3.9 hydraulic data sheets by count */
+.hydrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.hydrow .hydn{width:5.5em;text-align:center;font-size:16px}
+.hydrow .hydpm{min-width:36px;padding-left:0;padding-right:0;font-size:16px}
+#hydPrev p{margin:6px 0 0}
+@media (max-width:900px){.hydrow .hydpm,.hydrow .hydn{min-height:44px}.hydrow .hydpm{min-width:44px}}

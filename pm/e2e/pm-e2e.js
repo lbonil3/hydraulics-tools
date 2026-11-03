@@ -422,6 +422,28 @@ function v2Fixture() {
   ok(damCount(await data()) === dam0 + damN, 'redo brings them back');
   D = await data();
 
+  /* 10c. v3.9 hydraulic data sheets by count (no road) */
+  const hydSec = () => D.subs[0].segments.find((g) => g.key === 'dr-hds-inlet');
+  D = await data();
+  await pg.evaluate((id) => { const k = 'seg:' + id; let e = document.querySelector('.node[data-key="' + k + '"]'); if (e) e.click(); }, hydSec().id); await sleep(250);
+  if (!(await has('#hydBox'))) { await click('#vList'); await sleep(200); await click('#vTree'); await sleep(200); await click('#cAll'); await sleep(250); await pg.evaluate((id) => document.querySelector('.node[data-key="seg:' + id + '"]').click(), hydSec().id); await sleep(250); }
+  ok(await has('#hydBox') && await has('#hydCount') && !(await has('#addSheetRoad')), 'hydraulic data section: "How many sheets?" box, no road field');
+  const h0 = hydSec().sheets.length;
+  await setVal('#hydCount', '3'); await sleep(150);
+  ok(/Titles become/.test(await txt('#hydPrev')), 'count preview shows the generic titles');
+  await click('#hydSet'); await sleep(300);
+  D = await data();
+  const hs = hydSec().sheets.filter((q) => q.hyd);
+  ok(hs.length === 3 && hs.map((q) => q.title).join('|') === [1, 2, 3].map((i) => hydSec().title + ' (' + i + ' of 3)').join('|') && hs.every((q) => !q.road), '3 sheets with generic titles “<section> (i of 3)”, no road');
+  await click('#hydAdd1'); await sleep(300); D = await data();
+  ok(hydSec().sheets.filter((q) => q.hyd).map((q) => q.hyd.idx).join(',') === '1,2,3,4' && hydSec().sheets.filter((q) => q.hyd).every((q) => q.hyd.of === 4), '+ Add 1 more continues the numbering');
+  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(300); D = await data();
+  ok(hydSec().sheets.filter((q) => q.hyd).length === 3, 'undo restores 3');
+  await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(300); D = await data();
+  ok(hydSec().sheets.length === h0, 'undo again restores the section as it was');
+  D = await data();
+
   /* 11. persistence, v2 untouched, no external requests, errors */
   await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
   ok(!(await pg.$('#migV3')), 'migration notice only once');
