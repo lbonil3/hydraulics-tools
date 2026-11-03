@@ -384,6 +384,10 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.11 (ponds, laterals, junction boxes, optional counts)
+
+Detention is one branch: each pond is Layout, Cross Sections, and Geometric Layout (2 sheets). The old Detention Basin Layout and Detention Basin Cross Section sections are folded into it on load. Drainage laterals are a sheet count (double-banked profiles, no road). Special junction boxes are a count of boxes, 3 sheets each. Bridge Deck Drawing Details, Bridge Deck Drain Summary, and Standards can also be entered as a sheet count. Saved projects keep sheet status, owners, notes, and edited titles; generated lateral sheets become counted sheets.
+
 ## v3.4 bullet report
 
 | Commit | Change |

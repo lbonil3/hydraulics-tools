@@ -1,4 +1,4 @@
-/* Project Tracker v3 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.11 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -737,8 +737,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
 
   /* ----- tree (v3): Project → Drainage / SWP3 → sub-projects A–D → sections → sheets. Road entries are data inside P&P sections, not nodes. ----- */
   const COLX = [0, 280, 560, 860, 1200, 1530];
-  const W = { root: 250, dtop: 250, disc: 270, seg: 310, sheet: 320, road: 290, oth: 290, dbr: 290 };
-  const H = { root: 112, dtop: 100, disc: 92, seg: 70, segpp: 104, sheet: 56, road: 88, oth: 56, dbr: 88 };
+  const W = { root: 250, dtop: 250, disc: 270, seg: 310, sheet: 320, road: 290, oth: 290, dbr: 290, unit: 280 };
+  const H = { root: 112, dtop: 100, disc: 92, seg: 70, segpp: 104, sheet: 56, road: 88, oth: 56, dbr: 88, unit: 78 };
   const GAP = 10;
   function isCollapsed(key, def) { return key in ui.collapsed ? ui.collapsed[key] : def; }
   const DISCS = ['Drainage', 'SWP3'];
@@ -750,7 +750,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   function keyQuery(key) { return '.node[data-key="' + key + '"]'; }
   function rowRoad(r) { return M.sheetRoad(st, r.sub, r.sh); }
   /* v3.2: tree key of the road branch (or "Other sheets") a sheet of a road section hangs under; null for other sections */
-  function sheetBranchKey(sub, seg, sh) { const db = M.damBranchOf(seg, sh); if (db) return 'dbr:' + db.id; if (!M.isPPSec(seg)) return null; const g = M.sheetGroupSlug(sub, seg, sh); return g ? 'rd:' + seg.id + ':' + g : 'oth:' + seg.id; }
+  function sheetBranchKey(sub, seg, sh) { const db = M.damBranchOf(seg, sh); if (db) return 'dbr:' + db.id; if (sh.unit && M.unitKind(seg) === sh.unit.kind) return 'unit:' + seg.id + ':' + sh.unit.n; if (!M.isPPSec(seg)) return null; const g = M.sheetGroupSlug(sub, seg, sh); return g ? 'rd:' + seg.id + ':' + g : 'oth:' + seg.id; }
   function roadBranchKey(hit) { return hit && hit.sec ? M.rgKey(hit.sec, hit.road.road) : null; }
   function staTxt(rg) { return rg ? M.formatStation(rg.start) + ' – ' + M.formatStation(rg.end) : 'no range'; }
   function bigProject() { return M.allSheets(st).length > 80; }
@@ -774,6 +774,14 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
             }
             const oth = M.otherSheets(sub, seg);
             if (oth.length) { const on = { key: 'oth:' + seg.id, type: 'oth', sub, seg, disc: d, depth: 4, kids: [] }; on.collapsed = isCollapsed(on.key, big); for (const sh of oth) on.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 5, kids: [] }); gn.kids.push(on); }
+          } else if (M.unitKind(seg) && M.unitGroups(seg).length) { /* v3.11: Detention Basin > Pond, or Special Junction Box > Box */
+            for (const sh of M.unitLoose(seg)) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
+            for (const g of M.unitGroups(seg)) {
+              const un = { key: 'unit:' + seg.id + ':' + g.n, type: 'unit', sub, seg, g, disc: d, depth: 4, kids: [] };
+              un.collapsed = isCollapsed(un.key, big);
+              for (const sh of g.sheets) un.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, g, disc: d, depth: 5, kids: [] });
+              gn.kids.push(un);
+            }
           } else if (M.damBranches(seg).length) { /* v3.8: Drainage Area Map > Road > sheets */
             for (const sh of M.damLoose(seg)) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
             for (const br of M.damBranches(seg)) {
@@ -809,6 +817,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (n.type === 'road') return M.sheetsOfGroup(n.sub, n.seg, n.g).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'oth') return M.otherSheets(n.sub, n.seg).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'dbr') return M.damBranchSheets(n.seg, n.br).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
+    if (n.type === 'unit') return n.g.sheets.map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'disc') return M.sectionsOf(n.sub, n.disc).flatMap((seg) => seg.sheets.map((sh) => ({ sub: n.sub, seg, sh })));
     if (n.type === 'dtop') return M.allSheets(st).filter((r) => r.seg.discipline === n.disc);
     return M.allSheets(st);
@@ -819,7 +828,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     const any = rows.some(sheetMatches);
     const q = filt.q.trim().toLowerCase();
     const roadTxt = n.type === 'seg' ? M.roadsOf(n.sub, n.seg).map((r) => r.name).join(' ') : '';
-    const selfHit = !!q && (n.type === 'dtop' ? n.disc.toLowerCase().includes(q) : n.type === 'disc' ? (M.subLabel(n.sub) + ' ' + n.disc).toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.title + ' ' + roadTxt).toLowerCase().includes(q) : n.type === 'road' ? (n.g.name + ' ' + n.g.entries.map((r) => r.name).join(' ')).toLowerCase().includes(q) : n.type === 'dbr' ? (n.br.road + ' ' + (n.br.alignment || '')).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
+    const selfHit = !!q && (n.type === 'dtop' ? n.disc.toLowerCase().includes(q) : n.type === 'disc' ? (M.subLabel(n.sub) + ' ' + n.disc).toLowerCase().includes(q) : n.type === 'seg' ? (n.seg.title + ' ' + roadTxt).toLowerCase().includes(q) : n.type === 'road' ? (n.g.name + ' ' + n.g.entries.map((r) => r.name).join(' ')).toLowerCase().includes(q) : n.type === 'dbr' ? (n.br.road + ' ' + (n.br.alignment || '')).toLowerCase().includes(q) : n.type === 'unit' ? (n.g.name + ' ' + n.seg.title).toLowerCase().includes(q) : n.type === 'sheet' ? any : false);
     const onlyQ = !filt.status && !filt.owner && !filt.discipline && !filt.flag;
     return { dim: !(any || (selfHit && onlyQ)), hit: selfHit && (n.type !== 'sheet' || any) };
   }
@@ -1043,7 +1052,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     saveUI(); renderAll(); fit(); toast('Focused this branch · others collapsed');
   }
   function addBtn(n, label, fn) { return h('button', { type: 'button', class: 'nbtn add', 'aria-label': label, title: label, onclick: (e) => { e.stopPropagation(); fn(); } }, '+'); }
-  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'dtop' ? n.disc + ' branch' : n.type === 'disc' ? n.disc + ' sub-project ' + M.subTag(n.sub) : n.type === 'seg' ? M.subTag(n.sub) + ' ' + n.disc + ' section ' + n.seg.title : n.type === 'road' ? 'road ' + n.g.name + ' in ' + n.seg.title : n.type === 'oth' ? 'other sheets in ' + n.seg.title : n.type === 'dbr' ? 'DAM road ' + n.br.road + ' in ' + n.seg.title : 'sheet ' + n.sh.title + (n.depth === 5 ? ' ' + staTxt(M.sheetRange(n.sh)) : ''); }
+  function nodeLabel(n) { return n.type === 'root' ? st.project.name : n.type === 'dtop' ? n.disc + ' branch' : n.type === 'disc' ? n.disc + ' sub-project ' + M.subTag(n.sub) : n.type === 'seg' ? M.subTag(n.sub) + ' ' + n.disc + ' section ' + n.seg.title : n.type === 'road' ? 'road ' + n.g.name + ' in ' + n.seg.title : n.type === 'oth' ? 'other sheets in ' + n.seg.title : n.type === 'dbr' ? 'DAM road ' + n.br.road + ' in ' + n.seg.title : n.type === 'unit' ? n.g.name + ' in ' + n.seg.title : 'sheet ' + n.sh.title + (n.depth === 5 && (n.sh.gen || n.sh.dam) ? ' ' + staTxt(M.sheetRange(n.sh)) : ''); }
   function flagRow(b, extra) {
     return h('div', { class: 'nrow' }, b.overdue ? h('span', { class: 'flag', title: 'Overdue' }, '⚑ ' + b.overdue) : null,
       b.blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked sheets' }, '⛓ ' + b.blocked) : null,
@@ -1100,6 +1109,11 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('div', { class: 'ns' }, h('b', {}, plural(shs.length, 'DAM sheet')), linked ? ' · linked to P&P' : ' · not linked'),
         h('div', { class: 'ns rranges mono' }, rgs.length ? M.formatStation(lo) + '–' + M.formatStation(hi) : 'no stations'),
         h('div', { class: 'nrow' }, shs.length ? bar(p.pct, 'Progress ' + n.br.road) : h('span', { class: 'ns' }, 'No sheets yet'))), ring(p.pct, 40)];
+    } else if (n.type === 'unit') {
+      const shs = n.kids.map((k) => k.sh), p = M.progress(shs);
+      body = [h('span', { class: 'rdicon', 'aria-hidden': 'true' }, n.g.kind === 'box' ? '▣' : '◌'), h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, n.g.name),
+        h('div', { class: 'ns' }, plural(shs.length, 'sheet') + ' · ' + p.done + ' done'),
+        h('div', { class: 'nrow' }, shs.length ? bar(p.pct, 'Progress ' + n.g.name) : null)), ring(p.pct, 40)];
     } else if (n.type === 'oth') {
       const shs = n.kids.map((k) => k.sh), p = M.progress(shs);
       body = [h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, 'Other sheets'), h('div', { class: 'ns' }, plural(shs.length, 'sheet') + ' · no road · ' + p.done + ' done'))];
@@ -1114,7 +1128,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       body = [h('span', { class: 'chip ' + DINFO[n.disc].cls, title: n.disc }, DINFO[n.disc].short),
         n.depth === 5 ? (() => { const rg = M.sheetRange(sh), sc = M.sheetScale(st, n.sub, sh);
           return h('div', { class: 'nb' }, h('div', { class: 'nt sm' + (rg ? ' sta' : ''), title: sh.title }, sh.gen || (sh.dam && n.br) ? (sh.gen ? 'PP ' + sh.gen.idx : 'DAM ' + sh.dam.idx) + ': ' + (rg ? 'STA ' + staTxt(rg) : 'no range') + (rg && rg.manual ? ' ✎' : '') : sh.title),
-            h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.number ? ' · #' + sh.number : '') + (sh.gen || (sh.dam && n.br) ? '' : ' · ' + (rg ? 'STA ' + staTxt(rg) : 'no range')) + (sc ? ' · ' + sc + ' scale' : '') + (sh.due ? ' · ' + sh.due : '')),
+            h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.number ? ' · #' + sh.number : '') + (sh.gen || (sh.dam && n.br) || sh.unit ? '' : ' · ' + (rg ? 'STA ' + staTxt(rg) : 'no range')) + (sc ? ' · ' + sc + ' scale' : '') + (sh.due ? ' · ' + sh.due : '')),
             blocked || upd ? h('div', { class: 'nflags' }, blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked by ' + blocked + ' unfinished prerequisite(s)' }, '⛓ Blocked by ' + blocked) : null,
               upd ? h('span', { class: 'fl fl-upd', title: 'An upstream item changed' }, '⟳ Update needed') : null) : null); })() :
         h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, sh.title),
@@ -1125,7 +1139,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         od ? h('span', { class: 'flag', title: 'Overdue' }, '⚑') : null,
         sh.owner ? h('span', { class: 'av', title: sh.owner }, initials(sh.owner)) : h('span', { class: 'av none', title: 'Unassigned' }, '–')];
     }
-    const id = n.type === 'root' ? 'root' : n.type === 'dtop' ? n.disc : n.type === 'disc' ? n.sub.id + ':' + n.disc : n.type === 'seg' || n.type === 'oth' ? n.seg.id : n.type === 'road' ? n.g.entries[0].id : n.type === 'dbr' ? n.br.id : n.sh.id;
+    const id = n.type === 'root' ? 'root' : n.type === 'dtop' ? n.disc : n.type === 'disc' ? n.sub.id + ':' + n.disc : n.type === 'seg' || n.type === 'oth' ? n.seg.id : n.type === 'road' ? n.g.entries[0].id : n.type === 'dbr' ? n.br.id : n.type === 'unit' ? n.seg.id + ':' + n.g.n : n.sh.id;
     const stype = n.type === 'oth' ? 'seg' : n.type;
     const selected = sel && ((n.type !== 'oth' && sel.type === n.type && sel.id === id) || (n.type === 'road' && sel.type === 'road' && n.g.entries.some((r) => r.id === sel.id)));
     const el = h('div', { class: 'node n-' + n.type + (n.type === 'dbr' ? ' n-road' : '') + (n.pp ? ' n-pp' : '') + (n.collapsed && n.kids.length ? ' collapsed' : '') + (n.disc ? ' d-' + DINFO[n.disc].cls : '') + (n.type === 'sheet' ? ' st-' + slug(n.sh.status) : '') + (n.type === 'seg' && !n.seg.sheets.length && !(n.pp && M.roadsOf(n.sub, n.seg).length) ? ' empty' : '') + (m.dim ? ' dim' : '') + (m.hit ? ' hit' : '') + (selected ? ' sel' : ''),
@@ -1143,7 +1157,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('button', { type: 'button', class: 'pbtn more', 'aria-label': 'More actions for ' + nodeLabel(n), 'aria-haspopup': 'menu', title: 'More actions (right-click)', onclick: (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); openNodeMenu(n, stype, id, { x: r.left, y: r.bottom + 4, kbd: e.detail === 0 }); } }, '⋯')),
     h('div', { class: 'nacts' },
       n.type === 'disc' ? addBtn(n, 'Add a sheet to ' + M.subTag(n.sub) + ' ' + n.disc + ' (pick the section)', () => { select_('disc', id); focusAdd('qaTitle'); }) : null,
-      n.type === 'seg' ? addBtn(n, n.pp ? 'Add a road to ' + M.subTag(n.sub) + ' · ' + n.seg.title + ' (road name only)' : 'Add a sheet to ' + M.subTag(n.sub) + ' · ' + n.seg.title, () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', n.seg.id); focusAdd(n.pp ? 'addRoadName' : 'addSheetTitle'); }) : null,
+      n.type === 'seg' ? addBtn(n, n.pp ? 'Add a road to ' + M.subTag(n.sub) + ' · ' + n.seg.title + ' (road name only)' : M.unitKind(n.seg) ? 'Set how many ' + (M.unitKind(n.seg) === 'box' ? 'boxes' : 'ponds') + ' in ' + n.seg.title : M.isSheetCountSec(n.seg) ? 'Set how many sheets in ' + n.seg.title : 'Add a sheet to ' + M.subTag(n.sub) + ' · ' + n.seg.title, () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', n.seg.id); focusAdd(n.pp ? 'addRoadName' : M.unitKind(n.seg) ? 'unitCount' : M.isSheetCountSec(n.seg) ? 'hydCount' : 'addSheetTitle'); }) : null,
       toggleBtn(n)),
     n.type === 'sheet' || n.type === 'seg' ? h('span', { class: 'handle', role: 'button', tabindex: -1, title: 'Drag onto another sheet or section: it will depend on this one', 'aria-label': 'Connector handle for ' + nodeLabel(n),
       onpointerdown: (e) => startLinkDrag(e, n, { t: n.type, id }), _link: { n, ref: { t: n.type, id } }, onclick: (e) => { e.stopPropagation(); select_(n.type, id); focusAdd('lkSearch'); } }) : null);
@@ -1394,7 +1408,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (type !== 'root') items.push(['Focus branch', '', () => { select_(type, id); focusSel(); }]);
     if (n.kids.length) items.push([n.collapsed ? 'Expand' : 'Collapse', '→ ←', () => toggleNode(n)]);
     if (n.type === 'disc') items.push(['Add a sheet…', 'n', () => { select_('disc', id); focusAdd('qaTitle'); }]);
-    if (n.type === 'seg' && M.isHydSec(n.seg)) items.push(['Set number of sheets…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('hydCount'); }]);
+    if (n.type === 'seg' && M.isSheetCountSec(n.seg)) items.push(['Set number of sheets…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('hydCount'); }]);
+    if (n.type === 'seg' && M.unitKind(n.seg)) items.push(['Set number of ' + (M.unitKind(n.seg) === 'box' ? 'boxes' : 'ponds') + '…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('unitCount'); }]);
     if (n.type === 'seg') items.push([n.pp ? 'Add a road…' : 'Add a sheet…', 'n', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd(n.pp ? 'addRoadName' : 'addSheetTitle'); }]);
     if (n.type === 'road') items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: n.g.entries.map((r) => r.id) })]);
     if (n.type === 'seg' && n.pp && M.roadsOf(n.sub, n.seg).length) items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: M.roadsOf(n.sub, n.seg).map((r) => r.id) })]);
@@ -1467,7 +1482,13 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       extLinks.length ? h('ul', { class: 'dlist lklist' }, extLinks.slice(0, 8).map(depRow)) : null,
       extLinks.length > 8 ? h('p', { class: 'muted small' }, (extLinks.length - 8) + ' more — see the Dependencies CSV in List view') : null);
   }
-  const DKIND = { root: 'Project', dtop: 'Discipline', sub: 'Sub-project', disc: 'Sub-project branch', seg: 'Section', road: 'Road entry', dbr: 'DAM road', sheet: 'Sheet' };
+  const DKIND = { root: 'Project', dtop: 'Discipline', sub: 'Sub-project', disc: 'Sub-project branch', seg: 'Section', road: 'Road entry', dbr: 'DAM road', unit: 'Group', sheet: 'Sheet' };
+  function findUnit(id) {
+    const i = String(id).lastIndexOf(':'); if (i < 0) return null;
+    const hit = M.findSeg(st, String(id).slice(0, i)); if (!hit) return null;
+    const g = M.unitGroups(hit.seg).find((x) => x.n === Number(String(id).slice(i + 1)));
+    return g ? { sub: hit.sub, seg: hit.seg, g } : null;
+  }
   function renderDrawer() {
     const d = $('#drawer');
     let content = null;
@@ -1478,6 +1499,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       else if (sel.type === 'seg') { const hit = M.findSeg(st, sel.id); content = hit && segDrawer(hit); }
       else if (sel.type === 'road') { const hit = M.findRoad(st, sel.id); content = hit && hit.sec && roadDrawer(hit); }
       else if (sel.type === 'dbr') { const hit = M.findDamBranch(st, sel.id); content = hit && dbrDrawer(hit); }
+      else if (sel.type === 'unit') { const hit = findUnit(sel.id); content = hit && unitDrawer(hit); }
       else if (sel.type === 'disc') { const [sid, dd] = sel.id.split(':'); const sub = M.findSub(st, sid); content = sub && DISCS.includes(dd) && discDrawer(sub, dd); }
       else if (sel.type === 'sheet') { const hit = M.findSheet(st, sel.id); content = hit && sheetDrawer(hit); }
     }
@@ -1485,7 +1507,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     const scroll = d.scrollTop;
     const had = !d.hidden;
     d.hidden = false; $('#layout').classList.add('drawer-open');
-    d.replaceChildren(h('div', { class: 'dhead' }, h('span', { class: 'dkind' }, DKIND[sel.type]),
+    const kindLabel = sel.type === 'unit' ? ((findUnit(sel.id) || { g: {} }).g.kind === 'box' ? 'Junction box' : 'Pond') : DKIND[sel.type];
+    d.replaceChildren(h('div', { class: 'dhead' }, h('span', { class: 'dkind' }, kindLabel),
       sel.type !== 'root' ? h('button', { type: 'button', class: 'btn sec sm', id: 'focusBranch', title: 'Collapse all other branches and keep this one open', onclick: focusSel }, '◎ Focus branch') : null,
       h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Close details', onclick: closeDrawer }, '×')), content);
     if (had) d.scrollTop = scroll;
@@ -1689,13 +1712,18 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('datalist', { id: 'roadList' }, M.roads(st).map((r) => h('option', { value: r }))), msg,
       h('small', { class: 'muted' }, 'Only the road name is needed. Shift+Enter adds and starts the next one.'));
   }
-  /* v3.9 Hydraulic Data Sheets: just say how many are needed (no road / stations) */
+  /* v3.9 / v3.11 counted sheets: how many are needed (no road / stations). Hydraulic, laterals, and the optional sections share this box. */
+  function countBlurb(seg) {
+    if (M.isLatSec(seg)) return 'Drainage laterals are double-banked profile sheets, so no road or stations are needed. Enter how many sheets; they get generic titles you can edit later.';
+    if (M.isHydSec(seg)) return 'Hydraulic data sheets are mostly tables, so no road or stations are needed. Enter the number of sheets; they get generic titles you can edit later.';
+    return 'No road or stations are needed. Enter how many sheets this section needs; they get generic titles you can edit later.';
+  }
   function hydBox(sub, seg) {
-    const cur = M.planHydCount(st, seg.id, 0).cur;
+    const cur = M.planSheetCount(st, seg.id, 0).cur;
     const inp = h('input', { id: 'hydCount', type: 'number', inputmode: 'numeric', min: 0, max: 200, step: 1, value: String(cur), 'aria-label': 'Number of ' + seg.title + ' sheets', class: 'mono hydn' });
     const prev = h('div', { id: 'hydPrev', class: 'small', 'aria-live': 'polite' });
     const btn = h('button', { class: 'btn', type: 'submit', id: 'hydSet' }, 'Set');
-    const plan = () => { try { return M.planHydCount(st, seg.id, inp.value === '' ? NaN : Number(inp.value)); } catch (e) { return { err: e.message }; } };
+    const plan = () => { try { return M.planSheetCount(st, seg.id, inp.value === '' ? NaN : Number(inp.value)); } catch (e) { return { err: e.message }; } };
     const upd = () => { const P = plan();
       if (P.err) { prev.replaceChildren(h('p', { class: 'err' }, P.err)); btn.disabled = true; return; }
       const same = P.n === P.cur && !P.adopt; btn.disabled = same;
@@ -1706,17 +1734,62 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     const go = (n) => {
       inp.value = String(n); const P = plan(); if (P.err) { upd(); return; }
       if (P.progress.length && !confirm('Remove ' + plural(P.remove.length, 'sheet') + ' from ' + seg.title + '?\n\n' + (P.progress.length === 1 ? '1 of them has work on it' : P.progress.length + ' of them have work on them') + ' (status, owner, hours, QC, notes or an edited title):\n' + P.progress.map((q) => '• ' + q.title + ' — ' + q.status + (q.owner ? ', ' + q.owner : '')).join('\n') + '\n\nUndo with Ctrl+Z.')) return;
-      const r = commit(() => M.setHydCount(st, seg.id, n, { force: true }));
+      const r = commit(() => M.setSheetCount(st, seg.id, n, { force: true }));
       if (r) { setSeg(seg.id, false); saveUI(); renderAll(); toast(seg.title + ': ' + plural(r.n, 'sheet') + (r.created ? ' · ' + r.created + ' added' : '') + (r.removed ? ' · ' + r.removed + ' removed' : '') + '. Undo with Ctrl+Z.'); const i = $('#hydCount'); if (i) i.focus(); }
     };
     return h('section', { class: 'box hydbox', id: 'hydBox' }, h('h3', {}, 'How many sheets?'),
-      h('p', { class: 'muted small' }, 'Hydraulic data sheets are mostly tables, so no road or stations are needed. Enter the number of sheets; they get generic titles you can edit later.'),
+      h('p', { class: 'muted small' }, countBlurb(seg)),
       h('form', { class: 'row hydrow', onsubmit: (e) => { e.preventDefault(); go(Number(inp.value)); } },
         h('button', { type: 'button', class: 'btn sec hydpm', id: 'hydMinus', 'aria-label': 'One sheet less', onclick: () => { inp.value = String(Math.max(0, (Number(inp.value) || 0) - 1)); upd(); } }, '−'),
         inp,
         h('button', { type: 'button', class: 'btn sec hydpm', id: 'hydPlus', 'aria-label': 'One sheet more', onclick: () => { inp.value = String(Math.min(200, (Number(inp.value) || 0) + 1)); upd(); } }, '+'),
-        btn, h('button', { type: 'button', class: 'btn sec sm', id: 'hydAdd1', onclick: () => go(M.planHydCount(st, seg.id, 0).cur + 1) }, '+ Add 1 more')),
+        btn, h('button', { type: 'button', class: 'btn sec sm', id: 'hydAdd1', onclick: () => go(M.planSheetCount(st, seg.id, 0).cur + 1) }, '+ Add 1 more')),
       prev);
+  }
+  function unitWord(n, seg) { return n + ' ' + (n === 1 ? M.unitNoun(seg) : M.unitNoun(seg) === 'box' ? 'boxes' : 'ponds'); }
+  function unitBox(sub, seg) {
+    const cur = M.planUnitCount(st, seg.id, 0).cur;
+    const noun = M.unitNoun(seg), many = noun === 'box' ? 'boxes' : 'ponds';
+    const slots = M.unitSlots(seg);
+    const inp = h('input', { id: 'unitCount', type: 'number', inputmode: 'numeric', min: 0, max: 40, step: 1, value: String(cur), 'aria-label': 'Number of ' + many, class: 'mono hydn' });
+    const prev = h('div', { id: 'unitPrev', class: 'small', 'aria-live': 'polite' });
+    const btn = h('button', { class: 'btn', type: 'submit', id: 'unitSet' }, 'Set');
+    const plan = () => { try { return M.planUnitCount(st, seg.id, inp.value === '' ? NaN : Number(inp.value)); } catch (e) { return { err: e.message }; } };
+    const upd = () => { const P = plan();
+      if (P.err) { prev.replaceChildren(h('p', { class: 'err' }, P.err)); btn.disabled = true; return; }
+      const same = P.n === P.cur && !P.create && !P.remove.length && !P.adopt.length; btn.disabled = same;
+      const lead = P.n ? unitWord(P.n, seg) + ' × ' + slots.length + ' sheets' : 'No ' + many + ' yet.';
+      prev.replaceChildren(same ? h('p', { class: 'muted' }, lead + (P.n ? ' Each one: ' + slots.map((s) => s.label).join(', ') + '.' : '')) :
+        h('p', {}, lead + (P.create ? ' · adds ' + plural(P.create, 'sheet') : '') + (P.adopt.length ? ' · uses ' + plural(P.adopt.length, 'existing sheet') : '') + (P.remove.length ? ' · removes ' + plural(P.remove.length, 'sheet') : '') + '.',
+          P.progress.length ? h('span', { class: 'err' }, ' ⚠ ' + P.progress.length + (P.progress.length === 1 ? ' of them has' : ' of them have') + ' work on it — you will be asked to confirm.') : null)); };
+    inp.addEventListener('input', upd); setTimeout(upd, 0);
+    const go = (n) => {
+      inp.value = String(n); const P = plan(); if (P.err) { upd(); return; }
+      if (P.progress.length && !confirm('Remove ' + plural(P.remove.length, 'sheet') + ' from ' + seg.title + '?\n\n' + (P.progress.length === 1 ? '1 of them has work on it' : P.progress.length + ' of them have work on them') + ':\n' + P.progress.map((q) => '• ' + q.title + ' — ' + q.status + (q.owner ? ', ' + q.owner : '')).join('\n') + '\n\nUndo with Ctrl+Z.')) return;
+      const r = commit(() => M.setUnitCount(st, seg.id, n, { force: true }));
+      if (r) { setSeg(seg.id, false); saveUI(); renderAll(); toast(seg.title + ': ' + unitWord(r.n, seg) + ' · ' + plural(r.n * slots.length, 'sheet') + (r.created ? ' · ' + r.created + ' added' : '') + (r.removed ? ' · ' + r.removed + ' removed' : '') + '. Undo with Ctrl+Z.'); const i = $('#unitCount'); if (i) i.focus(); }
+    };
+    const ask = noun === 'box' ? 'How many special boxes?' : 'How many ponds?';
+    const help = noun === 'box'
+      ? 'No road is needed. Enter how many special junction boxes; each box gets 3 sheets with generic titles you can edit.'
+      : 'No road is needed. Each pond gets 4 sheets: Layout, Cross Sections, and Geometric Layout (2 sheets). Add as many ponds as the project has.';
+    return h('section', { class: 'box hydbox', id: 'unitBox' }, h('h3', {}, ask),
+      h('p', { class: 'muted small' }, help),
+      h('form', { class: 'row hydrow', onsubmit: (e) => { e.preventDefault(); go(Number(inp.value)); } },
+        h('button', { type: 'button', class: 'btn sec hydpm', id: 'unitMinus', 'aria-label': 'One ' + noun + ' less', onclick: () => { inp.value = String(Math.max(0, (Number(inp.value) || 0) - 1)); upd(); } }, '−'),
+        inp,
+        h('button', { type: 'button', class: 'btn sec hydpm', id: 'unitPlus', 'aria-label': 'One ' + noun + ' more', onclick: () => { inp.value = String(Math.min(40, (Number(inp.value) || 0) + 1)); upd(); } }, '+'),
+        btn, h('button', { type: 'button', class: 'btn sec sm', id: 'unitAdd1', onclick: () => go(M.planUnitCount(st, seg.id, 0).cur + 1) }, '+ Add 1 more')),
+      prev);
+  }
+  function unitDrawer({ sub, seg, g }) {
+    const p = M.progress(g.sheets);
+    return h('div', { class: 'dbody' },
+      crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subLabel(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]]),
+      h('h2', {}, g.name),
+      h('p', { class: 'muted' }, seg.title + ' · ' + plural(g.sheets.length, 'sheet') + ' · ' + p.done + ' done'),
+      h('ul', { class: 'dlist' }, g.sheets.map((sh) => h('li', {}, h('button', { type: 'button', class: 'rowbtn st-' + slug(sh.status), onclick: () => select_('sheet', sh.id) },
+        h('span', { class: 'grow' }, sh.title), h('span', { class: 'stpill' }, sh.status))))));
   }
   function segDrawer({ sub, seg }) {
     const d = seg.discipline, pp = M.isPPSec(seg);
@@ -1735,17 +1808,18 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       propsBox('seg:' + seg.id, { name: h('p', { class: 'muted small' }, 'Section names are shared by A–D: ', h('button', { type: 'button', class: 'link', onclick: () => openSettings('secs') }, 'Edit section lists')),
         actions: pp && M.roadsOf(sub, seg).length ? damBtn({ subs: [sub.id], roads: M.roadsOf(sub, seg).map((r) => r.id) }) : M.damSection(sub) === seg ? [damBtn({ subs: [sub.id] }, 'Copy P&P sheets here…'), damSyncBtn([sub.id])] : null }),
       M.damSection(sub) === seg ? damBox(sub, seg) : null,
-      M.isHydSec(seg) ? hydBox(sub, seg) : null,
+      M.isSheetCountSec(seg) ? hydBox(sub, seg) : null,
+      M.unitKind(seg) ? unitBox(sub, seg) : null,
       pp ? h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, 'Roads in this section'),
         h('p', { class: 'muted small' }, 'PP sheets = ceil(length ÷ feet per sheet): 20 scale = 240 ft, 40 = 480, 50 = 600, 100 = 1,200 ft per sheet. Edit the cells directly.'),
         roadTable(sub, seg), addRoadForm(sub, seg),
         h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', id: 'genBtn', disabled: !pending, onclick: () => genSection(seg) }, pending ? 'Generate PP sheets (' + pending + ' change' + (pending === 1 ? '' : 's') + ')' : 'PP sheets up to date ✓'))) : null,
-      h('section', { class: 'box' }, h('h3', {}, pp ? 'Other sheets in this section' : M.isHydSec(seg) ? 'Add one sheet with its own title' : 'Add sheets'),
+      h('section', { class: 'box' }, h('h3', {}, pp ? 'Other sheets in this section' : M.isSheetCountSec(seg) || M.unitKind(seg) ? 'Add one sheet with its own title' : 'Add sheets'),
         h('form', { class: 'addrow', id: 'addSheetForm', onsubmit: (e) => { e.preventDefault(); if (!nt.value.trim()) return; const shx = commit(() => M.addSheet(st, seg.id, { title: nt.value, road: nr.value })); setSeg(seg.id, false); saveUI(); renderAll(); if (shx) { toast('Added “' + shx.title + '”.'); const i = $('#addSheetTitle'); if (i) i.focus(); } } },
-          nt, M.isHydSec(seg) ? null : nr, h('button', { class: 'btn', type: 'submit' }, 'Add')),
+          nt, M.isSheetCountSec(seg) || M.unitKind(seg) ? null : nr, h('button', { class: 'btn', type: 'submit' }, 'Add')),
         h('datalist', { id: 'tplList' }, tpls.concat(st.index.filter((t) => t.sec === seg.key)).map((t) => h('option', { value: t.title }))),
         h('datalist', { id: 'roadList3' }, M.roads(st).map((r) => h('option', { value: r }))),
-        tpls.length && !(M.isHydSec(seg) && M.hydSheets(seg).length) ? h('form', { class: 'g2', onsubmit: (e) => { e.preventDefault(); const a = commit(() => M.bulkAddTemplates(st, seg.id, { owner: bo.value, due: bdue.value, milestone: bm.value })) || []; toast(a.length ? 'Added ' + plural(a.length, 'standard sheet') + '.' : 'The standard sheets are already here.'); } },
+        tpls.length && !M.unitKind(seg) && !(M.isSheetCountSec(seg) && M.sheetCountSheets(seg).length) ? h('form', { class: 'g2', onsubmit: (e) => { e.preventDefault(); const a = commit(() => M.bulkAddTemplates(st, seg.id, { owner: bo.value, due: bdue.value, milestone: bm.value })) || []; toast(a.length ? 'Added ' + plural(a.length, 'standard sheet') + '.' : 'The standard sheets are already here.'); } },
           bo, bm, bdue, h('button', { class: 'btn sec', type: 'submit', id: 'secStd' }, '+ Standard: ' + tpls.map((t) => t.title).join(', '))) : null),
       connectorsBox({ t: 'seg', id: seg.id }),
       h('h3', {}, 'Sheets (' + seg.sheets.length + ')'),
@@ -2197,8 +2271,9 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
             const nm = h('input', { value: x.title, 'aria-label': 'Section name ' + x.title });
             nm.addEventListener('change', () => run(() => M.renameSectionDef(st, x.key, nm.value), 'Section renamed.'));
             const use = M.sectionInUse(st, x.key);
+            const locked = M.countManaged(x) || M.isPlainCountSec(x);
             return h('li', { class: 'secrow' }, h('span', { class: 'muted small num' }, String(i + 1)), nm,
-              h('label', { class: 'chk small', title: 'Plan & Profile section: takes road entries and counts PP sheets' }, h('input', { type: 'checkbox', checked: !!x.series, 'aria-label': 'Roads in ' + x.title, onchange: (e) => run(() => M.setSectionPP(st, x.key, e.target.checked)) }), ' Roads'),
+              h('label', { class: 'chk small', title: locked ? 'This section is entered by count, not by road' : 'Plan & Profile section: takes road entries and counts PP sheets' }, h('input', { type: 'checkbox', checked: !!x.series && !locked, disabled: locked, 'aria-label': 'Roads in ' + x.title, onchange: (e) => run(() => M.setSectionPP(st, x.key, e.target.checked)) }), ' Roads'),
               h('span', { class: 'muted small' }, use ? use + ' in use' : 'empty'),
               h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + x.title + ' up', disabled: !i, onclick: () => run(() => M.moveSectionDef(st, x.key, -1)) }, '↑'),
               h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Move ' + x.title + ' down', disabled: i === defs.length - 1, onclick: () => run(() => M.moveSectionDef(st, x.key, 1)) }, '↓'),

@@ -1,4 +1,4 @@
-/* Project Tracker v3.10: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.11: Engineering Report (drainage design report style), derived from the tracker data.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
    Stored in the optional st.engReport = { meta: { csj, highway, limits, county, district, title }, secs: { <id>: { on, text, mode } }, refs }.
    Generated text only restates tracker data (names, roads, stations, sheet counts, dates). Anything an engineer must supply
@@ -146,7 +146,24 @@
       prop.push({ h: 'Drainage area maps' });
       prop.push({ p: (odam.length ? pl(odam.reduce((a, x) => a + x.g.sheets.length, 0), 'overall drainage area map') + ' and ' : '') + pl(dams.reduce((a, x) => a + x.g.sheets.length, 0), 'drainage area map sheet') + ' are tracked' + (dams.some((x) => (M.damBranches ? M.damBranches(x.g) : []).length) ? ', following the plan and profile sheet breaks of ' + list([...new Set(dams.flatMap((x) => (M.damBranches ? M.damBranches(x.g) : []).map((b) => b.road)))]) : '') + '.' });
     }
-    const other = [['dr-det', 'Detention'], ['dr-det-xs', 'Detention'], ['dr-jb', 'Special junction boxes'], ['dr-bd-welded', 'Bridge deck drainage'], ['dr-bd-det', 'Bridge deck drainage'], ['dr-bd-sum', 'Bridge deck drainage']];
+    const lats = F.secsWith((g) => typeof M.isLatSec === 'function' && M.isLatSec(g) && g.sheets.length);
+    if (lats.length) {
+      prop.push({ h: 'Drainage laterals' });
+      prop.push({ p: 'Drainage laterals are double-banked profile sheets. ' + pl(lats.reduce((a, x) => a + x.g.sheets.length, 0), 'sheet') + ' are tracked, counted by how many sheets are needed rather than by road.' });
+    }
+    const ponds = F.secsWith((g) => typeof M.isPondSec === 'function' && M.isPondSec(g) && M.unitSheets(g).length);
+    if (ponds.length) {
+      const ng = ponds.reduce((a, x) => a + M.unitGroups(x.g).length, 0), ns = ponds.reduce((a, x) => a + M.unitSheets(x.g).length, 0);
+      prop.push({ h: 'Detention basins' });
+      prop.push({ p: pl(ng, 'detention pond') + ' (' + pl(ns, 'sheet') + '). Each pond has a Layout, Cross Sections, and two Geometric Layout sheets.' });
+    }
+    const boxes = F.secsWith((g) => typeof M.isBoxSec === 'function' && M.isBoxSec(g) && M.unitSheets(g).length);
+    if (boxes.length) {
+      const ng = boxes.reduce((a, x) => a + M.unitGroups(x.g).length, 0), ns = boxes.reduce((a, x) => a + M.unitSheets(x.g).length, 0);
+      prop.push({ h: 'Special junction boxes' });
+      prop.push({ p: ng + ' special junction box' + (ng === 1 ? '' : 'es') + ', 3 sheets each (' + pl(ns, 'sheet') + ').' });
+    }
+    const other = [['dr-bd-welded', 'Bridge deck drainage'], ['dr-bd-det', 'Bridge deck drainage'], ['dr-bd-sum', 'Bridge deck drainage']];
     const og = new Map(); for (const [k, lab] of other) for (const x of F.secsWith((g) => g.key === k && g.sheets.length)) { if (!og.has(lab)) og.set(lab, new Set()); og.get(lab).add(x.g.title); }
     if (og.size) { prop.push({ h: 'Other drainage elements' }); prop.push({ ul: [...og.entries()].map(([lab, s]) => lab + ': ' + list([...s])) }); }
     out.proposed = prop;

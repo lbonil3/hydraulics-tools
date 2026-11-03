@@ -1,4 +1,4 @@
-/* PM data model v3: pure functions, no DOM, no storage.
+/* PM data model v3.11: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -23,9 +23,8 @@
     ['dr-hds-x', 'Hydraulic Data Sheet - Crossing', 'Drainage'],
     ['dr-pp', 'Drainage Plan & Profile', 'Drainage', 'pp-drain'],
     ['dr-trunk', 'Trunkline Plan & Profile', 'Drainage', 'pp-storm'],
-    ['dr-lat', 'Drainage Laterals', 'Drainage', 'pp-lat'],
-    ['dr-det', 'Detention Basin Layout', 'Drainage'],
-    ['dr-det-xs', 'Detention Basin Cross Section', 'Drainage'],
+    ['dr-lat', 'Drainage Laterals', 'Drainage'],
+    ['dr-det', 'Detention Basin', 'Drainage'],
     ['dr-jb', 'Special Junction Box Details', 'Drainage'],
     ['dr-bd-welded', 'Bridge Deck Drawing Details (Welded)', 'Drainage'],
     ['dr-bd-det', 'Bridge Deck Drain Details', 'Drainage'],
@@ -63,7 +62,7 @@
   const clone = (o) => JSON.parse(JSON.stringify(o));
   function defaultSectionDefs() { return DEFAULT_SECTIONS.map(([key, title, discipline, series]) => ({ key, title, discipline, series: series || null })); }
   /* standard (non-PP) sheet set: one sheet per non-PP section, titled like the section (Other… sections excluded) */
-  function defaultTemplates(defs) { return (defs || defaultSectionDefs()).filter((d) => !d.series && !/^other /i.test(d.title)).map((d) => ({ id: uid(), title: d.title, discipline: d.discipline, sec: d.key })); }
+  function defaultTemplates(defs) { return (defs || defaultSectionDefs()).filter((d) => !d.series && !/^other /i.test(d.title) && !unitKind(d)).map((d) => ({ id: uid(), title: d.title, discipline: d.discipline, sec: d.key })); }
   function newSection(d) { return { id: uid(), kind: 'section', key: d.key, title: d.title, name: d.title, discipline: d.discipline, series: d.series || null, notes: '', revs: [], sheets: [] }; }
   function newState(projectName) {
     const defs = defaultSectionDefs();
@@ -209,7 +208,7 @@
     ['dr-hds-runoff', /runoff|hydrolog/i], ['dr-hds-inlet', /inlet/i], ['dr-hds-ss', /storm ?sewer (comp|calc)|hgl|storm sewer computations/i],
     ['dr-trunk', /trunk ?line|trunkline/i], ['dr-lat', /lateral/i],
     ['dr-bd-welded', /welded/i], ['dr-bd-sum', /bridge deck.*summary|deck drain summary/i], ['dr-bd-det', /bridge deck|deck drain/i],
-    ['dr-jb', /junction box/i], ['dr-det-xs', /detention.*(cross ?section|x-?sec|section)/i], ['dr-det', /detention|pond|outfall/i],
+    ['dr-jb', /junction box/i], ['dr-det', /detention|pond|outfall/i],
     ['dr-other', /quantit|ditch|channel/i],
     ['dr-hds-x', /crossing|cross culvert|culvert/i], ['dr-pp', /plan (&|and) profile|\bp ?& ?p\b|\bpp\b/i],
     ['dr-hds-runoff', /hydraulic data|data sheet/i], ['dr-std', /standard|misc/i],
@@ -240,7 +239,13 @@
     const t = String(title || '').trim(); if (!t) throw new Error('Section name is required.');
     if (secDefs(st, d.discipline).some((x) => x !== d && x.title.toLowerCase() === t.toLowerCase())) throw new Error('“' + t + '” is already a ' + d.discipline + ' section.');
     const old = d.title; d.title = t; syncSections(st);
-    for (const sub of st.subs) { const s = secOf(sub, key); for (const sh of s.sheets) if (sh.gen && !sh.gen.titleEdited && sh.title.startsWith(old + ' – ')) sh.title = t + sh.title.slice(old.length); }
+    for (const sub of st.subs) {
+      const s = secOf(sub, key); if (!s) continue;
+      for (const sh of s.sheets) if (sh.gen && !sh.gen.titleEdited && sh.title.startsWith(old + ' – ')) sh.title = t + sh.title.slice(old.length);
+      if (s.sheets.some((q) => q.hyd)) syncHyd(s);
+      if (s.sheets.some((q) => q.cnt)) syncCounted(s, 'cnt');
+      if (s.sheets.some((q) => q.unit)) syncUnits(s);
+    }
     log(st, 'Renamed section “' + old + '” → “' + t + '”');
     return d;
   }
@@ -267,6 +272,7 @@
   /* turn road entries / PP on or off for a section (off only when it has no roads) */
   function setSectionPP(st, key, on) {
     const d = secDef(st, key); if (!d) throw new Error('No such section');
+    if (on && countManaged(d)) throw new Error('“' + d.title + '” is entered by count, not by road.');
     if (!on && st.subs.some((sub) => roadsOf(sub, secOf(sub, key)).length)) throw new Error('Remove the road entries of “' + d.title + '” first.');
     d.series = on ? d.series || (Object.keys(SERIES_SEC).find((s) => SERIES_SEC[s] === key) || 'pp-' + key) : null;
     syncSections(st); return d;
@@ -314,7 +320,7 @@
   }
   function isTouched(sh) {
     return sh.status !== 'Not started' || !!sh.owner || !!sh.notes || (Number(sh.pct) || 0) > 0 || (Number(sh.hoursActual) || 0) > 0 ||
-      Object.values(sh.qc || {}).some(Boolean) || !!(sh.gen && sh.gen.titleEdited) || !!sh.sta || !!(sh.dam && sh.dam.title && sh.title !== sh.dam.title) || !!(sh.hyd && sh.hyd.title && sh.title !== sh.hyd.title);
+      Object.values(sh.qc || {}).some(Boolean) || !!(sh.gen && sh.gen.titleEdited) || !!sh.sta || !!(sh.dam && sh.dam.title && sh.title !== sh.dam.title) || titleTagEdited(sh, 'hyd') || titleTagEdited(sh, 'cnt') || titleTagEdited(sh, 'unit');
   }
   /* Plan (no mutation): which generated sheets to create / update / remove for one road entry */
   function planGenerate(st, roadId) {
@@ -467,7 +473,7 @@
       const r = applyGenerate(st, road.id, p, { removeTouched: false, quiet: true });
       for (const k in tot) tot[k] += r[k];
     }
-    for (const sub of st.subs) { syncDamBranches(sub); for (const g of sub.segments) if (g.sheets.some((q) => q.hyd)) syncHyd(g); }
+    for (const sub of st.subs) { syncDamBranches(sub); for (const g of sub.segments) { if (g.sheets.some((q) => q.hyd)) syncHyd(g); if (g.sheets.some((q) => q.cnt)) syncCounted(g, 'cnt'); if (g.sheets.some((q) => q.unit)) syncUnits(g); } }
     if ((tot.created || tot.updated || tot.removed) && !(opts && opts.quiet)) log(st, 'PP sheets follow the road stations: +' + tot.created + ' new, ' + tot.updated + ' updated, ' + tot.removed + ' removed' + (tot.keptTouched ? ' (' + tot.keptTouched + ' edited extra kept)' : ''));
     return tot;
   }
@@ -547,7 +553,7 @@
   function addRoad(st, secId, f) {
     const hit = findSeg(st, secId);
     if (!hit) throw new Error('No such section');
-    if (!isPPSec(hit.seg)) throw new Error('“' + hit.seg.title + '” has no road entries. Use a Plan & Profile section (or turn on roads for it in Settings → Sections).');
+    if (!isPPSec(hit.seg)) throw new Error(countManaged(hit.seg) || isPlainCountSec(hit.seg) || isOptCountSec(hit.seg) ? '“' + hit.seg.title + '” is entered by count, not by road.' : '“' + hit.seg.title + '” has no road entries. Use a Plan & Profile section (or turn on roads for it in Settings → Sections).');
     const s = stationsOf(f);
     const road = { id: uid(), kind: 'road', name: '', road: String(f.road || f.name || '').trim(), start: s.start, end: s.end, scale: f.scale ? Number(f.scale) : null, reverse: !!f.reverse, sec: hit.seg.id, notes: f.notes || '', revs: [] };
     if (f.alignment != null && checkAlign(f.alignment)) road.alignment = checkAlign(f.alignment);
@@ -615,6 +621,8 @@
     to.seg.sheets.push(hit.sh); hit.sh.discipline = to.seg.discipline;
     if (hit.sh.dam) hit.sh.dam.branch = null;
     if (hit.sh.hyd) { delete hit.sh.hyd; syncHyd(hit.seg); }
+    if (hit.sh.cnt) { delete hit.sh.cnt; syncCounted(hit.seg, 'cnt'); }
+    if (hit.sh.unit) { delete hit.sh.unit; syncUnits(hit.seg); sortUnits(hit.seg); }
     log(st, hit.sh.title + ': section → ' + to.seg.title, { t: 'sheet', id: hit.sh.id });
     return hit.sh;
   }
@@ -658,6 +666,9 @@
     const hit = findSheet(st, sheetId);
     if (hit) {
       hit.seg.sheets = hit.seg.sheets.filter((s) => s !== hit.sh);
+      if (hit.seg.sheets.some((q) => q.hyd)) syncHyd(hit.seg);
+      if (hit.seg.sheets.some((q) => q.cnt)) syncCounted(hit.seg, 'cnt');
+      if (hit.seg.sheets.some((q) => q.unit)) { syncUnits(hit.seg); sortUnits(hit.seg); }
       pruneLinks(st);
       log(st, 'Deleted sheet ' + hit.sh.title);
     }
@@ -668,7 +679,7 @@
     if (!hit) throw new Error('No such sheet');
     const copy = { ...clone(hit.sh), id: uid(), title: hit.sh.title + ' (copy)', status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], gen: null };
     delete copy.dam; /* a duplicate is a plain sheet, not a linked DAM copy */
-    delete copy.hyd;
+    delete copy.hyd; delete copy.cnt; delete copy.unit;
     hit.seg.sheets.splice(hit.seg.sheets.indexOf(hit.sh) + 1, 0, copy);
     log(st, 'Duplicated sheet ' + hit.sh.title, { t: 'sheet', id: copy.id });
     return copy;
@@ -682,7 +693,9 @@
     const added = [];
     for (const t of hit.sub.templates) {
       if (t.sec !== hit.seg.key || have.has(t.title.toLowerCase())) continue;
-      if (isHydSec(hit.seg) && hit.seg.sheets.some((q) => q.hyd) && t.title.trim().toLowerCase() === String(hit.seg.title).trim().toLowerCase()) continue; /* v3.9: counted sheets already cover it */
+      if (unitKind(hit.seg)) continue; /* ponds and boxes are generated by count, not by the one-title standard set */
+      const cf = countField(hit.seg);
+      if (cf && hit.seg.sheets.some((q) => q[cf]) && t.title.trim().toLowerCase() === String(hit.seg.title).trim().toLowerCase()) continue; /* counted sheets already cover the standard title */
       const sh = newSheet({ title: t.title, discipline: hit.seg.discipline, owner: opts && opts.owner, due: opts && opts.due, milestone: opts && opts.milestone });
       hit.seg.sheets.push(sh); have.add(t.title.toLowerCase()); added.push(sh);
     }
@@ -983,6 +996,75 @@
     log(st, 'Migrated to v3 sections: ' + R.sheets + ' sheets and ' + R.segments + ' roads kept (' + R.roads + ' road entries' + (R.other ? ', ' + R.other + ' sheets in Other' : '') + ')');
     return normalize(st);
   }
+  function legacyUnitTemplate(t) {
+    if (!t || typeof t !== 'object') return true;
+    if (t.sec === 'dr-det-xs') t.sec = 'dr-det';
+    const title = String(t.title || '').trim().toLowerCase();
+    if (title === 'detention basin cross section') return true;
+    if (title === 'detention basin layout' && (t.sec === 'dr-det' || !t.sec)) return true;
+    if (title === 'special junction box details' && (t.sec === 'dr-jb' || !t.sec)) return true;
+    return false;
+  }
+  /* v3.10 → v3.11: one detention section (ponds), laterals by sheet count, drop the old cross-section branch.
+     Generated lateral sheets become counted sheets. Status, owner, notes and edited titles stay. */
+  function upgradeCounts(st) {
+    if (!st.settings || !Array.isArray(st.settings.sections)) return;
+    for (const d of st.settings.sections) {
+      if (!d || typeof d !== 'object') continue;
+      if (d.key === 'dr-lat' || d.key === 'dr-det' || d.key === 'dr-jb' || d.key === 'dr-det-xs') d.series = null;
+      if (d.key === 'dr-det' && d.title === 'Detention Basin Layout') d.title = 'Detention Basin';
+    }
+    st.settings.sections = st.settings.sections.filter((d) => d && d.key !== 'dr-det-xs');
+    for (const sub of st.subs || []) {
+      if (!sub) continue;
+      sub.segments = Array.isArray(sub.segments) ? sub.segments : [];
+      sub.roads = Array.isArray(sub.roads) ? sub.roads : [];
+      const lat = sub.segments.find((s) => s && s.key === 'dr-lat');
+      if (lat) {
+        const roads = sub.roads.filter((r) => r.sec === lat.id);
+        const order = new Map(roads.map((r, i) => [r.id, i]));
+        const notes = roads.map((r) => String(r.notes || '').trim()).filter(Boolean);
+        const gens = (lat.sheets || []).filter((sh) => sh && sh.gen && typeof sh.gen === 'object' && !(sh.cnt && Number(sh.cnt.idx) > 0));
+        gens.sort((a, b) => (order.get(a.gen.road) ?? 99) - (order.get(b.gen.road) ?? 99) || (Number(a.gen.idx) || 0) - (Number(b.gen.idx) || 0));
+        if (gens.length) {
+          const n = gens.length;
+          gens.forEach((sh, i) => {
+            const edited = !!sh.gen.titleEdited;
+            delete sh.gen; delete sh.sta; sh.road = '';
+            const generic = String(lat.title || 'Drainage Laterals').trim() + ' (' + (i + 1) + ' of ' + n + ')';
+            sh.cnt = { idx: i + 1, of: n, title: generic };
+            if (!edited) sh.title = generic;
+            if (i === 0 && notes.length) {
+              const extra = notes.filter((x) => !String(sh.notes || '').includes(x)).join('\n');
+              if (extra) sh.notes = sh.notes ? sh.notes + '\n' + extra : extra;
+            }
+          });
+        }
+        sub.roads = sub.roads.filter((r) => r.sec !== lat.id);
+        lat.series = null;
+      }
+      let det = sub.segments.find((s) => s && s.key === 'dr-det');
+      const xs = sub.segments.find((s) => s && s.key === 'dr-det-xs');
+      if (xs) {
+        if (!det) { xs.key = 'dr-det'; if (xs.title === 'Detention Basin Cross Section' || xs.title === 'Detention Basin Layout') xs.title = 'Detention Basin'; det = xs; }
+        else {
+          det.sheets = (det.sheets || []).concat(xs.sheets || []);
+          if (xs.notes && String(xs.notes).trim() && !String(det.notes || '').includes(String(xs.notes).trim())) det.notes = det.notes ? det.notes + '\n' + String(xs.notes).trim() : String(xs.notes).trim();
+          if (Array.isArray(st.links)) for (const l of st.links) for (const e of [l.src, l.dst]) if (e && e.t === 'seg' && e.id === xs.id) e.id = det.id;
+          if (st.props && st.props['seg:' + xs.id]) { if (!st.props['seg:' + det.id]) st.props['seg:' + det.id] = st.props['seg:' + xs.id]; delete st.props['seg:' + xs.id]; }
+          for (const r of sub.roads) if (r.sec === xs.id) r.sec = det.id;
+          sub.segments = sub.segments.filter((s) => s !== xs);
+        }
+      }
+      for (const sec of sub.segments) if (sec && (sec.key === 'dr-det' || sec.key === 'dr-jb')) {
+        for (const sh of sec.sheets || []) if (sh && sh.gen) { delete sh.gen; delete sh.sta; }
+        sub.roads = sub.roads.filter((r) => r.sec !== sec.id);
+        sec.series = null;
+      }
+      if (Array.isArray(sub.templates)) sub.templates = sub.templates.filter((t) => !legacyUnitTemplate(t));
+    }
+    if (Array.isArray(st.index)) st.index = st.index.filter((t) => !legacyUnitTemplate(t));
+  }
   function normalize(st) {
     if (!st || st.schema !== SCHEMA || !Array.isArray(st.subs)) throw new Error('Data is not a PM v3 project');
     st.staff = Array.isArray(st.staff) ? st.staff.map((s) => (typeof s === 'string' ? { name: s, role: '' } : s)) : [];
@@ -1003,6 +1085,7 @@
       sub.segments = Array.isArray(sub.segments) ? sub.segments : [];
       sub.roads = Array.isArray(sub.roads) ? sub.roads : [];
     }
+    upgradeCounts(st);
     syncSections(st);
     for (const sub of st.subs) {
       for (const sec of sub.segments) {
@@ -1010,8 +1093,12 @@
         sec.revs = Array.isArray(sec.revs) ? sec.revs : [];
         for (const sh of sec.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; sh.discipline = sec.discipline;
           if ('dam' in sh && !(sh.dam && typeof sh.dam === 'object' && Number.isFinite(sh.dam.start) && Number.isFinite(sh.dam.end))) delete sh.dam;
-          if ('hyd' in sh && !(sh.hyd && typeof sh.hyd === 'object' && Number.isFinite(sh.hyd.idx) && sh.hyd.idx > 0)) delete sh.hyd; }
+          if ('hyd' in sh && !(sh.hyd && typeof sh.hyd === 'object' && Number.isFinite(sh.hyd.idx) && sh.hyd.idx > 0)) delete sh.hyd;
+          if ('cnt' in sh && !(sh.cnt && typeof sh.cnt === 'object' && Number.isFinite(sh.cnt.idx) && sh.cnt.idx > 0)) delete sh.cnt;
+          if ('unit' in sh && !(sh.unit && typeof sh.unit === 'object' && sh.unit.kind === unitKind(sec) && Number.isFinite(sh.unit.n) && sh.unit.n > 0 && Number.isFinite(sh.unit.slot) && sh.unit.slot > 0)) delete sh.unit; }
         if (sec.sheets.some((q) => q.hyd)) syncHyd(sec);
+        if (sec.sheets.some((q) => q.cnt)) syncCounted(sec, 'cnt');
+        if (sec.sheets.some((q) => q.unit)) { syncUnits(sec); sortUnits(sec); }
       }
       normDamBranches(sub);
       const secIds = new Set(sub.segments.map((s) => s.id));
@@ -1225,6 +1312,7 @@
     for (const sub of st.subs) {
       if (opts && opts.subIds && !opts.subIds.includes(sub.id)) continue;
       for (const seg of sub.segments) {
+        if (unitKind(seg)) continue;
         const have = new Set(seg.sheets.map((x) => x.title.toLowerCase()));
         const items = st.index.filter((t) => t.sec === seg.key && (!opts || !opts.discipline || t.discipline === opts.discipline) && !have.has(t.title.toLowerCase()));
         if (items.length) out.push({ sub, seg, items });
@@ -1354,7 +1442,7 @@
     for (const d of DISCIPLINES) c['dtop:' + d] = level < 2;
     for (const sub of st.subs) {
       for (const d of DISCIPLINES) c['disc:' + sub.id + ':' + d] = level < 3;
-      for (const g of sub.segments) { c['seg:' + g.id] = level < 4; if (isPPSec(g)) { for (const rg of roadGroups(sub, g)) c[rg.key] = level < 5; c['oth:' + g.id] = level < 5; } for (const b of damBranches(g)) c['dbr:' + b.id] = level < 5; }
+      for (const g of sub.segments) { c['seg:' + g.id] = level < 4; if (isPPSec(g)) { for (const rg of roadGroups(sub, g)) c[rg.key] = level < 5; c['oth:' + g.id] = level < 5; } for (const b of damBranches(g)) c['dbr:' + b.id] = level < 5; if (unitKind(g)) for (const ug of unitGroups(g)) c['unit:' + g.id + ':' + ug.n] = level < 5; }
     }
     return c;
   }
@@ -2078,6 +2166,201 @@
     log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' sheet' + (P.n === 1 ? '' : 's') + ' (' + (made.length ? '+' + made.length : '') + (P.remove.length ? (made.length ? ', ' : '') + '−' + P.remove.length : '') + (!made.length && !P.remove.length ? 'no change' : '') + ')', { t: 'seg', id: sec.id });
     return { created: made.length, removed: P.remove.length, adopted: P.adopt ? 1 : 0, n: P.n, ids: made.map((q) => q.id) };
   }
+  /* ---- v3.11 counted sheets (no road): laterals, and an option on Bridge Deck Drawing Details, Summary, and Standards.
+     Same shape as hydraulic sheets, stored on sh.cnt so the engineering report still treats only sh.hyd as computations.
+     Ponds and special junction boxes are counted by unit: sh.unit = { kind, n, of, slot, title }. ---- */
+  function titleTagEdited(sh, tag) { return !!(sh && sh[tag] && sh[tag].title && sh.title !== sh[tag].title); }
+  function isLatSec(sec) { return !!sec && (sec.key === 'dr-lat' || /drainage lateral/i.test(String(sec.title || ''))); }
+  function isPondSec(sec) { return !!sec && (sec.key === 'dr-det' || sec.key === 'dr-det-xs' || /^detention basin\b/i.test(String(sec.title || '').trim())); }
+  function isBoxSec(sec) { return !!sec && (sec.key === 'dr-jb' || /special junction box/i.test(String(sec.title || ''))); }
+  function isOptCountSec(sec) {
+    if (!sec) return false;
+    const k = String(sec.key || ''), t = String(sec.title || '');
+    if (k === 'dr-bd-welded' || k === 'dr-bd-sum' || k === 'dr-std') return true;
+    if (/bridge deck drawing details/i.test(t)) return true;
+    if (/bridge deck drain summary/i.test(t)) return true;
+    if (/^standards$/i.test(t.trim())) return true;
+    return false;
+  }
+  function isPlainCountSec(sec) { return isLatSec(sec) || isOptCountSec(sec); }
+  function countField(sec) { return isHydSec(sec) ? 'hyd' : isPlainCountSec(sec) ? 'cnt' : null; }
+  function isSheetCountSec(sec) { return !!countField(sec); }
+  function countManaged(sec) { return isHydSec(sec) || isLatSec(sec) || isPondSec(sec) || isBoxSec(sec); }
+  function unitKind(sec) { return isPondSec(sec) ? 'pond' : isBoxSec(sec) ? 'box' : null; }
+  function unitNoun(sec) { return isBoxSec(sec) ? 'box' : 'pond'; }
+  function unitNouns(sec) { return isBoxSec(sec) ? 'boxes' : 'ponds'; }
+  const POND_SLOTS = [
+    { slot: 1, label: 'Layout' },
+    { slot: 2, label: 'Cross Sections' },
+    { slot: 3, label: 'Geometric Layout (1 of 2)' },
+    { slot: 4, label: 'Geometric Layout (2 of 2)' },
+  ];
+  function unitSlots(sec) {
+    if (isPondSec(sec)) return POND_SLOTS.map((s) => ({ slot: s.slot, label: s.label }));
+    if (isBoxSec(sec)) return [1, 2, 3].map((slot) => ({ slot, label: '(' + slot + ' of 3)' }));
+    return [];
+  }
+  function countTitle(sec, i, n) { return String(sec.title || 'Sheet').trim() + ' (' + i + ' of ' + n + ')'; }
+  function countedSheets(sec, field) { return sec.sheets.filter((q) => q[field] && typeof q[field] === 'object' && Number.isFinite(q[field].idx) && q[field].idx > 0).sort((a, b) => a[field].idx - b[field].idx); }
+  function sheetCountSheets(sec) { const f = countField(sec); return f ? countedSheets(sec, f) : []; }
+  function syncCounted(sec, field) {
+    const hs = countedSheets(sec, field), n = hs.length;
+    hs.forEach((sh, i) => { const edited = sh[field].title && sh.title !== sh[field].title; sh[field].idx = i + 1; sh[field].of = n; const t = countTitle(sec, i + 1, n); if (!edited) sh.title = t; sh[field].title = edited ? sh[field].title : t; });
+  }
+  function countedAdoptable(sec, field) {
+    const t = String(sec.title || '').trim().toLowerCase();
+    return countedSheets(sec, field).length ? null : sec.sheets.find((q) => !q.hyd && !q.cnt && !q.unit && !q.gen && !q.dam && String(q.title || '').trim().toLowerCase() === t) || null;
+  }
+  function planCounted(st, secId, n, field) {
+    const hit = findSeg(st, secId); if (!hit) throw new Error('No such section');
+    n = Number(n);
+    if (!Number.isInteger(n) || n < 0 || n > 200) throw new Error('Enter a whole number of sheets from 0 to 200.');
+    const sec = hit.seg, hs = countedSheets(sec, field), ad = countedAdoptable(sec, field), cur = hs.length + (ad ? 1 : 0);
+    const remove = n < hs.length ? hs.slice(n) : [];
+    return { sec, cur, n, adopt: ad && n > 0 ? ad : null, create: Math.max(0, n - cur), remove, progress: remove.filter(isTouched),
+      titles: Array.from({ length: n }, (_, i) => countTitle(sec, i + 1, n)), field };
+  }
+  function setCounted(st, secId, n, field, opts) {
+    const P = planCounted(st, secId, n, field), sec = P.sec, hit = findSeg(st, secId);
+    if (P.progress.length && !(opts && opts.force)) throw new Error(P.progress.length + ' of the sheets to remove have work on them.');
+    if (P.adopt) { P.adopt[field] = { idx: 1, of: 1, title: P.adopt.title }; if (field === 'cnt') P.adopt.road = ''; }
+    const start = countedSheets(sec, field).length, made = [];
+    for (let i = 0; i < P.create; i++) {
+      const sh = newSheet({ title: 'x', discipline: sec.discipline, series: sec.title });
+      sh.series = ''; sh.road = ''; sh[field] = { idx: start + i + 1, of: 0, title: 'x' };
+      sec.sheets.push(sh); made.push(sh);
+    }
+    if (P.remove.length) { const kill = new Set(P.remove.map((q) => q.id)); sec.sheets = sec.sheets.filter((q) => !kill.has(q.id)); pruneLinks(st); }
+    syncCounted(sec, field);
+    for (const sh of made.concat(P.adopt && !P.adopt.number ? [P.adopt] : [])) sh.number = suggestNumber(st, sh) || '';
+    log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' sheet' + (P.n === 1 ? '' : 's') + ' (' + (made.length ? '+' + made.length : '') + (P.remove.length ? (made.length ? ', ' : '') + '−' + P.remove.length : '') + (!made.length && !P.remove.length ? 'no change' : '') + ')', { t: 'seg', id: sec.id });
+    return { created: made.length, removed: P.remove.length, adopted: P.adopt ? 1 : 0, n: P.n, ids: made.map((q) => q.id) };
+  }
+  function planSheetCount(st, secId, n) {
+    const hit = findSeg(st, secId); if (!hit) throw new Error('No such section');
+    const f = countField(hit.seg); if (!f) throw new Error('This section is not counted by number of sheets.');
+    return planCounted(st, secId, n, f);
+  }
+  function setSheetCount(st, secId, n, opts) {
+    const hit = findSeg(st, secId); if (!hit) throw new Error('No such section');
+    const f = countField(hit.seg); if (!f) throw new Error('This section is not counted by number of sheets.');
+    return setCounted(st, secId, n, f, opts);
+  }
+  function unitTitle(sec, n, slot) {
+    const name = String(sec.title || (isBoxSec(sec) ? 'Special Junction Box' : 'Detention Basin')).trim();
+    if (isPondSec(sec)) return name + ' – Pond ' + n + ' – ' + slot.label;
+    return name + ' – Box ' + n + ' (' + slot.slot + ' of ' + (unitSlots(sec).length || 3) + ')';
+  }
+  function unitSheets(sec) {
+    const k = unitKind(sec);
+    return k ? sec.sheets.filter((q) => q.unit && q.unit.kind === k && Number.isFinite(q.unit.n) && Number.isFinite(q.unit.slot)).sort((a, b) => a.unit.n - b.unit.n || a.unit.slot - b.unit.slot) : [];
+  }
+  function unitGroups(sec) {
+    const out = [];
+    for (const sh of unitSheets(sec)) {
+      let g = out[out.length - 1];
+      if (!g || g.n !== sh.unit.n) { g = { n: sh.unit.n, of: sh.unit.of, kind: sh.unit.kind, name: (sh.unit.kind === 'box' ? 'Box ' : 'Pond ') + sh.unit.n, sheets: [] }; out.push(g); }
+      g.sheets.push(sh);
+    }
+    return out;
+  }
+  function unitLoose(sec) { const ids = new Set(unitSheets(sec).map((s) => s.id)); return sec.sheets.filter((s) => !ids.has(s.id)); }
+  function syncUnits(sec) {
+    const kind = unitKind(sec); if (!kind) return;
+    const slots = new Map(unitSlots(sec).map((s) => [s.slot, s]));
+    const groups = unitGroups(sec), of = groups.length;
+    groups.forEach((g, i) => {
+      const n = i + 1;
+      for (const sh of g.sheets) {
+        const slot = slots.get(sh.unit.slot) || { slot: sh.unit.slot, label: 'Sheet ' + sh.unit.slot };
+        const edited = sh.unit.title && sh.title !== sh.unit.title;
+        sh.unit.kind = kind; sh.unit.n = n; sh.unit.of = of;
+        const t = unitTitle(sec, n, slot);
+        if (!edited) sh.title = t;
+        sh.unit.title = edited ? sh.unit.title : t;
+      }
+    });
+  }
+  function sortUnits(sec) {
+    const kind = unitKind(sec); if (!kind) return;
+    const plain = sec.sheets.filter((q) => !(q.unit && q.unit.kind === kind));
+    sec.sheets = plain.concat(unitSheets(sec));
+  }
+  function pondAdoptNames(slot) {
+    if (slot === 1) return ['layout', 'detention basin layout', 'detention basin'];
+    if (slot === 2) return ['cross sections', 'cross section', 'detention basin cross section', 'detention basin cross sections'];
+    if (slot === 3) return ['geometric layout', 'geometric layout (1 of 2)'];
+    if (slot === 4) return ['geometric layout (2 of 2)'];
+    return [];
+  }
+  function unitAdopt(sec) {
+    const out = new Map();
+    if (unitSheets(sec).length) return out;
+    const loose = sec.sheets.filter((q) => !q.unit && !q.hyd && !q.cnt && !q.gen && !q.dam);
+    const used = new Set();
+    if (isPondSec(sec)) {
+      for (const slot of unitSlots(sec)) {
+        const names = new Set(pondAdoptNames(slot.slot));
+        const sh = loose.find((q) => !used.has(q) && names.has(String(q.title || '').trim().toLowerCase()));
+        if (sh) { used.add(sh); out.set(slot.slot, sh); }
+      }
+    } else if (isBoxSec(sec)) {
+      const t = String(sec.title || '').trim().toLowerCase();
+      const sh = loose.find((q) => String(q.title || '').trim().toLowerCase() === t);
+      if (sh) out.set(1, sh);
+    }
+    return out;
+  }
+  function planUnitCount(st, secId, n) {
+    const hit = findSeg(st, secId); if (!hit) throw new Error('No such section');
+    const sec = hit.seg, kind = unitKind(sec);
+    if (!kind) throw new Error('This section is not grouped by ponds or boxes.');
+    n = Number(n);
+    if (!Number.isInteger(n) || n < 0 || n > 40) throw new Error('Enter a whole number of ' + unitNouns(sec) + ' from 0 to 40.');
+    const slots = unitSlots(sec), existing = unitSheets(sec);
+    const nums = [...new Set(existing.map((sh) => sh.unit.n))].sort((a, b) => a - b);
+    const compact = new Map(nums.map((v, i) => [v, i + 1]));
+    const cur = nums.length, adoptMap = cur === 0 && n > 0 ? unitAdopt(sec) : new Map();
+    const newSheets = [], adopt = [];
+    for (let i = 1; i <= n; i++) for (const slot of slots) {
+      const sh = existing.find((q) => compact.get(q.unit.n) === i && q.unit.slot === slot.slot);
+      const title = unitTitle(sec, i, slot);
+      if (sh) continue;
+      if (i === 1 && adoptMap.has(slot.slot)) adopt.push({ sh: adoptMap.get(slot.slot), n: 1, slot: slot.slot, title });
+      else newSheets.push({ n: i, slot: slot.slot, title });
+    }
+    const remove = existing.filter((sh) => compact.get(sh.unit.n) > n);
+    const titles = [];
+    for (let i = 1; i <= n; i++) for (const slot of slots) titles.push(unitTitle(sec, i, slot));
+    return { sec, cur, n, create: newSheets.length, newSheets, adopt, remove, progress: remove.filter(isTouched), titles, sheetsPer: slots.length, noun: unitNoun(sec), kind };
+  }
+  function setUnitCount(st, secId, n, opts) {
+    const hit0 = findSeg(st, secId); if (!hit0) throw new Error('No such section');
+    if (!unitKind(hit0.seg)) throw new Error('This section is not grouped by ponds or boxes.');
+    const P = planUnitCount(st, secId, n), sec = P.sec, hit = findSeg(st, secId), kind = P.kind;
+    if (P.progress.length && !(opts && opts.force)) throw new Error(P.progress.length + ' of the sheets to remove have work on them.');
+    for (const a of P.adopt) { a.sh.unit = { kind, n: a.n, of: P.n, slot: a.slot, title: a.sh.title }; a.sh.road = ''; }
+    const made = [];
+    for (const c of P.newSheets) {
+      const sh = newSheet({ title: c.title, discipline: sec.discipline, series: sec.title });
+      sh.series = ''; sh.road = ''; sh.unit = { kind, n: c.n, of: P.n, slot: c.slot, title: c.title };
+      sec.sheets.push(sh); made.push(sh);
+    }
+    if (P.remove.length) { const kill = new Set(P.remove.map((q) => q.id)); sec.sheets = sec.sheets.filter((q) => !kill.has(q.id)); pruneLinks(st); }
+    syncUnits(sec); sortUnits(sec);
+    for (const sh of made.concat(P.adopt.map((a) => a.sh).filter((sh) => !sh.number))) sh.number = suggestNumber(st, sh) || '';
+    const word = P.n === 1 ? unitNoun(sec) : unitNouns(sec);
+    log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' ' + word + ' (' + unitSheets(sec).length + ' sheets)', { t: 'seg', id: sec.id });
+    return { created: made.length, removed: P.remove.length, adopted: P.adopt.length, n: P.n, ids: made.map((q) => q.id) };
+  }
+  function setPondCount(st, secId, n, opts) {
+    const hit = findSeg(st, secId); if (!hit || !isPondSec(hit.seg)) throw new Error('Not a detention basin section.');
+    return setUnitCount(st, secId, n, opts);
+  }
+  function setBoxCount(st, secId, n, opts) {
+    const hit = findSeg(st, secId); if (!hit || !isBoxSec(hit.seg)) throw new Error('Not a special junction box section.');
+    return setUnitCount(st, secId, n, opts);
+  }
   /* ---- v3.8 DAM road branches: Drainage Area Map > Road > sheets ----
      A DAM section may hold sec.damRoads = [{ id, road, alignment?, src:[source road entry ids], notes }] (optional field).
      A copied sheet points at its branch with sh.dam.branch. A branch mirrors its source road (name + alignment) while it has
@@ -2276,7 +2559,7 @@
       if (!Object.keys(e).length) delete st.props[k];
     }
   }
-  return { isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, syncUnits, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
