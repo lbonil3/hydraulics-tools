@@ -831,6 +831,70 @@ t('v3.8 flat DAM copies from v3.7 move into a road branch on load, nothing lost'
   assert.strictEqual(JSON.stringify(again.subs[0].segments.find((g) => g.key === 'dr-dam').damRoads), JSON.stringify(md.damRoads), 'migration runs once');
   assert.strictEqual(M.planDam(m, {}).create, 0, 're-run after migration makes no duplicates');
 });
+const E = require('./engreport.js');
+function engState() {
+  const st = M.newState('Eng Test');
+  for (const s of st.subs) M.addStandardSet(st, s.id);
+  const [A, B] = st.subs;
+  M.addRoad(st, M.secOf(A, 'dr-pp').id, { road: 'FM 1960', start: '10+00', end: '58+00', alignment: 'BL FM 1960' });
+  M.addRoad(st, M.secOf(B, 'dr-pp').id, { road: 'Spring Cypress Rd', start: '100+00', end: '136+00', alignment: 'BL SC' });
+  M.syncPP(st);
+  return st;
+}
+t('engineering report: sections, placeholders, no invented values', () => {
+  const st = engState();
+  const O = E.outline(st, today);
+  assert.deepStrictEqual(O.map((s) => s.id), ['intro', 'desc', 'scope', 'criteria', 'existing', 'proposed', 'swp3', 'sheets', 'schedule', 'concl']);
+  assert.deepStrictEqual(O.map((s) => s.no), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  const ex = O.find((s) => s.id === 'existing');
+  assert(ex.showPh && /^\[Engineer to describe existing drainage conditions/.test(ex.ph));
+  const desc = O.find((s) => s.id === 'desc'), tab = desc.auto.find((b) => b.table).table;
+  const fm = tab.rows.find((r) => r[0] === 'FM 1960');
+  assert(fm && fm[1] === 'BL FM 1960' && /10\+00 to 58\+00/.test(fm[2]) && fm[3] === '4,800 ft', JSON.stringify(fm));
+  const txt = E.text(st, today);
+  assert(/PRELIMINARY — NOT SEALED/.test(txt) && /1\. INTRODUCTION AND PURPOSE/.test(txt) && /10\. CONCLUSIONS AND RECOMMENDATIONS/.test(txt));
+  assert(!/\b(cfs|in\/hr|\d+-year|year storm|acres?)\b/i.test(txt), 'no design values invented');
+  const urls = txt.match(/https?:\/\/\S+/g) || [];
+  assert.deepStrictEqual([...new Set(urls)], ['https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html']);
+  assert(!/CSJ/.test(txt.split('\n').slice(0, 4).join('\n')), 'no CSJ line until one is entered');
+});
+t('engineering report: edits, toggles, replace mode, refs, storage', () => {
+  const st = engState();
+  E.setMeta(st, 'csj', '1234-56-789'); E.setMeta(st, 'county', 'Harris'); assert.throws(() => E.setMeta(st, 'bogus', 'x'));
+  assert.deepStrictEqual(st.engReport.meta, { csj: '1234-56-789', county: 'Harris' });
+  E.setSec(st, 'existing', { text: 'Existing ditches drain north.' });
+  let ex = E.outline(st, today).find((s) => s.id === 'existing');
+  assert(!ex.showPh && ex.auto.length && ex.text === 'Existing ditches drain north.');
+  E.setSec(st, 'existing', { mode: 'replace' });
+  ex = E.outline(st, today).find((s) => s.id === 'existing');
+  assert.strictEqual(ex.auto.length, 0);
+  E.setSec(st, 'scope', { on: false });
+  const O = E.outline(st, today);
+  assert(!O.some((s) => s.id === 'scope') && O.find((s) => s.id === 'criteria').no === 3);
+  const txt = E.text(st, today);
+  assert(/CSJ: 1234-56-789/.test(txt) && /Harris County/.test(txt) && /Existing ditches drain north\./.test(txt) && !/SCOPE OF WORK/.test(txt));
+  E.setRefs(st, 'Ref one\n\n Ref two ');
+  assert.deepStrictEqual(E.refs(st), ['Ref one', 'Ref two']);
+  E.resetRefs(st); assert(E.refs(st).length >= 5 && st.engReport.refs === undefined);
+  // round trip through save/migrate, then clearing everything leaves no trace
+  const back = M.migrate(JSON.parse(JSON.stringify(st)));
+  assert.strictEqual(E.text(back, today), E.text(st, today));
+  E.setSec(back, 'existing', { text: '', mode: 'add' }); E.setSec(back, 'scope', { on: true }); E.setMeta(back, 'csj', ''); E.setMeta(back, 'county', '');
+  assert.strictEqual(back.engReport, undefined);
+});
+t('engineering report: SWP3 hidden without SWP3 sheets; junk tolerated', () => {
+  const st = engState();
+  for (const s of st.subs) s.segments = s.segments.filter((g) => g.discipline !== 'SWP3');
+  assert(!E.outline(st, today).some((s) => s.id === 'swp3'));
+  assert(!/STORM WATER POLLUTION/.test(E.text(st, today)));
+  for (const junk of [null, 5, 'x', [], { meta: 7, secs: 'no', refs: 9 }, { secs: { intro: null, existing: { text: 5, on: 'x' } } }]) {
+    const s2 = engState(); s2.engReport = junk;
+    assert.doesNotThrow(() => E.text(s2, today), JSON.stringify(junk));
+    assert.strictEqual(E.outline(s2, today).length, 10);
+  }
+  const empty = M.newState('Empty');
+  assert.doesNotThrow(() => E.text(empty, today));
+});
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

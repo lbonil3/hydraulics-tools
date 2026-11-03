@@ -757,3 +757,45 @@ details.menu.active>summary{border-color:var(--brand);background:var(--brand-sof
 .dampill .row{gap:10px;margin:0}
 .row.pacts{margin:4px 0 2px}
 @media (max-width:900px){.damroad{min-height:44px;padding:6px 0}.damroad input{width:20px;height:20px}}
+/* v3.10 engineering report — screen editor */
+.rptype{display:inline-flex;align-items:center;gap:6px;margin-left:8px}
+.rptype select{min-height:32px}
+.epurpose{margin:4px 0 10px;max-width:70em}
+.engnarr .esec.off{opacity:.65}
+.engnarr .ehead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.engnarr .ehead b{font-size:15px}
+.engnarr .egen{background:var(--bg2,#f6f7f9);border-left:3px solid var(--line,#d0d5dd);padding:6px 10px;border-radius:6px;margin:4px 0 8px}
+.engnarr .egen.struck>*:not(.muted){opacity:.45}
+.engnarr .egen p{margin:4px 0}.engnarr .egen ul,.engnarr .egen ol{margin:4px 0;padding-left:20px}
+.engnarr .egen .esub{font-size:13px;margin:8px 0 2px}
+.engnarr .egen .rtab{font-size:12px}
+.engnarr .etext{width:100%;box-sizing:border-box;font:inherit;line-height:1.45;padding:8px;border-radius:8px;border:1px solid var(--line,#d0d5dd);resize:vertical}
+.engnarr .eedit .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.engnarr .erefbox{margin:6px 0}.engnarr .erefbox .row{display:flex;justify-content:space-between;align-items:center}
+@media (max-width:700px){.rptype{margin:6px 0 0}.engnarr .etext{font-size:16px}.engnarr .eedit select{min-height:44px;max-width:100%}}
+/* v3.10 engineering report — print */
+@media print{.report.eng{font:10.5pt/1.5 Georgia,'Times New Roman',serif}}
+.report.eng{font-family:Georgia,'Times New Roman',serif}
+.report.eng .rrun{font-family:Arial,Helvetica,sans-serif}
+.report.eng .ecover{min-height:8.8in;display:flex;flex-direction:column;border:1.5pt solid #000;break-after:page;page-break-after:always}
+.report.eng .eband{background:#1f2937;color:#fff;padding:8pt 12pt;font:700 10pt Arial,Helvetica,sans-serif;letter-spacing:.12em}
+.report.eng .ecover h1{font-size:24pt;line-height:1.15;margin:0;padding:36pt 14pt 18pt}
+.report.eng .ecover .rmeta{font-family:Arial,Helvetica,sans-serif;font-size:9pt}
+.report.eng .eseal{margin-top:auto;display:flex;gap:14pt;align-items:flex-start;padding:14pt;border-top:.75pt solid #000;font-size:9pt}
+.report.eng .esealbox{flex:none;width:1.7in;height:1.7in;border:1.5pt dashed #000;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4pt;font-family:Arial,Helvetica,sans-serif}
+.report.eng .esealbox b{font-size:12pt;letter-spacing:.08em}.report.eng .esealbox span{font-size:7.5pt;color:#444;padding:0 10pt}
+.report.eng .etoc{break-after:page;page-break-after:always;border:0;padding:0}
+.report.eng .etoc h2{font-size:13pt;border-bottom:1pt solid #000;margin-bottom:8pt}
+.report.eng .etoc ol{columns:1;font-size:11pt;line-height:1.9}
+.report.eng h2{font:700 12.5pt Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.04em;margin:18pt 0 8pt}
+.report.eng .esub{font:700 10.5pt Arial,Helvetica,sans-serif;margin:10pt 0 3pt;display:block}
+.report.eng p{text-align:justify;margin:0 0 7pt;hyphens:auto}
+.report.eng ul,.report.eng ol.erefs{margin:2pt 0 8pt;padding-left:18pt}.report.eng li{margin:2pt 0}
+.report.eng .eph{color:#555;font-style:italic}
+.report.eng .rtab{font-family:Arial,Helvetica,sans-serif;font-size:8.5pt}
+.report.eng .eidx td:nth-child(1){width:8%;white-space:nowrap}.report.eng .eidx td:nth-child(3){width:9%}
+.report.eng .esecp{break-inside:auto}
+@page eng{@bottom-left{content:"Project Tracker · Engineering report — preliminary, not sealed";font:8pt Arial,Helvetica,sans-serif;color:#555}}
+@page enga4{size:A4;margin:16mm 15mm 18mm;@bottom-left{content:"Project Tracker · Engineering report — preliminary, not sealed";font:8pt Arial,Helvetica,sans-serif;color:#555}}
+.report.eng.pg-letter{page:eng}.report.eng.pg-a4{page:enga4}
+.report.eng .eidx td:nth-child(5){white-space:nowrap}
