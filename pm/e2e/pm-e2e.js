@@ -134,19 +134,19 @@ function v2Fixture() {
   const secA = (key) => A.segments.find((g) => g.key === key);
   await click('.node[data-key="disc:' + A.id + ':Drainage"] .nbtn.tog'); await sleep(150);
   const secTitles = await pg.$$eval('.node.n-seg.d-dr .nt', (e) => e.map((x) => x.textContent));
-  ok(secTitles[0] === 'Overall Drainage Area Map' && secTitles[15] === 'Standards' && secTitles.includes('Bridge Deck Drawing Details (Welded)') && secTitles.includes('Other Drainage'), 'A Drainage shows the 16 sections in order (+ Other for unmatched)');
+  ok(secTitles[0] === 'Overall Drainage Area Map' && secTitles[14] === 'Standards' && secTitles.includes('Detention Basin') && !secTitles.includes('Detention Basin Layout') && !secTitles.includes('Detention Basin Cross Section') && secTitles.includes('Bridge Deck Drawing Details (Welded)') && secTitles.includes('Other Drainage'), 'A Drainage shows the sections in order, one detention branch (+ Other for unmatched)');
   ok(/2 PP/.test(await txt('.node[data-key="seg:' + secA('dr-pp').id + '"]')) && /FM 1960/.test(await txt('.node[data-key="seg:' + secA('dr-pp').id + '"]')), 'P&P section node shows PP count and road');
   ok(!(await pg.$$eval('.node', (e) => e.map((x) => x.dataset.key))).some((k) => /^road:/.test(k)), 'roads are not tree nodes');
   await click('.node[data-key="seg:' + secA('dr-hds-x').id + '"] .nbtn.tog');
   ok(await has('.node[data-key^="sheet:"]'), 'section expands to its sheets');
   await click('#zFit'); await shot('03-tree-sections');
 
-  /* 3. section drawer: road name only, inline stations → PP, generate */
-  await click('.node[data-key="seg:' + secA('dr-lat').id + '"]');
-  ok(/Drainage Laterals/.test(await txt('#drawer')) && await has('#addRoadName'), 'Drainage Laterals drawer has the add-road form');
-  await typeIn('#addRoadName', 'Lateral A-3'); await pg.keyboard.press('Enter'); await sleep(250);
+  /* 3. section drawer: road name only, inline stations → PP, generate (trunk line stays road-based) */
+  await click('.node[data-key="seg:' + secA('dr-trunk').id + '"]');
+  ok(/Trunkline Plan & Profile/.test(await txt('#drawer')) && await has('#addRoadName'), 'Trunkline drawer has the add-road form');
+  await typeIn('#addRoadName', 'Trunk A-3'); await pg.keyboard.press('Enter'); await sleep(250);
   let D = await data();
-  const lat = D.subs[0].roads.find((r) => r.road === 'Lateral A-3');
+  const lat = D.subs[0].roads.find((r) => r.road === 'Trunk A-3');
   ok(lat && lat.start === null, 'road added with the name only (no stations)');
   ok(/—/.test(await txt('#roadTable tbody tr')) , 'no PP until stations are entered');
   await setVal('#roadTable tr[data-road="' + lat.id + '"] input[data-k="start"]', '0+00'); await sleep(150);
@@ -155,10 +155,10 @@ function v2Fixture() {
   await setVal('#roadTable tr[data-road="' + lat.id + '"] input[data-k="scale"]', '50'); await sleep(200);
   ok((await txt('#secPP')).trim() === '3', '50 scale (600 ft/sheet) → 3 PP');
   D = await data();
-  ok(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 3, 'PP sheets follow the stations live: 3 Drainage Laterals PP sheets');
+  ok(D.subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.filter((s) => s.gen).length === 3, 'PP sheets follow the stations live: 3 Trunkline PP sheets');
   ok(/up to date/.test(await txt('#genBtn')), 'nothing left to generate');
-  ok(JSON.stringify(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).map((s) => [s.gen.start, s.gen.end])) === '[[0,600],[600,1200],[1200,1300]]', 'ranges 0+00–6+00, 6+00–12+00, 12+00–13+00 (last partial)');
-  ok(/Lateral A-3 Sta 0\+00 to 6\+00 \(PP 1 of 3\)/.test(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets[0].title), 'PP sheet title includes road + stations');
+  ok(JSON.stringify(D.subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.filter((s) => s.gen).map((s) => [s.gen.start, s.gen.end])) === '[[0,600],[600,1200],[1200,1300]]', 'ranges 0+00–6+00, 6+00–12+00, 12+00–13+00 (last partial)');
+  ok(/Trunk A-3 Sta 0\+00 to 6\+00 \(PP 1 of 3\)/.test(D.subs[0].segments.find((g) => g.key === 'dr-trunk').sheets[0].title), 'PP sheet title includes road + stations');
   await shot('04-section-roads');
   /* v3.6: a real pointer click / tap on a tree node opens its properties (the viewport used to swallow the click) */
   if (await has('#viewport') && await pg.evaluate(() => getComputedStyle(document.getElementById('treeWrap') || document.body).display !== 'none' && !!document.querySelector('.node.n-seg'))) {
@@ -185,17 +185,17 @@ function v2Fixture() {
   await pg.keyboard.press('Escape');
   await pg.evaluate(() => document.activeElement.blur());
   await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(250);
-  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 2, 'undo restores the 100-scale count (2 PP)');
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.filter((s) => s.gen).length === 2, 'undo restores the 100-scale count (2 PP)');
   await pg.keyboard.down('Control'); await pg.keyboard.down('Shift'); await pg.keyboard.press('z'); await pg.keyboard.up('Shift'); await pg.keyboard.up('Control'); await sleep(250);
-  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).length === 3, 'redo brings them back');
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.filter((s) => s.gen).length === 3, 'redo brings them back');
 
   /* 3b. v3.2: road branch under the section, sheets with station ranges under the road */
-  const latSec = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat');
-  const rdKey = 'rd:' + latSec.id + ':lateral-a-3';
+  const latSec = (await data()).subs[0].segments.find((g) => g.key === 'dr-trunk');
+  const rdKey = 'rd:' + latSec.id + ':trunk-a-3';
   await pg.keyboard.press('Escape'); await pg.evaluate(() => document.activeElement && document.activeElement.blur());
   if (!(await has('.node[data-key="' + rdKey + '"]'))) await click('.node[data-key="seg:' + latSec.id + '"] .nbtn.tog');
-  ok(await has('.node[data-key="' + rdKey + '"]'), 'road is a branch under Drainage Laterals');
-  ok(/Lateral A-3/.test(await txt('.node[data-key="' + rdKey + '"]')) && /3 PP/.test(await txt('.node[data-key="' + rdKey + '"]')) && /0\+00–13\+00/.test(await txt('.node[data-key="' + rdKey + '"]')), 'road node shows name, PP count and its station range');
+  ok(await has('.node[data-key="' + rdKey + '"]'), 'road is a branch under Trunkline Plan & Profile');
+  ok(/Trunk A-3/.test(await txt('.node[data-key="' + rdKey + '"]')) && /3 PP/.test(await txt('.node[data-key="' + rdKey + '"]')) && /0\+00–13\+00/.test(await txt('.node[data-key="' + rdKey + '"]')), 'road node shows name, PP count and its station range');
   const latSheets = latSec.sheets.filter((x) => x.gen);
   const pp1 = '.node[data-key="sheet:' + latSheets[0].id + '"]';
   ok(await has(pp1) && /PP 1: STA 0\+00 – 6\+00/.test(await txt(pp1)) && /50 scale/.test(await txt(pp1)), 'sheet node under the road: “PP 1: STA 0+00 – 6+00” with scale');
@@ -204,18 +204,18 @@ function v2Fixture() {
   ok(await has('#rgTable') && (await pg.$$('#rgTable tbody tr')).length === 3 && await has('#roadTable'), 'road drawer: station ranges per sheet + the road table');
   const p2row = '#rgTable tr[data-sheet="' + latSheets[1].id + '"]';
   await setVal(p2row + ' input[data-k="a"]', '6+50'); await sleep(250);
-  let L2 = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.find((x) => x.id === latSheets[1].id);
+  let L2 = (await data()).subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.find((x) => x.id === latSheets[1].id);
   ok(L2.sta && L2.sta.start === 650 && L2.sta.end === 1200 && /Sta 6\+50 to 12\+00/.test(L2.title), 'manual range on PP 2 (title follows)');
   ok(/✎/.test(await txt('.node[data-key="sheet:' + latSheets[1].id + '"]')), 'tree marks the manual range');
   await setVal('#roadTable input[data-k="scale"]', '100'); await sleep(300);
-  let LS = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((x) => x.gen);
+  let LS = (await data()).subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.filter((x) => x.gen);
   ok(LS.length === 2 && LS[1].sta && LS[1].sta.start === 650, 'scale 100 → 2 PP; the manual range is kept, not overwritten');
   ok(/manual range/.test(await txt('#rgWarn')), 'and a warning explains the conflict');
   await shot('04b-road-drawer');
   await setVal('#roadTable input[data-k="scale"]', '50'); await sleep(300);
-  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((x) => x.gen).length === 3, 'back to 50 scale → 3 PP');
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.filter((x) => x.gen).length === 3, 'back to 50 scale → 3 PP');
   await click(p2row + ' button.btn'); await sleep(250);
-  L2 = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.find((x) => x.id === latSheets[1].id);
+  L2 = (await data()).subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.find((x) => x.id === latSheets[1].id);
   ok(!L2.sta && L2.gen.start === 600 && /Sta 6\+00 to 12\+00/.test(L2.title), 'reset to computed');
   await click(pp1); ok((await pg.$eval('#shStaA', (e) => e.value)) === '0+00' && (await pg.$eval('#shStaB', (e) => e.value)) === '6+00' && /Computed/.test(await txt('#shStaHint')), 'sheet drawer shows the computed range');
   await click('.node[data-key="' + rdKey + '"] .nbtn.tog'); ok(!(await has(pp1)), 'road branch collapses');
@@ -223,12 +223,12 @@ function v2Fixture() {
   await click('#zFit'); await shot('04c-road-branch');
   await pg.keyboard.press('Escape'); await pg.evaluate(() => document.activeElement && document.activeElement.blur());
   await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await sleep(150);
-  await pg.keyboard.type('lateral a-3'); await sleep(150);
+  await pg.keyboard.type('trunk a-3'); await sleep(150);
   ok(/road/i.test(await txt('#cmdk')), 'Ctrl+K lists the road'); await pg.keyboard.press('Enter'); await sleep(400);
   ok(await has('.node.n-road.sel[data-key="' + rdKey + '"]'), 'and jumps to the road node');
   await pg.keyboard.down('Control'); await pg.keyboard.press('k'); await pg.keyboard.up('Control'); await sleep(150);
   await pg.keyboard.type('12+00 13+00'); await sleep(150); await pg.keyboard.press('Enter'); await sleep(400);
-  const pp3 = (await data()).subs[0].segments.find((g) => g.key === 'dr-lat').sheets.find((x) => x.gen && x.gen.idx === 3);
+  const pp3 = (await data()).subs[0].segments.find((g) => g.key === 'dr-trunk').sheets.find((x) => x.gen && x.gen.idx === 3);
   ok(sel3 = await has('.node.sel[data-key="sheet:' + pp3.id + '"]'), 'Ctrl+K finds a sheet by its stations');
 
 
@@ -240,9 +240,9 @@ function v2Fixture() {
   await pg.keyboard.press('Enter'); await sleep(200);
   D = await data();
   ok(D.subs[0].segments.find((g) => g.key === 'dr-jb').sheets.some((s) => s.title === 'Special Junction Box Details 2'), 'sheet lands in Special Junction Box Details');
-  await setVal('#qaSec', D.subs[0].segments.find((g) => g.key === 'dr-det-xs').id);
+  await setVal('#qaSec', D.subs[0].segments.find((g) => g.key === 'dr-bd-det').id);
   await typeIn('#qaTitle', 'Pond XS-1'); await pg.keyboard.press('Enter'); await sleep(200);
-  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-det-xs').sheets.some((s) => s.title === 'Pond XS-1'), 'picked section wins');
+  ok((await data()).subs[0].segments.find((g) => g.key === 'dr-bd-det').sheets.some((s) => s.title === 'Pond XS-1'), 'picked section wins');
   await click('#discStd'); await sleep(150);
   ok((await data()).subs[0].segments.find((g) => g.key === 'dr-odam').sheets.length === 1, '+ Standard sheets adds one sheet per empty section');
   await shot('05-branch-drawer');
@@ -265,11 +265,11 @@ function v2Fixture() {
 
   /* 6. section editor in Settings */
   await click('#setBtn'); await sleep(200);
-  ok(await has('#secSec') && (await pg.$$('#secSec .secedit[data-disc="Drainage"] .secrow')).length === 17, 'Settings lists the 17 Drainage sections (16 + Other)');
+  ok(await has('#secSec') && (await pg.$$('#secSec .secedit[data-disc="Drainage"] .secrow')).length === 16, 'Settings lists the 16 Drainage sections (15 + Other)');
   await typeIn('#secNewDR', 'Utility Conflict Sheets'); await pg.keyboard.press('Enter'); await sleep(250);
   ok((await data()).settings.sections.some((x) => x.title === 'Utility Conflict Sheets'), 'add section');
   const rn = await pg.$$('#secSec .secedit[data-disc="Drainage"] .secrow input:not([type=checkbox])');
-  await rn[12].evaluate((e) => { e.value = 'Bridge Deck Drainage Details (Welded)'; e.dispatchEvent(new Event('change', { bubbles: true })); }); await sleep(250);
+  await rn[11].evaluate((e) => { e.value = 'Bridge Deck Drainage Details (Welded)'; e.dispatchEvent(new Event('change', { bubbles: true })); }); await sleep(250);
   ok((await data()).subs.every((s) => s.segments.find((g) => g.key === 'dr-bd-welded').title === 'Bridge Deck Drainage Details (Welded)'), 'rename applies to A–D');
   await pg.$$eval('#secSec .secedit[data-disc="Drainage"] .secrow', (rows) => { const r = rows.find((x) => x.querySelector('input').value === 'Utility Conflict Sheets'); r.querySelector('[aria-label^="Move"][aria-label$="up"]').click(); }); await sleep(250);
   const order = (await data()).settings.sections.filter((x) => x.discipline === 'Drainage').map((x) => x.title);
@@ -315,7 +315,7 @@ function v2Fixture() {
   await shot('09-board');
   await click('#vStations'); await sleep(150);
   const stRows = await pg.$$eval('#stTable tbody tr', (e) => e.map((x) => x.innerText));
-  ok(stRows.length === 7 && stRows.some((r) => /Drainage Laterals/.test(r)) && stRows.some((r) => /SWP3 Layout/.test(r)), 'stations table lists every road entry with its section');
+  ok(stRows.length === 7 && stRows.some((r) => /Trunkline/.test(r)) && stRows.some((r) => /SWP3 Layout/.test(r)), 'stations table lists every road entry with its section');
   await shot('10-stations');
 
   /* 9. report: per discipline / sub-project / section, roads under P&P */
@@ -339,7 +339,7 @@ function v2Fixture() {
   const RP = await pg.$eval('#report', (e) => e.textContent);
   ok(/Prepared by/.test(RP) && /Luis Bonilla, P\.E\./.test(RP) && /TxDOT Houston District/.test(RP), 'cover shows prepared for / by');
   ok(['Executive summary', 'Progress by sub-project', 'Drainage summary', 'SWP3 summary', 'Sheet detail by section', 'Schedule', 'Dependencies and updates', 'Owner workload', 'Recently changed', 'Contents'].every((x) => RP.includes(x)), 'report has all sections and contents');
-  ok(/Lateral A-3/.test(RP) && /\d+\+\d\d – \d+\+\d\d/.test(RP) && (await pg.$$('#report .rchip')).length > 5, 'roads, station ranges and status chips in the report');
+  ok(/Trunk A-3/.test(RP) && /\d+\+\d\d – \d+\+\d\d/.test(RP) && (await pg.$$('#report .rchip')).length > 5, 'roads, station ranges and status chips in the report');
   ok(await pg.evaluate(() => [...document.querySelectorAll('#report h3')].some((x) => /North Segment/.test(x.textContent)) || /North Segment/.test(document.querySelector('#report').textContent) || true), 'sub-project names used');
   await pg.$eval('#rpWork', (e) => e.click()); await sleep(50); await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
   ok(!/Owner workload/.test(await pg.$eval('#report', (e) => e.textContent)), 'workload toggle hides the section');
@@ -443,6 +443,61 @@ function v2Fixture() {
   await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(300); D = await data();
   ok(hydSec().sheets.length === h0, 'undo again restores the section as it was');
   D = await data();
+
+  /* 10e. v3.11 laterals by sheet count, ponds (4), junction boxes (3), optional counts */
+  async function openSec(key) {
+    D = await data();
+    const id = D.subs[0].segments.find((g) => g.key === key).id;
+    const sel = '.node[data-key="seg:' + id + '"]';
+    if (!(await has(sel))) { await click('#xAll'); await sleep(400); }
+    await click(sel);
+    await sleep(300);
+    const head = await pg.$eval('#drawer h2', (e) => e.textContent).catch(() => '');
+    if (!head) throw new Error('drawer did not open for ' + key);
+    return id;
+  }
+  await openSec('dr-lat');
+  ok(await has('#hydBox') && await has('#hydCount') && !(await has('#addRoadName')) && !(await has('#addSheetRoad')), 'Drainage Laterals: sheet count, no road');
+  ok(/double-banked/.test(await txt('#hydBox')), 'laterals explain they are double-banked profile sheets');
+  await setVal('#hydCount', '3'); await sleep(150);
+  await click('#hydSet'); await sleep(300);
+  D = await data();
+  const latSh = D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets;
+  ok(latSh.length === 3 && latSh.every((q) => q.cnt && !q.road) && latSh.map((q) => q.title).join('|') === [1, 2, 3].map((i) => 'Drainage Laterals (' + i + ' of 3)').join('|'), '3 lateral sheets, generic titles, no road');
+  await shot('15-laterals');
+  await openSec('dr-det');
+  ok(await has('#unitBox') && await has('#unitCount') && /how many ponds/i.test(await txt('#unitBox')) && !(await has('#addRoadName')), 'Detention Basin: how many ponds, no road');
+  ok(/Layout, Cross Sections, and Geometric Layout/.test(await txt('#unitBox')), 'pond help lists the 4 sheets');
+  await setVal('#unitCount', '2'); await sleep(150);
+  await click('#unitSet'); await sleep(400);
+  D = await data();
+  const det = D.subs[0].segments.find((g) => g.key === 'dr-det');
+  const detU = det.sheets.filter((q) => q.unit);
+  ok(!D.subs[0].segments.some((g) => g.key === 'dr-det-xs') && detU.length === 8 && new Set(detU.map((q) => q.unit.n)).size === 2, 'two ponds, 8 sheets, old cross-section branch is gone');
+  ok(detU.filter((q) => q.unit.n === 1).map((q) => q.title).join('|') === ['Layout', 'Cross Sections', 'Geometric Layout (1 of 2)', 'Geometric Layout (2 of 2)'].map((s) => 'Detention Basin – Pond 1 – ' + s).join('|'), 'pond 1 has Layout, Cross Sections, and two Geometric Layout sheets');
+  if (!(await has('.node.n-unit'))) { await click('.node[data-key="seg:' + det.id + '"] .nbtn.tog'); await sleep(200); }
+  ok((await pg.$$('.node.n-unit')).length >= 2, 'each pond is a branch in the tree');
+  await shot('16-ponds');
+  await openSec('dr-jb');
+  ok(/how many special boxes/i.test(await txt('#unitBox')) && /3 sheets/i.test(await txt('#unitBox')), 'special junction boxes: count of boxes, 3 sheets each');
+  await setVal('#unitCount', '2'); await sleep(150);
+  await click('#unitSet'); await sleep(400);
+  D = await data();
+  const jb = D.subs[0].segments.find((g) => g.key === 'dr-jb').sheets.filter((q) => q.unit);
+  ok(jb.length === 6 && jb.filter((q) => q.unit.n === 1).length === 3 && jb.every((q) => !q.road), 'two boxes × 3 sheets, no road');
+  await shot('17-junction-boxes');
+  await openSec('dr-std');
+  ok(await has('#hydBox') && !(await has('#addSheetRoad')), 'Standards can be added by sheet count, no road');
+  await setVal('#hydCount', '2'); await sleep(120); await click('#hydSet'); await sleep(300);
+  D = await data();
+  ok(D.subs[0].segments.find((g) => g.key === 'dr-std').sheets.filter((q) => q.cnt).map((q) => q.title).join('|') === 'Standards (1 of 2)|Standards (2 of 2)', 'Standards generic titles');
+  const weld = D.subs[0].segments.find((g) => g.key === 'dr-bd-welded');
+  await openSec('dr-bd-welded');
+  ok(await has('#hydBox') && !(await has('#addRoadName')), 'Bridge Deck Drawing Details has the sheet-count option');
+  await openSec('dr-bd-sum');
+  ok(await has('#hydBox'), 'Summary has the sheet-count option');
+  await shot('18-optional-counts');
+  void weld;
 
   /* 10d. v3.10 Engineering report */
   await click('#vReport'); await sleep(250);
