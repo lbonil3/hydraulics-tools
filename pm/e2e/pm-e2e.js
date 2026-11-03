@@ -444,6 +444,35 @@ function v2Fixture() {
   ok(hydSec().sheets.length === h0, 'undo again restores the section as it was');
   D = await data();
 
+  /* 10d. v3.10 Engineering report */
+  await click('#vReport'); await sleep(250);
+  ok(await has('#rptType'), 'report type selector on the Report view');
+  await pg.select('#rptType', 'eng'); await sleep(250);
+  ok(/Engineering report/.test(await txt('#reportWrap h2')) && (await pg.$$('#reportWrap .esec')).length === 10, 'Engineering report editor: 10 sections');
+  ok(/\[Engineer to describe existing drainage conditions/.test(await pg.$eval('#engText-existing', (e) => e.placeholder)), 'empty section shows its bracketed placeholder');
+  await setVal('#engM-csj', '0912-34-567'); await sleep(200);
+  await typeIn('#engText-existing', 'Existing roadside ditches drain to the north.'); await sleep(400);
+  await click('#engOn-scope'); await sleep(250);
+  D = await data();
+  ok(D.engReport && D.engReport.meta.csj === '0912-34-567' && /roadside ditches/.test(D.engReport.secs.existing.text) && D.engReport.secs.scope.on === false, 'engineering edits saved (meta, section text, toggle)');
+  ok(/^3\. Design Criteria/.test(await txt('#eng-criteria .ehead b')), 'turning a section off renumbers the rest');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
+  const ER = await pg.$eval('#report', (e) => e.textContent);
+  ok(await has('#report.eng .ecover .eseal') && /NOT SEALED/.test(ER) && /0912-34-567/.test(ER), 'printed engineering report: cover with NOT SEALED seal block and CSJ');
+  ok(await has('#report .etoc') && /roadside ditches drain to the north/.test(ER) && !/Scope of Work/.test(ER) && /\[Engineer to state the design criteria/.test(ER), 'printed: TOC, engineer text, toggled-off section left out, placeholders kept');
+  await click('#engCopy'); await sleep(250);
+  ok(/copied|Copy/i.test(await txt('#toast')), 'copy as text responds');
+  ok(/PRELIMINARY — NOT SEALED/.test(await pg.evaluate(() => window.PMEng.text(JSON.parse(localStorage.getItem('pm.data.v3'))))), 'plain-text version available');
+  await shot('12d-eng-report');
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  await click('#vReport'); await sleep(250);
+  ok(/roadside ditches/.test(await pg.$eval('#engText-existing', (e) => e.value)), 'engineer text persists after reload');
+  await pg.select('#rptType', 'status'); await sleep(250);
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
+  ok(/Project report/.test(await txt('#reportWrap h2')) && !(await has('#report.eng')), 'switching back prints the status report');
+  await click('#vTree'); await sleep(200);
+  D = await data();
+
   /* 11. persistence, v2 untouched, no external requests, errors */
   await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
   ok(!(await pg.$('#migV3')), 'migration notice only once');

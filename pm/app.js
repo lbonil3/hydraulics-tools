@@ -23,7 +23,7 @@
   let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, rpt: ui.rpt, hideStart: ui.hideStart, filt })); }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, rptType: ui.rptType === 'eng' ? 'eng' : undefined, rpt: ui.rpt, hideStart: ui.hideStart, filt })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -303,6 +303,7 @@
   function rchip(s) { return h('span', { class: 'rchip s-' + String(s).toLowerCase().replace(/\s+/g, '-') }, (ST_SYM[s] || '') + ' ' + s); }
   function rbar(p) { return h('span', { class: 'rbar' }, h('i', { 'data-w': Math.round(p) })); }
   function renderReport() {
+    if (ui.rptType === 'eng') return renderEngPrint();
     const P = M.printReport(st), R = P.R, O = rptOpts(), MAX = 12;
     const pct = (x) => Math.round(x) + '%';
     const blank = (v, ph) => v ? h('span', {}, v) : h('span', { class: 'rblank' }, ph);
@@ -541,9 +542,74 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('label', { class: 'f' }, h('span', {}, 'Paper'), paper)),
       h('div', { class: 'rpchk' }, chk('rpDetail', 'detail', 'Sheet detail by section'), chk('rpDeps', 'deps', 'Dependencies'), chk('rpWork', 'workload', 'Owner workload'), chk('rpRecent', 'recent', 'Recently changed'), chk('rpBullets', 'bullets', 'Use bullet summaries (off: paragraph style)')));
   }
+  /* ----- v3.10 Engineering Report (drainage design report style) ----- */
+  const E = window.PMEng;
+  function rptTypeSel() {
+    return h('label', { class: 'rptype' }, h('span', { class: 'muted small' }, 'Report type '), select([['status', 'Status report'], ['eng', 'Engineering report']], ui.rptType === 'eng' ? 'eng' : 'status', { id: 'rptType', 'aria-label': 'Report type',
+      onchange: (e) => { ui.rptType = e.target.value; saveUI(); renderReportView(); } }));
+  }
+  function engBlocks(blocks, refsEl) {
+    return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? (refsEl || h('ol', { class: 'erefs' }, E.refs(st).map((x) => h('li', {}, x)))) :
+      b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab ' + (b.table.cls || '') }, h('thead', {}, h('tr', {}, b.table.head.map((x) => h('th', {}, x)))), h('tbody', {}, b.table.rows.map((r) => h('tr', {}, r.map((c) => h('td', {}, c))))))) : null);
+  }
+  function renderEngView() {
+    const m = E.meta(st), rm = M.reportMeta(st), secs = E.build(st), O = rptOpts();
+    const fld = (id, label, val, ph, on) => h('label', { class: 'f' }, h('span', {}, label), h('input', { id, type: 'text', value: val, placeholder: ph, maxlength: 200, onchange: (e) => commit(() => on(e.target.value)) }));
+    const paper = h('select', { id: 'engPaper', 'aria-label': 'Paper size', onchange: (e) => { O.paper = e.target.value; saveUI(); } }, h('option', { value: 'letter' }, 'US Letter'), h('option', { value: 'a4' }, 'A4')); paper.value = O.paper;
+    let n = 0;
+    const cards = secs.map((s) => {
+      const e = E.secState(st, s.id), on = e.on && s.present;
+      const ta = h('textarea', { id: 'engText-' + s.id, class: 'etext', rows: s.id === 'existing' || s.id === 'proposed' || s.id === 'criteria' ? 5 : 3, placeholder: s.ph || 'Your text for this section (optional)…', 'aria-label': 'Engineer text for ' + s.title, maxlength: 20000 });
+      ta.value = e.text;
+      ta.addEventListener('input', () => { E.setSec(st, s.id, { text: ta.value }); save(); });
+      const mode = select([['add', 'Print after the generated text'], ['replace', 'Replace the generated text']], e.mode, { id: 'engMode-' + s.id, 'aria-label': 'How to use your text in ' + s.title, onchange: (ev) => { commit(() => E.setSec(st, s.id, { mode: ev.target.value }), { render: false }); renderEngView(); } });
+      const refsTa = s.id === 'criteria' ? h('textarea', { id: 'engRefs', class: 'etext', rows: 6, 'aria-label': 'References, one per line', maxlength: 20000 }) : null;
+      if (refsTa) { refsTa.value = E.refsText(st); refsTa.addEventListener('input', () => { E.setRefs(st, refsTa.value); save(); }); }
+      const refsEl = refsTa ? h('div', { class: 'erefbox' }, h('div', { class: 'row' }, h('b', { class: 'small' }, 'References (one per line, edit freely)'), h('button', { type: 'button', class: 'link small', id: 'engRefsReset', onclick: () => { commit(() => E.resetRefs(st), { render: false }); renderEngView(); } }, 'Reset list')), refsTa) : null;
+      return h('section', { class: 'npart esec' + (on ? '' : ' off'), 'data-sec': s.id, id: 'eng-' + s.id },
+        h('div', { class: 'ehead' }, h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'engOn-' + s.id, checked: on, disabled: !s.present, onchange: (ev) => { commit(() => E.setSec(st, s.id, { on: ev.target.checked }), { render: false }); renderEngView(); } }),
+          h('b', {}, (on ? ++n + '. ' : '') + s.title)), !s.present ? h('span', { class: 'muted small' }, 'No SWP3 sheets tracked — section left out') : null),
+        on ? [h('div', { class: 'gen egen' + (e.mode === 'replace' && e.text.trim() ? ' struck' : '') }, h('div', { class: 'muted small' }, 'Generated from the tracker data' + (e.mode === 'replace' && e.text.trim() ? ' (replaced by your text)' : '')), engBlocks(s.blocks, refsEl), !(s.blocks || []).length && !refsEl ? h('p', { class: 'muted' }, 'Nothing in the tracker for this section yet.') : null),
+          h('div', { class: 'eedit' }, ta, h('div', { class: 'row small' }, mode, h('span', { class: 'muted' }, e.text.trim() ? '' : s.ph ? 'Empty: the bracketed placeholder is printed.' : '')))] : null);
+    });
+    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Engineering report'), rptTypeSel(),
+        h('span', { class: 'vfbar' }, h('button', { type: 'button', class: 'btn sec sm', id: 'engCopy', onclick: () => { const t = E.text(st); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => toast('Engineering report copied as text.'), () => toast('Copy failed.')); else toast('Copy is not available here.'); } }, 'Copy as text'),
+          h('button', { type: 'button', class: 'btn sm', id: 'engPrint', onclick: () => $('#printBtn').click() }, '⎙ Print / PDF'))),
+      h('p', { class: 'muted small epurpose' }, 'A narrative drainage design report built from the tracker (roads, alignments, stations, sections, sheets, milestones). It never makes up engineering values: anything only you can supply is a [bracketed placeholder] until you write it. Your text is saved on this device.'),
+      h('section', { class: 'npart rpset', id: 'engSet' }, h('h3', {}, 'Cover'),
+        h('div', { class: 'rpgrid' }, E.META.map(([k, label]) => fld('engM-' + k, label, m[k], k === 'title' ? 'Drainage Design Report' : k === 'csj' ? 'e.g. 0000-00-000' : k === 'limits' ? 'e.g. From X to Y' : '', (v) => E.setMeta(st, k, v))),
+          fld('engFor', 'Prepared for', rm.preparedFor, 'e.g. TxDOT Houston District', (v) => M.setReportMeta(st, 'preparedFor', v)), fld('engBy', 'Prepared by', rm.preparedBy, 'Name, firm', (v) => M.setReportMeta(st, 'preparedBy', v)),
+          h('label', { class: 'f' }, h('span', {}, 'Paper'), paper))),
+      h('article', { class: 'narr engnarr' }, cards));
+  }
+  function renderEngPrint() {
+    const O = rptOpts(), m = E.meta(st), rm = M.reportMeta(st), today = M.todayISO(), secs = E.outline(st, today);
+    const blank = (v, ph) => v ? h('span', {}, v) : h('span', { class: 'eph' }, ph);
+    const body = [];
+    body.push(h('div', { class: 'ecover' },
+      h('div', { class: 'eband' }, (m.title || 'Drainage Design Report').toUpperCase()),
+      h('h1', {}, st.project.name || 'Project'),
+      h('dl', { class: 'rmeta' },
+        h('dt', {}, 'CSJ'), h('dd', {}, blank(m.csj, '[CSJ]')), h('dt', {}, 'Highway'), h('dd', {}, blank(m.highway, '[Highway]')),
+        h('dt', { class: 'rwide' }, 'Limits'), h('dd', { class: 'rwide' }, blank(m.limits, '[Project limits]')),
+        h('dt', {}, 'County'), h('dd', {}, blank(m.county, '[County]')), h('dt', {}, 'District'), h('dd', {}, blank(m.district, '[TxDOT district]')),
+        h('dt', {}, 'Prepared for'), h('dd', {}, blank(rm.preparedFor, '[Prepared for]')), h('dt', {}, 'Prepared by'), h('dd', {}, blank(rm.preparedBy, '[Prepared by]')),
+        h('dt', {}, 'Date'), h('dd', {}, today), h('dt', {}, 'Status'), h('dd', {}, 'Preliminary')),
+      h('div', { class: 'eseal' }, h('div', { class: 'esealbox' }, h('b', {}, 'NOT SEALED'), h('span', {}, 'Engineer’s seal placeholder')),
+        h('p', {}, h('b', {}, 'PRELIMINARY — FOR INTERIM REVIEW ONLY. '), 'This document is released for the purpose of interim review under the authority of ', h('span', { class: 'eph' }, '[Engineer name], P.E. No. [number]'), ' on ', h('span', { class: 'eph' }, '[date]'), '. It is not to be used for construction, bidding or permit purposes. ', h('span', { class: 'eph' }, '[Engineer to confirm this statement.]')))));
+    body.push(h('nav', { class: 'rtoc etoc' }, h('h2', {}, 'Table of contents'), h('ol', {}, secs.map((s) => h('li', { value: String(s.no) }, s.title)))));
+    for (const s of secs) body.push(h('section', { class: 'esecp', 'data-sec': s.id }, h('h2', {}, h('span', { class: 'rnum' }, s.no + '.'), ' ' + s.title),
+      engBlocks(s.auto), s.text.trim() ? s.text.trim().split(/\n\s*\n/).map((para) => h('p', { class: 'etxt' }, para)) : s.showPh ? h('p', { class: 'eph' }, s.ph) : null));
+    body.push(h('p', { class: 'rend rm' }, 'Generated by Project Tracker on ' + today + ' from the tracked plan sheets. Bracketed text is a placeholder for the engineer.'));
+    $('#report').className = 'report eng ' + (O.paper === 'a4' ? 'pg-a4' : 'pg-letter');
+    $('#report').replaceChildren(h('table', { class: 'rpage' },
+      h('thead', {}, h('tr', {}, h('td', {}, h('div', { class: 'rrun' }, h('b', {}, st.project.name || 'Project'), h('span', {}, (m.title || 'Drainage Design Report') + (m.csj ? ' · CSJ ' + m.csj : '') + ' · Preliminary, not sealed'))))),
+      h('tbody', {}, h('tr', {}, h('td', {}, body)))));
+  }
   function renderReportView() {
+    if (ui.rptType === 'eng') return renderEngView();
     const N = M.narrative(st);
-    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Project report'), h('span', { class: 'muted' }, 'Generated from the data as of ' + N.today + ' · your notes are kept separately'),
+    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Project report'), rptTypeSel(), h('span', { class: 'muted' }, 'Generated from the data as of ' + N.today + ' · your notes are kept separately'),
         h('span', { class: 'vfbar' }, h('button', { type: 'button', class: 'btn sec sm', id: 'copyNarr', onclick: () => copyText(M.narrativeText(st)) }, '⧉ Copy narrative'), h('button', { type: 'button', class: 'btn sm', onclick: () => $('#printBtn').click() }, '⎙ Print report'))),
       rptSettings(),
       h('article', { class: 'narr' },
