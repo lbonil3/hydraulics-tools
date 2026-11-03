@@ -160,6 +160,25 @@ function v2Fixture() {
   ok(JSON.stringify(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.filter((s) => s.gen).map((s) => [s.gen.start, s.gen.end])) === '[[0,600],[600,1200],[1200,1300]]', 'ranges 0+00–6+00, 6+00–12+00, 12+00–13+00 (last partial)');
   ok(/Lateral A-3 Sta 0\+00 to 6\+00 \(PP 1 of 3\)/.test(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets[0].title), 'PP sheet title includes road + stations');
   await shot('04-section-roads');
+  /* v3.6: a real pointer click / tap on a tree node opens its properties (the viewport used to swallow the click) */
+  if (await has('#viewport') && await pg.evaluate(() => getComputedStyle(document.getElementById('treeWrap') || document.body).display !== 'none' && !!document.querySelector('.node.n-seg'))) {
+    const prevSel = await pg.evaluate(() => { const e = document.querySelector('.node.sel'); return e ? e.dataset.key : null; });
+    await pg.evaluate(() => { const b = document.querySelector('#drawer .ibtn[aria-label="Close details"]'); if (b) b.click(); });
+    const pt = await pg.evaluate(() => { const v = document.getElementById('viewport').getBoundingClientRect(); const e = [...document.querySelectorAll('.node.n-seg, .node.n-disc')].find((x) => { const r = x.getBoundingClientRect(); return r.width && r.top > v.top + 20 && r.bottom < v.bottom - 70 && r.left > v.left && r.right < v.right - 30; });
+      if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width * 0.4, y: r.top + r.height * 0.6 }; });
+    if (pt) {
+      if (MODE === 'iphone') await pg.touchscreen.tap(pt.x, pt.y); else await pg.mouse.click(pt.x, pt.y);
+      await sleep(300);
+      ok(await has('#drawer:not([hidden]) #propsBox'), 'real click / tap on a tree branch opens its properties');
+      if (MODE !== 'iphone') {
+        await pg.mouse.click(pt.x, pt.y, { button: 'right' }); await sleep(200);
+        ok(/Properties/.test(await txt('#nodeMenu')), 'right-click menu on a tree node has Properties');
+        await pg.keyboard.press('Escape'); await sleep(120);
+        ok(!(await has('#nodeMenu')) && await has('#drawer:not([hidden])'), 'Esc closes the node menu, details stay open');
+      }
+    }
+    if (prevSel) { await pg.evaluate((k) => { const e = document.querySelector('.node[data-key="' + k + '"]'); if (e) e.click(); }, prevSel); await sleep(250); }
+  }
   /* road drawer + undo */
   await clickText('#roadTable .link', /Open/);
   ok(/Road entry/i.test(await txt('#drawer .dkind')) && await has('#stStart'), 'road drawer with stations editor');
@@ -375,6 +394,84 @@ function v2Fixture() {
   const Dd = D.subs[3];
   ok(Dd.roads.length === 2 && Dd.segments.find((g) => g.key === 'dr-hds-x').sheets.some((s) => s.title === 'Culvert Layout' && s.owner === 'Ana Ruiz'), 'old v2 CSV imported into sections');
   await shot('12-after-csv');
+
+  /* 10b. v3.7 copy P&P sheets to Drainage Area Maps */
+  const damCount = (d) => d.subs.reduce((a, sub) => a + sub.segments.reduce((x, g) => x + g.sheets.filter((sh) => sh.dam).length, 0), 0);
+  const dam0 = damCount(await data());
+  await click('#ppBtn'); await sleep(200); await click('#ppDamBtn'); await sleep(250);
+  ok(await has('#damSubs') && await has('#damRoads') && await has('#damScale') && await has('#damPreview'), 'DAM copy dialog: sub-projects, roads, scale, preview');
+  const damN = +((await txt('#damSum')).match(/Creates (\d+)/) || [])[1];
+  ok(damN > 0 && /Create \d+ DAM sheet/.test(await txt('#damGo')), 'DAM preview counts the sheets before creating (' + damN + ')');
+  await shot('12b-dam-copy');
+  await click('#damGo'); await sleep(300);
+  D = await data();
+  const damSh = D.subs.flatMap((sub) => sub.segments.flatMap((g) => g.sheets.filter((sh) => sh.dam).map((sh) => ({ g, sh }))));
+  ok(damCount(D) === dam0 + damN && damSh.every((x) => x.g.key === 'dr-dam' && /^DAM – .+ STA \d+\+\d\d–\d+\+\d\d$/.test(x.sh.title)), 'DAM sheets created in the Drainage Area Map sections with DAM – Road STA names');
+  const dbr = D.subs.flatMap((sub) => sub.segments.flatMap((g) => (g.damRoads || []).map((b) => ({ g, b }))));
+  ok(dbr.length > 0 && damSh.every((x) => (x.g.damRoads || []).some((b) => b.id === x.sh.dam.branch)), 'v3.8: every DAM copy hangs under a DAM road branch (DAM › Road › sheets)');
+  ok(/^dam road$/i.test(await txt('#drawer .dkind')) && await has('#drawer #propsBox'), 'after copying, the DAM road branch opens with its Properties');
+  await click('#vTree'); await sleep(250);
+  ok(await has('.node.n-dbr'), 'the DAM road branch is in the tree');
+  await click('#ppBtn'); await sleep(200); await click('#ppDamBtn'); await sleep(250);
+  ok(/Nothing to copy/.test(await txt('#damGo')), 're-run finds nothing new (no duplicates)');
+  await click('#modalClose'); await sleep(150);
+  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(300);
+  ok(damCount(await data()) === dam0, 'Ctrl+Z removes the DAM copies');
+  await pg.keyboard.down('Control'); await pg.keyboard.down('Shift'); await pg.keyboard.press('z'); await pg.keyboard.up('Shift'); await pg.keyboard.up('Control'); await sleep(300);
+  ok(damCount(await data()) === dam0 + damN, 'redo brings them back');
+  D = await data();
+
+  /* 10c. v3.9 hydraulic data sheets by count (no road) */
+  const hydSec = () => D.subs[0].segments.find((g) => g.key === 'dr-hds-inlet');
+  D = await data();
+  await pg.evaluate((id) => { const k = 'seg:' + id; let e = document.querySelector('.node[data-key="' + k + '"]'); if (e) e.click(); }, hydSec().id); await sleep(250);
+  if (!(await has('#hydBox'))) { await click('#vList'); await sleep(200); await click('#vTree'); await sleep(200); await click('#cAll'); await sleep(250); await pg.evaluate((id) => document.querySelector('.node[data-key="seg:' + id + '"]').click(), hydSec().id); await sleep(250); }
+  ok(await has('#hydBox') && await has('#hydCount') && !(await has('#addSheetRoad')), 'hydraulic data section: "How many sheets?" box, no road field');
+  const h0 = hydSec().sheets.length;
+  await setVal('#hydCount', '3'); await sleep(150);
+  ok(/Titles become/.test(await txt('#hydPrev')), 'count preview shows the generic titles');
+  await click('#hydSet'); await sleep(300);
+  D = await data();
+  const hs = hydSec().sheets.filter((q) => q.hyd);
+  ok(hs.length === 3 && hs.map((q) => q.title).join('|') === [1, 2, 3].map((i) => hydSec().title + ' (' + i + ' of 3)').join('|') && hs.every((q) => !q.road), '3 sheets with generic titles “<section> (i of 3)”, no road');
+  await click('#hydAdd1'); await sleep(300); D = await data();
+  ok(hydSec().sheets.filter((q) => q.hyd).map((q) => q.hyd.idx).join(',') === '1,2,3,4' && hydSec().sheets.filter((q) => q.hyd).every((q) => q.hyd.of === 4), '+ Add 1 more continues the numbering');
+  await pg.evaluate(() => document.activeElement && document.activeElement.blur());
+  await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(300); D = await data();
+  ok(hydSec().sheets.filter((q) => q.hyd).length === 3, 'undo restores 3');
+  await pg.keyboard.down('Control'); await pg.keyboard.press('z'); await pg.keyboard.up('Control'); await sleep(300); D = await data();
+  ok(hydSec().sheets.length === h0, 'undo again restores the section as it was');
+  D = await data();
+
+  /* 10d. v3.10 Engineering report */
+  await click('#vReport'); await sleep(250);
+  ok(await has('#rptType'), 'report type selector on the Report view');
+  await pg.select('#rptType', 'eng'); await sleep(250);
+  ok(/Engineering report/.test(await txt('#reportWrap h2')) && (await pg.$$('#reportWrap .esec')).length === 10, 'Engineering report editor: 10 sections');
+  ok(/\[Engineer to describe existing drainage conditions/.test(await pg.$eval('#engText-existing', (e) => e.placeholder)), 'empty section shows its bracketed placeholder');
+  await setVal('#engM-csj', '0912-34-567'); await sleep(200);
+  await typeIn('#engText-existing', 'Existing roadside ditches drain to the north.'); await sleep(400);
+  await click('#engOn-scope'); await sleep(250);
+  D = await data();
+  ok(D.engReport && D.engReport.meta.csj === '0912-34-567' && /roadside ditches/.test(D.engReport.secs.existing.text) && D.engReport.secs.scope.on === false, 'engineering edits saved (meta, section text, toggle)');
+  ok(/^3\. Design Criteria/.test(await txt('#eng-criteria .ehead b')), 'turning a section off renumbers the rest');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
+  const ER = await pg.$eval('#report', (e) => e.textContent);
+  ok(await has('#report.eng .ecover .eseal') && /NOT SEALED/.test(ER) && /0912-34-567/.test(ER), 'printed engineering report: cover with NOT SEALED seal block and CSJ');
+  ok(await has('#report .etoc') && /roadside ditches drain to the north/.test(ER) && !/Scope of Work/.test(ER) && /\[Engineer to state the design criteria/.test(ER), 'printed: TOC, engineer text, toggled-off section left out, placeholders kept');
+  await click('#engCopy'); await sleep(250);
+  ok(/copied|Copy/i.test(await txt('#toast')), 'copy as text responds');
+  ok(/PRELIMINARY — NOT SEALED/.test(await pg.evaluate(() => window.PMEng.text(JSON.parse(localStorage.getItem('pm.data.v3'))))), 'plain-text version available');
+  await shot('12d-eng-report');
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  await click('#vReport'); await sleep(250);
+  ok(/roadside ditches/.test(await pg.$eval('#engText-existing', (e) => e.value)), 'engineer text persists after reload');
+  await pg.select('#rptType', 'status'); await sleep(250);
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
+  ok(/Project report/.test(await txt('#reportWrap h2')) && !(await has('#report.eng')), 'switching back prints the status report');
+  await click('#vTree'); await sleep(200);
+  D = await data();
 
   /* 11. persistence, v2 untouched, no external requests, errors */
   await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);

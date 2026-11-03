@@ -266,21 +266,46 @@ kbd{display:inline-block;min-width:26px;text-align:center;padding:1px 6px;border
 /* ---- v2.1 connectors ---- */
 :root{--lk-cross:#7c3aed;--lk-same:#0891b2;--amber:#d97706}
 [data-theme=dark]{--lk-cross:#c084fc;--lk-same:#22d3ee;--amber:#fbbf24}
-.links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:2}
+.links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:0}
+#nodes{position:relative;z-index:1}
+.dragsvg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:4}
 .links.off #linkG{display:none}
-.links marker path{fill:context-stroke}
-.lnk{fill:none;stroke-width:2;opacity:.28;transition:opacity .15s,stroke-width .15s}
-.lnk.cross{stroke:var(--lk-cross)}
-.lnk.same{stroke:var(--lk-same)}
-.lnk.upd{stroke-dasharray:6 4}
-.lnk.wrong{stroke:var(--bad)}
-.lnk.stale{stroke:var(--amber)}
-.lnk.on,.lnk.hov{opacity:1;stroke-width:3}
-.dragline{fill:none;stroke:var(--brand);stroke-width:2.5;stroke-dasharray:5 4}
-.handle{position:absolute;left:-7px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--lk-cross);cursor:crosshair;opacity:.55;touch-action:none;z-index:3}
+:root{--ls-blk:#e11d48;--ls-ok:#16a34a;--ls-upd:#d97706;--ls-info:#0891b2;--ls-drag:#2563eb}
+[data-theme=dark]{--ls-blk:#fb7185;--ls-ok:#4ade80;--ls-upd:#fbbf24;--ls-info:#22d3ee;--ls-drag:#60a5fa}
+/* v3.5 connectors: behind nodes, rounded orthogonal, coloured by state */
+.lnk{--c:var(--ls-info);opacity:.62;transition:opacity .15s}
+.lnk.ls-blk{--c:var(--ls-blk)}.lnk.ls-ok{--c:var(--ls-ok)}.lnk.ls-upd{--c:var(--ls-upd)}.lnk.ls-info{--c:var(--ls-info)}
+.lnk .lline{fill:none;stroke:var(--c);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lnk .lhalo{fill:none;stroke:var(--bg,#fff);stroke-width:5;opacity:.85}
+.lnk .lport{fill:var(--c);stroke:var(--surface);stroke-width:1.2}
+.lnk .lport.hollow{fill:var(--surface);stroke:var(--c);stroke-width:1.8}
+.lnk.upd .lline{stroke-dasharray:7 5}
+.lnk.wrong .lline{stroke-dasharray:2 4}
+.lnk.on,.lnk.hov{opacity:1}
+.lnk.on .lline,.lnk.hov .lline{stroke-width:3}
+.links.chaining .lnk:not(.hov){opacity:.12}
+.arw path{stroke:none}
+.arw-blk path{fill:var(--ls-blk)}.arw-ok path{fill:var(--ls-ok)}.arw-upd path{fill:var(--ls-upd)}.arw-info path{fill:var(--ls-info)}
+.arw-drag path{fill:var(--ls-drag)}.arw-dragok path{fill:var(--ls-ok)}.arw-dragbad path{fill:var(--ls-blk)}
+.dragline{fill:none;stroke:var(--ls-drag);stroke-width:2.5;stroke-dasharray:6 5;stroke-linecap:round;filter:drop-shadow(0 1px 2px rgba(15,23,42,.25))}
+.dragline.ok{stroke:var(--ls-ok);stroke-dasharray:none;stroke-width:3}
+.dragline.bad{stroke:var(--ls-blk)}
+.dragtip{position:absolute;z-index:20;pointer-events:none;max-width:240px;padding:4px 9px;border-radius:8px;font-size:12px;font-weight:650;background:var(--surface);color:var(--text);border:1px solid var(--line2);box-shadow:var(--shadow)}
+.dragtip.ok{border-color:var(--ls-ok);color:var(--ls-ok)}
+.dragtip.bad{border-color:var(--ls-blk);color:var(--ls-blk)}
+.handle{position:absolute;left:-7px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--ls-drag);cursor:crosshair;opacity:.55;touch-action:none;z-index:3;transition:transform .12s,opacity .12s}
+.handle::after{content:'';position:absolute;inset:-8px;border-radius:50%}
 .node:hover .handle,.node.sel .handle,.handle:focus{opacity:1}
+.handle:hover{transform:translateY(-50%) scale(1.25);background:var(--ls-drag)}
 body.linking,body.linking *{cursor:crosshair!important}
-.node.droptarget{outline:3px dashed var(--lk-cross);outline-offset:3px}
+body.linking .node:not(.n-seg):not(.n-sheet){opacity:.55}
+.node.dragsrc{box-shadow:0 0 0 3px color-mix(in srgb,var(--ls-drag) 45%,transparent)}
+.node.droptarget{outline:3px solid var(--ls-drag);outline-offset:3px}
+.node.droptarget.ok{outline-color:var(--ls-ok);box-shadow:0 0 0 6px color-mix(in srgb,var(--ls-ok) 18%,transparent)}
+.node.droptarget.bad{outline:3px dashed var(--ls-blk);cursor:not-allowed!important}
+.node.chain{box-shadow:0 0 0 2px color-mix(in srgb,var(--ls-drag) 35%,transparent)}
+.legend .lk.ls-blk{border-color:var(--ls-blk)}.legend .lk.ls-ok{border-color:var(--ls-ok)}.legend .lk.ls-upd{border-color:var(--ls-upd)}.legend .lk.ls-info{border-top-style:dashed;border-color:var(--ls-info)}
+.legend .lkport{display:inline-block;width:8px;height:8px;border-radius:50%;border:2px solid var(--muted);vertical-align:middle;margin-left:4px}
 .node.imp-up{box-shadow:0 0 0 3px color-mix(in srgb,var(--lk-same) 60%,transparent)}
 .node.imp-down{box-shadow:0 0 0 3px color-mix(in srgb,var(--amber) 70%,transparent)}
 .node.imp-self{box-shadow:0 0 0 4px var(--brand)}
@@ -604,3 +629,179 @@ textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size
 .report .rsub{break-inside:auto}.report .rsub>h3{break-inside:avoid}
 @media (max-width:640px){.report .rcols{grid-template-columns:1fr}.report .rranges{columns:1}}
 @media print{.report .rcols{display:block}.report .rcols .rbox+.rbox{margin-top:6pt}}
+
+/* ---- v3.5 desktop layout: header menus (one row at 1280), compact rail tiles, 3-pane list, start card ---- */
+details.menu{position:relative}
+details.menu>summary{list-style:none;user-select:none;white-space:nowrap}
+details.menu>summary::-webkit-details-marker{display:none}
+details.menu>summary .caret{font-size:10px;opacity:.6;margin-left:2px}
+details.menu[open]>summary{border-color:var(--brand);color:var(--brand)}
+details.menu.active>summary{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-ink)}
+.mcount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--brand);color:#fff;font-size:11px;font-weight:800}
+.menupop{position:absolute;top:calc(100% + 6px);left:0;z-index:30;min-width:200px;display:flex;flex-direction:column;gap:2px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg,0 10px 30px rgba(15,23,42,.18))}
+.menupop.right{left:auto;right:0}
+.mitem{display:block;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap}
+.mitem:hover,.mitem:focus-visible{background:var(--brand-soft);color:var(--brand-ink);outline:none}
+.filtmenu .menupop{min-width:260px}
+.filtmenu .filters{display:flex;flex-direction:column;gap:8px}
+.filtmenu .filters select{width:100%}
+@media (min-width:901px){
+  .top{flex-wrap:nowrap;gap:8px;padding:8px 14px}
+  .brand{min-width:0;flex:0 1 220px}
+  .brand h1{max-width:100%}
+  .search{flex:1 1 200px;min-width:140px;max-width:320px}
+  .top .ibtn{min-height:34px;padding:0 9px}
+  .top>.seg-toggle button{padding:5px 10px;min-height:30px}
+  .tools{flex-wrap:nowrap;margin-left:auto}
+  /* compact overview tiles */
+  #rail{gap:10px;padding:12px}
+  .hero{gap:10px;padding:10px 12px}
+  .hero .ring{width:52px;height:52px}
+  .hero .ring .ring-tx{display:none}
+  .hero .big{font-size:22px}
+  .hero .muted{font-size:12px}
+  .kpis{grid-template-columns:repeat(3,1fr);gap:6px}
+  .kpi{padding:6px 8px;border-radius:10px;gap:0;box-shadow:none}
+  .kpi b{font-size:15px}
+  .kpi span{font-size:10.5px;line-height:1.25}
+}
+@media (min-width:901px) and (max-width:1360px){
+  .brand{flex-basis:180px}
+  .top>.seg-toggle button{padding:5px 8px;font-size:13px}
+  .top .ibtn{padding:0 7px;font-size:12.5px}
+}
+@media (max-width:900px){
+  .filtmenu{order:6}
+  .menupop{position:fixed;left:10px;right:10px;top:auto;margin-top:6px}
+  .mitem{min-height:44px}
+}
+/* start card: top-left of the tree, closable, never over the middle of the tree */
+.emptyhint{left:16px;top:16px;transform:none;text-align:left;max-width:380px}
+.emptyhint .ehx{position:absolute;top:6px;right:6px;width:30px;height:30px;border:0;border-radius:8px;background:transparent;font-size:18px;line-height:1;color:var(--muted);cursor:pointer}
+.emptyhint .ehx:hover{background:var(--surface2);color:var(--text)}
+/* 3-pane list on wide screens: filters | table | sheet details */
+@media (min-width:1360px){
+  body.view-list .layout,body.view-list .layout.drawer-open{grid-template-columns:minmax(0,1fr) 400px}
+  body.view-list #rail{display:none}
+  body.view-list .railbtn{display:inline-flex}
+  body.view-list.rail-open #rail{display:flex;position:fixed;z-index:25;top:0;bottom:0;left:0;width:320px;box-shadow:var(--shadow-lg,0 10px 30px rgba(15,23,42,.25))}
+  body.view-list #listWrap:not([hidden]){display:grid;grid-template-columns:240px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;min-height:0;height:100%}
+  body.view-list .listbar{grid-row:1 / 3;flex-direction:column;align-items:stretch;flex-wrap:nowrap;overflow:auto;border-bottom:0;border-right:1px solid var(--line);background:var(--surface2);padding:12px}
+  body.view-list .listbar>*{width:100%}
+  body.view-list .listbar .grow{display:none}
+  body.view-list .listbar .colmenu .colpop{left:0;right:auto}
+  body.view-list .tablebox{grid-column:2;min-height:0}
+  body.view-list #drawer[hidden]{display:block!important}
+  body.view-list #drawer:empty::before{content:'Select a sheet to see its details here.';display:block;padding:24px;color:var(--muted);font-size:14px}
+  body.view-list .layout #drawer{grid-column:2}
+}
+
+.legend{flex-wrap:wrap;white-space:nowrap;row-gap:3px;max-width:calc(100% - 28px);justify-content:flex-end}
+.legend .lkgrp{display:inline-flex;align-items:center;gap:4px}
+@media (max-width:900px){
+  .top .search{order:5;flex:1 1 0;flex-basis:auto;min-width:0}
+  .top .filtmenu{order:5;flex:none}
+}
+@media (min-width:1500px){.brand{flex-basis:320px}}
+@media (min-width:1360px){body.view-list .listbar::before{content:'Filters & views';font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}}
+/* ---------- v3.6 branch properties: node pill (Properties / ⋯), context menu, properties box ---------- */
+.npill{position:absolute;top:-12px;right:26px;display:flex;gap:3px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:2}
+.node:hover .npill,.node:focus-within .npill,.node.sel .npill{opacity:1;pointer-events:auto}
+.node:not(.sel):not(:focus-within) .npill .pbtn:not(.more){display:none}
+.pbtn{height:22px;padding:0 9px;border-radius:11px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);font-size:11.5px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);line-height:1;white-space:nowrap}
+.pbtn:hover,.pbtn:focus-visible{color:var(--brand);border-color:var(--brand)}
+.node.sel .pbtn:not(.more){background:var(--brand);border-color:var(--brand);color:#fff}
+.pbtn.more{min-width:28px;padding:0 6px;font-size:14px;letter-spacing:1px}
+@media (hover:none){.node:hover:not(.sel) .npill{opacity:0;pointer-events:none}}
+.ctxmenu{position:fixed;z-index:60;min-width:220px;max-width:320px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;gap:1px;animation:ctxin .12s ease}
+@keyframes ctxin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.ctxhead{font-size:11.5px;color:var(--muted);padding:4px 10px 6px;border-bottom:1px solid var(--line);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctxitem{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:8px;background:none;color:var(--text);font:inherit;font-size:13.5px;cursor:pointer}
+.ctxitem:hover,.ctxitem:focus-visible{background:var(--brand-soft);color:var(--brand-ink);outline:none}
+.ctxitem.first{font-weight:700}
+.ctxitem kbd{font-size:11px;color:var(--muted)}
+@media (max-width:900px){
+  .ctxmenu{left:8px!important;right:8px;bottom:8px;top:auto!important;max-width:none;border-radius:16px;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+  .ctxitem{min-height:48px;font-size:15px}
+  .pbtn{height:30px;padding:0 12px;font-size:13px}.npill{top:-16px}
+}
+.box.props{border-color:color-mix(in srgb,var(--brand) 35%,var(--line))}
+.box.props h3{margin-top:0}
+.box.props .ph{margin:14px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.box.props.flash{animation:pflash 1s ease}
+@keyframes pflash{0%{box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 45%,transparent)}100%{box-shadow:none}}
+.ptiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.ptile{display:flex;flex-direction:column;align-items:flex-start;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--bg,transparent);min-width:0}
+.ptile b{font-size:15px;line-height:1.2;white-space:nowrap}
+.ptile span{font-size:11px;line-height:1.2;color:var(--muted);max-width:100%;overflow-wrap:anywhere}
+.ptile.bad b{color:var(--bad,#dc2626)}.ptile.warn b{color:var(--warn,#d97706)}
+.f.pstat .lab{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.f.pstat .stpill{display:inline-block;margin-top:4px}
+@media (max-width:420px){.ptiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* v3.6 road alignment name */
+.nalign,.ralign{color:var(--muted);font-weight:500}
+.nalign{font-size:11.5px}
+#roadTable .c-alignment,#stTable .c-alignment{min-width:110px}
+.f.pstat .stpill{padding:3px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px;font-weight:600}
+/* v3.7 copy P&P sheets to Drainage Area Maps */
+.damcopy-modal fieldset{border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:0}
+.damcopy-modal legend{font-size:12px;font-weight:700;color:var(--muted);padding:0 4px}
+.damsubs{display:flex;flex-wrap:wrap;gap:6px 16px}
+.damroads{max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.damroad{display:block;line-height:1.55;padding:3px 0}
+.damroad input{vertical-align:middle;margin:0 6px 0 0}
+.damroad .code{vertical-align:middle}
+.damlist{margin:6px 0 0;padding-left:18px;max-height:220px;overflow:auto}
+.damlist li{margin:2px 0}
+.dampill{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.dampill .row{gap:10px;margin:0}
+.row.pacts{margin:4px 0 2px}
+@media (max-width:900px){.damroad{min-height:44px;padding:6px 0}.damroad input{width:20px;height:20px}}
+/* v3.9 hydraulic data sheets by count */
+.hydrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.hydrow .hydn{width:5.5em;text-align:center;font-size:16px}
+.hydrow .hydpm{min-width:36px;padding-left:0;padding-right:0;font-size:16px}
+#hydPrev p{margin:6px 0 0}
+@media (max-width:900px){.hydrow .hydpm,.hydrow .hydn{min-height:44px}.hydrow .hydpm{min-width:44px}}
+/* v3.10 engineering report — screen editor */
+.rptype{display:inline-flex;align-items:center;gap:6px;margin-left:8px}
+.rptype select{min-height:32px}
+.epurpose{margin:4px 0 10px;max-width:70em}
+.engnarr .esec.off{opacity:.65}
+.engnarr .ehead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.engnarr .ehead b{font-size:15px}
+.engnarr .egen{background:var(--bg2,#f6f7f9);border-left:3px solid var(--line,#d0d5dd);padding:6px 10px;border-radius:6px;margin:4px 0 8px}
+.engnarr .egen.struck>*:not(.muted){opacity:.45}
+.engnarr .egen p{margin:4px 0}.engnarr .egen ul,.engnarr .egen ol{margin:4px 0;padding-left:20px}
+.engnarr .egen .esub{font-size:13px;margin:8px 0 2px}
+.engnarr .egen .rtab{font-size:12px}
+.engnarr .etext{width:100%;box-sizing:border-box;font:inherit;line-height:1.45;padding:8px;border-radius:8px;border:1px solid var(--line,#d0d5dd);resize:vertical}
+.engnarr .eedit .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.engnarr .erefbox{margin:6px 0}.engnarr .erefbox .row{display:flex;justify-content:space-between;align-items:center}
+@media (max-width:700px){.rptype{margin:6px 0 0}.engnarr .etext{font-size:16px}.engnarr .eedit select{min-height:44px;max-width:100%}}
+/* v3.10 engineering report — print */
+@media print{.report.eng{font:10.5pt/1.5 Georgia,'Times New Roman',serif}}
+.report.eng{font-family:Georgia,'Times New Roman',serif}
+.report.eng .rrun{font-family:Arial,Helvetica,sans-serif}
+.report.eng .ecover{min-height:8.8in;display:flex;flex-direction:column;border:1.5pt solid #000;break-after:page;page-break-after:always}
+.report.eng .eband{background:#1f2937;color:#fff;padding:8pt 12pt;font:700 10pt Arial,Helvetica,sans-serif;letter-spacing:.12em}
+.report.eng .ecover h1{font-size:24pt;line-height:1.15;margin:0;padding:36pt 14pt 18pt}
+.report.eng .ecover .rmeta{font-family:Arial,Helvetica,sans-serif;font-size:9pt}
+.report.eng .eseal{margin-top:auto;display:flex;gap:14pt;align-items:flex-start;padding:14pt;border-top:.75pt solid #000;font-size:9pt}
+.report.eng .esealbox{flex:none;width:1.7in;height:1.7in;border:1.5pt dashed #000;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4pt;font-family:Arial,Helvetica,sans-serif}
+.report.eng .esealbox b{font-size:12pt;letter-spacing:.08em}.report.eng .esealbox span{font-size:7.5pt;color:#444;padding:0 10pt}
+.report.eng .etoc{break-after:page;page-break-after:always;border:0;padding:0}
+.report.eng .etoc h2{font-size:13pt;border-bottom:1pt solid #000;margin-bottom:8pt}
+.report.eng .etoc ol{columns:1;font-size:11pt;line-height:1.9}
+.report.eng h2{font:700 12.5pt Arial,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:.04em;margin:18pt 0 8pt}
+.report.eng .esub{font:700 10.5pt Arial,Helvetica,sans-serif;margin:10pt 0 3pt;display:block}
+.report.eng p{text-align:justify;margin:0 0 7pt;hyphens:auto}
+.report.eng ul,.report.eng ol.erefs{margin:2pt 0 8pt;padding-left:18pt}.report.eng li{margin:2pt 0}
+.report.eng .eph{color:#555;font-style:italic}
+.report.eng .rtab{font-family:Arial,Helvetica,sans-serif;font-size:8.5pt}
+.report.eng .eidx td:nth-child(1){width:8%;white-space:nowrap}.report.eng .eidx td:nth-child(3){width:9%}
+.report.eng .esecp{break-inside:auto}
+@page eng{@bottom-left{content:"Project Tracker · Engineering report — preliminary, not sealed";font:8pt Arial,Helvetica,sans-serif;color:#555}}
+@page enga4{size:A4;margin:16mm 15mm 18mm;@bottom-left{content:"Project Tracker · Engineering report — preliminary, not sealed";font:8pt Arial,Helvetica,sans-serif;color:#555}}
+.report.eng.pg-letter{page:eng}.report.eng.pg-a4{page:enga4}
+.report.eng .eidx td:nth-child(5){white-space:nowrap}

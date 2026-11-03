@@ -301,11 +301,11 @@ t('CSV exports: sheets (section + road columns, formula guard), PP summary per s
   M.applyGenerate(st, r1.id, M.planGenerate(st, r1.id));
   M.addSheet(st, K(st, A, 'dr-std').id, { title: '=HYPERLINK("x")', notes: 'a\nb' });
   const [head, , , row] = M.toCSV(st, M.allSheets(st)).split('\r\n');
-  assert.ok(head.startsWith('Sub-project,Discipline,Section,Road,Sheet No,Sheet'));
+  assert.ok(head.startsWith('Sub-project,Discipline,Section,Road,Alignment,Sheet No,Sheet'));
   assert.ok(row.includes('"\'=HYPERLINK(""x"")"') && row.endsWith('"a\nb"'));
   const pp = M.ppCSV(st);
-  assert.ok(pp.includes('A,Drainage,Drainage Plan & Profile,FM 1960,10+00,25+50,1550,100,1200,0,2'));
-  assert.ok(pp.includes('A total,Drainage,Drainage Plan & Profile,,,,,,,,2') && pp.includes('Project total,All,,,,,2030,,,,3'));
+  assert.ok(pp.includes('A,Drainage,Drainage Plan & Profile,FM 1960,,10+00,25+50,1550,100,1200,0,2'));
+  assert.ok(pp.includes('A total,Drainage,Drainage Plan & Profile,,,,,,,,,2') && pp.includes('Project total,All,,,,,,2030,,,,3'));
 });
 t('sheet index + numbering ranges + auto-number in project order', () => {
   const { st, A, B, r1 } = setup();
@@ -538,7 +538,7 @@ t('v3.2 road branches + per-sheet station ranges: computed, live, override, warn
   const lv = M.collapseLevel(st, 4); assert.strictEqual(lv[M.roadGroups(A, pA)[0].key], true); assert.strictEqual(lv['seg:' + pA.id], false);
   /* CSV: sheet stations exported, override survives a round trip */
   M.setSheetRange(st, shs()[0].id, '10+00', '15+50');
-  const csv = M.exportImportCSV(st); assert.match(csv, /Sheet start station,Sheet end station/); assert.match(csv, /,10\+00,15\+50\r\n/);
+  const csv = M.exportImportCSV(st); assert.match(csv, /Sheet start station,Sheet end station,Alignment/); assert.match(csv, /,10\+00,15\+50,\r\n/);
   const rows = M.parseCSV(csv).rows; const st2 = M.newState('R'); const plan = M.planCSV(st2, rows.slice(1), M.detectMapping(rows[0]), { mode: 'merge' });
   assert.strictEqual(plan.summary.errors, 0); M.applyCSV(st2, plan); M.syncPP(st2);
   const A2 = st2.subs[0], s2 = M.secOf(A2, 'dr-pp'); const g2 = M.sheetsOfGroup(A2, s2, M.roadGroups(A2, s2)[0]);
@@ -591,6 +591,363 @@ t('v3.4 report outline: takeaways, attention, next steps, branch bullets, roads,
   assert.strictEqual(O.deps.length, 1); assert.ok(/^A \/ .* depends on A \/ /.test(O.deps[0].text));
   assert.ok(O.work.find((w) => w.owner === 'Unassigned').bullets.some((b) => /^Next: 2026-11-02/.test(b)));
   assert.ok(M.reportOutline(M.newState('E'), '2026-10-29').next.length === 1);
+});
+t('v3.5 connector geometry: ports on the left edge, rounded orthogonal routes, lanes that never overlap', () => {
+  const Gm = require('./linkgeom.js');
+  const nd = (key, y, h) => ({ key, x: 860, y, w: 310, h: h || 70 });
+  const a = nd('a', 0), b = nd('b', 80), c = nd('c', 160), d = nd('d', 240);
+  /* ports: on the left edge, out above in, both clear of the centred handle */
+  const po = Gm.port(a, 'out', 0, 1), pi = Gm.port(a, 'in', 0, 1);
+  assert.strictEqual(po.x, 860); assert.strictEqual(pi.x, 860);
+  assert.ok(po.y < a.y + a.h / 2 - 7 && pi.y > a.y + a.h / 2 + 7, 'ports avoid the 14px handle at the middle');
+  /* route: starts at the source port, ends at the target port, stays left of the nodes */
+  const r = Gm.layout([{ id: 1, a, b: d }])[0];
+  assert.ok(r.d.startsWith('M860 '), r.d); assert.ok(/ H860$/.test(r.d), 'ends going right into the target edge: ' + r.d);
+  assert.ok(r.X < 860 && r.X >= 860 - Gm.OPT.gutter - Gm.OPT.laneGap * Gm.OPT.maxLanes);
+  assert.ok(/Q/.test(r.d), 'rounded corners');
+  /* nested spans: the shorter one hugs the nodes, the longer one goes further out; overlapping spans never share a lane */
+  const L = Gm.layout([{ id: 'long', a, b: d }, { id: 'short', a: b, b: c }, { id: 'mid', a, b: c }]);
+  const by = Object.fromEntries(L.map((x) => [x.id, x]));
+  assert.ok(by.short.lane < by.mid.lane && by.mid.lane < by.long.lane, JSON.stringify(L.map((x) => [x.id, x.lane])));
+  const lanes = Gm.assignLanes([{ id: 1, x: 0, y1: 0, y2: 100 }, { id: 2, x: 0, y1: 50, y2: 150 }, { id: 3, x: 0, y1: 200, y2: 300 }]);
+  assert.notStrictEqual(lanes[1], lanes[2], 'overlapping spans get different lanes'); assert.strictEqual(lanes[3], 0, 'a free span reuses the first lane');
+  assert.deepStrictEqual(Gm.assignLanes([{ id: 1, x: 0, y1: 0, y2: 100 }, { id: 2, x: 500, y1: 0, y2: 100 }]), { 1: 0, 2: 0 }, 'lanes are per column');
+  /* two links leaving the same node: the outer (longer, downward) one leaves from the higher port so its stub does not cross the inner run */
+  assert.ok(by.long.p1.y < by.mid.p1.y, 'outer stub above inner stub');
+  /* upward link: vertical goes up */
+  const u = Gm.layout([{ id: 'u', a: d, b: a }])[0]; assert.ok(u.p2.y < u.p1.y && /V/.test(u.d));
+  /* same height: straight */
+  assert.ok(!/Q/.test(Gm.route({ x: 860, y: 10 }, { x: 860, y: 10 }, 830)));
+  /* preview starts at the handle and ends at the pointer */
+  const pv = Gm.preview(860, 35, 1000, 300); assert.ok(pv.startsWith('M860 35') && pv.endsWith('1000 300'));
+});
+t('v3.5 linkCheck: same answers as addLink (self, duplicate, loop) without changing the data', () => {
+  const st = M.newState('Lk'); const A = st.subs[0]; const pp = M.secOf(A, 'dr-pp');
+  M.addRoad(st, pp.id, { road: 'FM 1', start: '10+00', end: '28+00', scale: 50 }); M.syncPP(st);
+  const [s1, s2, s3] = pp.sheets.map((x) => ({ t: 'sheet', id: x.id }));
+  const before = JSON.stringify(st);
+  assert.deepStrictEqual(M.linkCheck(st, s1, s1), { ok: false, reason: 'self' });
+  assert.deepStrictEqual(M.linkCheck(st, s1, s2), { ok: true, reason: '' });
+  assert.strictEqual(JSON.stringify(st), before, 'linkCheck does not change the data');
+  M.addLink(st, s1, s2, 'dep'); M.addLink(st, s2, s3, 'dep');
+  assert.strictEqual(M.linkCheck(st, s1, s2).reason, 'exists');
+  assert.strictEqual(M.linkCheck(st, s3, s1).reason, 'cycle');
+  assert.throws(() => M.addLink(st, s3, s1, 'dep'), /circular/);
+  assert.strictEqual(M.linkCheck(st, s3, s1, 'update').ok, true, 'update links may point back');
+  assert.strictEqual(M.linkCheck(st, s1, { t: 'sheet', id: 'nope' }).reason, 'missing');
+});
+t('v3.6 branch properties: optional owner/due/milestone/notes per branch, roll-up, old data still loads', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp'), dam = M.secOf(A, 'dr-dam');
+  const r = M.addRoad(st, pp.id, { road: 'FM 1', start: '10+00', end: '34+00' }).road; M.applyGenerate(st, r.id, M.planGenerate(st, r.id));
+  M.addSheet(st, dam.id, { title: 'DAM 1' });
+  pp.sheets.forEach((sh, i) => M.updateSheet(st, sh.id, { hoursBudget: 10, hoursActual: 4 + i, owner: i ? 'Ana' : '', due: '2026-11-0' + (i + 1), status: i ? 'Done' : 'In progress' }));
+  /* old data (no st.props) reads as empty everywhere */
+  assert.strictEqual(st.props, undefined);
+  for (const k of ['root', 'dtop:Drainage', 'disc:' + A.id + ':Drainage', 'seg:' + pp.id, 'road:' + r.id]) assert.deepStrictEqual(M.getProps(st, k), { owner: '', due: '', milestone: '', notes: '' }, k);
+  assert.strictEqual(M.propTarget(st, 'disc:nope:Drainage'), null); assert.strictEqual(M.propTarget(st, 'dtop:Roads'), null);
+  /* set: stored only in st.props (sections / roads keep notes in their own .notes) */
+  const ms = st.milestones[1].id;
+  M.setProps(st, 'disc:' + A.id + ':Drainage', { owner: ' Luis ', due: '2026-11-03', milestone: ms, notes: 'Branch note' });
+  assert.deepStrictEqual(st.props['disc:' + A.id + ':Drainage'], { owner: 'Luis', due: '2026-11-03', milestone: ms, notes: 'Branch note' });
+  M.setProps(st, 'seg:' + pp.id, { owner: 'Mei', notes: 'Survey pending' });
+  assert.strictEqual(pp.notes, 'Survey pending'); assert.deepStrictEqual(st.props['seg:' + pp.id], { owner: 'Mei' });
+  assert.throws(() => M.setProps(st, 'seg:' + pp.id, { due: '11/3/2026' }), /Due date/);
+  assert.throws(() => M.setProps(st, 'seg:' + pp.id, { milestone: 'nope' }), /milestone/);
+  assert.throws(() => M.setProps(st, 'sheet:x', { owner: 'a' }), /Nothing to edit/);
+  M.setProps(st, 'seg:' + pp.id, { owner: '' }); assert.ok(!('seg:' + pp.id in st.props), 'empty entries are removed');
+  /* roll-up */
+  const R = M.rollup(st, 'disc:' + A.id + ':Drainage', '2026-11-02');
+  assert.strictEqual(R.total, pp.sheets.length + 1); assert.strictEqual(R.done, pp.sheets.length - 1);
+  assert.strictEqual(R.hoursBudget, 10 * pp.sheets.length); assert.strictEqual(R.unassigned, 2);
+  assert.strictEqual(R.overdue, 1, 'the in-progress sheet due 11-01 is overdue');
+  assert.strictEqual(R.firstDue, '2026-11-01');
+  M.addLink(st, { t: 'seg', id: M.secOf(st.subs[1], 'dr-dam').id }, { t: 'seg', id: pp.id }, 'dep');
+  M.addLink(st, { t: 'seg', id: dam.id }, { t: 'road', id: r.id }, 'dep');
+  const R2 = M.rollup(st, 'disc:' + A.id + ':Drainage', '2026-11-02');
+  assert.strictEqual(R2.linksIn.length, 1); assert.strictEqual(R2.linksInternal.length, 1); assert.strictEqual(R2.blockingIn, 1);
+  assert.strictEqual(M.rollup(st, 'road:' + r.id).total, pp.sheets.length);
+  /* removed milestone / road → stale properties pruned; JSON round trip keeps them */
+  M.setProps(st, 'road:' + r.id, { owner: 'Ana', milestone: ms });
+  const back = M.migrate(JSON.parse(JSON.stringify(st))); assert.deepStrictEqual(back.props, st.props);
+  M.removeMilestone(st, ms); assert.ok(!st.props['disc:' + A.id + ':Drainage'].milestone && !st.props['road:' + r.id].milestone);
+  M.deleteRoad(st, r.id); assert.ok(!('road:' + r.id in st.props));
+});
+t('v3.6 road alignment name: optional, editable, copied on split/copy, in CSV exports, report and import; old data loads', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp');
+  const r = M.addRoad(st, pp.id, { road: 'FM 1960', start: '10+00', end: '34+00', alignment: '  BL   FM 1960 ' }).road;
+  assert.strictEqual(r.alignment, 'BL FM 1960');
+  const r2 = M.addRoad(st, pp.id, { road: 'Kuykendahl', start: '5+00', end: '9+00' }).road;
+  assert.ok(!('alignment' in r2), 'no alignment → no field (data stays as before)');
+  assert.strictEqual(M.roadAlign(r2), ''); assert.strictEqual(M.roadWithAlign(r), 'FM 1960 (Alignment: BL FM 1960)');
+  M.updateRoad(st, r2.id, { alignment: 'CL Kuyk' }); assert.strictEqual(r2.alignment, 'CL Kuyk');
+  M.applyStationRows(st, [{ roadId: r2.id, alignment: '' }]); assert.ok(!('alignment' in r2), 'cleared');
+  assert.throws(() => M.updateRoad(st, r2.id, { alignment: 'x'.repeat(61) }), /60 characters/);
+  M.applyGenerate(st, r.id, M.planGenerate(st, r.id));
+  const sh = pp.sheets.find((x) => x.gen && x.gen.road === r.id);
+  assert.strictEqual(M.sheetAlign(st, A, pp, sh), 'BL FM 1960');
+  /* exports */
+  const csv = M.toCSV(st, M.allSheets(st)).split('\r\n');
+  assert.ok(csv[0].startsWith('Sub-project,Discipline,Section,Road,Alignment,Sheet No'));
+  assert.ok(csv.some((l) => l.startsWith('A,Drainage,Drainage Plan & Profile,FM 1960,BL FM 1960,')));
+  assert.ok(M.ppCSV(st).includes('A,Drainage,Drainage Plan & Profile,FM 1960,BL FM 1960,10+00,34+00,'));
+  const ex = M.exportImportCSV(st); assert.match(ex, /Sheet end station,Alignment\r\n/); assert.match(ex, /,FM 1960,10\+00,34\+00,[^\r]*,BL FM 1960\r\n/);
+  /* report outline + narrative */
+  const O = M.reportOutline(st, '2026-11-02'); assert.match(JSON.stringify(O), /"aligns":\["BL FM 1960"\]/);
+  assert.match(M.narrativeText(st, '2026-11-02'), /FM 1960 \[alignment BL FM 1960\]/);
+  /* split / copy keep it */
+  const sp = M.splitSegment(st, r.id, '20+00'); assert.strictEqual(sp.b.alignment, 'BL FM 1960');
+  const cp = M.copySegment(st, r.id, st.subs[1].id, {}); assert.strictEqual(cp.road.alignment, 'BL FM 1960');
+  /* CSV import round trip keeps it */
+  const rows = M.parseCSV(ex).rows; const st2 = M.newState('R');
+  const plan = M.planCSV(st2, rows.slice(1), M.detectMapping(rows[0]), { mode: 'merge' }); assert.strictEqual(plan.summary.errors, 0); M.applyCSV(st2, plan);
+  assert.strictEqual(st2.subs[0].roads.find((x) => x.road === 'FM 1960').alignment, 'BL FM 1960');
+  /* old data: no field, junk values dropped on load */
+  const old = JSON.parse(JSON.stringify(st)); delete old.subs[0].roads[0].alignment; old.subs[0].roads[1].alignment = 42;
+  const L = M.migrate(old); assert.ok(!('alignment' in L.subs[0].roads[0]) && !('alignment' in L.subs[0].roads[1]));
+});
+t('v3.7 copy P&P sheet breaks to Drainage Area Map sheets: plan, create, re-run, re-sync, scale, unlink, compat', () => {
+  const st = M.newState('P'); const [A, B] = st.subs; const ppA = M.secOf(A, 'dr-pp'), damA = M.secOf(A, 'dr-dam');
+  const r = M.addRoad(st, ppA.id, { road: 'FM 1960', start: '10+00', end: '34+00', alignment: 'BL FM 1960' }).road;
+  const rb = M.addRoad(st, M.secOf(B, 'dr-pp').id, { road: 'Kuykendahl', start: '0+00', end: '7+00' }).road;
+  M.syncPP(st);
+  const before = JSON.stringify(st);
+  const P = M.planDam(st, { subs: [A.id] });
+  assert.strictEqual(JSON.stringify(st), before, 'planDam does not change data');
+  assert.strictEqual(P.create, M.roadPP(st, A, r).count, 'one DAM sheet per PP sheet break');
+  assert.deepStrictEqual(P.items[0].create.map((c) => c.title), ['DAM – FM 1960 (BL FM 1960) STA 10+00–22+00', 'DAM – FM 1960 (BL FM 1960) STA 22+00–34+00']);
+  const out = M.applyDam(st, P, { link: true });
+  assert.strictEqual(out.created, 2);
+  const dams = damA.sheets.filter((x) => x.dam);
+  const pps = ppA.sheets.filter((x) => x.gen && x.gen.road === r.id);
+  assert.deepStrictEqual(dams.map((x) => M.sheetRange(x)), pps.map((x) => M.sheetRange(x)), 'same station ranges as the PP sheets');
+  assert.ok(dams.every((x) => x.road === 'FM 1960' && x.discipline === 'Drainage' && x.dam.linked && x.status === 'Not started'));
+  assert.deepStrictEqual(dams.map((x) => x.number), ['1', '2'], 'numbered in the Drainage Area Map range');
+  assert.strictEqual(M.sheetAlign(st, A, damA, dams[0]), 'BL FM 1960'); assert.strictEqual(M.sheetScale(st, A, dams[0]), 100);
+  /* re-run: no duplicates */
+  const P2 = M.planDam(st, { subs: [A.id] }); assert.strictEqual(P2.create + P2.update + P2.remove, 0); assert.strictEqual(P2.unchanged, 2);
+  const P3 = M.planDam(st, { subs: [A.id], mode: 'skip' }); assert.strictEqual(P3.skipped, 1); assert.strictEqual(P3.create, 0);
+  /* a hand-made sheet with the same title is not duplicated */
+  M.addSheet(st, M.secOf(B, 'dr-dam').id, { title: 'DAM – Kuykendahl STA 0+00–7+00' });
+  assert.strictEqual(M.planDam(st, { subs: [B.id] }).create, 0);
+  /* road gets longer → linked copies out of sync → re-sync; edited title kept, range updated */
+  dams[0].title = 'DAM 1 custom'; M.updateSheet(st, dams[1].id, { owner: 'Ana' });
+  M.updateRoad(st, r.id, { end: '40+00' }); M.syncPP(st);
+  assert.ok(M.damOutOfSync(st).count > 0);
+  const rs = M.resyncDam(st); assert.strictEqual(rs.created, 1);
+  const d2 = damA.sheets.filter((x) => x.dam);
+  assert.deepStrictEqual(d2.map((x) => x.title), ['DAM 1 custom', 'DAM – FM 1960 (BL FM 1960) STA 22+00–34+00', 'DAM – FM 1960 (BL FM 1960) STA 34+00–40+00']);
+  assert.strictEqual(d2[1].owner, 'Ana', 'user fields survive a re-sync'); assert.strictEqual(M.damOutOfSync(st).count, 0);
+  /* road shorter → untouched extra removed, edited extra kept */
+  M.updateRoad(st, r.id, { end: '20+00' }); M.syncPP(st);
+  const sh = M.resyncDam(st); assert.strictEqual(sh.removed, 1); assert.strictEqual(sh.kept, 1);
+  /* another scale → different breaks; the scale is remembered for re-sync */
+  M.updateRoad(st, r.id, { end: '34+00' }); M.syncPP(st);
+  const S = M.planDam(st, { roads: [r.id], scale: 50 }); M.applyDam(st, S);
+  const d3 = damA.sheets.filter((x) => x.dam && x.dam.road === r.id);
+  assert.strictEqual(d3.length, Math.ceil(2400 / 600)); assert.ok(d3.every((x) => x.dam.scale === 50)); assert.strictEqual(M.damOutOfSync(st).count, 0);
+  assert.throws(() => M.planDam(st, { scale: 'abc' }), /Unknown scale/);
+  /* unlink → re-sync leaves it alone; delete road → copies stay, unlinked */
+  M.unlinkDam(st, d3[0].id); M.updateRoad(st, r.id, { end: '30+00' }); M.syncPP(st);
+  assert.ok(!M.damOutOfSync(st).plan.items.some((it) => it.update.some((u) => u.sheet.id === d3[0].id)));
+  const n0 = damA.sheets.length; M.deleteRoad(st, r.id); assert.strictEqual(damA.sheets.length, n0); assert.ok(damA.sheets.filter((x) => x.dam).every((x) => !x.dam.linked));
+  /* duplicate is a plain sheet; data round trip + old data without .dam */
+  const dup = M.duplicateSheet(st, d3[1].id); assert.ok(!('dam' in dup));
+  const back = M.migrate(JSON.parse(JSON.stringify(st))); assert.strictEqual(back.subs[0].segments.find((g) => g.key === 'dr-dam').sheets.filter((x) => x.dam).length, damA.sheets.filter((x) => x.dam).length);
+  const junk = JSON.parse(JSON.stringify(st)); junk.subs[0].segments.find((g) => g.key === 'dr-dam').sheets[0].dam = 'x'; assert.ok(!('dam' in M.migrate(junk).subs[0].segments.find((g) => g.key === 'dr-dam').sheets[0]));
+  assert.ok(!JSON.stringify(M.newState('Q')).includes('"dam"'), 'new projects carry no DAM fields');
+});
+t('v3.7 DAM copies follow split / merge of the road entry', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp'), dam = M.secOf(A, 'dr-dam');
+  const r = M.addRoad(st, pp.id, { road: 'FM 1', start: '10+00', end: '34+00' }).road; M.syncPP(st);
+  M.applyDam(st, M.planDam(st, {}));
+  const sp = M.splitSegment(st, r.id, '22+00'); M.syncPP(st);
+  assert.deepStrictEqual(dam.sheets.filter((x) => x.dam).map((x) => x.dam.road), [r.id, sp.b.id]);
+  assert.strictEqual(M.damOutOfSync(st).count > 0, true, 'idx / of changed for the new part');
+  M.resyncDam(st); assert.strictEqual(M.damOutOfSync(st).count, 0);
+  M.mergeSegments(st, r.id, sp.b.id); M.syncPP(st); M.resyncDam(st);
+  assert.deepStrictEqual(dam.sheets.filter((x) => x.dam).map((x) => [x.dam.road, x.dam.idx]), [[r.id, 1], [r.id, 2]]);
+});
+t('v3.8 DAM road branches: Drainage Area Map > Road > sheets; re-run reuses, unlink / delete road keep the branch, props, migrate', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp'), tl = M.secOf(A, 'dr-tl') || pp, dam = M.secOf(A, 'dr-dam');
+  const r1 = M.addRoad(st, pp.id, { road: 'FM 1960', start: '10+00', end: '34+00', alignment: 'BL FM 1960' }).road;
+  const r2 = M.addRoad(st, pp.id, { road: 'FM 1960', start: '50+00', end: '60+00', alignment: 'BL FM 1960' }).road;
+  const r3 = M.addRoad(st, pp.id, { road: 'Kuykendahl', start: '0+00', end: '7+00' }).road;
+  M.addSheet(st, dam.id, { title: 'Drainage Area Map' }); M.syncPP(st);
+  M.applyDam(st, M.planDam(st, { subs: [A.id] }), { link: true }); M.syncPP(st);
+  const bs = ['FM 1960', 'Kuykendahl'].map((n) => M.damBranches(dam).find((b) => b.road === n));
+  assert.deepStrictEqual(M.damBranches(dam).map((b) => b.road), ['Kuykendahl', 'FM 1960'], 'branches follow the road order');
+  assert.deepStrictEqual(bs.map((b) => [b.road, b.alignment || '', b.src.length]), [['FM 1960', 'BL FM 1960', 2], ['Kuykendahl', '', 1]], 'one branch per road name, mirrors name + alignment, linked to the source entries');
+  assert.strictEqual(M.damBranchSheets(dam, bs[0]).length, 3); assert.strictEqual(M.damBranchSheets(dam, bs[1]).length, 1);
+  assert.deepStrictEqual(M.damLoose(dam).map((x) => x.title), ['Drainage Area Map'], 'own sheets stay directly under the section');
+  assert.strictEqual(dam.sheets.length, 5, 'sheets stay in the section, so section / sub-project counts do not change');
+  // re-run: no duplicate branches or sheets
+  const P2 = M.planDam(st, { subs: [A.id] }); assert.strictEqual(P2.create + P2.update + P2.remove, 0);
+  M.applyDam(st, M.planDam(st, { subs: [A.id], scale: 50 }), { link: true }); assert.strictEqual(M.damBranches(dam).length, 2, 'scale change reuses the branch');
+  M.applyDam(st, M.planDam(st, { subs: [A.id] }), { link: true });
+  // properties + roll-up
+  const key = 'dbr:' + bs[0].id;
+  M.setProps(st, key, { owner: 'Ana R.', due: '2026-12-01', notes: 'DAM FM' });
+  assert.deepStrictEqual([M.getProps(st, key).owner, bs[0].notes, M.rollup(st, key).total, M.rollup(st, key).t], ['Ana R.', 'DAM FM', 3, 'dbr']);
+  assert.strictEqual(M.rollup(st, 'seg:' + dam.id).total, 5);
+  // rename mirrors; re-sync refreshes titles
+  M.updateRoad(st, r3.id, { road: 'Kuykendahl Rd' }); M.syncPP(st);
+  assert.strictEqual(bs[1].road, 'Kuykendahl Rd'); assert.strictEqual(M.damBranchSheets(dam, bs[1])[0].road, 'Kuykendahl Rd');
+  M.resyncDam(st); assert.strictEqual(M.damBranchSheets(dam, bs[1])[0].title, 'DAM – Kuykendahl Rd STA 0+00–7+00');
+  // mixed linked + unlinked: no duplicates
+  const fm = M.damBranchSheets(dam, bs[0]); M.unlinkDam(st, fm[0].id);
+  const Pm = M.planDam(st, { subs: [A.id] }); assert.strictEqual(Pm.create, 0, 'an unlinked copy covering the range is not duplicated');
+  // unlink whole branch
+  M.unlinkDamBranch(st, bs[1].id); M.syncPP(st);
+  assert.deepStrictEqual([bs[1].src.length, M.damBranchSheets(dam, bs[1]).every((x) => x.dam.linked === false)], [0, true]);
+  // delete the source road: branch stays, unlinked, sheets kept
+  M.deleteRoad(st, r1.id); M.deleteRoad(st, r2.id); M.syncPP(st);
+  assert.deepStrictEqual([M.damBranches(dam).length, bs[0].road, bs[0].src.length, M.damBranchSheets(dam, bs[0]).length], [2, 'FM 1960', 0, 3]);
+  assert.strictEqual(M.getProps(st, key).owner, 'Ana R.', 'branch properties survive');
+  // round-trip + junk
+  const j = M.migrate(JSON.parse(JSON.stringify(st)));
+  assert.strictEqual(JSON.stringify(j.subs[0].segments.find((g) => g.key === 'dr-dam').damRoads), JSON.stringify(dam.damRoads));
+  const junk = JSON.parse(JSON.stringify(st)); const jd = junk.subs[0].segments.find((g) => g.key === 'dr-dam');
+  jd.damRoads.push(null, { id: 5 }, { id: jd.damRoads[0].id }); jd.sheets.find((x) => x.dam).dam.branch = 'nope';
+  const jm = M.migrate(junk), jdd = jm.subs[0].segments.find((g) => g.key === 'dr-dam');
+  assert.strictEqual(jdd.damRoads.length, 2); assert.strictEqual(jdd.sheets.filter((x) => x.dam && x.dam.branch === null).length, 1);
+  // remove a branch: sheets stay flat
+  M.deleteDamBranch(st, bs[1].id); assert.strictEqual(M.damBranches(dam).length, 1); assert.strictEqual(dam.sheets.length, 5); assert.strictEqual(M.getProps(st, 'dbr:' + bs[1].id).owner, '');
+  // collapse / focus keys
+  assert.strictEqual(M.collapseLevel(st, 4)['dbr:' + bs[0].id], true);
+  // CSV export unchanged in shape
+  assert.ok(M.exportImportCSV(st).split('\n').some((l) => /DAM – FM 1960/.test(l)));
+});
+t('v3.8 flat DAM copies from v3.7 move into a road branch on load, nothing lost', () => {
+  const st = M.newState('P'); const A = st.subs[0], pp = M.secOf(A, 'dr-pp'), dam = M.secOf(A, 'dr-dam');
+  M.addRoad(st, pp.id, { road: 'FM 1960', start: '10+00', end: '34+00', alignment: 'BL FM 1960' }); const rk = M.addRoad(st, pp.id, { road: 'Kuyk', start: '0+00', end: '7+00' }).road; M.syncPP(st);
+  M.applyDam(st, M.planDam(st, {})); M.deleteRoad(st, rk.id); M.syncPP(st);
+  const old = JSON.parse(JSON.stringify(st)); const od = old.subs[0].segments.find((g) => g.key === 'dr-dam');
+  delete od.damRoads; for (const sh of od.sheets) if (sh.dam) delete sh.dam.branch; /* exactly what v3.7 saved */
+  const ids = od.sheets.map((x) => x.id).sort();
+  const m = M.migrate(old), md = m.subs[0].segments.find((g) => g.key === 'dr-dam');
+  assert.deepStrictEqual(md.sheets.map((x) => x.id).sort(), ids, 'no sheet lost');
+  assert.deepStrictEqual(M.damBranches(md).map((b) => [b.road, b.alignment || '', b.src.length, M.damBranchSheets(md, b).length]).sort(), [['FM 1960', 'BL FM 1960', 1, 2], ['Kuyk', '', 0, 1]], 'deleted-road copies get an unlinked branch from their title');
+  const again = M.migrate(JSON.parse(JSON.stringify(m)));
+  assert.strictEqual(JSON.stringify(again.subs[0].segments.find((g) => g.key === 'dr-dam').damRoads), JSON.stringify(md.damRoads), 'migration runs once');
+  assert.strictEqual(M.planDam(m, {}).create, 0, 're-run after migration makes no duplicates');
+});
+t('v3.9 Hydraulic Data Sheets by count: generic titles, add more, reduce, edited titles kept, no road, compat', () => {
+  const st = M.newState('P'); const A = st.subs[0]; M.addStandardSet(st, A.id);
+  const g = M.secOf(A, 'dr-hds-inlet'), x = M.secOf(A, 'dr-hds-x');
+  assert.ok(M.isHydSec(g) && M.isHydSec(x) && !M.isHydSec(M.secOf(A, 'dr-pp')) && !M.isPPSec(g), 'hydraulic sections need no roads');
+  const road = M.addSheet(st, x.id, { title: 'Culvert Hydraulics Sta 22+40', road: 'FM 1960' }); /* existing road-tagged sheet */
+  const before = JSON.stringify(st), P = M.planHydCount(st, g.id, 3);
+  assert.strictEqual(JSON.stringify(st), before, 'plan does not change data');
+  assert.deepStrictEqual([P.cur, P.create, !!P.adopt], [1, 2, true], 'the standard sheet becomes sheet 1, no duplicate');
+  const r = M.setHydCount(st, g.id, 3);
+  assert.deepStrictEqual([r.created, r.adopted, g.sheets.length], [2, 1, 3]);
+  assert.deepStrictEqual(g.sheets.map((q) => q.title), ['Hydraulic Data Sheet - Inlet Computations (1 of 3)', 'Hydraulic Data Sheet - Inlet Computations (2 of 3)', 'Hydraulic Data Sheet - Inlet Computations (3 of 3)']);
+  assert.ok(g.sheets.every((q) => !q.road && !q.gen && q.discipline === 'Drainage' && q.number), 'no road, numbered');
+  g.sheets[1].title = 'Inlet Computations – FM 1960'; /* user edits a title */
+  M.setHydCount(st, g.id, 5);
+  assert.deepStrictEqual(g.sheets.map((q) => q.title), ['Hydraulic Data Sheet - Inlet Computations (1 of 5)', 'Inlet Computations – FM 1960', 'Hydraulic Data Sheet - Inlet Computations (3 of 5)', 'Hydraulic Data Sheet - Inlet Computations (4 of 5)', 'Hydraulic Data Sheet - Inlet Computations (5 of 5)'], 'adding continues numbering; edited title kept');
+  assert.strictEqual(new Set(g.sheets.map((q) => q.number)).size, 5, 'no duplicate sheet numbers');
+  assert.strictEqual(M.bulkAddTemplates(st, g.id).length + M.addStandardSet(st, A.id).filter((q) => q.title === g.title).length, 0, '+ Standard does not add a duplicate once counted');
+  assert.strictEqual(M.planHydCount(st, g.id, 5).create + M.planHydCount(st, g.id, 5).remove.length, 0, 'same count = no change');
+  g.sheets[4].status = 'In progress';
+  const Pd = M.planHydCount(st, g.id, 3);
+  assert.deepStrictEqual([Pd.remove.length, Pd.progress.length], [2, 1], 'reducing lists the sheets with work');
+  assert.throws(() => M.setHydCount(st, g.id, 3), /have work/);
+  g.sheets[4].status = 'Not started'; M.setHydCount(st, g.id, 4); assert.strictEqual(g.sheets.length, 4, 'untouched sheets are removed without a guard');
+  M.setHydCount(st, g.id, 3, { force: true }); assert.strictEqual(g.sheets.length, 3);
+  assert.deepStrictEqual(g.sheets.map((q) => q.hyd.of), [3, 3, 3]);
+  // deleting one renumbers the rest
+  M.deleteSheet(st, g.sheets[0].id); M.syncPP(st);
+  assert.deepStrictEqual(g.sheets.map((q) => q.title), ['Inlet Computations – FM 1960', 'Hydraulic Data Sheet - Inlet Computations (2 of 2)']);
+  // other hydraulic sections untouched; road-tagged sheet stays
+  assert.ok(x.sheets.includes(road) && road.road === 'FM 1960' && !road.hyd);
+  M.setHydCount(st, x.id, 2);
+  assert.ok(x.sheets.includes(road) && x.sheets.filter((q) => q.hyd).length === 2, 'road-tagged sheets are not counted or removed');
+  // errors, duplicate, move, compat
+  assert.throws(() => M.planHydCount(st, g.id, -1)); assert.throws(() => M.planHydCount(st, g.id, 2.5)); assert.throws(() => M.planHydCount(st, g.id, 'x'));
+  assert.ok(!M.duplicateSheet(st, g.sheets[1].id).hyd, 'a duplicate is a plain sheet');
+  const j = M.migrate(JSON.parse(JSON.stringify(st)));
+  assert.deepStrictEqual(M.secOf(j.subs[0], 'dr-hds-inlet').sheets.map((q) => q.title), g.sheets.map((q) => q.title), 'round-trip');
+  const junk = JSON.parse(JSON.stringify(st)); M.secOf(junk.subs[0], 'dr-hds-inlet').sheets[0].hyd = 'bad';
+  assert.ok(!M.secOf(M.migrate(junk).subs[0], 'dr-hds-inlet').sheets[0].hyd, 'bad hyd data dropped');
+  const old = JSON.parse(JSON.stringify(st)); for (const sub of old.subs) for (const sg of sub.segments) for (const q of sg.sheets) delete q.hyd;
+  assert.strictEqual(M.migrate(old).subs[0].segments.reduce((a, sg) => a + sg.sheets.length, 0), st.subs[0].segments.reduce((a, sg) => a + sg.sheets.length, 0), 'old data loads unchanged');
+  assert.ok(M.exportImportCSV(st).includes('Hydraulic Data Sheet - Crossing (1 of 2)'), 'CSV export');
+});
+const E = require('./engreport.js');
+function engState() {
+  const st = M.newState('Eng Test');
+  for (const s of st.subs) M.addStandardSet(st, s.id);
+  const [A, B] = st.subs;
+  M.addRoad(st, M.secOf(A, 'dr-pp').id, { road: 'FM 1960', start: '10+00', end: '58+00', alignment: 'BL FM 1960' });
+  M.addRoad(st, M.secOf(B, 'dr-pp').id, { road: 'Spring Cypress Rd', start: '100+00', end: '136+00', alignment: 'BL SC' });
+  M.syncPP(st);
+  return st;
+}
+t('engineering report: sections, placeholders, no invented values', () => {
+  const st = engState();
+  const O = E.outline(st, today);
+  assert.deepStrictEqual(O.map((s) => s.id), ['intro', 'desc', 'scope', 'criteria', 'existing', 'proposed', 'swp3', 'sheets', 'schedule', 'concl']);
+  assert.deepStrictEqual(O.map((s) => s.no), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  const ex = O.find((s) => s.id === 'existing');
+  assert(ex.showPh && /^\[Engineer to describe existing drainage conditions/.test(ex.ph));
+  const desc = O.find((s) => s.id === 'desc'), tab = desc.auto.find((b) => b.table).table;
+  const fm = tab.rows.find((r) => r[0] === 'FM 1960');
+  assert(fm && fm[1] === 'BL FM 1960' && /10\+00 to 58\+00/.test(fm[2]) && fm[3] === '4,800 ft', JSON.stringify(fm));
+  const txt = E.text(st, today);
+  assert(/PRELIMINARY — NOT SEALED/.test(txt) && /1\. INTRODUCTION AND PURPOSE/.test(txt) && /10\. CONCLUSIONS AND RECOMMENDATIONS/.test(txt));
+  assert(!/\b(cfs|in\/hr|\d+-year|year storm|acres?)\b/i.test(txt), 'no design values invented');
+  const urls = txt.match(/https?:\/\/\S+/g) || [];
+  assert.deepStrictEqual([...new Set(urls)], ['https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html']);
+  assert(!/CSJ/.test(txt.split('\n').slice(0, 4).join('\n')), 'no CSJ line until one is entered');
+});
+t('engineering report: edits, toggles, replace mode, refs, storage', () => {
+  const st = engState();
+  E.setMeta(st, 'csj', '1234-56-789'); E.setMeta(st, 'county', 'Harris'); assert.throws(() => E.setMeta(st, 'bogus', 'x'));
+  assert.deepStrictEqual(st.engReport.meta, { csj: '1234-56-789', county: 'Harris' });
+  E.setSec(st, 'existing', { text: 'Existing ditches drain north.' });
+  let ex = E.outline(st, today).find((s) => s.id === 'existing');
+  assert(!ex.showPh && ex.auto.length && ex.text === 'Existing ditches drain north.');
+  E.setSec(st, 'existing', { mode: 'replace' });
+  ex = E.outline(st, today).find((s) => s.id === 'existing');
+  assert.strictEqual(ex.auto.length, 0);
+  E.setSec(st, 'scope', { on: false });
+  const O = E.outline(st, today);
+  assert(!O.some((s) => s.id === 'scope') && O.find((s) => s.id === 'criteria').no === 3);
+  const txt = E.text(st, today);
+  assert(/CSJ: 1234-56-789/.test(txt) && /Harris County/.test(txt) && /Existing ditches drain north\./.test(txt) && !/SCOPE OF WORK/.test(txt));
+  E.setRefs(st, 'Ref one\n\n Ref two ');
+  assert.deepStrictEqual(E.refs(st), ['Ref one', 'Ref two']);
+  E.resetRefs(st); assert(E.refs(st).length >= 5 && st.engReport.refs === undefined);
+  // round trip through save/migrate, then clearing everything leaves no trace
+  const back = M.migrate(JSON.parse(JSON.stringify(st)));
+  assert.strictEqual(E.text(back, today), E.text(st, today));
+  E.setSec(back, 'existing', { text: '', mode: 'add' }); E.setSec(back, 'scope', { on: true }); E.setMeta(back, 'csj', ''); E.setMeta(back, 'county', '');
+  assert.strictEqual(back.engReport, undefined);
+});
+t('engineering report: SWP3 hidden without SWP3 sheets; junk tolerated', () => {
+  const st = engState();
+  for (const s of st.subs) s.segments = s.segments.filter((g) => g.discipline !== 'SWP3');
+  assert(!E.outline(st, today).some((s) => s.id === 'swp3'));
+  assert(!/STORM WATER POLLUTION/.test(E.text(st, today)));
+  for (const junk of [null, 5, 'x', [], { meta: 7, secs: 'no', refs: 9 }, { secs: { intro: null, existing: { text: 5, on: 'x' } } }]) {
+    const s2 = engState(); s2.engReport = junk;
+    assert.doesNotThrow(() => E.text(s2, today), JSON.stringify(junk));
+    assert.strictEqual(E.outline(s2, today).length, 10);
+  }
+  const empty = M.newState('Empty');
+  assert.doesNotThrow(() => E.text(empty, today));
+});
+t('engineering report: counts v3.9 hydraulic data sheets (by count)', () => {
+  const st = engState(); const A = st.subs[0];
+  const inl = M.secOf(A, 'dr-hds-inlet'), x = M.secOf(A, 'dr-hds-x');
+  M.setHydCount(st, inl.id, 3); M.setHydCount(st, x.id, 2);
+  const hydN = (title) => st.subs.reduce((a, sub) => a + sub.segments.filter((g) => g.title === title).reduce((b, g) => b + g.sheets.length, 0), 0);
+  const prop = E.outline(st, today).find((s) => s.id === 'proposed'), ptxt = prop.auto.map((b) => b.p || '').join(' ');
+  assert(new RegExp(hydN(inl.title) + ' sheets of Inlet Computations').test(ptxt) && new RegExp(hydN(x.title) + ' sheets of Crossing').test(ptxt), ptxt);
+  assert(!prop.auto.some((b) => b.ul && b.ul.some((li) => /\(1 of 2\)/.test(li))), 'generic counted titles are not listed as crossings');
+  const idx = E.outline(st, today).find((s) => s.id === 'sheets').auto.find((b) => b.table).table.rows;
+  assert(idx.some((r) => /Inlet Computations \(3 of 3\)/.test(r[1])) && idx.some((r) => /Crossing \(2 of 2\)/.test(r[1])));
 });
 (async () => {
   let passed = 0;

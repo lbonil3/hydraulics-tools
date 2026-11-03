@@ -105,6 +105,14 @@
   }
   function hasSta(x) { return x.start != null && x.start !== '' && x.end != null && x.end !== '' && Number.isFinite(parseStation(x.start)) && Number.isFinite(parseStation(x.end)); }
   function segLength(seg) { const a = parseStation(seg.start), b = parseStation(seg.end); return Number.isFinite(a) && Number.isFinite(b) && b > a ? Math.round((b - a) * 100) / 100 : 0; }
+  /* v3.6 optional alignment name of a road entry (e.g. "BL FM 1960", "CL Ramp A"). Old data has none. */
+  function cleanAlign(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
+  function roadAlign(r) { return r && typeof r.alignment === 'string' ? cleanAlign(r.alignment) : ''; }
+  /* road name with its alignment for display / exports: "FM 1960 (Alignment: BL FM 1960)" */
+  function roadWithAlign(r, name) { const n = name != null ? name : r ? r.road : '', a = roadAlign(r); return a ? n + ' (Alignment: ' + a + ')' : n; }
+  /* distinct alignments of a group of road entries, in order */
+  function groupAligns(entries) { return [...new Set((entries || []).map(roadAlign).filter(Boolean))]; }
+  function checkAlign(v) { const a = cleanAlign(v); if (a.length > 60) throw new Error('Keep the alignment name to 60 characters or fewer.'); return a; }
   /* label: a section → its title; a road entry → "<Road> Sta <start>–<end>" (just the road name while it has no stations) */
   function segLabel(x) {
     if (x && x.kind === 'section') return x.title;
@@ -306,7 +314,7 @@
   }
   function isTouched(sh) {
     return sh.status !== 'Not started' || !!sh.owner || !!sh.notes || (Number(sh.pct) || 0) > 0 || (Number(sh.hoursActual) || 0) > 0 ||
-      Object.values(sh.qc || {}).some(Boolean) || !!(sh.gen && sh.gen.titleEdited) || !!sh.sta;
+      Object.values(sh.qc || {}).some(Boolean) || !!(sh.gen && sh.gen.titleEdited) || !!sh.sta || !!(sh.dam && sh.dam.title && sh.title !== sh.dam.title) || !!(sh.hyd && sh.hyd.title && sh.title !== sh.hyd.title);
   }
   /* Plan (no mutation): which generated sheets to create / update / remove for one road entry */
   function planGenerate(st, roadId) {
@@ -378,6 +386,7 @@
   function sheetRange(sh) {
     if (sh.sta && Number.isFinite(sh.sta.start) && Number.isFinite(sh.sta.end)) return { start: sh.sta.start, end: sh.sta.end, manual: true };
     if (sh.gen && Number.isFinite(sh.gen.start) && Number.isFinite(sh.gen.end)) return { start: sh.gen.start, end: sh.gen.end, manual: false };
+    if (sh.dam && Number.isFinite(sh.dam.start) && Number.isFinite(sh.dam.end)) return { start: sh.dam.start, end: sh.dam.end, manual: false };
     return null;
   }
   function rangeText(rg) { return rg ? 'Sta ' + formatStation(rg.start) + ' – ' + formatStation(rg.end) : 'no range'; }
@@ -395,9 +404,13 @@
     });
   }
   function otherSheets(sub, sec) { return sec.sheets.filter((sh) => sheetGroupSlug(sub, sec, sh) == null); }
-  function sheetScale(st, sub, sh) { if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); if (r) return segScale(sub, r); } return null; }
+  function sheetScale(st, sub, sh) {
+    if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); if (r) return segScale(sub, r); }
+    if (sh.dam) { if (sh.dam.scale) return Number(sh.dam.scale); const r = sub.roads.find((x) => x.id === sh.dam.road); if (r) return segScale(sub, r); }
+    return null;
+  }
   /* computed range of a generated sheet (ignores the manual override) */
-  function computedRange(sh) { return sh.gen && Number.isFinite(sh.gen.start) ? { start: sh.gen.start, end: sh.gen.end } : null; }
+  function computedRange(sh) { return sh.gen && Number.isFinite(sh.gen.start) ? { start: sh.gen.start, end: sh.gen.end } : sh.dam && Number.isFinite(sh.dam.start) ? { start: sh.dam.start, end: sh.dam.end } : null; }
   function setSheetRange(st, sheetId, start, end) {
     const hit = findSheet(st, sheetId); if (!hit) throw new Error('No such sheet');
     const blankA = blank(start), blankB = blank(end);
@@ -420,6 +433,7 @@
     return hit.sh;
   }
   function refreshGenTitle(st, sub, sec, sh) {
+    if (sh.dam && !sh.gen) { const rg = sheetRange(sh), road = sub.roads.find((x) => x.id === sh.dam.road); if (rg && road && sh.title === sh.dam.title) { sh.title = damTitle(road, rg); sh.dam.title = sh.title; } return; }
     if (!sh.gen || sh.gen.titleEdited) return;
     const road = sub.roads.find((x) => x.id === sh.gen.road); if (!road) return;
     const rg = sheetRange(sh); if (!rg) return;
@@ -453,6 +467,7 @@
       const r = applyGenerate(st, road.id, p, { removeTouched: false, quiet: true });
       for (const k in tot) tot[k] += r[k];
     }
+    for (const sub of st.subs) { syncDamBranches(sub); for (const g of sub.segments) if (g.sheets.some((q) => q.hyd)) syncHyd(g); }
     if ((tot.created || tot.updated || tot.removed) && !(opts && opts.quiet)) log(st, 'PP sheets follow the road stations: +' + tot.created + ' new, ' + tot.updated + ' updated, ' + tot.removed + ' removed' + (tot.keptTouched ? ' (' + tot.keptTouched + ' edited extra kept)' : ''));
     return tot;
   }
@@ -510,6 +525,13 @@
     return null;
   }
   /* road name shown for a sheet: generated → its road entry, else the sheet's road tag */
+  /* alignment of the road entry a sheet sits on: generated → its road entry; tagged → the alignment(s) of that road in the section */
+  function sheetAlign(st, sub, sec, sh) {
+    if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); return roadAlign(r); }
+    if (sh.dam && sh.dam.road) { const r = sub.roads.find((x) => x.id === sh.dam.road); if (r) return roadAlign(r); }
+    if (sh.road && sec) return groupAligns(roadsOf(sub, sec).filter((r) => rgSlug(r.road) === rgSlug(sh.road))).join(' / ');
+    return '';
+  }
   function sheetRoad(st, sub, sh) { if (sh.gen && sh.gen.road) { const r = sub.roads.find((x) => x.id === sh.gen.road); if (r) return r.road; } return sh.road || ''; }
   function log(st, msg, ref) {
     st.log.unshift(ref ? { t: new Date().toISOString(), msg, ref: { t: ref.t, id: ref.id } } : { t: new Date().toISOString(), msg });
@@ -528,6 +550,7 @@
     if (!isPPSec(hit.seg)) throw new Error('“' + hit.seg.title + '” has no road entries. Use a Plan & Profile section (or turn on roads for it in Settings → Sections).');
     const s = stationsOf(f);
     const road = { id: uid(), kind: 'road', name: '', road: String(f.road || f.name || '').trim(), start: s.start, end: s.end, scale: f.scale ? Number(f.scale) : null, reverse: !!f.reverse, sec: hit.seg.id, notes: f.notes || '', revs: [] };
+    if (f.alignment != null && checkAlign(f.alignment)) road.alignment = checkAlign(f.alignment);
     const v = validateSegment({ ...road, secKey: hit.seg.key }, roadsInKey(st, hit.seg.key));
     if (v.errs.length) throw new Error(v.errs.join(' '));
     road.name = segLabel(road);
@@ -546,7 +569,9 @@
     const v = validateSegment({ ...next, secKey: hit.sec.key }, roadsInKey(st, hit.sec.key));
     if (v.errs.length) throw new Error(v.errs.join(' '));
     next.road = String(next.road || '').trim();
+    if ('alignment' in f) { const a = checkAlign(f.alignment); if (a) next.alignment = a; else delete next.alignment; }
     Object.assign(hit.road, next, { name: segLabel(next) });
+    if ('alignment' in f && !next.alignment) delete hit.road.alignment;
     for (const sh of hit.sec.sheets) if (sh.gen && sh.gen.road === roadId) sh.road = hit.road.road;
     sortRoads(hit.sub);
     log(st, 'Updated road ' + subTag(hit.sub) + ' · ' + hit.sec.title + ' · ' + hit.road.name, { t: 'road', id: roadId });
@@ -559,6 +584,7 @@
     hit.sub.roads = hit.sub.roads.filter((r) => r !== hit.road);
     const n = hit.sec.sheets.filter((s) => s.gen && s.gen.road === roadId).length;
     hit.sec.sheets = hit.sec.sheets.filter((s) => !(s.gen && s.gen.road === roadId));
+    for (const g of hit.sub.segments) for (const s of g.sheets) if (s.dam && s.dam.road === roadId) { s.dam.linked = false; s.dam.road = null; } /* DAM copies stay, unlinked */
     pruneLinks(st); log(st, 'Deleted road ' + subTag(hit.sub) + ' · ' + hit.sec.title + ' · ' + hit.road.name + (n ? ' and its ' + n + ' PP sheets' : ''));
     return true;
   }
@@ -587,6 +613,8 @@
     if (to.seg === hit.seg) return hit.sh;
     hit.seg.sheets = hit.seg.sheets.filter((s) => s !== hit.sh);
     to.seg.sheets.push(hit.sh); hit.sh.discipline = to.seg.discipline;
+    if (hit.sh.dam) hit.sh.dam.branch = null;
+    if (hit.sh.hyd) { delete hit.sh.hyd; syncHyd(hit.seg); }
     log(st, hit.sh.title + ': section → ' + to.seg.title, { t: 'sheet', id: hit.sh.id });
     return hit.sh;
   }
@@ -639,6 +667,8 @@
     const hit = findSheet(st, sheetId);
     if (!hit) throw new Error('No such sheet');
     const copy = { ...clone(hit.sh), id: uid(), title: hit.sh.title + ' (copy)', status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], gen: null };
+    delete copy.dam; /* a duplicate is a plain sheet, not a linked DAM copy */
+    delete copy.hyd;
     hit.seg.sheets.splice(hit.seg.sheets.indexOf(hit.sh) + 1, 0, copy);
     log(st, 'Duplicated sheet ' + hit.sh.title, { t: 'sheet', id: copy.id });
     return copy;
@@ -652,6 +682,7 @@
     const added = [];
     for (const t of hit.sub.templates) {
       if (t.sec !== hit.seg.key || have.has(t.title.toLowerCase())) continue;
+      if (isHydSec(hit.seg) && hit.seg.sheets.some((q) => q.hyd) && t.title.trim().toLowerCase() === String(hit.seg.title).trim().toLowerCase()) continue; /* v3.9: counted sheets already cover it */
       const sh = newSheet({ title: t.title, discipline: hit.seg.discipline, owner: opts && opts.owner, due: opts && opts.due, milestone: opts && opts.milestone });
       hit.seg.sheets.push(sh); have.add(t.title.toLowerCase()); added.push(sh);
     }
@@ -717,7 +748,7 @@
   /* milestones */
   function addMilestone(st, name, date) { const m = { id: uid(), name: String(name || '').trim() || 'Milestone', date: date || '' }; st.milestones.push(m); sortMilestones(st); return m; }
   function sortMilestones(st) { st.milestones.sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')); }
-  function removeMilestone(st, id) { st.milestones = st.milestones.filter((m) => m.id !== id); for (const r of allSheets(st)) if (r.sh.milestone === id) r.sh.milestone = ''; }
+  function removeMilestone(st, id) { st.milestones = st.milestones.filter((m) => m.id !== id); for (const r of allSheets(st)) if (r.sh.milestone === id) r.sh.milestone = ''; pruneProps(st); }
 
   /* ---- queries ---- */
   function allSheets(st) {
@@ -821,13 +852,13 @@
   }
   function toCSV(st, rows) {
     const ms = Object.fromEntries(st.milestones.map((m) => [m.id, m.name]));
-    const head = ['Sub-project', 'Discipline', 'Section', 'Road', 'Sheet No', 'Sheet', 'Series', 'Sheet Sta From', 'Sheet Sta To', 'Status', '% Complete', 'Owner', 'Due', 'Milestone', 'Hours Budget', 'Hours Actual', 'QC Done', 'Depends On', 'Generated', 'Notes'];
+    const head = ['Sub-project', 'Discipline', 'Section', 'Road', 'Alignment', 'Sheet No', 'Sheet', 'Series', 'Sheet Sta From', 'Sheet Sta To', 'Status', '% Complete', 'Owner', 'Due', 'Milestone', 'Hours Budget', 'Hours Actual', 'QC Done', 'Depends On', 'Generated', 'Notes'];
     const lines = [head.join(',')];
     for (const r of rows) {
       const sh = r.sh;
       const qcDone = st.settings.qcSteps.filter((q) => sh.qc && sh.qc[q]).length + '/' + st.settings.qcSteps.length;
       const deps = linksOf(st, { t: 'sheet', id: sh.id }).in.filter((l) => l.kind === 'dep').map((l) => refLabel(st, l.src)).join('; ');
-      lines.push([subTag(r.sub), r.seg.discipline, r.seg.title, sheetRoad(st, r.sub, sh), sh.number, sh.title, sh.series,
+      lines.push([subTag(r.sub), r.seg.discipline, r.seg.title, sheetRoad(st, r.sub, sh), sheetAlign(st, r.sub, r.seg, sh), sh.number, sh.title, sh.series,
         sh.gen ? formatStation(sh.gen.start) : '', sh.gen ? formatStation(sh.gen.end) : '', sh.status, sh.pct, sh.owner, sh.due, ms[sh.milestone] || '',
         sh.hoursBudget, sh.hoursActual, qcDone, deps, sh.gen ? 'yes' : '', sh.notes].map(csvCell).join(','));
     }
@@ -835,14 +866,14 @@
   }
   function ppCSV(st, opts) {
     const S = ppSummary(st, opts);
-    const L = [['Sub-project', 'Discipline', 'Section', 'Road', 'Start Sta', 'End Sta', 'Length ft', 'Scale', 'Ft per sheet', 'Overlap ft', 'PP sheets'].join(',')];
+    const L = [['Sub-project', 'Discipline', 'Section', 'Road', 'Alignment', 'Start Sta', 'End Sta', 'Length ft', 'Scale', 'Ft per sheet', 'Overlap ft', 'PP sheets'].join(',')];
     const row = (a) => L.push(a.map(csvCell).join(','));
-    for (const r of S.rows) row([subTag(r.sub), r.discipline, r.sec.title, r.road.road, formatStation(r.road.start), formatStation(r.road.end), r.length, r.scale, r.ft, st.settings.overlapFt, r.count]);
-    for (const sub of st.subs) for (const sec of sub.segments.filter(isPPSec)) { const n = S.rows.filter((r) => r.sec === sec).reduce((a, b) => a + b.count, 0); if (n) row([subTag(sub) + ' total', sec.discipline, sec.title, '', '', '', '', '', '', '', n]); }
-    for (const b of S.bySub) for (const d of DISCIPLINES) row([subTag(b.sub) + ' total', d, '', '', '', '', '', '', '', '', b.disc[d]]);
-    for (const b of S.bySub) row([subTag(b.sub) + ' total', 'All', '', '', '', '', b.length, '', '', '', b.total]);
-    for (const d of DISCIPLINES) row(['Project total', d, '', '', '', '', '', '', '', '', S.byDisc[d]]);
-    row(['Project total', 'All', '', '', '', '', S.length, '', '', '', S.total]);
+    for (const r of S.rows) row([subTag(r.sub), r.discipline, r.sec.title, r.road.road, roadAlign(r.road), formatStation(r.road.start), formatStation(r.road.end), r.length, r.scale, r.ft, st.settings.overlapFt, r.count]);
+    for (const sub of st.subs) for (const sec of sub.segments.filter(isPPSec)) { const n = S.rows.filter((r) => r.sec === sec).reduce((a, b) => a + b.count, 0); if (n) row([subTag(sub) + ' total', sec.discipline, sec.title, '', '', '', '', '', '', '', '', n]); }
+    for (const b of S.bySub) for (const d of DISCIPLINES) row([subTag(b.sub) + ' total', d, '', '', '', '', '', '', '', '', '', b.disc[d]]);
+    for (const b of S.bySub) row([subTag(b.sub) + ' total', 'All', '', '', '', '', '', b.length, '', '', '', b.total]);
+    for (const d of DISCIPLINES) row(['Project total', d, '', '', '', '', '', '', '', '', '', S.byDisc[d]]);
+    row(['Project total', 'All', '', '', '', '', '', S.length, '', '', '', S.total]);
     return L.join('\r\n') + '\r\n';
   }
 
@@ -977,11 +1008,16 @@
       for (const sec of sub.segments) {
         sec.sheets = Array.isArray(sec.sheets) ? sec.sheets : [];
         sec.revs = Array.isArray(sec.revs) ? sec.revs : [];
-        for (const sh of sec.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; sh.discipline = sec.discipline; }
+        for (const sh of sec.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; sh.discipline = sec.discipline;
+          if ('dam' in sh && !(sh.dam && typeof sh.dam === 'object' && Number.isFinite(sh.dam.start) && Number.isFinite(sh.dam.end))) delete sh.dam;
+          if ('hyd' in sh && !(sh.hyd && typeof sh.hyd === 'object' && Number.isFinite(sh.hyd.idx) && sh.hyd.idx > 0)) delete sh.hyd; }
+        if (sec.sheets.some((q) => q.hyd)) syncHyd(sec);
       }
+      normDamBranches(sub);
       const secIds = new Set(sub.segments.map((s) => s.id));
       for (const r of sub.roads) {
         r.kind = 'road'; r.revs = Array.isArray(r.revs) ? r.revs : [];
+        if ('alignment' in r) { const a = typeof r.alignment === 'string' ? cleanAlign(r.alignment).slice(0, 60) : ''; if (a) r.alignment = a; else delete r.alignment; }
         if (!secIds.has(r.sec)) r.sec = (secOf(sub, 'dr-pp') || sub.segments.find(isPPSec) || sub.segments[0]).id;
         r.name = segLabel(r);
       }
@@ -989,6 +1025,7 @@
     }
     for (const t of st.index) if (!t.sec || !secDef(st, t.sec)) { t.sec = mapSection(st, t.title, t.discipline); ensureSection(st, t.sec); }
     pruneLinks(st);
+    pruneProps(st);
     return st;
   }
   function backupFile(st) { return { fmt: 'pm-plain-backup', v: SCHEMA, exported: new Date().toISOString(), data: st }; }
@@ -1061,6 +1098,15 @@
     log(st, 'Connector ' + refLabel(st, src) + ' → ' + refLabel(st, dst) + ' (' + (kind === 'dep' ? 'depends on' : 'update') + ')');
     return { link, warns };
   }
+  /* v3.5: the same checks addLink makes, without changing anything (used for live drag feedback). → { ok, reason } */
+  function linkCheck(st, src, dst, kind) {
+    kind = kind === 'update' ? 'update' : 'dep';
+    if (!src || !dst || !resolve(st, src) || !resolve(st, dst)) return { ok: false, reason: 'missing' };
+    if (rk(src) === rk(dst)) return { ok: false, reason: 'self' };
+    if (st.links.some((l) => l.kind === kind && rk(l.src) === rk(src) && rk(l.dst) === rk(dst))) return { ok: false, reason: 'exists' };
+    if (kind === 'dep' && depPath(st, dst, src)) return { ok: false, reason: 'cycle' };
+    return { ok: true, reason: '' };
+  }
   function removeLink(st, id) {
     const l = st.links.find((x) => x.id === id);
     if (!l) return false;
@@ -1070,6 +1116,7 @@
   }
   function pruneLinks(st) {
     st.links = st.links.filter((l) => resolve(st, l.src) && resolve(st, l.dst));
+    pruneProps(st);
   }
   function blockers(st, ref) { return linksOf(st, ref).in.filter((l) => l.kind === 'dep' && !isDone(st, l.src)).map((l) => l.src); }
   function needsUpdate(st, ref) { return linksOf(st, ref).in.filter((l) => revCount(st, l.src) > (l.ack || 0)); }
@@ -1197,7 +1244,7 @@
   function rangeFor(st, sh) {
     const R = st.settings.numbering || [];
     const hit = findSheet(st, sh.id), sk = hit && hit.seg && hit.seg.key;
-    return (sk && R.find((r) => r.key === 'sec:' + sk)) || (sh.gen && R.find((r) => r.key === 'series:' + sh.gen.series)) || R.find((r) => r.key === 'tpl:' + String(sh.title).trim().toLowerCase()) || R.find((r) => r.key === 'disc:' + sh.discipline) || null;
+    return (sk && R.find((r) => r.key === 'sec:' + sk)) || (sh.gen && R.find((r) => r.key === 'series:' + sh.gen.series)) || (sh.dam && R.find((r) => r.key === 'tpl:drainage area map')) || R.find((r) => r.key === 'tpl:' + String(sh.title).trim().toLowerCase()) || R.find((r) => r.key === 'disc:' + sh.discipline) || null;
   }
   function suggestNumber(st, sh, taken) {
     const r = rangeFor(st, sh); if (!r) return null;
@@ -1307,7 +1354,7 @@
     for (const d of DISCIPLINES) c['dtop:' + d] = level < 2;
     for (const sub of st.subs) {
       for (const d of DISCIPLINES) c['disc:' + sub.id + ':' + d] = level < 3;
-      for (const g of sub.segments) { c['seg:' + g.id] = level < 4; if (isPPSec(g)) { for (const rg of roadGroups(sub, g)) c[rg.key] = level < 5; c['oth:' + g.id] = level < 5; } }
+      for (const g of sub.segments) { c['seg:' + g.id] = level < 4; if (isPPSec(g)) { for (const rg of roadGroups(sub, g)) c[rg.key] = level < 5; c['oth:' + g.id] = level < 5; } for (const b of damBranches(g)) c['dbr:' + b.id] = level < 5; }
     }
     return c;
   }
@@ -1364,7 +1411,7 @@
     try {
       rows.forEach((r, i) => {
         try {
-          const f = {}; for (const k of ['road', 'start', 'end', 'scale']) if (k in r && r[k] != null) f[k] = k === 'scale' ? (r[k] === '' ? null : Number(String(r[k]).replace(/^1"\s*=\s*|'$/g, ''))) : r[k];
+          const f = {}; for (const k of ['road', 'start', 'end', 'scale', 'alignment']) if (k in r && r[k] != null) f[k] = k === 'scale' ? (r[k] === '' ? null : Number(String(r[k]).replace(/^1"\s*=\s*|'$/g, ''))) : r[k];
           const id = r.roadId || r.segId;
           const x = id ? updateRoad(st, id, f) : addRoad(st, r.secId, f);
           id ? out.updated++ : out.added++; out.warns.push(...x.warns);
@@ -1382,9 +1429,11 @@
     if (!Number.isFinite(x)) throw new Error('Split station must look like 10+00, 1000 or 10+00.50.');
     if (!(x > road.start && x < road.end)) throw new Error('Split station must be between ' + formatStation(road.start) + ' and ' + formatStation(road.end) + '.');
     const b = { id: uid(), kind: 'road', name: '', road: road.road, start: x, end: road.end, scale: road.scale, reverse: !!road.reverse, sec: road.sec, notes: road.notes || '', revs: [] };
+    if (roadAlign(road)) b.alignment = roadAlign(road);
     b.name = segLabel(b);
     const moving = sec.sheets.filter((sh) => sh.gen && sh.gen.road === road.id && sh.gen.start >= x);
     for (const sh of moving) sh.gen.road = b.id;
+    for (const g of sub.segments) for (const sh of g.sheets) if (sh.dam && sh.dam.road === road.id && sh.dam.start >= x) sh.dam.road = b.id;
     road.end = x; road.name = segLabel(road);
     sub.roads.push(b); sortRoads(sub);
     const hadGen = moving.length || sec.sheets.some((q) => q.gen && q.gen.road === road.id);
@@ -1406,9 +1455,12 @@
     const sec = A.sec;
     const off = Math.max(0, ...sec.sheets.filter((q) => q.gen && q.gen.road === a.id).map((q) => q.gen.idx));
     for (const sh of sec.sheets) if (sh.gen && sh.gen.road === b.id) { sh.gen.idx += off; sh.gen.road = a.id; }
+    const doff = Math.max(0, ...A.sub.segments.flatMap((g) => g.sheets).filter((q) => q.dam && q.dam.road === a.id).map((q) => q.dam.idx));
+    for (const g of A.sub.segments) for (const sh of g.sheets) if (sh.dam && sh.dam.road === b.id) { sh.dam.idx += doff; sh.dam.road = a.id; }
     for (const l of st.links) for (const e of [l.src, l.dst]) if (e.t === 'road' && e.id === b.id) e.id = a.id;
     st.links = st.links.filter((l) => !(l.src.t === l.dst.t && l.src.id === l.dst.id));
     a.end = b.end; a.name = segLabel(a);
+    if (!roadAlign(a) && roadAlign(b)) a.alignment = roadAlign(b);
     A.sub.roads = A.sub.roads.filter((g) => g !== b);
     if (sec.sheets.some((q) => q.gen && q.gen.road === a.id)) applyGenerate(st, a.id, planGenerate(st, a.id), { removeTouched: false, quiet: true });
     log(st, 'Merged into ' + a.name, { t: 'road', id: a.id });
@@ -1419,7 +1471,7 @@
     const hit = findRoad(st, roadId), to = findSub(st, toSubId);
     if (!hit) throw new Error('No such road entry'); if (!to) throw new Error('No such sub-project');
     const tsec = secOf(to, hit.sec.key);
-    const r = addRoad(st, tsec.id, { road: hit.road.road, start: hit.road.start, end: hit.road.end, scale: hit.road.scale, notes: hit.road.notes, reverse: hit.road.reverse });
+    const r = addRoad(st, tsec.id, { road: hit.road.road, start: hit.road.start, end: hit.road.end, scale: hit.road.scale, notes: hit.road.notes, reverse: hit.road.reverse, alignment: roadAlign(hit.road) });
     const src = hit.sec.sheets.filter((sh) => sh.gen && sh.gen.road === roadId);
     if (opts && opts.sheets) for (const sh of src) {
       const c = { ...clone(sh), id: uid(), status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], number: '' };
@@ -1480,7 +1532,8 @@
   }
   function roadTxt(st, sub, r) {
     const p = roadPP(st, sub, r);
-    return hasSta(r) ? r.road + ' Sta ' + formatStation(r.start) + '–' + formatStation(r.end) + ' (' + Math.round(p.length).toLocaleString('en-US') + ' ft at 1"=' + p.scale + "', " + pl(p.count, 'PP sheet') + ')' : r.road + ' (stations not set yet)';
+    const nm = roadAlign(r) ? r.road + ' [alignment ' + roadAlign(r) + ']' : r.road;
+    return hasSta(r) ? nm + ' Sta ' + formatStation(r.start) + '–' + formatStation(r.end) + ' (' + Math.round(p.length).toLocaleString('en-US') + ' ft at 1"=' + p.scale + "', " + pl(p.count, 'PP sheet') + ')' : nm + ' (stations not set yet)';
   }
   function narrative(st, today) {
     today = today || todayISO();
@@ -1577,7 +1630,7 @@
     const tree = DISCIPLINES.map((d) => ({ disc: d, stats: R.discs.find((x) => x.disc === d), subs: orderedSubs(st).map((sub) => ({ sub, stats: branchStats(st, sub, d, null, today),
       secs: sectionsOf(sub, d).map((sec) => {
         const p = progress(sec.sheets), pp = isPPSec(sec);
-        const roads = pp ? roadGroups(sub, sec).map((g) => ({ name: g.name, spans: g.entries.map((r) => hasSta(r) ? formatStation(r.start) + ' – ' + formatStation(r.end) : 'stations not set'),
+        const roads = pp ? roadGroups(sub, sec).map((g) => ({ name: g.name, aligns: groupAligns(g.entries), spans: g.entries.map((r) => hasSta(r) ? formatStation(r.start) + ' – ' + formatStation(r.end) : 'stations not set'),
           pp: g.entries.reduce((a, r) => a + roadPP(st, sub, r).count, 0), sheets: sheetsOfGroup(sub, sec, g).map((sh) => ({ sh, range: sheetRange(sh) })) })) : [];
         return { sec, pp, total: sec.sheets.length, done: p.done, pct: p.pct, ppTotal: pp ? segPP(st, sub, sec).total : 0, roads, other: (pp ? otherSheets(sub, sec) : sec.sheets).map((sh) => ({ sh, range: sheetRange(sh) })) };
       }) })) }));
@@ -1608,7 +1661,7 @@
       return { disc: T.disc, lead: String(N ? N.text : '').split(/(?<=\.)\s/)[0], facts: facts(T.stats, rows, R.pp.byDisc[T.disc]), groups: Object.fromEntries(Object.entries(groupSecs(allSecs)).map(([k, v]) => [k, v.length])), note: N && N.note,
         subs: T.subs.map((S) => { const r2 = rows.filter((x) => x.sub === S.sub), n2 = N && N.subs.find((y) => y.sub === S.sub);
           return { sub: S.sub, lead: String(n2 ? n2.text.replace(/^[^—]*— \w+: /, '') : '').split(/(?<=\.)\s/)[0], facts: facts(S.stats, r2, S.stats.pp || 0), groups: groupSecs(S.secs), note: n2 && n2.note,
-            roads: S.secs.filter((x) => x.pp).flatMap((x) => x.roads.map((g) => ({ sec: x.sec.title, name: g.name, spans: g.spans, pp: g.pp,
+            roads: S.secs.filter((x) => x.pp).flatMap((x) => x.roads.map((g) => ({ sec: x.sec.title, name: g.name, aligns: g.aligns || [], spans: g.spans, pp: g.pp,
               scale: [...new Set(g.sheets.map((y) => sheetScale(st, S.sub, y.sh)).filter(Boolean))].map((v) => '1" = ' + v + "'").join(', '),
               sheets: g.sheets.map((y) => ({ label: y.sh.gen ? 'PP ' + y.sh.gen.idx : y.sh.title, number: y.sh.number || '', range: y.range ? formatStation(y.range.start) + ' – ' + formatStation(y.range.end) + (y.range.manual ? ' *' : '') : 'stations not set', status: y.sh.status })) }))) }; }) }; });
     /* attention */
@@ -1674,6 +1727,7 @@
     ['depends', 'Depends on', ['depends on', 'depends', 'prerequisite', 'prerequisites', 'after']],
     ['sstart', 'Sheet start station', ['sheet start station', 'sheet start', 'sheet from', 'sheet sta start']],
     ['send', 'Sheet end station', ['sheet end station', 'sheet end', 'sheet to', 'sheet sta end']],
+    ['alignment', 'Alignment', ['alignment', 'alignment name', 'align', 'road alignment', 'baseline', 'centerline']],
   ];
   function parseCSV(text) {
     let t = String(text || '').replace(/^\uFEFF/, '');
@@ -1775,7 +1829,7 @@
         if (!secTxt) it.warns.push('→ section “' + sdef.title + '”.');
         targets = [sdef];
       }
-      it.f = { sub, road, start: a, end: b, scale, disc, status, due, title, series, ppidx, number: get(r, 'number'), owner: get(r, 'owner'), notes: get(r, 'notes'), depends: get(r, 'depends'), sheetStart: Number.isFinite(sa2) ? sa2 : null, sheetEnd: Number.isFinite(sb2) ? sb2 : null, sec: targets[0] || null };
+      it.f = { alignment: cleanAlign(get(r, 'alignment')).slice(0, 60), sub, road, start: a, end: b, scale, disc, status, due, title, series, ppidx, number: get(r, 'number'), owner: get(r, 'owner'), notes: get(r, 'notes'), depends: get(r, 'depends'), sheetStart: Number.isFinite(sa2) ? sa2 : null, sheetEnd: Number.isFinite(sb2) ? sb2 : null, sec: targets[0] || null };
       if (it.f.number && it.kind !== 'road') { if (nums.has(it.f.number)) it.warns.push('Duplicate sheet number ' + it.f.number + ' (also ' + nums.get(it.f.number) + ').'); else nums.set(it.f.number, 'row ' + it.line); }
       if (!it.errors.length && it.kind === 'sheet') {
         const sk = sub.id + '|' + sdef.key + '|' + title.toLowerCase();
@@ -1826,7 +1880,9 @@
     for (const g of plan.groups) {
       const rows = g.rows.filter((x) => !x.errors.length); if (!rows.length) continue;
       let road = g.existing;
-      if (!road) { const sec = secOf(g.sub, g.sdef.key); road = addRoad(st, sec.id, { road: g.road, start: g.start, end: g.end, scale: g.scale || undefined, notes: (rows.find((x) => x.kind === 'road') || {}).f ? rows.find((x) => x.kind === 'road').f.notes : '' }).road; made.roads++; }
+      const al = (rows.find((x) => x.f && x.f.alignment) || { f: {} }).f.alignment || '';
+      if (!road) { const sec = secOf(g.sub, g.sdef.key); road = addRoad(st, sec.id, { road: g.road, start: g.start, end: g.end, scale: g.scale || undefined, alignment: al, notes: (rows.find((x) => x.kind === 'road') || {}).f ? rows.find((x) => x.kind === 'road').f.notes : '' }).road; made.roads++; }
+      else if (al && !roadAlign(road)) road.alignment = al; /* merge: fill a missing alignment, never overwrite one */
       roadOf.set(g, road);
       const wantPP = hasSta(road) && (rows.some((x) => x.kind === 'pp') || (plan.opts.defaults && rows.some((x) => x.kind === 'road')));
       if (wantPP) { const p = planGenerate(st, road.id); applyGenerate(st, road.id, p, { removeTouched: false, quiet: true }); made.pp += p.create.length; }
@@ -1855,17 +1911,17 @@
     return made;
   }
   function csvLine(a) { return a.map(csvCell).join(','); }
-  const CSV_HEAD = ['Sub-project', 'Discipline', 'Section', 'Road', 'Start station', 'End station', 'Scale', 'Sheet title', 'Series', 'PP index', 'Sheet number', 'Status', 'Owner', 'Due date', 'Notes', 'Depends on', 'Sheet start station', 'Sheet end station'];
+  const CSV_HEAD = ['Sub-project', 'Discipline', 'Section', 'Road', 'Start station', 'End station', 'Scale', 'Sheet title', 'Series', 'PP index', 'Sheet number', 'Status', 'Owner', 'Due date', 'Notes', 'Depends on', 'Sheet start station', 'Sheet end station', 'Alignment'];
   function exportImportCSV(st) {
     const L = [csvLine(CSV_HEAD)];
     const deps = (sh) => linksOf(st, { t: 'sheet', id: sh.id }).in.filter((l) => l.kind === 'dep' && l.src.t === 'sheet').map((l) => { const r = resolve(st, l.src); return r ? r.sh.title : ''; }).filter(Boolean).join('; ');
     for (const sub of st.subs) for (const sec of sub.segments) {
       const rs = roadsOf(sub, sec), byId = new Map(rs.map((r) => [r.id, r]));
-      for (const g of rs) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', '', '', '', '', '', '', g.notes || '', '', '', '']));
+      for (const g of rs) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', '', '', '', '', '', '', g.notes || '', '', '', '', roadAlign(g)]));
       for (const sh of sec.sheets) {
         const g = sh.gen && byId.get(sh.gen.road), rg = sheetRange(sh), rs2 = rg ? [formatStation(rg.start), formatStation(rg.end)] : ['', ''];
-        if (g) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', sh.gen.series, sh.gen.idx, sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2)));
-        else L.push(csvLine([subTag(sub), sec.discipline, sec.title, sh.road || '', '', '', '', sh.title, sh.gen ? '' : sh.series || '', '', sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2)));
+        if (g) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', sh.gen.series, sh.gen.idx, sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2, [roadAlign(g)])));
+        else L.push(csvLine([subTag(sub), sec.discipline, sec.title, sh.road || '', '', '', '', sh.title, sh.gen ? '' : sh.series || '', '', sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2, [sh.road ? sheetAlign(st, sub, sec, sh) : ''])));
       }
     }
     return '\uFEFF' + L.join('\r\n') + '\r\n';
@@ -1879,8 +1935,349 @@
       csvLine(['B', 'SWP3', 'SWP3 Layout', 'Kuykendahl Rd', '1000', '1480', '40', '', '', '', '', '', '', '', 'Stations as 1000 / 10+00 / 10+00.50 all work', '']),
       csvLine(['B', 'SWP3', '', '', '', '', '', 'SWP3 Summary & Notes', '', '', '', '', '', 'Dec 5, 2026', 'No section? It is picked from the title', ''])].join('\r\n') + '\r\n';
   }
-  return { reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
-    copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
+  /* ---- v3.7 copy Plan & Profile sheet breaks to Drainage Area Map sheets ----
+     A DAM copy is an ordinary sheet in the sub-project's Drainage Area Map section with an optional
+     sh.dam = { road, idx, of, start, end, scale (null = the road's scale), linked, title }. The range shows like a
+     PP sheet range (sheetRange); a manual range (sh.sta) still wins. Linked copies can be re-synced from the road. */
+  function damSection(sub) { return secOf(sub, 'dr-dam') || sub.segments.find((g) => g.discipline === 'Drainage' && /drainage area map/i.test(g.title) && !/overall/i.test(g.title)) || null; }
+  function damTitle(road, r) { const a = roadAlign(road); return 'DAM – ' + String(road.road || 'Road').trim() + (a ? ' (' + a + ')' : '') + ' STA ' + formatStation(r.start) + '–' + formatStation(r.end); }
+  function damRanges(st, sub, road, scale) {
+    if (!hasSta(road)) return [];
+    const sc = scale ? Number(scale) : segScale(sub, road);
+    let r = ppRanges(parseStation(road.start), parseStation(road.end), ftPerSheet(st.settings, sc), st.settings.overlapFt);
+    if (road.reverse) r = r.slice().reverse().map((x, i) => Object.assign({}, x, { idx: i + 1 }));
+    return r;
+  }
+  function damCopiesOf(sub, roadId) { return sub.segments.flatMap((g) => g.sheets.filter((sh) => sh.dam && sh.dam.road === roadId).map((sh) => ({ sh, sec: g }))).sort((a, b) => a.sh.dam.idx - b.sh.dam.idx); }
+  /* every road entry that can be copied: roads of Plan & Profile sections */
+  function damSources(st, subIds) {
+    const out = [];
+    for (const sub of orderedSubs(st)) { if (subIds && !subIds.includes(sub.id)) continue; for (const sec of sub.segments.filter(isPPSec)) for (const road of roadsOf(sub, sec)) out.push({ sub, sec, road }); }
+    return out;
+  }
+  /* plan only (no change). opts: { roads:[roadId] (default every P&P road of the chosen subs), subs:[subId], scale (null = same as the P&P sheets), mode:'update'|'skip', linkedOnly } */
+  function planDam(st, opts) {
+    opts = opts || {};
+    const mode = opts.mode === 'skip' ? 'skip' : 'update';
+    const scale = opts.scale ? Number(opts.scale) : null;
+    if (scale != null && !(ftPerSheet(st.settings, scale) > 0)) throw new Error('Unknown scale ' + opts.scale + '.');
+    const src = damSources(st, opts.subs).filter((x) => !opts.roads || opts.roads.includes(x.road.id));
+    const P = { mode, scale, items: [], create: 0, update: 0, remove: 0, keep: 0, unchanged: 0, skipped: 0, noSta: 0, noTarget: 0, dupTitle: 0 };
+    for (const { sub, sec, road } of src) {
+      const target = damSection(sub);
+      const it = { sub, sec, road, target, create: [], update: [], remove: [], keep: [], unchanged: 0, skipped: false, reason: '' };
+      P.items.push(it);
+      if (!target) { it.reason = 'no Drainage Area Map section'; P.noTarget++; continue; }
+      if (!hasSta(road)) { it.reason = 'no stations yet'; P.noSta++; continue; }
+      let ex = damCopiesOf(sub, road.id);
+      if (opts.linkedOnly) { ex = ex.filter((x) => x.sh.dam.linked !== false); if (!ex.length) { it.skipped = true; it.reason = 'not linked'; continue; } }
+      if (ex.length && mode === 'skip') { it.skipped = true; it.reason = 'already has ' + ex.length + ' DAM sheet' + (ex.length === 1 ? '' : 's'); P.skipped++; continue; }
+      if (ex.length && ex.every((x) => x.sh.dam.linked === false) && !opts.linkedOnly && mode === 'update') { /* unlinked copies are left alone */ it.skipped = true; it.reason = 'existing DAM copies are unlinked'; P.skipped++; continue; }
+      const unl = ex.filter((x) => x.sh.dam.linked === false); ex = ex.filter((x) => x.sh.dam.linked !== false); /* unlinked copies are never changed, but they count as existing */
+      const sc = opts.linkedOnly ? (ex[0] ? ex[0].sh.dam.scale || null : null) : scale;
+      const ranges = damRanges(st, sub, road, sc);
+      const used = new Set();
+      for (const r of ranges) {
+        const title = damTitle(road, r);
+        const m = ex.find((x) => !used.has(x) && x.sh.dam.idx === r.idx);
+        if (m) {
+          used.add(m);
+          const d = m.sh.dam, edited = d.title && m.sh.title !== d.title;
+          if (d.start !== r.start || d.end !== r.end || d.of !== r.of || (d.scale || null) !== (sc || null) || (!edited && m.sh.title !== title)) it.update.push({ sheet: m.sh, range: r, title, edited });
+          else it.unchanged++;
+          continue;
+        }
+        if (target.sheets.some((q) => !q.dam && String(q.title).trim().toLowerCase() === title.toLowerCase())) { it.unchanged++; P.dupTitle++; continue; } /* same sheet already typed by hand */
+        if (unl.some((x) => x.sh.dam.start === r.start && x.sh.dam.end === r.end)) { it.unchanged++; continue; } /* an unlinked copy already covers this range */
+        it.create.push({ range: r, title });
+      }
+      for (const x of ex) if (!used.has(x)) (isTouched(x.sh) ? it.keep : it.remove).push(x.sh);
+      it.scale = sc;
+      P.create += it.create.length; P.update += it.update.length; P.remove += it.remove.length; P.keep += it.keep.length; P.unchanged += it.unchanged;
+    }
+    return P;
+  }
+  function applyDam(st, plan, opts) {
+    opts = opts || {};
+    const link = opts.link !== false;
+    const out = { created: 0, updated: 0, removed: 0, kept: 0, ids: [] };
+    for (const it of plan.items) {
+      if (it.skipped || !it.target || (!it.create.length && !it.update.length && !it.remove.length)) { out.kept += (it.keep || []).length; continue; }
+      const live = findRoad(st, it.road.id); if (!live) continue;
+      const sub = live.sub, road = live.road, target = damSection(sub);
+      const br = ensureDamBranch(target, road);
+      for (const c of it.create) {
+        const sh = newSheet({ title: c.title, discipline: target.discipline, series: target.title, road: road.road });
+        sh.dam = { road: road.id, idx: c.range.idx, of: c.range.of, start: c.range.start, end: c.range.end, scale: it.scale || null, linked: link, title: c.title, branch: br.id };
+        target.sheets.push(sh); sh.number = suggestNumber(st, sh) || '';
+        out.created++; out.ids.push(sh.id);
+      }
+      for (const u of it.update) {
+        const hit = findSheet(st, u.sheet.id); if (!hit) continue;
+        const sh = hit.sh, d = sh.dam;
+        Object.assign(d, { road: road.id, idx: u.range.idx, of: u.range.of, start: u.range.start, end: u.range.end, scale: it.scale || null });
+        if (hit.seg === target && !damBranchOf(target, sh)) d.branch = br.id;
+        if (!u.edited) { sh.title = u.title; d.title = u.title; }
+        sh.road = road.road; out.updated++;
+      }
+      const kill = new Set(it.remove.map((x) => x.id));
+      if (kill.size) { for (const g of sub.segments) g.sheets = g.sheets.filter((q) => !kill.has(q.id)); out.removed += kill.size; }
+      out.kept += it.keep.length;
+      sortDam(sub, target);
+    }
+    for (const sub of st.subs) syncDamBranches(sub);
+    if (out.removed) pruneLinks(st);
+    log(st, 'Drainage Area Map copies of P&P sheets: +' + out.created + ' new, ' + out.updated + ' updated, ' + out.removed + ' removed' + (out.kept ? ', ' + out.kept + ' edited kept' : ''));
+    return out;
+  }
+  /* keep a section's own sheets first, then DAM copies by road order and sheet index */
+  function sortDam(sub, sec) {
+    const order = new Map(sub.segments.filter(isPPSec).flatMap((g) => roadsOf(sub, g)).map((r, i) => [r.id, i]));
+    const plain = sec.sheets.filter((q) => !q.dam), dam = sec.sheets.filter((q) => q.dam);
+    dam.sort((a, b) => ((order.get(a.dam.road) ?? 1e9) - (order.get(b.dam.road) ?? 1e9)) || a.dam.idx - b.dam.idx);
+    sec.sheets = plain.concat(dam);
+    if (Array.isArray(sec.damRoads)) { const first = (br) => Math.min(1e9, ...br.src.map((id) => order.has(id) ? order.get(id) : 1e9)); sec.damRoads.sort((a, b) => first(a) - first(b) || String(a.road).localeCompare(String(b.road))); }
+  }
+  /* ---- v3.9 Hydraulic Data Sheets by count (no road needed) ----
+     Sheets made by count carry an optional sh.hyd = { idx, of, title } (title = the generic title it was given, so an
+     edited title is kept). Generic title: '<section title> (i of N)', e.g. 'Hydraulic Data Sheet - Inlet Computations (2 of 3)'.
+     Adding more continues the numbering; deleting one renumbers the rest. Road-tagged sheets in the section are untouched. */
+  function isHydSec(sec) { return !!sec && (/^dr-hds/.test(String(sec.key || '')) || /hydraulic data/i.test(String(sec.title || ''))); }
+  function hydTitle(sec, i, n) { return String(sec.title || 'Hydraulic Data Sheet').trim() + ' (' + i + ' of ' + n + ')'; }
+  function hydSheets(sec) { return sec.sheets.filter((q) => q.hyd).sort((a, b) => a.hyd.idx - b.hyd.idx); }
+  /* renumber 1..k in order, refresh 'of' and the titles nobody edited */
+  function syncHyd(sec) {
+    const hs = hydSheets(sec), n = hs.length;
+    hs.forEach((sh, i) => { const edited = sh.hyd.title && sh.title !== sh.hyd.title; sh.hyd.idx = i + 1; sh.hyd.of = n; const t = hydTitle(sec, i + 1, n); if (!edited) sh.title = t; sh.hyd.title = edited ? sh.hyd.title : t; });
+  }
+  /* a plain sheet titled like the section (e.g. from "+ Standard sheets") becomes sheet 1 instead of a duplicate */
+  function hydAdoptable(sec) { const t = String(sec.title || '').trim().toLowerCase(); return hydSheets(sec).length ? null : sec.sheets.find((q) => !q.hyd && !q.gen && !q.dam && String(q.title || '').trim().toLowerCase() === t) || null; }
+  /* plan only: { cur, n, create, adopt, remove:[sheets], progress:[sheets with work that would be removed], titles } */
+  function planHydCount(st, secId, n) {
+    const hit = findSeg(st, secId); if (!hit) throw new Error('No such section');
+    n = Number(n);
+    if (!Number.isInteger(n) || n < 0 || n > 200) throw new Error('Enter a whole number of sheets from 0 to 200.');
+    const sec = hit.seg, hs = hydSheets(sec), ad = hydAdoptable(sec), cur = hs.length + (ad ? 1 : 0);
+    const remove = n < hs.length ? hs.slice(n) : [];
+    return { sec, cur, n, adopt: ad && n > 0 ? ad : null, create: Math.max(0, n - cur), remove, progress: remove.filter(isTouched),
+      titles: Array.from({ length: n }, (_, i) => hydTitle(sec, i + 1, n)) };
+  }
+  function setHydCount(st, secId, n, opts) {
+    const P = planHydCount(st, secId, n), sec = P.sec, hit = findSeg(st, secId);
+    if (P.progress.length && !(opts && opts.force)) throw new Error(P.progress.length + ' of the sheets to remove have work on them.');
+    if (P.adopt) { P.adopt.hyd = { idx: 1, of: 1, title: P.adopt.title }; }
+    const start = hydSheets(sec).length, made = [];
+    for (let i = 0; i < P.create; i++) {
+      const sh = newSheet({ title: 'x', discipline: sec.discipline, series: sec.title });
+      sh.series = ''; sh.hyd = { idx: start + i + 1, of: 0, title: 'x' };
+      sec.sheets.push(sh); made.push(sh);
+    }
+    if (P.remove.length) { const kill = new Set(P.remove.map((q) => q.id)); sec.sheets = sec.sheets.filter((q) => !kill.has(q.id)); pruneLinks(st); }
+    syncHyd(sec);
+    for (const sh of made.concat(P.adopt && !P.adopt.number ? [P.adopt] : [])) sh.number = suggestNumber(st, sh) || '';
+    log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' sheet' + (P.n === 1 ? '' : 's') + ' (' + (made.length ? '+' + made.length : '') + (P.remove.length ? (made.length ? ', ' : '') + '−' + P.remove.length : '') + (!made.length && !P.remove.length ? 'no change' : '') + ')', { t: 'seg', id: sec.id });
+    return { created: made.length, removed: P.remove.length, adopted: P.adopt ? 1 : 0, n: P.n, ids: made.map((q) => q.id) };
+  }
+  /* ---- v3.8 DAM road branches: Drainage Area Map > Road > sheets ----
+     A DAM section may hold sec.damRoads = [{ id, road, alignment?, src:[source road entry ids], notes }] (optional field).
+     A copied sheet points at its branch with sh.dam.branch. A branch mirrors its source road (name + alignment) while it has
+     source roads; when they are deleted it stays, unlinked, with its sheets. One branch per road name, like the P&P tree. */
+  function damBranches(sec) { return sec && Array.isArray(sec.damRoads) ? sec.damRoads : []; }
+  function damBranchOf(sec, sh) { return sh && sh.dam && sh.dam.branch ? damBranches(sec).find((b) => b.id === sh.dam.branch) || null : null; }
+  function damBranchSheets(sec, br) { return sec.sheets.filter((sh) => sh.dam && sh.dam.branch === br.id).sort((a, b) => (Number.isFinite(a.dam.start) ? a.dam.start : 1e12) - (Number.isFinite(b.dam.start) ? b.dam.start : 1e12) || a.dam.idx - b.dam.idx); }
+  function damLoose(sec) { const ids = new Set(damBranches(sec).map((b) => b.id)); return sec.sheets.filter((sh) => !(sh.dam && ids.has(sh.dam.branch))); }
+  function findDamBranch(st, id) {
+    for (const sub of st.subs) for (const seg of sub.segments) { const br = damBranches(seg).find((b) => b.id === id); if (br) return { sub, seg, br }; }
+    return null;
+  }
+  function damBranchLinked(br) { return !!(br && br.src && br.src.length); }
+  function newDamBranch(sec, name, alignment) {
+    const br = { id: uid(), road: String(name || '').trim() || 'Road', src: [], notes: '' };
+    const a = checkAlign(alignment || ''); if (a) br.alignment = a;
+    if (!Array.isArray(sec.damRoads)) sec.damRoads = [];
+    sec.damRoads.push(br); return br;
+  }
+  /* the branch a copy of this road goes to: one already linked to it, else one with the same road name, else a new one */
+  function ensureDamBranch(sec, road) {
+    const bs = damBranches(sec);
+    let br = bs.find((b) => b.src.includes(road.id)) || bs.find((b) => rgSlug(b.road) === rgSlug(road.road));
+    if (!br) br = newDamBranch(sec, road.road, roadAlign(road));
+    if (!br.src.includes(road.id)) br.src.push(road.id);
+    return br;
+  }
+  /* sources follow the linked sheets (split / merge / delete road), names mirror the first live source road */
+  function syncDamBranches(sub) {
+    const live = new Map(sub.roads.map((r) => [r.id, r]));
+    for (const sec of sub.segments) for (const br of damBranches(sec)) {
+      const src = new Set(br.src.filter((id) => live.has(id)));
+      for (const sh of sec.sheets) if (sh.dam && sh.dam.branch === br.id && sh.dam.linked !== false && live.has(sh.dam.road)) src.add(sh.dam.road);
+      br.src = [...src];
+      const r = br.src.map((id) => live.get(id))[0];
+      if (r) { br.road = String(r.road || '').trim() || br.road; const a = roadAlign(r); if (a) br.alignment = a; else delete br.alignment; }
+      for (const sh of sec.sheets) if (sh.dam && sh.dam.branch === br.id && sh.dam.linked !== false && live.has(sh.dam.road)) sh.road = live.get(sh.dam.road).road;
+    }
+  }
+  /* load: keep valid branches; copies made before v3.8 (flat, no branch key) move into the branch of their road */
+  function normDamBranches(sub) {
+    const roads = new Map(sub.roads.map((r) => [r.id, r]));
+    for (const sec of sub.segments) {
+      if ('damRoads' in sec) {
+        const seen = new Set();
+        sec.damRoads = Array.isArray(sec.damRoads) ? sec.damRoads.filter((b) => b && typeof b === 'object' && typeof b.id === 'string' && b.id && !seen.has(b.id) && seen.add(b.id)) : [];
+        for (const b of sec.damRoads) {
+          b.road = String(b.road || '').trim().slice(0, 120) || 'Road';
+          const a = typeof b.alignment === 'string' ? checkAlign(b.alignment) : ''; if (a) b.alignment = a; else delete b.alignment;
+          b.src = Array.isArray(b.src) ? [...new Set(b.src.filter((id) => typeof id === 'string' && roads.has(id)))] : [];
+          b.notes = typeof b.notes === 'string' ? b.notes : '';
+        }
+        if (!sec.damRoads.length) delete sec.damRoads;
+      }
+      for (const sh of sec.sheets) {
+        if (!sh.dam) continue;
+        if (sh.dam.branch !== undefined) { if (sh.dam.branch !== null && !damBranchOf(sec, sh)) sh.dam.branch = null; continue; }
+        if (sec !== damSection(sub)) { sh.dam.branch = null; continue; }
+        const r = roads.get(sh.dam.road), m = /^DAM – (.+?)(?: \((.+)\))? STA /.exec(String(sh.dam.title || sh.title || ''));
+        const name = (r && r.road) || sh.road || (m && m[1]) || '';
+        if (!String(name).trim()) { sh.dam.branch = null; continue; }
+        let br = damBranches(sec).find((b) => (r && b.src.includes(r.id)) || rgSlug(b.road) === rgSlug(name));
+        if (!br) br = newDamBranch(sec, name, r ? roadAlign(r) : (m && m[2]) || '');
+        if (r && sh.dam.linked !== false && !br.src.includes(r.id)) br.src.push(r.id);
+        sh.dam.branch = br.id;
+      }
+    }
+  }
+  /* unlink a whole branch: its sheets stay, they just stop following the road */
+  function unlinkDamBranch(st, id) {
+    const hit = findDamBranch(st, id); if (!hit) throw new Error('No such DAM road branch.');
+    let n = 0; for (const sh of damBranchSheets(hit.seg, hit.br)) if (sh.dam.linked !== false) { sh.dam.linked = false; n++; }
+    hit.br.src = [];
+    log(st, 'Unlinked DAM road ' + subTag(hit.sub) + ' · ' + hit.br.road + ' (' + n + ' sheets)', null);
+    return n;
+  }
+  /* remove a branch; its sheets stay in the section (flat) */
+  function deleteDamBranch(st, id) {
+    const hit = findDamBranch(st, id); if (!hit) return false;
+    for (const sh of damBranchSheets(hit.seg, hit.br)) sh.dam.branch = null;
+    hit.seg.damRoads = damBranches(hit.seg).filter((b) => b !== hit.br); if (!hit.seg.damRoads.length) delete hit.seg.damRoads;
+    pruneProps(st); log(st, 'Removed DAM road branch ' + subTag(hit.sub) + ' · ' + hit.br.road);
+    return true;
+  }
+  /* linked DAM copies whose road stations / scale changed since they were made */
+  function damOutOfSync(st, subIds) {
+    const P = planDam(st, { subs: subIds, linkedOnly: true, mode: 'update' });
+    return { plan: P, count: P.create + P.update + P.remove, roads: P.items.filter((x) => x.create.length || x.update.length || x.remove.length).map((x) => x.road) };
+  }
+  function resyncDam(st, subIds) { const o = damOutOfSync(st, subIds); return o.count ? applyDam(st, o.plan, { link: true }) : { created: 0, updated: 0, removed: 0, kept: 0, ids: [] }; }
+  function unlinkDam(st, sheetId) { const h = findSheet(st, sheetId); if (!h || !h.sh.dam) throw new Error('Not a DAM copy.'); h.sh.dam.linked = false; log(st, 'Unlinked ' + h.sh.title + ' from its road', { t: 'sheet', id: sheetId }); return h.sh; }
+  /* ---- v3.6 branch properties: optional owner / due / milestone / notes on the project, a discipline, a sub-project branch,
+     a section or a road entry. Stored in the optional st.props map keyed like the tree nodes
+     ('root', 'dtop:<discipline>', 'disc:<subId>:<discipline>', 'seg:<id>', 'road:<id>'). Notes of sections and road entries
+     stay in their existing .notes field. Sheets keep their own fields. Old data without st.props reads as empty. ---- */
+  const PROP_FIELDS = ['owner', 'due', 'milestone', 'notes'];
+  function propTarget(st, key) {
+    const k = String(key || ''), i = k.indexOf(':'), t = i < 0 ? k : k.slice(0, i), rest = i < 0 ? '' : k.slice(i + 1);
+    if (k === 'root') return { t: 'root', key: k, label: st.project.name };
+    if (t === 'dtop') return DISCIPLINES.includes(rest) ? { t, key: k, disc: rest, label: rest } : null;
+    if (t === 'disc') { const j = rest.lastIndexOf(':'), sub = findSub(st, rest.slice(0, j)), d = rest.slice(j + 1); return sub && DISCIPLINES.includes(d) ? { t, key: k, sub, disc: d, label: subTag(sub) + ' · ' + d } : null; }
+    if (t === 'seg') { const x = findSeg(st, rest); return x ? { t, key: k, sub: x.sub, seg: x.seg, disc: x.seg.discipline, obj: x.seg, label: subTag(x.sub) + ' · ' + x.seg.title } : null; }
+    if (t === 'dbr') { const x = findDamBranch(st, rest); return x ? { t, key: k, sub: x.sub, seg: x.seg, br: x.br, disc: x.seg.discipline, obj: x.br, label: subTag(x.sub) + ' · ' + x.seg.title + ' · ' + x.br.road } : null; }
+    if (t === 'road') { const x = findRoad(st, rest); return x && x.sec ? { t, key: k, sub: x.sub, seg: x.sec, road: x.road, disc: x.sec.discipline, obj: x.road, label: subTag(x.sub) + ' · ' + segLabel(x.road) } : null; }
+    return null;
+  }
+  function getProps(st, key) {
+    const tg = propTarget(st, key);
+    const raw = (st.props && st.props[key]) || {};
+    const out = { owner: String(raw.owner || ''), due: String(raw.due || ''), milestone: String(raw.milestone || ''), notes: String(raw.notes || '') };
+    if (tg && tg.obj) out.notes = String(tg.obj.notes || '');
+    return out;
+  }
+  function checkProps(st, f) {
+    const errs = [];
+    if (f.due != null && f.due !== '' && !(/^\d{4}-\d{2}-\d{2}$/.test(f.due) && !isNaN(Date.parse(f.due + 'T00:00:00')))) errs.push('Due date must be a date (YYYY-MM-DD).');
+    if (f.milestone != null && f.milestone !== '' && !st.milestones.some((m) => m.id === f.milestone)) errs.push('Unknown milestone.');
+    if (f.owner != null && String(f.owner).length > 80) errs.push('Owner name is too long.');
+    if (f.notes != null && String(f.notes).length > 10000) errs.push('Notes are too long.');
+    return errs;
+  }
+  /* set some of owner / due / milestone / notes; empty values are removed so the data stays small */
+  function setProps(st, key, f) {
+    const tg = propTarget(st, key);
+    if (!tg) throw new Error('Nothing to edit here.');
+    f = f || {};
+    const errs = checkProps(st, f); if (errs.length) throw new Error(errs.join(' '));
+    const cur = getProps(st, key), changed = [];
+    for (const k of PROP_FIELDS) {
+      if (!(k in f)) continue;
+      const v = k === 'notes' ? String(f[k] == null ? '' : f[k]) : String(f[k] == null ? '' : f[k]).trim();
+      if (v === cur[k]) continue;
+      changed.push(k);
+      if (k === 'notes' && tg.obj) { tg.obj.notes = v; continue; }
+      if (!st.props || typeof st.props !== 'object') st.props = {};
+      const e = Object.assign({}, st.props[key]);
+      if (v) e[k] = v; else delete e[k];
+      if (Object.keys(e).length) st.props[key] = e; else delete st.props[key];
+    }
+    if (changed.length) log(st, tg.label + ': ' + changed.join(', ') + ' updated', tg.obj ? { t: tg.t, id: tg.obj.id } : null);
+    return { changed };
+  }
+  /* sheets under a node */
+  function propSheets(st, tg) {
+    if (tg.t === 'root') return allSheets(st).map((r) => r.sh);
+    if (tg.t === 'dtop') return st.subs.flatMap((sub) => sectionsOf(sub, tg.disc).flatMap((g) => g.sheets));
+    if (tg.t === 'disc') return sectionsOf(tg.sub, tg.disc).flatMap((g) => g.sheets);
+    if (tg.t === 'seg') return tg.seg.sheets.slice();
+    if (tg.t === 'dbr') return damBranchSheets(tg.seg, tg.br);
+    if (tg.t === 'road') { const g = roadGroups(tg.sub, tg.seg).find((x) => x.entries.includes(tg.road)); return g ? sheetsOfGroup(tg.sub, tg.seg, g) : tg.seg.sheets.filter((x) => x.gen && x.gen.road === tg.road.id); }
+    return [];
+  }
+  /* roll-up for the properties panel: counts, % complete, hours, dates, flags and the connectors that touch the branch */
+  function rollup(st, key, today) {
+    today = today || todayISO();
+    const tg = propTarget(st, key); if (!tg) return null;
+    const sheets = propSheets(st, tg), p = progress(sheets);
+    const ids = new Set(sheets.map((x) => 'sheet:' + x.id));
+    if (tg.t === 'seg' || tg.t === 'root' || tg.t === 'dtop' || tg.t === 'disc') for (const sub of st.subs) for (const g of sub.segments) {
+      const inside = tg.t === 'root' || (tg.t === 'dtop' && g.discipline === tg.disc) || (tg.t === 'disc' && sub === tg.sub && g.discipline === tg.disc) || (tg.t === 'seg' && g === tg.seg);
+      if (inside) { ids.add('seg:' + g.id); for (const r of roadsOf(sub, g)) ids.add('road:' + r.id); for (const b of damBranches(g)) ids.add('dbr:' + b.id); }
+    }
+    if (tg.t === 'road') ids.add('road:' + tg.road.id);
+    if (tg.t === 'dbr') ids.add('dbr:' + tg.br.id);
+    const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+    const dues = sheets.map((x) => x.due).filter(Boolean).sort();
+    const pr = getProps(st, key);
+    const lin = [], lout = [], internal = [];
+    for (const l of st.links) {
+      const a = ids.has(rk(l.src)), b = ids.has(rk(l.dst));
+      if (a && b) internal.push(l); else if (b) lin.push(l); else if (a) lout.push(l);
+    }
+    return {
+      t: tg.t, label: tg.label, total: sheets.length, done: p.done, pct: p.pct,
+      hoursBudget: Math.round(sheets.reduce((a, x) => a + num(x.hoursBudget), 0) * 10) / 10,
+      hoursActual: Math.round(sheets.reduce((a, x) => a + num(x.hoursActual), 0) * 10) / 10,
+      overdue: sheets.filter((x) => isOverdue(x, today)).length,
+      blocked: sheets.filter((x) => x.status !== 'Done' && blockers(st, { t: 'sheet', id: x.id }).length).length,
+      update: sheets.filter((x) => needsUpdate(st, { t: 'sheet', id: x.id }).length).length,
+      unassigned: sheets.filter((x) => !x.owner).length,
+      owners: [...new Set(sheets.map((x) => x.owner).filter(Boolean))].sort(),
+      firstDue: dues[0] || '', lastDue: dues[dues.length - 1] || '',
+      lateVsDue: pr.due ? sheets.filter((x) => x.due && x.due > pr.due && x.status !== 'Done').length : 0,
+      overdueSelf: !!(pr.due && pr.due < today && !(sheets.length && p.done === sheets.length)),
+      linksIn: lin, linksOut: lout, linksInternal: internal,
+      blockingIn: lin.filter((l) => l.kind === 'dep' && !isDone(st, l.src)).length,
+    };
+  }
+  /* drop properties whose branch is gone (deleted section or road entry) and anything that is not a known field */
+  function pruneProps(st) {
+    if (!st.props || typeof st.props !== 'object' || Array.isArray(st.props)) { delete st.props; return; }
+    for (const k of Object.keys(st.props)) {
+      const e = st.props[k], tg = propTarget(st, k);
+      if (!tg || !e || typeof e !== 'object') { delete st.props[k]; continue; }
+      for (const f of Object.keys(e)) if (!['owner', 'due', 'milestone', 'notes'].includes(f) || typeof e[f] !== 'string' || !e[f] || (f === 'notes' && tg.obj) || (f === 'milestone' && !(st.milestones || []).some((m) => m.id === e[f]))) delete e[f];
+      if (!Object.keys(e).length) delete st.props[k];
+    }
+  }
+  return { isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+    linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
     LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV,
