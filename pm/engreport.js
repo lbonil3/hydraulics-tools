@@ -84,7 +84,7 @@
     const secsWith = (pred) => subs.flatMap((sub) => sub.segments.filter((g) => pred(g)).map((g) => ({ sub, g })));
     return { subs, all, roads, secsWith };
   }
-  const isHds = (g) => /^dr-hds/.test(String(g.key || '')) || /hydraulic data/i.test(String(g.title || ''));
+  const isHds = (g) => typeof M.isHydSec === 'function' ? M.isHydSec(g) : /^dr-hds/.test(String(g.key || '')) || /hydraulic data/i.test(String(g.title || ''));
   /* ---- the sections: blocks = [{ p } | { ul } | { table:{ head, rows } }]; ph = the placeholder shown when the engineer adds nothing ---- */
   function build(st, today) {
     today = today || M.todayISO();

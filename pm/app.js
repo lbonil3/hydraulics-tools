@@ -1394,6 +1394,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (type !== 'root') items.push(['Focus branch', '', () => { select_(type, id); focusSel(); }]);
     if (n.kids.length) items.push([n.collapsed ? 'Expand' : 'Collapse', '→ ←', () => toggleNode(n)]);
     if (n.type === 'disc') items.push(['Add a sheet…', 'n', () => { select_('disc', id); focusAdd('qaTitle'); }]);
+    if (n.type === 'seg' && M.isHydSec(n.seg)) items.push(['Set number of sheets…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('hydCount'); }]);
     if (n.type === 'seg') items.push([n.pp ? 'Add a road…' : 'Add a sheet…', 'n', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd(n.pp ? 'addRoadName' : 'addSheetTitle'); }]);
     if (n.type === 'road') items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: n.g.entries.map((r) => r.id) })]);
     if (n.type === 'seg' && n.pp && M.roadsOf(n.sub, n.seg).length) items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: M.roadsOf(n.sub, n.seg).map((r) => r.id) })]);
@@ -1688,6 +1689,35 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('datalist', { id: 'roadList' }, M.roads(st).map((r) => h('option', { value: r }))), msg,
       h('small', { class: 'muted' }, 'Only the road name is needed. Shift+Enter adds and starts the next one.'));
   }
+  /* v3.9 Hydraulic Data Sheets: just say how many are needed (no road / stations) */
+  function hydBox(sub, seg) {
+    const cur = M.planHydCount(st, seg.id, 0).cur;
+    const inp = h('input', { id: 'hydCount', type: 'number', inputmode: 'numeric', min: 0, max: 200, step: 1, value: String(cur), 'aria-label': 'Number of ' + seg.title + ' sheets', class: 'mono hydn' });
+    const prev = h('div', { id: 'hydPrev', class: 'small', 'aria-live': 'polite' });
+    const btn = h('button', { class: 'btn', type: 'submit', id: 'hydSet' }, 'Set');
+    const plan = () => { try { return M.planHydCount(st, seg.id, inp.value === '' ? NaN : Number(inp.value)); } catch (e) { return { err: e.message }; } };
+    const upd = () => { const P = plan();
+      if (P.err) { prev.replaceChildren(h('p', { class: 'err' }, P.err)); btn.disabled = true; return; }
+      const same = P.n === P.cur && !P.adopt; btn.disabled = same;
+      prev.replaceChildren(same ? h('p', { class: 'muted' }, P.n ? 'Titles: “' + P.titles[0] + '”' + (P.n > 1 ? ' … “' + P.titles[P.n - 1] + '”' : '') + '. Edit any title on the sheet; edited titles are kept.' : 'No sheets yet. Enter how many this section needs.') :
+        h('p', {}, [P.create ? 'Adds ' + plural(P.create, 'sheet') + ' (' + (P.cur + 1) + '–' + P.n + ')' : '', P.adopt ? 'uses the existing “' + P.adopt.title + '” as sheet 1' : '', P.remove.length ? 'removes ' + plural(P.remove.length, 'sheet') + ' (' + (P.n + 1) + '–' + P.cur + ')' : ''].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase()), '. Titles become “' + (P.titles[0] || '') + '” …' + (P.n > 1 ? ' “' + P.titles[P.n - 1] + '”' : '') + '.',
+          P.progress.length ? h('span', { class: 'err' }, ' ⚠ ' + P.progress.length + (P.progress.length === 1 ? ' of them has' : ' of them have') + ' work on it — you will be asked to confirm.') : null)); };
+    inp.addEventListener('input', upd); setTimeout(upd, 0);
+    const go = (n) => {
+      inp.value = String(n); const P = plan(); if (P.err) { upd(); return; }
+      if (P.progress.length && !confirm('Remove ' + plural(P.remove.length, 'sheet') + ' from ' + seg.title + '?\n\n' + (P.progress.length === 1 ? '1 of them has work on it' : P.progress.length + ' of them have work on them') + ' (status, owner, hours, QC, notes or an edited title):\n' + P.progress.map((q) => '• ' + q.title + ' — ' + q.status + (q.owner ? ', ' + q.owner : '')).join('\n') + '\n\nUndo with Ctrl+Z.')) return;
+      const r = commit(() => M.setHydCount(st, seg.id, n, { force: true }));
+      if (r) { setSeg(seg.id, false); saveUI(); renderAll(); toast(seg.title + ': ' + plural(r.n, 'sheet') + (r.created ? ' · ' + r.created + ' added' : '') + (r.removed ? ' · ' + r.removed + ' removed' : '') + '. Undo with Ctrl+Z.'); const i = $('#hydCount'); if (i) i.focus(); }
+    };
+    return h('section', { class: 'box hydbox', id: 'hydBox' }, h('h3', {}, 'How many sheets?'),
+      h('p', { class: 'muted small' }, 'Hydraulic data sheets are mostly tables, so no road or stations are needed. Enter the number of sheets; they get generic titles you can edit later.'),
+      h('form', { class: 'row hydrow', onsubmit: (e) => { e.preventDefault(); go(Number(inp.value)); } },
+        h('button', { type: 'button', class: 'btn sec hydpm', id: 'hydMinus', 'aria-label': 'One sheet less', onclick: () => { inp.value = String(Math.max(0, (Number(inp.value) || 0) - 1)); upd(); } }, '−'),
+        inp,
+        h('button', { type: 'button', class: 'btn sec hydpm', id: 'hydPlus', 'aria-label': 'One sheet more', onclick: () => { inp.value = String(Math.min(200, (Number(inp.value) || 0) + 1)); upd(); } }, '+'),
+        btn, h('button', { type: 'button', class: 'btn sec sm', id: 'hydAdd1', onclick: () => go(M.planHydCount(st, seg.id, 0).cur + 1) }, '+ Add 1 more')),
+      prev);
+  }
   function segDrawer({ sub, seg }) {
     const d = seg.discipline, pp = M.isPPSec(seg);
     const p = M.progress(seg.sheets);
@@ -1705,16 +1735,17 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       propsBox('seg:' + seg.id, { name: h('p', { class: 'muted small' }, 'Section names are shared by A–D: ', h('button', { type: 'button', class: 'link', onclick: () => openSettings('secs') }, 'Edit section lists')),
         actions: pp && M.roadsOf(sub, seg).length ? damBtn({ subs: [sub.id], roads: M.roadsOf(sub, seg).map((r) => r.id) }) : M.damSection(sub) === seg ? [damBtn({ subs: [sub.id] }, 'Copy P&P sheets here…'), damSyncBtn([sub.id])] : null }),
       M.damSection(sub) === seg ? damBox(sub, seg) : null,
+      M.isHydSec(seg) ? hydBox(sub, seg) : null,
       pp ? h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, 'Roads in this section'),
         h('p', { class: 'muted small' }, 'PP sheets = ceil(length ÷ feet per sheet): 20 scale = 240 ft, 40 = 480, 50 = 600, 100 = 1,200 ft per sheet. Edit the cells directly.'),
         roadTable(sub, seg), addRoadForm(sub, seg),
         h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', id: 'genBtn', disabled: !pending, onclick: () => genSection(seg) }, pending ? 'Generate PP sheets (' + pending + ' change' + (pending === 1 ? '' : 's') + ')' : 'PP sheets up to date ✓'))) : null,
-      h('section', { class: 'box' }, h('h3', {}, pp ? 'Other sheets in this section' : 'Add sheets'),
+      h('section', { class: 'box' }, h('h3', {}, pp ? 'Other sheets in this section' : M.isHydSec(seg) ? 'Add one sheet with its own title' : 'Add sheets'),
         h('form', { class: 'addrow', id: 'addSheetForm', onsubmit: (e) => { e.preventDefault(); if (!nt.value.trim()) return; const shx = commit(() => M.addSheet(st, seg.id, { title: nt.value, road: nr.value })); setSeg(seg.id, false); saveUI(); renderAll(); if (shx) { toast('Added “' + shx.title + '”.'); const i = $('#addSheetTitle'); if (i) i.focus(); } } },
-          nt, nr, h('button', { class: 'btn', type: 'submit' }, 'Add')),
+          nt, M.isHydSec(seg) ? null : nr, h('button', { class: 'btn', type: 'submit' }, 'Add')),
         h('datalist', { id: 'tplList' }, tpls.concat(st.index.filter((t) => t.sec === seg.key)).map((t) => h('option', { value: t.title }))),
         h('datalist', { id: 'roadList3' }, M.roads(st).map((r) => h('option', { value: r }))),
-        tpls.length ? h('form', { class: 'g2', onsubmit: (e) => { e.preventDefault(); const a = commit(() => M.bulkAddTemplates(st, seg.id, { owner: bo.value, due: bdue.value, milestone: bm.value })) || []; toast(a.length ? 'Added ' + plural(a.length, 'standard sheet') + '.' : 'The standard sheets are already here.'); } },
+        tpls.length && !(M.isHydSec(seg) && M.hydSheets(seg).length) ? h('form', { class: 'g2', onsubmit: (e) => { e.preventDefault(); const a = commit(() => M.bulkAddTemplates(st, seg.id, { owner: bo.value, due: bdue.value, milestone: bm.value })) || []; toast(a.length ? 'Added ' + plural(a.length, 'standard sheet') + '.' : 'The standard sheets are already here.'); } },
           bo, bm, bdue, h('button', { class: 'btn sec', type: 'submit', id: 'secStd' }, '+ Standard: ' + tpls.map((t) => t.title).join(', '))) : null),
       connectorsBox({ t: 'seg', id: seg.id }),
       h('h3', {}, 'Sheets (' + seg.sheets.length + ')'),
