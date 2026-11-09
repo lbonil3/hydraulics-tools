@@ -1,4 +1,4 @@
-/* PM data model v3.13: pure functions, no DOM, no storage.
+/* PM data model v3.14: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -1659,6 +1659,50 @@
     log(st, 'Copied ' + hit.road.name + ' (' + hit.sec.title + ') from ' + subTag(hit.sub) + ' to ' + subTag(to) + (opts && opts.sheets ? ' with ' + src.length + ' PP sheets' : ''), { t: 'road', id: r.road.id });
     return Object.assign(r, { sheets: opts && opts.sheets ? src.length : 0 });
   }
+  /* v3.14 trunk lines live on each sub-project's Drainage Trunkline section. Copying is only between those sections. */
+  function isTrunkSec(sec) { return !!sec && (sec.key === 'dr-trunk' || /trunk ?line|trunkline/i.test(String(sec.title || ''))); }
+  function trunkSecOf(sub) { return sub && sub.segments.find((s) => s.key === 'dr-trunk') || (sub && sub.segments.find(isTrunkSec)) || null; }
+  function trunkEntries(sub) {
+    const sec = trunkSecOf(sub); if (!sec) return { sec: null, roads: [], sheets: [] };
+    return { sec, roads: roadsOf(sub, sec), sheets: sec.sheets.filter((sh) => sh.gen) };
+  }
+  function trunkSources(st, toSubId) {
+    return orderedSubs(st).filter((sub) => sub.id !== toSubId).map((sub) => {
+      const e = trunkEntries(sub);
+      if (!e.sec || (!e.roads.length && !e.sheets.length)) return null;
+      return { sub, sec: e.sec, roads: e.roads.length, sheets: e.sheets.length };
+    }).filter(Boolean);
+  }
+  function planCopyTrunk(st, toSecId, fromSubId) {
+    const toHit = findSeg(st, toSecId); if (!toHit) throw new Error('No such section');
+    if (!isTrunkSec(toHit.seg)) throw new Error('Copy trunk lines into a Trunkline section.');
+    const from = findSub(st, fromSubId); if (!from) throw new Error('No such branch');
+    if (from === toHit.sub) throw new Error('Pick a different branch.');
+    const e = trunkEntries(from);
+    if (!e.sec || (!e.roads.length && !e.sheets.length)) throw new Error(subTag(from) + ' has no trunk lines.');
+    const targetRoads = roadsOf(toHit.sub, toHit.seg).length;
+    return { from: subTag(from), fromId: from.id, roads: e.roads.length, sheets: e.sheets.length, targetRoads, appended: targetRoads > 0 || toHit.seg.sheets.some((sh) => sh.gen) };
+  }
+  function copyTrunkLines(st, toSecId, fromSubId) {
+    const P = planCopyTrunk(st, toSecId, fromSubId);
+    const toHit = findSeg(st, toSecId), from = findSub(st, fromSubId), e = trunkEntries(from);
+    const roadMap = new Map();
+    for (const road of e.roads) {
+      const made = addRoad(st, toHit.seg.id, { road: road.road, start: road.start, end: road.end, scale: road.scale, notes: road.notes, reverse: !!road.reverse, alignment: roadAlign(road) });
+      roadMap.set(road.id, made.road.id);
+    }
+    const ids = [];
+    for (const sh of e.sheets) {
+      if (!sh.gen || !roadMap.has(sh.gen.road)) continue;
+      const c = Object.assign(clone(sh), { id: uid(), status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], number: '' });
+      c.gen = Object.assign({}, c.gen, { road: roadMap.get(sh.gen.road) });
+      delete c.dam; delete c.hyd; delete c.cnt; delete c.unit;
+      toHit.seg.sheets.push(c); c.number = suggestNumber(st, c) || ''; ids.push(c.id);
+    }
+    sortSecSheets(toHit.sub, toHit.seg);
+    log(st, (P.appended ? 'Appended' : 'Copied') + ' trunk lines from ' + P.from + ' to ' + subTag(toHit.sub) + ': ' + roadMap.size + ' road' + (roadMap.size === 1 ? '' : 's') + ', ' + ids.length + ' sheet' + (ids.length === 1 ? '' : 's'), { t: 'seg', id: toHit.seg.id });
+    return { roads: roadMap.size, sheets: ids.length, appended: P.appended, from: P.from, ids };
+  }
   /* v2.15 command palette ranking: every query word must appear; label prefix / word-start matches rank first */
   function paletteSearch(items, q, limit) {
     const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
@@ -2649,7 +2693,7 @@
       if (!Object.keys(e).length) delete st.props[k];
     }
   }
-  return { isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, syncUnits, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { isTrunkSec, trunkSources, planCopyTrunk, copyTrunkLines, isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, syncUnits, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,

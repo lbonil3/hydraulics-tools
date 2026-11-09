@@ -526,6 +526,33 @@ function v2Fixture() {
   D = await data();
   ok(D.subs[0].segments.find((g) => g.key === 'sw-std').sheets.some((q) => q.title === 'EC(1)-16' && !q.road), 'EC(1)-16 added on the SWP3 branch');
   await shot('21-swp3-standards');
+  /* v3.14 copy trunk lines from another branch */
+  {
+    const B = (await data()).subs[1];
+    const bId = B.segments.find((g) => g.key === 'dr-trunk').id;
+    const bSel = '.node[data-key="seg:' + bId + '"]';
+    if (!(await has(bSel))) { await click('#xAll'); await sleep(400); }
+    await click(bSel); await sleep(300);
+    ok(await has('#trunkCopyBox') && await has('#trunkFrom') && await has('#trunkCopy'), 'Trunkline section can copy trunk lines from another branch');
+    const aId = (await data()).subs[0].id;
+    ok((await pg.$eval('#trunkFrom', (e) => e.value)) === aId, 'the source list offers the other branch that has trunk lines');
+    ok(!(await pg.$$eval('#trunkFrom option', (els) => els.some((o) => /SWP3 Layout/.test(o.textContent)))), 'SWP3 is not offered as a trunk source');
+    await pg.evaluate(() => { const e = document.querySelector('#trunkCopyBox'); if (e) e.scrollIntoView({ block: 'center' }); });
+    await click('#trunkCopy'); await sleep(400);
+    D = await data();
+    const aTrunk = D.subs[0].segments.find((g) => g.key === 'dr-trunk');
+    const bTrunk = D.subs[1].segments.find((g) => g.key === 'dr-trunk');
+    const aRoad = D.subs[0].roads.find((r) => r.road === 'Trunk A-3');
+    const bRoad = D.subs[1].roads.find((r) => r.sec === bTrunk.id);
+    ok(bRoad && bRoad.id !== aRoad.id && bRoad.road === 'Trunk A-3' && bRoad.start === aRoad.start && bRoad.end === aRoad.end, 'road name and stations are copied with a new id');
+    ok(bTrunk.sheets.filter((s) => s.gen).length === aTrunk.sheets.filter((s) => s.gen).length && bTrunk.sheets.filter((s) => s.gen).every((s) => s.status === 'Not started' && !aTrunk.sheets.some((q) => q.id === s.id)), 'sheet count is copied as new Not started sheets');
+    await setVal('#roadTable tr[data-road="' + bRoad.id + '"] input[data-k="road"]', 'Trunk copy'); await sleep(300);
+    ok((await data()).subs[0].roads.find((r) => r.id === aRoad.id).road === 'Trunk A-3', 'editing the copy does not change the source');
+    await click('#trunkCopy'); await sleep(400);
+    ok(/Appended/.test(await txt('#toast')), 'a second copy says it was appended');
+    ok((await data()).subs[1].roads.filter((r) => r.sec === bTrunk.id).length === 2, 'the second copy is appended');
+    await shot('22-copy-trunk');
+  }
   await shot('18-optional-counts');
   void weld;
 
