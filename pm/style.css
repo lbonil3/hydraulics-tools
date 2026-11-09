@@ -600,6 +600,10 @@ textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size
 .rtab td{border-bottom:.5pt solid #bbb;padding:2.5pt 5pt;vertical-align:top}
 .rtab tr{break-inside:avoid;page-break-inside:avoid}
 .rtab tr.rroad td{background:#f7f7f7;border-bottom:.75pt solid #666;padding-top:4pt}
+.rtab tr.rsub td{font-weight:700;background:#f4f0e6}
+.rtab tr.rpkg td{font-weight:700;background:#e6dfd2;border-top:.75pt solid #666}
+.rtab tr.rsecsub td{font-weight:700;background:#efeae0;border-top:.75pt solid #888}
+.rtab tr.rtot td{font-weight:700;background:#d9d3c5;border-top:1.5pt solid #000;border-bottom:1.5pt solid #000}
 .rtab tr.rmore td{color:#555;font-style:italic}
 .rstat{width:auto;min-width:50%}
 .rnumc{text-align:right;font-variant-numeric:tabular-nums}.rnw{white-space:nowrap}

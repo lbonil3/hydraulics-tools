@@ -608,10 +608,17 @@ function v2Fixture() {
   const proposed = await txt('#eng-proposed');
   ok(/North Pond/.test(proposed) && /Layout/.test(proposed) && /Cross Sections/.test(proposed) && /Geometric Layout \(1 of 2\)/.test(proposed) && /Geometric Layout \(2 of 2\)/.test(proposed), 'proposed section lists each pond by name and its sheets');
   ok(/Box 1/.test(proposed) && /Box 2/.test(proposed) && /3 sheets/.test(proposed), 'junction boxes are listed one by one');
-  ok(/A — 3 sheets/.test(proposed), 'drainage laterals are counted for the sub-project');
-  ok(/Bridge deck drain details — \d+ sheets?/.test(proposed), 'bridge deck drain details are counted for the sub-project');
+  const itemTables = await pg.evaluate(() => {
+    const st = JSON.parse(localStorage.getItem('pm.data.v3'));
+    const blocks = window.PMEng.build(st).find((s) => s.id === 'proposed').blocks;
+    const tab = (cls) => (blocks.find((b) => b.table && b.table.cls === cls) || { table: { rows: [] } }).table.rows.map((r) => r.join('|')).join(';');
+    return { lats: tab('lats'), deck: tab('deck') };
+  });
+  ok(/A\|3/.test(itemTables.lats), 'drainage laterals are counted for the sub-project');
+  ok(/Bridge deck drain details\|/.test(itemTables.deck), 'bridge deck drain details are counted for the sub-project');
   const scopeTxt = await txt('#eng-scope');
   ok(/Sheets by package/.test(scopeTxt) && /Carry-on sheets/.test(scopeTxt) && /Total/.test(scopeTxt), 'scope table counts carry-on sheets and totals them');
+  ok((await pg.$$('#eng-scope tr.rtot')).length === 1 && (await pg.$$('#eng-scope tr.rpkg')).length >= 1, 'package subtotals and the grand total are styled');
   const sheetTxt = await txt('#eng-sheets');
   ok(/HIL-C-25 \(HOU\)/.test(sheetTxt) && /PSL/.test(sheetTxt) && /EC\(1\)-16/.test(sheetTxt) && /Pick list/.test(sheetTxt) && /Custom/.test(sheetTxt), 'standards table splits the pick-list and custom sheets');
   const plain = await pg.evaluate(() => window.PMEng.text(JSON.parse(localStorage.getItem('pm.data.v3'))));

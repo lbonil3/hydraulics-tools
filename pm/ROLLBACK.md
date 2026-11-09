@@ -384,6 +384,14 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.19 (engineering report subtotals)
+
+The engineering report adds a subtotal only where a table has more than one row in a group. Sheets by package: a section subtotal when a section has more than one group, the All sections row for each package, an All packages row when the same section appears in more than one package, and the Total at the bottom. Sheets and Carry-on sheets both add up. Those cross-package rows are another way of reading the same sheets, so the Total is the sum of the package rows only.
+
+Detention ponds and special junction boxes get a subtotal for a sub-project that has more than one, plus a total when the table has more than one row. Drainage laterals and bridge deck items get a total when more than one row is listed, and a bridge item that appears in more than one package gets its own subtotal. Each standards table gets a total when it lists more than one standard.
+
+Subtotal rows are bold and shaded on screen and in the printed report. A one-row group has no subtotal.
+
 ## v3.18 (carry-ons stay in their group and count as sheets)
 
 A sheet carried into a later package is shown in that package under the same section and the same sub-group as the original: the same pond name, junction box, road, trunk line, or drainage-area-map road. If that package already has the group, the carried sheet sits in it, ordered by sheet number. If it does not, the group is shown with the original’s name. Renaming the original pond renames that group. Flat sections, such as laterals, bridge deck, and standards, keep the carried sheet in the section with the other sheets, ordered by sheet number, rather than in a separate carried list.
