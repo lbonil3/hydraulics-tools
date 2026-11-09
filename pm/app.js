@@ -1,4 +1,4 @@
-/* Project Tracker v3.17 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.18 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -388,8 +388,10 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
           return h('div', { class: 'rdsub' }, h('h4', {}, M.subLabel(S.sub) + ' — ' + T.disc, h('span', { class: 'rh3m' }, pct(S.stats.pct) + ' · ' + S.stats.done + ' / ' + S.stats.total)),
             secs.length ? secs.map((x) => h('div', { class: 'rdsec' }, h('h5', {}, x.sec.title, h('span', { class: 'rh3m' }, x.done + ' / ' + x.total + ' done · ' + pct(x.pct) + (x.pp ? ' · ' + x.ppTotal + ' PP' : ''))),
               tbl('rsheets', SHEAD, [].concat(
+                (x.units || []).flatMap((g) => [h('tr', { class: 'rroad' }, h('td', { colspan: 6 }, h('b', {}, g.name)))].concat(g.sheets.length ? g.sheets.map(sheetRow) : [])),
+                (x.dams || []).flatMap((g) => [h('tr', { class: 'rroad' }, h('td', { colspan: 6 }, h('b', {}, g.name)))].concat(g.sheets.map(sheetRow))),
                 x.roads.flatMap((g) => [h('tr', { class: 'rroad' }, h('td', { colspan: 6 }, h('b', {}, g.name), g.aligns && g.aligns.length ? h('span', { class: 'ralign' }, ' · Alignment ' + g.aligns.join(', ')) : null, ' · Sta ' + g.spans.join(', ') + ' · ' + g.pp + ' PP'))].concat(g.sheets.length ? g.sheets.map(sheetRow) : [h('tr', {}, h('td', { colspan: 6, class: 'rm' }, 'No sheets yet'))])),
-                x.roads.length && x.other.length ? [h('tr', { class: 'rroad' }, h('td', { colspan: 6 }, h('b', {}, 'Other sheets')))] : [],
+                (x.roads.length || (x.units || []).length || (x.dams || []).length) && x.other.length ? [h('tr', { class: 'rroad' }, h('td', { colspan: 6 }, h('b', {}, 'Other sheets')))] : [],
                 x.other.map(sheetRow))))) : none('No sheets yet.'),
             empty.length ? h('p', { class: 'rm' }, 'Not started: ' + empty.map((x) => x.sec.title).join(', ') + '.') : null); })))));
 
@@ -776,7 +778,15 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   function keyQuery(key) { return '.node[data-key="' + key + '"]'; }
   function rowRoad(r) { return M.sheetRoad(st, r.sub, r.sh); }
   /* v3.2: tree key of the road branch (or "Other sheets") a sheet of a road section hangs under; null for other sections */
-  function sheetBranchKey(sub, seg, sh) { const db = M.damBranchOf(seg, sh); if (db) return 'dbr:' + db.id; if (sh.unit && M.unitKind(seg) === sh.unit.kind) return 'unit:' + seg.id + ':' + sh.unit.n; if (!M.isPPSec(seg)) return null; const g = M.sheetGroupSlug(sub, seg, sh); return g ? 'rd:' + seg.id + ':' + g : 'oth:' + seg.id; }
+  function sheetBranchKey(sub, seg, sh) {
+    if (M.isCarryOn(sh)) {
+      const cg = M.carryDisplayGroup(st, sh);
+      if (cg && (cg.kind === 'pond' || cg.kind === 'box')) { const g = M.viewUnitGroups(st, seg).find((x) => x.name.toLowerCase() === String(cg.name || '').toLowerCase()); if (g) return 'unit:' + seg.id + ':' + g.key; }
+      if (cg && cg.kind === 'road') { const g = M.viewRoadGroups(st, sub, seg).find((x) => x.name.toLowerCase() === String(cg.name || '').toLowerCase()); if (g) return g.virtual ? 'unit:' + seg.id + ':' + g.key : g.key; }
+      if (cg && cg.kind === 'dam') { const g = M.viewDamGroups(st, seg).find((x) => String(x.name).toLowerCase() === String(cg.name || '').toLowerCase()); if (g) return g.virtual ? 'unit:' + seg.id + ':' + g.key : g.key; }
+    }
+    const db = M.damBranchOf(seg, sh); if (db) return 'dbr:' + db.id; if (sh.unit && M.unitKind(seg) === sh.unit.kind) return 'unit:' + seg.id + ':' + sh.unit.n; if (!M.isPPSec(seg)) return null; const g = M.sheetGroupSlug(sub, seg, sh); return g ? 'rd:' + seg.id + ':' + g : 'oth:' + seg.id;
+  }
   function roadBranchKey(hit) { return hit && hit.sec ? M.rgKey(hit.sec, hit.road.road) : null; }
   function staTxt(rg) { return rg ? M.formatStation(rg.start) + ' – ' + M.formatStation(rg.end) : 'no range'; }
   function bigProject() { return M.allSheets(st).length > 80; }
@@ -792,31 +802,52 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
           const gn = { key: 'seg:' + seg.id, type: 'seg', sub, seg, disc: d, depth: 3, kids: [], pp: M.isPPSec(seg) };
           gn.collapsed = isCollapsed(gn.key, true);
           if (gn.pp) {
-            for (const g of M.roadGroups(sub, seg)) {
-              const rn = { key: g.key, type: 'road', sub, seg, g, disc: d, depth: 4, kids: [] };
-              rn.collapsed = isCollapsed(g.key, big);
-              for (const sh of M.sheetsOfGroup(sub, seg, g)) rn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, g, disc: d, depth: 5, kids: [] });
-              gn.kids.push(rn);
+            const placed = new Set();
+            for (const g of M.viewRoadGroups(st, sub, seg)) {
+              if (g.virtual) {
+                const vg = { name: g.name, kind: 'road', sheets: g.sheets, virtual: true, key: g.key };
+                const un = { key: 'unit:' + seg.id + ':' + g.key, type: 'unit', sub, seg, g: vg, disc: d, depth: 4, kids: [] };
+                un.collapsed = isCollapsed(un.key, big);
+                for (const sh of g.sheets) { placed.add(sh); un.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, g: vg, disc: d, depth: 5, kids: [] }); }
+                if (un.kids.length) gn.kids.push(un);
+              } else {
+                const rn = { key: g.key, type: 'road', sub, seg, g, disc: d, depth: 4, kids: [] };
+                rn.collapsed = isCollapsed(g.key, big);
+                for (const sh of g.sheets) { placed.add(sh); rn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, g, disc: d, depth: 5, kids: [] }); }
+                gn.kids.push(rn);
+              }
             }
-            const oth = M.otherSheets(sub, seg);
+            const oth = M.sheetsInOrder(seg).filter((sh) => !placed.has(sh));
             if (oth.length) { const on = { key: 'oth:' + seg.id, type: 'oth', sub, seg, disc: d, depth: 4, kids: [] }; on.collapsed = isCollapsed(on.key, big); for (const sh of oth) on.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 5, kids: [] }); gn.kids.push(on); }
-          } else if (M.unitKind(seg) && M.unitGroups(seg).length) { /* v3.11: Detention Basin > Pond, or Special Junction Box > Box */
-            for (const sh of M.unitLoose(seg)) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
-            for (const g of M.unitGroups(seg)) {
-              const un = { key: 'unit:' + seg.id + ':' + g.n, type: 'unit', sub, seg, g, disc: d, depth: 4, kids: [] };
+          } else if (M.unitKind(seg)) { /* Detention Basin > pond name, or Special Junction Box > box. Carry-ons join the same name. */
+            const placed = new Set();
+            for (const g of M.viewUnitGroups(st, seg)) {
+              if (!g.sheets.length) continue;
+              const un = { key: 'unit:' + seg.id + ':' + g.key, type: 'unit', sub, seg, g, disc: d, depth: 4, kids: [] };
               un.collapsed = isCollapsed(un.key, big);
-              for (const sh of g.sheets) un.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, g, disc: d, depth: 5, kids: [] });
+              for (const sh of g.sheets) { placed.add(sh); un.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, g, disc: d, depth: 5, kids: [] }); }
               gn.kids.push(un);
             }
-          } else if (M.damBranches(seg).length) { /* v3.8: Drainage Area Map > Road > sheets */
-            for (const sh of M.damLoose(seg)) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
-            for (const br of M.damBranches(seg)) {
-              const bn = { key: 'dbr:' + br.id, type: 'dbr', sub, seg, br, disc: d, depth: 4, kids: [] };
-              bn.collapsed = isCollapsed(bn.key, big);
-              for (const sh of M.damBranchSheets(seg, br)) bn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, br, disc: d, depth: 5, kids: [] });
-              gn.kids.push(bn);
+            for (const sh of M.sheetsInOrder(seg)) if (!placed.has(sh)) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
+          } else if (M.viewDamGroups(st, seg).length) {
+            const placed = new Set();
+            for (const g of M.viewDamGroups(st, seg)) {
+              if (g.virtual) {
+                if (!g.sheets.length) continue;
+                const vg = { name: g.name, kind: 'dam', sheets: g.sheets, virtual: true, key: g.key };
+                const un = { key: 'unit:' + seg.id + ':' + g.key, type: 'unit', sub, seg, g: vg, disc: d, depth: 4, kids: [] };
+                un.collapsed = isCollapsed(un.key, big);
+                for (const sh of g.sheets) { placed.add(sh); un.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, g: vg, disc: d, depth: 5, kids: [] }); }
+                gn.kids.push(un);
+              } else {
+                const bn = { key: g.key, type: 'dbr', sub, seg, br: g.br, g, disc: d, depth: 4, kids: [] };
+                bn.collapsed = isCollapsed(bn.key, big);
+                for (const sh of g.sheets) { placed.add(sh); bn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, br: g.br, disc: d, depth: 5, kids: [] }); }
+                gn.kids.push(bn);
+              }
             }
-          } else for (const sh of seg.sheets) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
+            for (const sh of M.sheetsInOrder(seg)) if (!placed.has(sh)) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
+          } else for (const sh of M.sheetsInOrder(seg)) gn.kids.push({ key: 'sheet:' + sh.id, type: 'sheet', sub, seg, sh, disc: d, depth: 4, kids: [] });
           dn.kids.push(gn);
         }
         tn.kids.push(dn);
@@ -840,9 +871,9 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   function nodeRows(n) {
     if (n.type === 'sheet') return [{ sub: n.sub, seg: n.seg, sh: n.sh }];
     if (n.type === 'seg') return n.seg.sheets.map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
-    if (n.type === 'road') return M.sheetsOfGroup(n.sub, n.seg, n.g).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
-    if (n.type === 'oth') return M.otherSheets(n.sub, n.seg).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
-    if (n.type === 'dbr') return M.damBranchSheets(n.seg, n.br).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
+    if (n.type === 'road') return (Array.isArray(n.g.sheets) ? n.g.sheets : M.sheetsOfGroup(n.sub, n.seg, n.g)).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
+    if (n.type === 'oth') return n.kids.filter((k) => k.sh).map((k) => ({ sub: k.sub, seg: k.seg, sh: k.sh }));
+    if (n.type === 'dbr') return (n.g && Array.isArray(n.g.sheets) ? n.g.sheets : M.damBranchSheets(n.seg, n.br)).map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'unit') return n.g.sheets.map((sh) => ({ sub: n.sub, seg: n.seg, sh }));
     if (n.type === 'disc') return M.sectionsOf(n.sub, n.disc).flatMap((seg) => seg.sheets.map((sh) => ({ sub: n.sub, seg, sh })));
     if (n.type === 'dtop') return M.allSheets(st).filter((r) => r.seg.discipline === n.disc);
@@ -1515,7 +1546,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   function findUnit(id) {
     const i = String(id).lastIndexOf(':'); if (i < 0) return null;
     const hit = M.findSeg(st, String(id).slice(0, i)); if (!hit) return null;
-    const g = M.unitGroups(hit.seg).find((x) => x.n === Number(String(id).slice(i + 1)));
+    const token = String(id).slice(i + 1);
+    const g = M.viewUnitGroups(st, hit.seg).find((x) => x.key === token || String(x.n) === token);
     return g ? { sub: hit.sub, seg: hit.seg, g } : null;
   }
   function renderDrawer() {
@@ -1813,7 +1845,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   }
   function unitDrawer({ sub, seg, g }) {
     const p = M.progress(g.sheets);
-    const nameIn = g.kind === 'pond' ? h('input', { id: 'pondName', value: g.name, maxlength: 60, 'aria-label': 'Pond name' }) : null;
+    const nameIn = g.kind === 'pond' && !g.virtual ? h('input', { id: 'pondName', value: g.name, maxlength: 60, 'aria-label': 'Pond name' }) : null;
     if (nameIn) {
       const save = () => { const r = commit(() => M.setPondName(st, seg.id, g.n, nameIn.value)); if (r == null) nameIn.value = g.name; };
       nameIn.addEventListener('change', save);
@@ -1823,9 +1855,10 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subLabel(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]]),
       h('h2', {}, g.name),
       nameIn ? h('label', { class: 'f', id: 'pondNameBox' }, h('span', {}, 'Pond name'), nameIn, h('small', { class: 'muted' }, 'Blank restores “Pond ' + g.n + '”. Sheet titles that have not been edited follow this name.')) : null,
+      g.virtual ? h('p', { class: 'muted small' }, 'This name follows the original package.') : null,
       h('p', { class: 'muted' }, seg.title + ' · ' + plural(g.sheets.length, 'sheet') + ' · ' + p.done + ' done'),
       h('ul', { class: 'dlist' }, g.sheets.map((sh) => h('li', {}, h('button', { type: 'button', class: 'rowbtn st-' + slug(sh.status), onclick: () => select_('sheet', sh.id) },
-        h('span', { class: 'grow' }, sh.title), h('span', { class: 'stpill' }, sh.status))))));
+        h('span', { class: 'grow' }, sh.title, M.isCarryOn(sh) ? h('span', { class: 'cbadge' }, ' from ' + ((M.carryOrigin(st, sh) || { sub: { code: '?' } }).sub.code)) : null), h('span', { class: 'stpill' }, sh.status))))));
   }
   function stdPicker(sub, seg) {
     const all = M.standardsForSection(seg);

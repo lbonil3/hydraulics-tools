@@ -1,4 +1,4 @@
-/* PM data model v3.17: pure functions, no DOM, no storage.
+/* PM data model v3.18: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -886,7 +886,7 @@
     const rows = allSheets(st);
     const subs = st.subs.map((sub) => ({ sub, ...progress(rows.filter((r) => r.sub === sub).map((r) => r.sh)) }));
     const uniq = rows.filter((r) => !isCarryOn(r.sh));
-    const discs = DISCIPLINES.map((d) => ({ disc: d, ...progress(uniq.filter((r) => r.seg.discipline === d).map((r) => r.sh)) }));
+    const discs = DISCIPLINES.map((d) => ({ disc: d, ...progress(rows.filter((r) => r.seg.discipline === d).map((r) => r.sh)) }));
     const overdue = rows.filter((r) => isOverdue(r.sh, today)).sort((a, b) => a.sh.due.localeCompare(b.sh.due));
     const upcoming = rows.filter((r) => isUpcoming(r.sh, today, 14)).sort((a, b) => a.sh.due.localeCompare(b.sh.due));
     const byOwner = {};
@@ -899,8 +899,8 @@
       if (isOverdue(r.sh, today)) o.overdue++;
       o.hoursBudget += Number(r.sh.hoursBudget) || 0; o.hoursActual += Number(r.sh.hoursActual) || 0;
     }
-    const milestones = st.milestones.map((m) => ({ m, ...progress(uniq.filter((r) => r.sh.milestone === m.id).map((r) => r.sh)) }));
-    return { overall: progress(uniq.map((r) => r.sh)), subs, discs, overdue, upcoming, milestones,
+    const milestones = st.milestones.map((m) => ({ m, ...progress(rows.filter((r) => r.sh.milestone === m.id).map((r) => r.sh)) }));
+    return { overall: progress(rows.map((r) => r.sh)), unique: uniq.length, subs, discs, overdue, upcoming, milestones,
       workload: Object.values(byOwner).sort((a, b) => b.open - a.open || a.owner.localeCompare(b.owner)) };
   }
   function filterRows(rows, f, today) {
@@ -1382,7 +1382,7 @@
   /* a whole discipline across A–D */
   function discStats(st, disc, today) {
     const B = st.subs.map((sub) => branchStats(st, sub, disc, null, today));
-    const sheets = B.flatMap((b) => b.sheets).filter((sh) => !isCarryOn(sh)), p = progress(sheets);
+    const sheets = B.flatMap((b) => b.sheets), p = progress(sheets);
     return { disc, subs: B, sheets, total: sheets.length, done: p.done, pct: p.pct, pp: B.reduce((a, b) => a + b.pp, 0), overdue: B.reduce((a, b) => a + b.overdue, 0), blocked: B.reduce((a, b) => a + b.blocked, 0), update: B.reduce((a, b) => a + b.update, 0), roads: B.reduce((a, b) => a + b.roads, 0) };
   }
   function roads(st) { return [...new Set(st.subs.flatMap((s) => s.roads.map((g) => g.road).concat(s.segments.flatMap((x) => x.sheets.map((q) => q.road)))).filter(Boolean))].sort(); }
@@ -1541,7 +1541,7 @@
     for (const d of DISCIPLINES) c['dtop:' + d] = level < 2;
     for (const sub of st.subs) {
       for (const d of DISCIPLINES) c['disc:' + sub.id + ':' + d] = level < 3;
-      for (const g of sub.segments) { c['seg:' + g.id] = level < 4; if (isPPSec(g)) { for (const rg of roadGroups(sub, g)) c[rg.key] = level < 5; c['oth:' + g.id] = level < 5; } for (const b of damBranches(g)) c['dbr:' + b.id] = level < 5; if (unitKind(g)) for (const ug of unitGroups(g)) c['unit:' + g.id + ':' + ug.n] = level < 5; }
+      for (const g of sub.segments) { c['seg:' + g.id] = level < 4; if (isPPSec(g)) { for (const rg of viewRoadGroups(st, sub, g)) c[rg.key] = level < 5; c['oth:' + g.id] = level < 5; } for (const b of viewDamGroups(st, g)) c[b.virtual ? 'unit:' + g.id + ':' + b.key : b.key] = level < 5; if (unitKind(g)) for (const ug of viewUnitGroups(st, g)) c['unit:' + g.id + ':' + ug.key] = level < 5; }
     }
     return c;
   }
@@ -1861,9 +1861,17 @@
     const tree = DISCIPLINES.map((d) => ({ disc: d, stats: R.discs.find((x) => x.disc === d), subs: orderedSubs(st).map((sub) => ({ sub, stats: branchStats(st, sub, d, null, today),
       secs: sectionsOf(sub, d).map((sec) => {
         const p = progress(sec.sheets), pp = isPPSec(sec);
-        const roads = pp ? roadGroups(sub, sec).map((g) => ({ name: g.name, aligns: groupAligns(g.entries), spans: g.entries.map((r) => hasSta(r) ? formatStation(r.start) + ' – ' + formatStation(r.end) : 'stations not set'),
-          pp: g.entries.reduce((a, r) => a + roadPP(st, sub, r).count, 0), sheets: sheetsOfGroup(sub, sec, g).map((sh) => ({ sh, range: sheetRange(sh) })) })) : [];
-        return { sec, pp, total: sec.sheets.length, done: p.done, pct: p.pct, ppTotal: pp ? segPP(st, sub, sec).total : 0, roads, other: (pp ? otherSheets(sub, sec) : sec.sheets).map((sh) => ({ sh, range: sheetRange(sh) })) };
+        const vroads = pp ? viewRoadGroups(st, sub, sec) : [];
+        const vunits = !pp && unitKind(sec) ? viewUnitGroups(st, sec).filter((g) => g.sheets.length) : [];
+        const vdams = !pp && !unitKind(sec) ? viewDamGroups(st, sec).filter((g) => g.sheets.length) : [];
+        const placed = new Set(vroads.concat(vunits, vdams).flatMap((g) => g.sheets));
+        const pack = (sh) => ({ sh, range: sheetRange(sh) });
+        const roads = vroads.map((g) => ({ name: g.name, aligns: groupAligns(g.entries), spans: g.entries.length ? g.entries.map((r) => hasSta(r) ? formatStation(r.start) + ' – ' + formatStation(r.end) : 'stations not set') : ['carried on'],
+          pp: g.entries.reduce((a, r) => a + (hasSta(r) ? roadPP(st, sub, r).count : 0), 0), sheets: g.sheets.map(pack) }));
+        const units = vunits.map((g) => ({ name: g.name, sheets: g.sheets.map(pack) }));
+        const dams = vdams.map((g) => ({ name: g.name, sheets: g.sheets.map(pack) }));
+        const other = sec.sheets.filter((sh) => !placed.has(sh)).sort(bySheetNumber).map(pack);
+        return { sec, pp, total: sec.sheets.length, done: p.done, pct: p.pct, ppTotal: pp ? segPP(st, sub, sec).total : 0, roads, units, dams, other };
       }) })) }));
     const lab = (ref) => refLabel(st, ref);
     const deps = { blocked: F.blocked.map((x) => ({ item: lab(x.ref), by: x.by.map(lab) })), update: F.update.map((x) => ({ item: lab(x.ref), from: x.from.map(lab) })), ready: F.ready.map((x) => lab(x.ref)) };
@@ -2416,6 +2424,102 @@
     return out;
   }
   function unitLoose(sec) { const ids = new Set(unitSheets(sec).map((s) => s.id)); return sec.sheets.filter((s) => !ids.has(s.id)); }
+  /* v3.18: a carry-on keeps its own status, and it is listed in the later package under the same section and
+     sub-group as the original (pond name, box, road, trunk line, or drainage-area-map road). The group name is
+     read from the original, so renaming that pond renames the group here too. */
+  function bySheetNumber(a, b) {
+    const av = numVal(a.number), bv = numVal(b.number);
+    if (av != null && bv != null && av !== bv) return av - bv;
+    if ((av != null) !== (bv != null)) return av != null ? -1 : 1;
+    const as = a.unit && a.unit.slot || 0, bs = b.unit && b.unit.slot || 0;
+    return as - bs || String(a.number || '').localeCompare(String(b.number || '')) || String(a.title || '').localeCompare(String(b.title || ''));
+  }
+  function describeGroup(sub, sec, sh) {
+    if (sh.unit && unitKind(sec) === sh.unit.kind) {
+      const gs = unitGroups(sec);
+      const g = gs.find((x) => x.sheets.indexOf(sh) >= 0);
+      return { kind: sh.unit.kind, name: g ? g.name : (storedUnitName(sh) || defaultUnitName(sh.unit.kind, sh.unit.n)) };
+    }
+    if (isPPSec(sec)) return { kind: 'road', name: sheetRoadName(sub, sec, sh) || 'Road' };
+    if (sec && (sec.key === 'dr-dam' || (/drainage area map/i.test(String(sec.title || '')) && !/overall/i.test(String(sec.title || ''))))) {
+      const road = sheetRoadName(sub, sec, sh);
+      return road ? { kind: 'dam', name: road } : { kind: 'section', name: sec.title };
+    }
+    return { kind: 'section', name: sec ? sec.title : '' };
+  }
+  function carryDisplayGroup(st, sh) {
+    if (!isCarryOn(sh)) return null;
+    const o = carryOrigin(st, sh);
+    return o ? describeGroup(o.sub, o.seg, o.sh) : { kind: 'section', name: '' };
+  }
+  function viewUnitGroups(st, sec) {
+    const kind = unitKind(sec); if (!kind) return [];
+    const base = unitGroups(sec).map((g) => ({ n: g.n, kind: g.kind, name: g.name, key: String(g.n), sheets: g.sheets.slice(), virtual: false }));
+    for (const sh of sec.sheets) {
+      if (!isCarryOn(sh)) continue;
+      const cg = carryDisplayGroup(st, sh);
+      if (!cg || cg.kind !== kind || !cg.name) continue;
+      let g = base.find((x) => x.name.toLowerCase() === cg.name.toLowerCase());
+      if (!g) { g = { n: null, kind, name: cg.name, key: 'c-' + rgSlug(cg.name), sheets: [], virtual: true }; base.push(g); }
+      g.sheets.push(sh);
+    }
+    for (const g of base) g.sheets.sort(bySheetNumber);
+    return base;
+  }
+  function viewRoadGroups(st, sub, sec) {
+    if (!isPPSec(sec)) return [];
+    const base = roadGroups(sub, sec).map((g) => ({ key: g.key, slug: g.slug, name: g.name, entries: g.entries, sheets: sheetsOfGroup(sub, sec, g).slice(), virtual: false }));
+    for (const sh of sec.sheets) {
+      if (!isCarryOn(sh)) continue;
+      const cg = carryDisplayGroup(st, sh);
+      if (!cg || cg.kind !== 'road') continue;
+      const name = cg.name || 'Road';
+      let g = base.find((x) => x.name.toLowerCase() === name.toLowerCase());
+      if (!g) { const slug = rgSlug(name); g = { key: 'rd:' + sec.id + ':c:' + slug, slug, name, entries: [], sheets: [], virtual: true }; base.push(g); }
+      if (g.sheets.indexOf(sh) < 0) g.sheets.push(sh);
+    }
+    for (const g of base) g.sheets.sort(bySheetNumber);
+    return base;
+  }
+  function viewDamGroups(st, sec) {
+    const damish = sec && (sec.key === 'dr-dam' || (/drainage area map/i.test(String(sec.title || '')) && !/overall/i.test(String(sec.title || ''))));
+    if (!damish) return [];
+    const base = damBranches(sec).map((br) => ({ key: 'dbr:' + br.id, name: br.road, br, sheets: damBranchSheets(sec, br).slice(), virtual: false }));
+    for (const sh of sec.sheets) {
+      if (!isCarryOn(sh)) continue;
+      const cg = carryDisplayGroup(st, sh);
+      if (!cg || cg.kind !== 'dam' || !cg.name) continue;
+      let g = base.find((x) => String(x.name).toLowerCase() === cg.name.toLowerCase());
+      if (!g) { g = { key: 'dbr:' + sec.id + ':c:' + rgSlug(cg.name), name: cg.name, br: { id: '', road: cg.name, src: [] }, sheets: [], virtual: true }; base.push(g); }
+      if (g.sheets.indexOf(sh) < 0) g.sheets.push(sh);
+    }
+    for (const g of base) g.sheets.sort(bySheetNumber);
+    return base;
+  }
+  function sheetsInOrder(sec) { return (sec && sec.sheets ? sec.sheets : []).slice().sort(bySheetNumber); }
+  function packageBuckets(st, sub, sec) {
+    if (unitKind(sec)) {
+      const gs = viewUnitGroups(st, sec).filter((g) => g.sheets.length);
+      if (gs.length) return gs.map((g) => ({ name: g.name, sheets: g.sheets }));
+    }
+    if (isPPSec(sec)) {
+      const gs = viewRoadGroups(st, sub, sec).filter((g) => g.sheets.length);
+      const placed = new Set(gs.flatMap((g) => g.sheets));
+      const rest = sec.sheets.filter((sh) => !placed.has(sh));
+      const out = gs.map((g) => ({ name: g.name, sheets: g.sheets }));
+      if (rest.length) out.push({ name: 'Other sheets', sheets: rest.slice().sort(bySheetNumber) });
+      if (out.length) return out;
+    }
+    const dams = viewDamGroups(st, sec).filter((g) => g.sheets.length);
+    if (dams.length) {
+      const placed = new Set(dams.flatMap((g) => g.sheets));
+      const rest = sec.sheets.filter((sh) => !placed.has(sh));
+      const out = dams.map((g) => ({ name: g.name, sheets: g.sheets }));
+      if (rest.length) out.push({ name: '—', sheets: rest.slice().sort(bySheetNumber) });
+      return out;
+    }
+    return sec.sheets.length ? [{ name: '—', sheets: sheetsInOrder(sec) }] : [];
+  }
   function syncUnits(sec) {
     const kind = unitKind(sec); if (!kind) return;
     const slots = new Map(unitSlots(sec).map((s) => [s.slot, s]));
@@ -2947,7 +3051,7 @@
       if (!Object.keys(e).length) delete st.props[k];
     }
   }
-  return { isTrunkSec, trunkSources, planCopyTrunk, copyTrunkLines, isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, setPondName, syncUnits, isCarryOn, carryOrigin, carriersOf, carryChain, carryCandidates, addCarryOn, removeCarryOn, findCarryOns, linkAsCarryOn, linkExactCarryOns, ignoreCarryPair, resetCarryIgnore, normSheetTitle, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { isTrunkSec, trunkSources, planCopyTrunk, copyTrunkLines, isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, viewUnitGroups, viewRoadGroups, viewDamGroups, sheetsInOrder, packageBuckets, carryDisplayGroup, bySheetNumber, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, setPondName, syncUnits, isCarryOn, carryOrigin, carriersOf, carryChain, carryCandidates, addCarryOn, removeCarryOn, findCarryOns, linkAsCarryOn, linkExactCarryOns, ignoreCarryPair, resetCarryIgnore, normSheetTitle, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,

@@ -1,4 +1,5 @@
-/* Project Tracker v3.15: work description. What each package will cover, derived from the tracker.
+/* Project Tracker v3.18: work description. What each package will cover, derived from the tracker.
+   A carried sheet is described inside the same pond, road, box, or section as its original, and it counts in that package.
    Not a status report: no percent complete, no status counts. Browser: window.PMWork. Node: require('./workreport.js'). */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./model.js'));
@@ -20,15 +21,18 @@
     const pp = M.secOf(sub, 'dr-pp');
     if (pp && M.roadsOf(sub, pp).length) bits.push('drainage plan and profile along ' + list(M.roadsOf(sub, pp).map(staRoad)));
     const lat = M.secOf(sub, 'dr-lat');
-    const latN = lat ? own(lat).length : 0;
+    const latN = lat ? lat.sheets.length : 0;
     if (latN) bits.push(pl(latN, 'drainage lateral sheet'));
     const det = M.secOf(sub, 'dr-det');
-    if (det && M.unitGroups(det).length) {
-      const gs = M.unitGroups(det);
-      bits.push(pl(gs.length, 'detention pond') + ' (' + list(gs.map((g) => g.name)) + ') with layout, cross sections and geometric layouts');
+    if (det) {
+      const gs = M.viewUnitGroups(st, det).filter((g) => g.sheets.length);
+      if (gs.length) bits.push(pl(gs.length, 'detention pond') + ' (' + list(gs.map((g) => g.name)) + ') with layout, cross sections and geometric layouts');
     }
     const jb = M.secOf(sub, 'dr-jb');
-    if (jb && M.unitGroups(jb).length) bits.push(pl(M.unitGroups(jb).length, 'special junction box', 'special junction boxes'));
+    if (jb) {
+      const gs = M.viewUnitGroups(st, jb).filter((g) => g.sheets.length);
+      if (gs.length) bits.push(pl(gs.length, 'special junction box', 'special junction boxes'));
+    }
     const covered = new Set(['dr-trunk', 'dr-pp', 'dr-lat', 'dr-det', 'dr-jb', 'dr-std']);
     for (const g of M.sectionsOf(sub, 'Drainage')) {
       if (covered.has(g.key)) continue;
@@ -76,11 +80,12 @@
   function build(st) {
     const subs = M.orderedSubs(st);
     const packages = subs.map((s) => packageText(st, s));
+    const allN = M.allSheets(st).length;
     const uniq = M.allSheets(st).filter((r) => !M.isCarryOn(r.sh)).length;
     const rel = relations(st);
     const intro = (st.project.name ? st.project.name + ' is' : 'This project is') + ' organized into ' + pl(subs.length, 'package') + ': ' + list(subs.map((s) => s.code + (M.subCustom(s) ? ' (' + M.subName(s) + ')' : ''))) + '. ' +
       'Each package below is the plan work entered for it: the branches, the sections, and what each one covers. ' +
-      (uniq ? 'There are ' + pl(uniq, 'plan sheet') + ' in all, counting a sheet that one package carries on from another only once. ' : 'No plan sheets are entered yet. ') +
+      (allN ? 'There are ' + pl(allN, 'plan sheet') + ' across the packages. A carried sheet counts in each package that has it' + (uniq !== allN ? ' (' + pl(uniq, 'unique plan sheet') + ')' : '') + '. ' : 'No plan sheets are entered yet. ') +
       (rel.length ? rel.join('. ') + '.' : 'No package carries a sheet forward from another.');
     return { intro, packages, relations: rel };
   }
