@@ -1,4 +1,4 @@
-/* Project Tracker v3.16 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.17 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -437,7 +437,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     const go = (v) => () => { ui.view = v; saveUI(); renderAll(); };
     const A = [
       ['Go to Tree', go('tree'), 'view'], ['Go to List', go('list'), 'view table'], ['Go to This week', go('week'), 'view overdue due'], ['Go to Status board', go('board'), 'view kanban'], ['Go to Stations table', go('stations'), 'view edit stations roads'], ['Go to Report (narrative)', go('report'), 'summary write-up notes'], ['Copy report narrative', () => copyText(M.narrativeText(st)), 'clipboard summary'],
-      ['Undo', () => travel(-1), 'ctrl z'], ['Redo', () => travel(1), 'ctrl shift z'], ['Print status report', () => $('#printBtn').click(), 'pdf'],
+      ['Undo', () => travel(-1), 'ctrl z'], ['Redo', () => travel(1), 'ctrl shift z'], ['Find carry-ons', () => openCarryFinder(), 'repeated sheets link'], ['Print status report', () => $('#printBtn').click(), 'pdf'],
       ['Open Settings', () => openSettings(), 'backup export import'], ['Edit section lists', () => openSettings('secs'), 'sections rename reorder add remove'], ['Import CSV (roads / sheets)', () => openCSV(), 'upload excel spreadsheet populate'], ['Download CSV template', () => download('pm-import-template.csv', M.csvTemplate(), 'text/csv'), 'import'], ['Sheet index', openIndex, ''], ['PP sheet calculator', openPP, ''], ['Milestones', openMilestones, ''], ['Staff & workload', openStaff, 'owners'],
       ['Expand all', () => { ui.view = 'tree'; renderAll(); $('#xAll').click(); }, 'tree'], ['Collapse all', () => { ui.view = 'tree'; renderAll(); $('#cAll').click(); }, 'tree'], ['Toggle dark mode', () => $('#themeBtn').click(), 'theme light'],
       ['Keyboard shortcuts', () => openKeys(), 'help ?']].map(([label, run, kw]) => ({ label, run, kw, kind: 'Action', rank: 2 }));
@@ -2223,6 +2223,41 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     setTimeout(() => { const f = $('#modalBody').querySelector('input,select,button,textarea'); (f || $('#modalClose')).focus(); }, 20);
   }
   function closeModal() { pendingImport = false; if (pendingMig && migrationNotice.done) { migrationNotice.done(); return; } if (pendingMig32 && migrationNotice32.done) { migrationNotice32.done(); return; } $('#modal').hidden = true; $('#modalBody').replaceChildren(); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+  function openCarryFinder() {
+    const body = h('div', { id: 'carryFind' });
+    function draw() {
+      const found = M.findCarryOns(st);
+      const exactN = found.groups.reduce((a, g) => a + g.matches.filter((m) => m.confidence === 'exact').length, 0);
+      const ignored = Array.isArray(st.carryIgnore) ? st.carryIgnore.length : 0;
+      const bar = h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn', id: 'carryLinkAll', disabled: !exactN, onclick: () => {
+          if (!exactN || !confirm('Link ' + exactN + ' exact match' + (exactN === 1 ? '' : 'es') + ' as carry-ons? Likely matches stay in the list.')) return;
+          const r = commit(() => M.linkExactCarryOns(st));
+          if (r) toast('Linked ' + r.linked + ' exact match' + (r.linked === 1 ? '' : 'es') + (r.skipped ? ' · ' + r.skipped + ' skipped' : '') + '.');
+          draw();
+        } }, exactN ? 'Link all exact matches (' + exactN + ')' : 'Link all exact matches'),
+        ignored ? h('button', { type: 'button', class: 'btn sec', id: 'carryResetIgnore', onclick: () => { const n = commit(() => M.resetCarryIgnore(st)); if (n) toast('Cleared ' + n + ' ignored suggestion' + (n === 1 ? '' : 's') + '.'); draw(); } }, 'Reset ignored (' + ignored + ')') : null);
+      const groups = found.groups.map((g) => h('section', { class: 'box', 'data-origin': g.origin.id },
+        h('h3', {}, 'Package ' + g.origin.package + ' · ' + g.origin.section),
+        h('p', {}, h('b', {}, g.origin.title), h('span', { class: 'muted small' }, ' · original')),
+        g.matches.map((m) => h('div', { class: 'carryhit' },
+          h('div', { class: 'grow' },
+            h('div', {}, 'Package ' + m.package + ' · ' + m.title, ' ', h('span', { class: 'cbadge' + (m.confidence === 'likely' ? ' likely' : '') }, m.confidence === 'exact' ? 'Exact' : 'Likely')),
+            h('p', { class: 'muted small' }, m.reason + (m.status ? ' · ' + m.status : '') + (m.owner ? ' · ' + m.owner : ''))),
+          h('div', { class: 'row' },
+            h('button', { type: 'button', class: 'btn sm carryLink', 'data-origin': g.origin.id, 'data-later': m.id, onclick: () => {
+              const sh = commit(() => M.linkAsCarryOn(st, g.origin.id, m.id));
+              if (sh) toast('Package ' + m.package + ' now carries on “' + g.origin.title + '”.');
+              draw();
+            } }, 'Link as carry-on'),
+            h('button', { type: 'button', class: 'btn sec sm carryIgnore', 'data-origin': g.origin.id, 'data-later': m.id, onclick: () => { commit(() => M.ignoreCarryPair(st, g.origin.id, m.id)); draw(); } }, 'Ignore'))))));
+      body.replaceChildren(bar,
+        h('p', { class: 'muted small' }, 'A later package’s sheet that repeats an earlier package’s sheet. Nothing changes until you link one. Ignored pairs stay hidden until you reset them.'),
+        ...(groups.length ? groups : [h('p', { id: 'carryNone' }, ignored ? 'No suggestions left. Reset ignored pairs to see them again.' : 'No repeated sheets to carry on. Sheets that are already linked are skipped.')]));
+    }
+    openModal('Find carry-ons', body);
+    draw();
+  }
   /* ---------- v3.7 copy P&P sheet breaks to Drainage Area Map sheets ---------- */
   function damBtn(preset, label) { return h('button', { type: 'button', class: 'btn sec sm damcopy', onclick: () => openDamCopy(preset) }, label || 'Copy to Drainage Area Maps…'); }
   function damSyncBtn(subs) {
@@ -2603,6 +2638,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   $('#staffBtn').addEventListener('click', openStaff);
   $('#setBtn').addEventListener('click', openSettings);
   $('#printBtn').addEventListener('click', () => { renderReport(); window.print(); });
+  $('#carryFindBtn').addEventListener('click', () => openCarryFinder());
   window.addEventListener('beforeprint', renderReport);
   $('#themeBtn').addEventListener('click', () => { ui.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); });
   $('#zIn').addEventListener('click', () => { const v = $('#viewport'); zoomAt(1.25, v.clientWidth / 2, v.clientHeight / 2); });

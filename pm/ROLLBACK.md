@@ -384,6 +384,12 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.17 (find carry-ons)
+
+Find carry-ons scans every package, in the project’s package order, for a sheet in a later package that repeats a sheet from an earlier one. Nothing is linked until you click. The strongest match wins: the same standard name (a pick-list name or the same custom title, with “(1 of 2)” kept paired), then the same road with overlapping stations on a plan and profile, trunk line, or drainage area map, then the same pond or junction box name and sheet, then the same sheet title in the same section. A match is Exact when the names or titles are the same, and Likely when the road and stations overlap but the titles differ.
+
+Link as carry-on turns that later sheet into a carry-on of the original and keeps its status, owner, due date, notes, and QC. The title and sheet number then follow the original, and project totals count the sheet once. Ignore hides that pair until Reset ignored. Link all exact matches asks first and leaves the likely ones for review. Sheets that are already carry-ons are skipped. Older projects have no ignore list until you ignore a suggestion.
+
 ## v3.16 (engineering report detail)
 
 The engineering report still only restates what is entered in the tracker. Bracketed placeholders stay where an engineer has to supply a value.
