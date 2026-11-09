@@ -1,4 +1,4 @@
-/* Project Tracker v3.18 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.19 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -555,7 +555,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   }
   function engBlocks(blocks, refsEl) {
     return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? (refsEl || h('ol', { class: 'erefs' }, E.refs(st).map((x) => h('li', {}, x)))) :
-      b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab ' + (b.table.cls || '') }, h('thead', {}, h('tr', {}, b.table.head.map((x) => h('th', {}, x)))), h('tbody', {}, b.table.rows.map((r) => h('tr', {}, r.map((c) => h('td', {}, c))))))) : null);
+      b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab ' + (b.table.cls || '') }, h('thead', {}, h('tr', {}, b.table.head.map((x) => h('th', {}, x)))), h('tbody', {}, b.table.rows.map((r, i) => { const k = (b.table.kinds && b.table.kinds[i]) || ''; const cls = k === 'sub' ? 'rsub' : k === 'pkg' ? 'rpkg' : k === 'sec' ? 'rsecsub' : k === 'total' ? 'rtot' : ''; return h('tr', { class: cls || null }, r.map((c) => h('td', {}, c))); })))) : null);
   }
   function renderEngView() {
     const m = E.meta(st), rm = M.reportMeta(st), secs = E.build(st), O = rptOpts();

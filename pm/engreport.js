@@ -1,4 +1,4 @@
-/* Project Tracker v3.18: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.19: Engineering Report (drainage design report style), derived from the tracker data.
    A carried sheet counts in every package that has it. Unique plan sheets are labeled separately.
    Sheets carried into a package are listed in the same section and group as the original.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
@@ -143,12 +143,14 @@
     }
     for (const g of groups.filter((x) => x.disc === disc && !used.has(x)).sort((a, b) => a.name.localeCompare(b.name))) rows.push(g);
     if (!rows.length) return null;
-    return { table: { head: ['Standard', 'Sheets', 'Sub-projects', 'Source'], rows: rows.map((g) => {
+    const data = rows.map((g) => {
       let who = [...g.subs].sort().join(', ');
       const carried = [...g.carried].sort();
       if (carried.length) who += ' (carried on by ' + carried.join(', ') + ')';
       return [g.name, String(g.n), who || '—', g.known ? 'Pick list' : 'Custom'];
-    }), cls: disc === 'SWP3' ? 'std-sw' : 'std-dr' } };
+    });
+    const built = data.length > 1 ? { rows: data.concat([['Total', String(rows.reduce((a, g) => a + g.n, 0)), '', '']]), kinds: data.map(() => '').concat(['total']) } : { rows: data, kinds: data.map(() => '') };
+    return { table: { head: ['Standard', 'Sheets', 'Sub-projects', 'Source'], rows: built.rows, kinds: built.kinds, cls: disc === 'SWP3' ? 'std-sw' : 'std-dr' } };
   }
   /* ---- the sections: blocks = [{ p } | { ul } | { table:{ head, rows } }]; ph = the placeholder shown when the engineer adds nothing ---- */
   function build(st, today) {
@@ -182,32 +184,41 @@
       scope.push({ p: (d === 'SWP3' ? 'SWP3' : 'Drainage') + ' scope: ' + pl(n, 'plan sheet') + ' in ' + pl(bySec.size, 'section') + ':' });
       scope.push({ ul: [...bySec.entries()].map(([k, v]) => k + ' — ' + pl(v, 'sheet')) });
     }
-    const pkgRows = [];
+    const pkgRows = [], pkgKinds = [];
+    const pushPkg = (row, kind) => { pkgRows.push(row); pkgKinds.push(kind); };
+    const detail = [];
     let grandS = 0, grandC = 0;
     for (const sub of F.subs) {
       let ps = 0, pc = 0;
       for (const d of M.DISCIPLINES) for (const g of M.sectionsOf(sub, d)) {
-        const buckets = M.packageBuckets(st, sub, g);
-        const secS = buckets.reduce((a, b) => a + b.sheets.length, 0);
-        const secC = buckets.reduce((a, b) => a + b.sheets.filter(carryOn).length, 0);
-        for (const b of buckets) {
+        const leaves = [];
+        for (const b of M.packageBuckets(st, sub, g)) {
           const c = b.sheets.filter(carryOn).length;
           if (!b.sheets.length) continue;
-          pkgRows.push([pkgCode(sub), d, g.title, b.name, String(b.sheets.length), String(c)]);
+          leaves.push({ sheets: b.sheets.length, carry: c });
+          pushPkg([pkgCode(sub), d, g.title, b.name, String(b.sheets.length), String(c)], '');
+          detail.push({ pkg: sub.code, sec: g.title, sheets: b.sheets.length, carry: c });
         }
-        if (buckets.length > 1 && (secS || secC)) pkgRows.push([pkgCode(sub), d, g.title, 'All groups', String(secS), String(secC)]);
-        ps += secS; pc += secC;
+        if (leaves.length > 1) pushPkg([pkgCode(sub), d, g.title, 'Section subtotal', String(leaves.reduce((a, x) => a + x.sheets, 0)), String(leaves.reduce((a, x) => a + x.carry, 0))], 'sub');
+        ps += leaves.reduce((a, x) => a + x.sheets, 0); pc += leaves.reduce((a, x) => a + x.carry, 0);
       }
-      if (ps || pc) pkgRows.push([pkgCode(sub), '', 'All sections', '', String(ps), String(pc)]);
+      if (ps || pc) pushPkg([pkgCode(sub), '', 'All sections', '', String(ps), String(pc)], 'pkg');
       grandS += ps; grandC += pc;
     }
-    if (pkgRows.length) pkgRows.push(['Total', '', '', '', String(grandS), String(grandC)]);
+    const bySec = new Map();
+    for (const x of detail) { if (!bySec.has(x.sec)) bySec.set(x.sec, []); bySec.get(x.sec).push(x); }
+    for (const [sec, xs] of bySec) {
+      const pkgs = new Set(xs.map((x) => x.pkg));
+      if (pkgs.size < 2) continue;
+      pushPkg(['', '', sec, 'All packages', String(xs.reduce((a, x) => a + x.sheets, 0)), String(xs.reduce((a, x) => a + x.carry, 0))], 'sec');
+    }
+    if (pkgRows.length) pushPkg(['Total', '', '', '', String(grandS), String(grandC)], 'total');
     if (!scope.length && !pkgRows.length) scope.push({ p: 'No plan sheets are tracked yet.' });
     if (pkgRows.length) {
       const uniqN = M.allSheets(st).filter((r) => !carryOn(r.sh)).length;
       scope.push({ h: 'Sheets by package' });
       scope.push({ p: 'Sheet counts include every sheet in that package, including sheets carried on from an earlier package. The Carry-on sheets column is how many of those are carried on. The total row adds the packages, so a carried sheet is counted in each package that has it. Unique plan sheets, counted once, are ' + uniqN + '.' });
-      scope.push({ table: { head: ['Package', 'Discipline', 'Section', 'Group', 'Sheets', 'Carry-on sheets'], rows: pkgRows, cls: 'pkgs' } });
+      scope.push({ table: { head: ['Package', 'Discipline', 'Section', 'Group', 'Sheets', 'Carry-on sheets'], rows: pkgRows, kinds: pkgKinds, cls: 'pkgs' } });
     }
     if (R.pp && R.pp.total) scope.push({ p: 'Plan and profile sheets are counted from the road stations and plan scale: ' + R.pp.total + ' in total (Drainage ' + R.pp.byDisc.Drainage + ', SWP3 ' + R.pp.byDisc.SWP3 + ').' });
     out.scope = scope;
@@ -242,7 +253,9 @@
     if (lats.length) {
       prop.push({ h: 'Drainage laterals' });
       prop.push({ p: 'Drainage laterals are double-banked profile sheets. ' + pl(lats.reduce((a, x) => a + ownCount(x.g), 0), 'sheet') + ' are tracked, counted by how many sheets are needed rather than by road.' });
-      prop.push({ ul: lats.map((x) => M.subTag(x.sub) + ' — ' + pl(ownCount(x.g), 'sheet')) });
+      const latRows = lats.map((x) => [M.subTag(x.sub), String(ownCount(x.g))]);
+      const latBuilt = latRows.length > 1 ? { rows: latRows.concat([['Total', String(latRows.reduce((a, r) => a + Number(r[1]), 0))]]), kinds: latRows.map(() => '').concat(['total']) } : { rows: latRows, kinds: latRows.map(() => '') };
+      prop.push({ table: { head: ['Sub-project', 'Sheets'], rows: latBuilt.rows, kinds: latBuilt.kinds, cls: 'lats' } });
     }
     const ponds = F.secsWith((g) => typeof M.isPondSec === 'function' && M.isPondSec(g) && M.viewUnitGroups(st, g).some((x) => x.sheets.length));
     if (ponds.length) {
@@ -250,7 +263,14 @@
       const ng = views.reduce((a, x) => a + x.groups.length, 0), ns = views.reduce((a, x) => a + x.groups.reduce((b, gg) => b + gg.sheets.length, 0), 0);
       prop.push({ h: 'Detention basins' });
       prop.push({ p: pl(ng, 'detention pond') + ' (' + pl(ns, 'sheet') + '). Each pond has a Layout, Cross Sections, and two Geometric Layout sheets.' });
-      prop.push({ table: { head: ['Sub-project', 'Pond', 'Sheets'], rows: views.flatMap((x) => x.groups.map((gg) => [M.subTag(x.sub), gg.name, pondSheetList(x.g, gg)])), cls: 'ponds' } });
+      const pondRows = [], pondKinds = [];
+      for (const x of views) {
+        for (const gg of x.groups) { pondRows.push([M.subTag(x.sub), gg.name, pondSheetList(x.g, gg), String(gg.sheets.length)]); pondKinds.push(''); }
+        if (x.groups.length > 1) { pondRows.push([M.subTag(x.sub), 'Subtotal', '', String(x.groups.reduce((a, gg) => a + gg.sheets.length, 0))]); pondKinds.push('sub'); }
+      }
+      const pondData = pondRows.filter((_, i) => !pondKinds[i]);
+      if (pondData.length > 1) { pondRows.push(['Total', '', '', String(pondData.reduce((a, r) => a + Number(r[3]), 0))]); pondKinds.push('total'); }
+      prop.push({ table: { head: ['Sub-project', 'Pond', 'Sheets', 'Count'], rows: pondRows, kinds: pondKinds, cls: 'ponds' } });
     }
     const boxes = F.secsWith((g) => typeof M.isBoxSec === 'function' && M.isBoxSec(g) && M.viewUnitGroups(st, g).some((x) => x.sheets.length));
     if (boxes.length) {
@@ -258,12 +278,29 @@
       const ng = views.reduce((a, x) => a + x.groups.length, 0), ns = views.reduce((a, x) => a + x.groups.reduce((b, gg) => b + gg.sheets.length, 0), 0);
       prop.push({ h: 'Special junction boxes' });
       prop.push({ p: ng + ' special junction box' + (ng === 1 ? '' : 'es') + ', 3 sheets each (' + pl(ns, 'sheet') + ').' });
-      prop.push({ ul: views.flatMap((x) => x.groups.map((gg) => M.subTag(x.sub) + ' · ' + gg.name + ' — ' + pl(gg.sheets.length, 'sheet'))) });
+      const boxRows = [], boxKinds = [];
+      for (const x of views) {
+        for (const gg of x.groups) { boxRows.push([M.subTag(x.sub), gg.name, String(gg.sheets.length)]); boxKinds.push(''); }
+        if (x.groups.length > 1) { boxRows.push([M.subTag(x.sub), 'Subtotal', String(x.groups.reduce((a, gg) => a + gg.sheets.length, 0))]); boxKinds.push('sub'); }
+      }
+      const boxData = boxRows.filter((_, i) => !boxKinds[i]);
+      if (boxData.length > 1) { boxRows.push(['Total', '', String(boxData.reduce((a, r) => a + Number(r[2]), 0))]); boxKinds.push('total'); }
+      prop.push({ table: { head: ['Sub-project', 'Box', 'Sheets'], rows: boxRows, kinds: boxKinds, cls: 'boxes' } });
     }
     const deck = [['dr-bd-welded', 'Bridge deck drawing details (welded)'], ['dr-bd-det', 'Bridge deck drain details'], ['dr-bd-sum', 'Bridge deck drain summary']];
-    const deckLines = [];
-    for (const [k, lab] of deck) for (const x of F.secsWith((g) => g.key === k && ownCount(g))) deckLines.push(M.subTag(x.sub) + ' · ' + lab + ' — ' + pl(ownCount(x.g), 'sheet'));
-    if (deckLines.length) { prop.push({ h: 'Bridge deck drainage' }); prop.push({ ul: deckLines }); }
+    const deckRows = [], deckKinds = [];
+    for (const [k, lab] of deck) {
+      const hits = F.secsWith((g) => g.key === k && ownCount(g));
+      if (!hits.length) continue;
+      for (const x of hits) { deckRows.push([M.subTag(x.sub), lab, String(ownCount(x.g))]); deckKinds.push(''); }
+      if (hits.length > 1) { deckRows.push(['', lab + ' subtotal', String(hits.reduce((a, x) => a + ownCount(x.g), 0))]); deckKinds.push('sub'); }
+    }
+    if (deckRows.length) {
+      const deckData = deckRows.filter((_, i) => !deckKinds[i]);
+      if (deckData.length > 1) { deckRows.push(['Total', '', String(deckData.reduce((a, r) => a + Number(r[2]), 0))]); deckKinds.push('total'); }
+      prop.push({ h: 'Bridge deck drainage' });
+      prop.push({ table: { head: ['Sub-project', 'Item', 'Sheets'], rows: deckRows, kinds: deckKinds, cls: 'deck' } });
+    }
     out.proposed = prop;
     /* 7 */
     const sw = F.subs.flatMap((sub) => M.sectionsOf(sub, 'SWP3').filter((g) => ownCount(g)).map((g) => ({ sub, g })));

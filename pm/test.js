@@ -1275,12 +1275,14 @@ t('v3.16 engineering report lists ponds, standards, packages, and item counts', 
   assert.ok(pond.rows.some((r) => r[0] === 'A' && r[1] === 'North Pond' && r[2] === 'Layout, Cross Sections, Geometric Layout (1 of 2), Geometric Layout (2 of 2)'));
   assert.ok(pond.rows.some((r) => r[0] === 'A' && r[1] === 'South Pond' && /Layout/.test(r[2])));
   assert.ok(pond.rows.some((r) => r[0] === 'B' && r[1] === 'Pond 1'));
-  const pul = prop.auto.filter((b) => b.ul).flatMap((b) => b.ul);
-  assert.ok(pul.some((x) => x === 'A · Box 1 — 3 sheets') && pul.some((x) => x === 'A · Box 2 — 3 sheets'));
-  assert.ok(pul.some((x) => x === 'A — 4 sheets') && pul.some((x) => x === 'B — 2 sheets'));
-  assert.ok(pul.some((x) => x === 'A · Bridge deck drain details — 2 sheets'));
-  assert.ok(pul.some((x) => x === 'B · Bridge deck drawing details (welded) — 1 sheet'));
-  assert.ok(pul.some((x) => x === 'A · Bridge deck drain summary — 3 sheets'));
+  const boxTab = prop.auto.find((b) => b.table && b.table.cls === 'boxes').table;
+  assert.ok(boxTab.rows.some((r) => r[0] === 'A' && r[1] === 'Box 1' && r[2] === '3') && boxTab.rows.some((r) => r[0] === 'A' && r[1] === 'Box 2' && r[2] === '3'));
+  const latTab = prop.auto.find((b) => b.table && b.table.cls === 'lats').table;
+  assert.ok(latTab.rows.some((r) => r[0] === 'A' && r[1] === '4') && latTab.rows.some((r) => r[0] === 'B' && r[1] === '2'));
+  const deckTab = prop.auto.find((b) => b.table && b.table.cls === 'deck').table;
+  assert.ok(deckTab.rows.some((r) => r[0] === 'A' && r[1] === 'Bridge deck drain details' && r[2] === '2'));
+  assert.ok(deckTab.rows.some((r) => r[0] === 'B' && r[1] === 'Bridge deck drawing details (welded)' && r[2] === '1'));
+  assert.ok(deckTab.rows.some((r) => r[0] === 'A' && r[1] === 'Bridge deck drain summary' && r[2] === '3'));
   const scope = O.find((s) => s.id === 'scope');
   const pkgs = scope.auto.find((b) => b.table && b.table.cls === 'pkgs').table;
   const latA = pkgs.rows.find((r) => r[0] === 'A' && r[2] === 'Drainage Laterals');
@@ -1435,6 +1437,73 @@ t('v3.18 carry-ons stay in their group and count in every package', () => {
   assert.ok(detB && detB[5] === '0', 'B’s own pond is not a carry-on');
   const north = table.rows.find((r) => r[0] === 'B' && r[3] === 'North Pond');
   assert.ok(north && north[4] === '1' && north[5] === '1', 'the carried pond sheet is counted in its group');
+});
+t('v3.19 engineering report subtotals add up', () => {
+  const st = M.newState('Sub');
+  const A = st.subs[0], B = st.subs[1];
+  M.setPondCount(st, M.secOf(A, 'dr-det').id, 2);
+  M.setPondCount(st, M.secOf(B, 'dr-det').id, 1);
+  M.setBoxCount(st, M.secOf(A, 'dr-jb').id, 2);
+  M.setSheetCount(st, M.secOf(A, 'dr-lat').id, 4);
+  M.setSheetCount(st, M.secOf(B, 'dr-lat').id, 1);
+  M.addCarryOn(st, M.secOf(A, 'dr-lat').sheets[0].id, B.id);
+  M.setSheetCount(st, M.secOf(A, 'dr-bd-det').id, 2);
+  M.setSheetCount(st, M.secOf(B, 'dr-bd-det').id, 1);
+  M.addStandardSheets(st, M.secOf(A, 'dr-std').id, ['HIL-C-25 (HOU)', 'PSL']);
+  const O = E.outline(st, today);
+  const pkgs = O.find((s) => s.id === 'scope').auto.find((b) => b.table && b.table.cls === 'pkgs').table;
+  const kindOf = (i) => (pkgs.kinds && pkgs.kinds[i]) || '';
+  const leaf = (pkg, sec) => pkgs.rows.map((r, i) => ({ r, i })).filter((x) => x.r[0] === pkg && x.r[2] === sec && !kindOf(x.i));
+  for (let i = 0; i < pkgs.rows.length; i++) {
+    if (pkgs.rows[i][3] !== 'Section subtotal') continue;
+    const sec = pkgs.rows[i][2], pkg = pkgs.rows[i][0];
+    const parts = leaf(pkg, sec);
+    assert.strictEqual(Number(pkgs.rows[i][4]), parts.reduce((a, x) => a + Number(x.r[4]), 0), 'section subtotal sheets');
+    assert.strictEqual(Number(pkgs.rows[i][5]), parts.reduce((a, x) => a + Number(x.r[5]), 0), 'section subtotal carry-ons');
+    assert.strictEqual(kindOf(i), 'sub');
+  }
+  const allSecs = pkgs.rows.map((r, i) => ({ r, i })).filter((x) => x.r[2] === 'All sections');
+  for (const x of allSecs) {
+    const parts = pkgs.rows.map((r, i) => ({ r, i })).filter((y) => y.r[0] === x.r[0] && !kindOf(y.i));
+    assert.strictEqual(Number(x.r[4]), parts.reduce((a, y) => a + Number(y.r[4]), 0));
+    assert.strictEqual(Number(x.r[5]), parts.reduce((a, y) => a + Number(y.r[5]), 0));
+    assert.strictEqual(kindOf(x.i), 'pkg');
+  }
+  const total = pkgs.rows.map((r, i) => ({ r, i })).find((x) => x.r[0] === 'Total');
+  assert.strictEqual(kindOf(total.i), 'total');
+  assert.strictEqual(Number(total.r[4]), allSecs.reduce((a, x) => a + Number(x.r[4]), 0));
+  assert.strictEqual(Number(total.r[5]), allSecs.reduce((a, x) => a + Number(x.r[5]), 0));
+  const across = pkgs.rows.map((r, i) => ({ r, i })).filter((x) => x.r[3] === 'All packages');
+  assert.ok(across.some((x) => x.r[2] === 'Detention Basin'));
+  for (const x of across) {
+    const parts = pkgs.rows.map((r, i) => ({ r, i })).filter((y) => y.r[2] === x.r[2] && !kindOf(y.i));
+    assert.ok(new Set(parts.map((y) => y.r[0])).size > 1);
+    assert.strictEqual(Number(x.r[4]), parts.reduce((a, y) => a + Number(y.r[4]), 0));
+    assert.strictEqual(Number(x.r[5]), parts.reduce((a, y) => a + Number(y.r[5]), 0));
+    assert.strictEqual(kindOf(x.i), 'sec');
+  }
+  const prop = O.find((s) => s.id === 'proposed');
+  const ponds = prop.auto.find((b) => b.table && b.table.cls === 'ponds').table;
+  const pSub = ponds.rows.map((r, i) => ({ r, i })).find((x) => x.r[1] === 'Subtotal' && x.r[0] === 'A');
+  const aPonds = ponds.rows.map((r, i) => ({ r, i })).filter((x) => x.r[0] === 'A' && x.r[1] !== 'Subtotal' && x.r[0] !== 'Total' && !(ponds.kinds && ponds.kinds[x.i]));
+  assert.strictEqual(Number(pSub.r[3]), aPonds.reduce((a, x) => a + Number(x.r[3]), 0));
+  assert.ok(!(ponds.rows.some((r) => r[0] === 'B' && r[1] === 'Subtotal')), 'one pond has no subtotal');
+  const pTot = ponds.rows[ponds.rows.length - 1];
+  assert.strictEqual(pTot[0], 'Total');
+  assert.strictEqual(Number(pTot[3]), ponds.rows.filter((_, i) => !(ponds.kinds && ponds.kinds[i])).reduce((a, r) => a + Number(r[3]), 0));
+  const boxes = prop.auto.find((b) => b.table && b.table.cls === 'boxes').table;
+  assert.ok(boxes.rows.some((r) => r[1] === 'Subtotal' && r[2] === '6'));
+  const lats = prop.auto.find((b) => b.table && b.table.cls === 'lats').table;
+  assert.strictEqual(lats.rows[lats.rows.length - 1][0], 'Total');
+  assert.strictEqual(Number(lats.rows[lats.rows.length - 1][1]), lats.rows.slice(0, -1).reduce((a, r) => a + Number(r[1]), 0));
+  const deck = prop.auto.find((b) => b.table && b.table.cls === 'deck').table;
+  const deckSub = deck.rows.find((r) => /subtotal/.test(r[1]));
+  assert.ok(deckSub && deckSub[2] === '3', 'bridge deck drain details in two packages add to 3');
+  const std = O.find((s) => s.id === 'sheets').auto.find((b) => b.table && b.table.cls === 'std-dr').table;
+  const stdData = std.rows.filter((r) => r[0] !== 'Total');
+  assert.strictEqual(std.rows[std.rows.length - 1][0], 'Total');
+  assert.strictEqual(Number(std.rows[std.rows.length - 1][1]), stdData.reduce((a, r) => a + Number(r[1]), 0));
+  assert.ok(!(O.find((s) => s.id === 'sheets').auto.find((b) => b.table && b.table.cls === 'std-sw')), 'no SWP3 standards, so no one-row total');
 });
 t('engineering report: counts v3.9 hydraulic data sheets (by count)', () => {
   const st = engState(); const A = st.subs[0];
