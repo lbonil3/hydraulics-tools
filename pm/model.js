@@ -1,4 +1,4 @@
-/* PM data model v3.11: pure functions, no DOM, no storage.
+/* PM data model v3.12: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -36,6 +36,65 @@
     ['sw-other', 'Other SWP3', 'SWP3'],
   ];
   const OTHER = { Drainage: ['dr-other', 'Other Drainage'], SWP3: ['sw-other', 'Other SWP3'] };
+  /* v3.12 TxDOT standard sheets. Edit this list.
+     Drainage names are offered only in a Drainage Standards section.
+     SWP3 names are offered only in an SWP3 standards section (SWP3 Standard Details).
+     name is the sheet title. note is the picker hint and is not part of the title.
+     SWP3 names are the EC(1)-16 … EC(9)-16 sheets already cited in SWP3 Builder. */
+  const STANDARD_SHEETS = [
+    { discipline: 'Drainage', name: 'HIL-C-25', note: 'Curb inlet' },
+    { discipline: 'Drainage', name: 'PSL', note: 'Confirm the sheet' },
+    { discipline: 'Drainage', name: 'PSET', note: 'Precast safety end treatment' },
+    { discipline: 'Drainage', name: 'PSET-SC', note: 'Precast safety end treatment, cross drainage' },
+    { discipline: 'Drainage', name: 'PSET-SP', note: 'Precast safety end treatment, parallel drainage' },
+    { discipline: 'Drainage', name: 'PSET-RR', note: 'Precast safety end treatment, riprap' },
+    { discipline: 'Drainage', name: 'SETP', note: 'Safety end treatment' },
+    { discipline: 'Drainage', name: 'SETP-CD', note: 'Safety end treatment, cross drainage' },
+    { discipline: 'Drainage', name: 'SETP-PD', note: 'Safety end treatment, parallel drainage' },
+    { discipline: 'Drainage', name: 'CH-PW', note: 'Concrete headwall, parallel wings' },
+    { discipline: 'Drainage', name: 'PW', note: 'Parallel wingwall' },
+    { discipline: 'Drainage', name: 'FW-0', note: 'Wingwall' },
+    { discipline: 'Drainage', name: 'JB', note: 'Junction box' },
+    { discipline: 'Drainage', name: 'MH', note: 'Manhole' },
+    { discipline: 'SWP3', name: 'EC(1)-16', note: 'Fence and vertical tracking' },
+    { discipline: 'SWP3', name: 'EC(2)-16', note: 'Rock filter dams' },
+    { discipline: 'SWP3', name: 'EC(3)-16', note: 'Construction exits' },
+    { discipline: 'SWP3', name: 'EC(4)-16', note: 'Diversion dike' },
+    { discipline: 'SWP3', name: 'EC(5)-16', note: 'Interceptor swale' },
+    { discipline: 'SWP3', name: 'EC(6)-16', note: 'Sediment basins and traps' },
+    { discipline: 'SWP3', name: 'EC(7)-16', note: 'Pipe slope drain' },
+    { discipline: 'SWP3', name: 'EC(8)-16', note: 'Paved flume and velocity dissipation' },
+    { discipline: 'SWP3', name: 'EC(9)-16', note: 'Erosion control log' },
+  ];
+  function isStdSec(sec) {
+    if (!sec) return false;
+    const k = String(sec.key || ''), t = String(sec.title || '');
+    return k === 'dr-std' || k === 'sw-std' || /^standards$/i.test(t.trim()) || /standard detail/i.test(t);
+  }
+  function standardsForSection(sec) {
+    if (!isStdSec(sec)) return [];
+    const disc = sec.discipline === 'SWP3' ? 'SWP3' : 'Drainage';
+    return STANDARD_SHEETS.filter((s) => s.discipline === disc).map((s) => ({ name: s.name, note: s.note || '' }));
+  }
+  function addStandardSheets(st, secId, names) {
+    const hit = findSeg(st, secId);
+    if (!hit) throw new Error('No such section');
+    if (!isStdSec(hit.seg)) throw new Error('Standard sheets are added in a Standards section.');
+    const allow = new Map(standardsForSection(hit.seg).map((s) => [s.name.toLowerCase(), s.name]));
+    const have = new Set(hit.seg.sheets.map((s) => String(s.title || '').trim().toLowerCase()));
+    const ids = []; let skipped = 0;
+    for (const raw of names || []) {
+      const key = String(raw || '').trim().toLowerCase();
+      if (!key) continue;
+      const name = allow.get(key);
+      if (!name || have.has(key)) { skipped++; continue; }
+      const sh = newSheet({ title: name, discipline: hit.seg.discipline });
+      sh.series = ''; sh.road = '';
+      hit.seg.sheets.push(sh); have.add(key); ids.push(sh.id);
+    }
+    if (ids.length) log(st, subTag(hit.sub) + ' · ' + hit.seg.title + ': added ' + ids.length + ' standard sheet' + (ids.length === 1 ? '' : 's'), { t: 'seg', id: hit.seg.id });
+    return { added: ids.length, skipped, ids };
+  }
   /* v2 PP series → v3 section */
   const SERIES_SEC = { 'pp-drain': 'dr-pp', 'pp-storm': 'dr-trunk', 'pp-lat': 'dr-lat', 'pp-swp3': 'sw-layout' };
   /* v2.6 sheet-number ranges: key = series:<id> | tpl:<title lowercase> | disc:<discipline> (fallback) */
@@ -2166,7 +2225,7 @@
     log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' sheet' + (P.n === 1 ? '' : 's') + ' (' + (made.length ? '+' + made.length : '') + (P.remove.length ? (made.length ? ', ' : '') + '−' + P.remove.length : '') + (!made.length && !P.remove.length ? 'no change' : '') + ')', { t: 'seg', id: sec.id });
     return { created: made.length, removed: P.remove.length, adopted: P.adopt ? 1 : 0, n: P.n, ids: made.map((q) => q.id) };
   }
-  /* ---- v3.11 counted sheets (no road): laterals, and an option on Bridge Deck Drawing Details, Summary, and Standards.
+  /* ---- v3.11 counted sheets (no road): laterals, and an option on Bridge Deck Drawing Details, Bridge Deck Drain Details, Summary, and Standards.
      Same shape as hydraulic sheets, stored on sh.cnt so the engineering report still treats only sh.hyd as computations.
      Ponds and special junction boxes are counted by unit: sh.unit = { kind, n, of, slot, title }. ---- */
   function titleTagEdited(sh, tag) { return !!(sh && sh[tag] && sh[tag].title && sh.title !== sh[tag].title); }
@@ -2176,8 +2235,9 @@
   function isOptCountSec(sec) {
     if (!sec) return false;
     const k = String(sec.key || ''), t = String(sec.title || '');
-    if (k === 'dr-bd-welded' || k === 'dr-bd-sum' || k === 'dr-std') return true;
+    if (k === 'dr-bd-welded' || k === 'dr-bd-det' || k === 'dr-bd-sum' || k === 'dr-std') return true;
     if (/bridge deck drawing details/i.test(t)) return true;
+    if (/bridge deck drain details/i.test(t)) return true;
     if (/bridge deck drain summary/i.test(t)) return true;
     if (/^standards$/i.test(t.trim())) return true;
     return false;
@@ -2559,7 +2619,7 @@
       if (!Object.keys(e).length) delete st.props[k];
     }
   }
-  return { isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, syncUnits, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, syncUnits, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
