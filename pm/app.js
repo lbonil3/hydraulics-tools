@@ -1,4 +1,4 @@
-/* Project Tracker v3.12 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.13 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -1821,7 +1821,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     setTimeout(paint, 0);
     return h('section', { class: 'box', id: 'stdBox' },
       h('h3', {}, branch + ' standard sheets'),
-      h('p', { class: 'muted small' }, 'Pick TxDOT standard sheets for this ' + branch + ' branch. Each one becomes a sheet titled with its name. The list is in the app data (STANDARD_SHEETS) if a name needs to change.'),
+      h('p', { class: 'muted small' }, 'Pick TxDOT standard sheets for this ' + branch + ' branch. Each one becomes a sheet titled with its name. A standard marked “2 sheets” adds both, titled “(1 of 2)” and “(2 of 2)”. The list is STANDARD_SHEETS in the app data if a name needs to change.'),
       q, box, h('div', { class: 'row' }, btn));
   }
   function segDrawer({ sub, seg }) {

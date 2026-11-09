@@ -1081,31 +1081,49 @@ t('v3.12 Bridge Deck Drain Details by count, no road', () => {
   const back = M.migrate(JSON.parse(JSON.stringify(st)));
   assert.deepStrictEqual(M.secOf(back.subs[0], 'dr-bd-det').sheets.map((q) => q.title), deck.sheets.map((q) => q.title), 'saved projects round-trip');
 });
-t('v3.12 standard sheet list: drainage vs SWP3, titles, no road, no duplicates', () => {
+t('v3.13 drainage standards match the plan-set index; a 2-sheet standard adds both', () => {
   const st = M.newState('P'); const A = st.subs[0];
   const dr = M.secOf(A, 'dr-std'), sw = M.secOf(A, 'sw-std'), pp = M.secOf(A, 'dr-pp');
-  assert.ok(M.isStdSec(dr) && M.isStdSec(sw) && !M.isStdSec(pp));
   const dNames = M.standardsForSection(dr).map((s) => s.name);
+  assert.deepStrictEqual(dNames, [
+    'HARRIS COUNTY FLOOD CONTROL DISTRICT NOTES (HCFCD-N-25 (HOU))',
+    'HARRIS COUNTY FLOOD CONTROL DISTRICT CONCRETE CHANNEL LINING DETAILS',
+    'HARRIS COUNTY FLOOD CONTROL DISTRICT STORM SEWER AND RIPRAP DETAILS',
+    'HARRIS COUNTY FLOOD CONTROL DISTRICT STORM SEWER OUTFALL DETAILS (HCFCD-SSOD-25 (HOU))',
+    'HCFCD-ISD-25 (HOU)',
+    'HARRIS COUNTY ENGINEERING DEPARTMENT TYPE "A" INLET DETAILS',
+    'HIL-C-25 (HOU)', 'HIL-C1-25 (HOU)', 'HIL-AZ-25 (HOU)', 'HIL-AZ2G-25 (HOU)', 'HIL-AZR-25 (HOU)', 'HIL-AZR2G-25 (HOU)',
+    'MH-A/B-25 (HOU)', 'MSD-25 (HOU)', 'GD-25 (HOU)', 'C&DD-24 (HOU)',
+    'PB', 'PBGC', 'PJB', 'PDD', 'PRM', 'PSL',
+    'SCP-3', 'SCP-4', 'SCP-5', 'SCP-6', 'SCP-MD', 'BCS', 'SW-0',
+    'SETP-CD', 'PSET-SC', 'PSET-RC', 'CH-FW-0', 'CH-FW-30',
+  ]);
+  for (const gone of ['PSET', 'SETP', 'CH-PW', 'PSET-SP', 'PSET-RR', 'SETP-PD', 'PW', 'FW-0', 'JB', 'MH', 'HIL-C-25']) assert.ok(!dNames.includes(gone), gone);
   const sNames = M.standardsForSection(sw).map((s) => s.name);
-  for (const n of ['HIL-C-25', 'PSL', 'PSET', 'SETP', 'CH-PW']) assert.ok(dNames.includes(n), n);
-  for (const n of ['EC(1)-16', 'EC(2)-16', 'EC(3)-16', 'EC(9)-16']) assert.ok(sNames.includes(n), n);
-  assert.ok(!dNames.some((n) => /^EC\(/.test(n)), 'drainage list has no SWP3 sheets');
-  assert.ok(!sNames.some((n) => /HIL|PSET|SETP|CH-PW|^PSL$/.test(n)), 'SWP3 list has no drainage sheets');
-  assert.strictEqual(M.standardsForSection(pp).length, 0, 'the list is only on a Standards section');
-  const r = M.addStandardSheets(st, dr.id, ['HIL-C-25', 'PSL', 'EC(1)-16', 'HIL-C-25']);
-  assert.deepStrictEqual([r.added, r.skipped], [2, 2], 'unknown branch and a repeat are skipped');
-  assert.deepStrictEqual(dr.sheets.map((q) => q.title), ['HIL-C-25', 'PSL']);
-  assert.ok(dr.sheets.every((q) => !q.road && !q.gen && q.discipline === 'Drainage'));
+  assert.deepStrictEqual(sNames, ['EC(1)-16', 'EC(2)-16', 'EC(3)-16', 'EC(4)-16', 'EC(5)-16', 'EC(6)-16', 'EC(7)-16', 'EC(8)-16', 'EC(9)-16']);
+  assert.ok(!sNames.some((n) => /HIL|HCFCD|SETP|PSET/.test(n)));
+  const r = M.addStandardSheets(st, dr.id, ['HIL-C-25 (HOU)', 'PSL', 'EC(1)-16', 'HIL-C-25 (HOU)']);
+  assert.deepStrictEqual([r.added, r.skipped], [3, 2], 'PSL is 2 sheets; the EC name and the repeat are skipped');
+  assert.deepStrictEqual(dr.sheets.map((q) => q.title), ['HIL-C-25 (HOU)', 'PSL (1 of 2)', 'PSL (2 of 2)']);
+  assert.ok(dr.sheets.every((q) => !q.road && q.discipline === 'Drainage'));
+  dr.sheets[1].status = 'In progress';
+  assert.strictEqual(M.addStandardSheets(st, dr.id, ['PSL']).added, 0, 'both PSL sheets already exist');
+  assert.strictEqual(dr.sheets[1].status, 'In progress', 'an existing PSL sheet is not replaced');
   M.addSheet(st, dr.id, { title: 'My extra standard' });
   M.setSheetCount(st, dr.id, 1);
-  assert.ok(dr.sheets.some((q) => q.title === 'My extra standard') && dr.sheets.some((q) => q.title === 'HIL-C-25') && dr.sheets.some((q) => q.cnt), 'free-text add and the sheet count stay');
-  const swAdd = M.addStandardSheets(st, sw.id, ['EC(1)-16', 'HIL-C-25']);
+  assert.ok(dr.sheets.some((q) => q.title === 'My extra standard') && dr.sheets.some((q) => q.cnt), 'free-text add and the sheet count stay');
+  const swAdd = M.addStandardSheets(st, sw.id, ['EC(1)-16', 'HIL-C-25 (HOU)']);
   assert.strictEqual(swAdd.added, 1);
   assert.deepStrictEqual(sw.sheets.map((q) => q.title), ['EC(1)-16']);
-  assert.strictEqual(M.addStandardSheets(st, sw.id, ['EC(1)-16']).added, 0, 'already there');
+  const old = M.newState('Legacy');
+  const oldStd = M.secOf(old.subs[0], 'dr-std');
+  M.addSheet(old, oldStd.id, { title: 'PSL', owner: 'Ana', notes: 'from v3.12' });
+  const kept = M.migrate(JSON.parse(JSON.stringify(old)));
+  const keptStd = M.secOf(kept.subs[0], 'dr-std');
+  assert.deepStrictEqual([keptStd.sheets[0].title, keptStd.sheets[0].owner, keptStd.sheets[0].notes], ['PSL', 'Ana', 'from v3.12'], 'an older single PSL sheet is left as it was');
+  M.addStandardSheets(kept, keptStd.id, ['PSL', 'SW-0', 'C&DD-24 (HOU)', 'HCFCD-ISD-25 (HOU)']);
+  assert.deepStrictEqual(keptStd.sheets.map((q) => q.title), ['PSL', 'PSL (1 of 2)', 'PSL (2 of 2)', 'SW-0 (1 of 2)', 'SW-0 (2 of 2)', 'C&DD-24 (HOU) (1 of 2)', 'C&DD-24 (HOU) (2 of 2)', 'HCFCD-ISD-25 (HOU) (1 of 2)', 'HCFCD-ISD-25 (HOU) (2 of 2)']);
   assert.throws(() => M.addStandardSheets(st, pp.id, ['PSL']), /Standards section/);
-  const back = M.migrate(JSON.parse(JSON.stringify(st)));
-  assert.deepStrictEqual(M.secOf(back.subs[0], 'dr-std').sheets.map((q) => q.title), dr.sheets.map((q) => q.title));
 });
 t('engineering report: counts v3.9 hydraulic data sheets (by count)', () => {
   const st = engState(); const A = st.subs[0];

@@ -1,4 +1,4 @@
-/* PM data model v3.12: pure functions, no DOM, no storage.
+/* PM data model v3.13: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -39,23 +39,43 @@
   /* v3.12 TxDOT standard sheets. Edit this list.
      Drainage names are offered only in a Drainage Standards section.
      SWP3 names are offered only in an SWP3 standards section (SWP3 Standard Details).
-     name is the sheet title. note is the picker hint and is not part of the title.
+     name is the sheet title. sheets: 2 adds “(1 of 2)” and “(2 of 2)”. note is only the picker hint.
      SWP3 names are the EC(1)-16 … EC(9)-16 sheets already cited in SWP3 Builder. */
   const STANDARD_SHEETS = [
-    { discipline: 'Drainage', name: 'HIL-C-25', note: 'Curb inlet' },
-    { discipline: 'Drainage', name: 'PSL', note: 'Confirm the sheet' },
-    { discipline: 'Drainage', name: 'PSET', note: 'Precast safety end treatment' },
-    { discipline: 'Drainage', name: 'PSET-SC', note: 'Precast safety end treatment, cross drainage' },
-    { discipline: 'Drainage', name: 'PSET-SP', note: 'Precast safety end treatment, parallel drainage' },
-    { discipline: 'Drainage', name: 'PSET-RR', note: 'Precast safety end treatment, riprap' },
-    { discipline: 'Drainage', name: 'SETP', note: 'Safety end treatment' },
-    { discipline: 'Drainage', name: 'SETP-CD', note: 'Safety end treatment, cross drainage' },
-    { discipline: 'Drainage', name: 'SETP-PD', note: 'Safety end treatment, parallel drainage' },
-    { discipline: 'Drainage', name: 'CH-PW', note: 'Concrete headwall, parallel wings' },
-    { discipline: 'Drainage', name: 'PW', note: 'Parallel wingwall' },
-    { discipline: 'Drainage', name: 'FW-0', note: 'Wingwall' },
-    { discipline: 'Drainage', name: 'JB', note: 'Junction box' },
-    { discipline: 'Drainage', name: 'MH', note: 'Manhole' },
+    { discipline: 'Drainage', name: 'HARRIS COUNTY FLOOD CONTROL DISTRICT NOTES (HCFCD-N-25 (HOU))' },
+    { discipline: 'Drainage', name: 'HARRIS COUNTY FLOOD CONTROL DISTRICT CONCRETE CHANNEL LINING DETAILS' },
+    { discipline: 'Drainage', name: 'HARRIS COUNTY FLOOD CONTROL DISTRICT STORM SEWER AND RIPRAP DETAILS' },
+    { discipline: 'Drainage', name: 'HARRIS COUNTY FLOOD CONTROL DISTRICT STORM SEWER OUTFALL DETAILS (HCFCD-SSOD-25 (HOU))' },
+    { discipline: 'Drainage', name: 'HCFCD-ISD-25 (HOU)', sheets: 2, note: '2 sheets' },
+    { discipline: 'Drainage', name: 'HARRIS COUNTY ENGINEERING DEPARTMENT TYPE "A" INLET DETAILS' },
+    { discipline: 'Drainage', name: 'HIL-C-25 (HOU)' },
+    { discipline: 'Drainage', name: 'HIL-C1-25 (HOU)' },
+    { discipline: 'Drainage', name: 'HIL-AZ-25 (HOU)' },
+    { discipline: 'Drainage', name: 'HIL-AZ2G-25 (HOU)' },
+    { discipline: 'Drainage', name: 'HIL-AZR-25 (HOU)' },
+    { discipline: 'Drainage', name: 'HIL-AZR2G-25 (HOU)' },
+    { discipline: 'Drainage', name: 'MH-A/B-25 (HOU)' },
+    { discipline: 'Drainage', name: 'MSD-25 (HOU)' },
+    { discipline: 'Drainage', name: 'GD-25 (HOU)' },
+    { discipline: 'Drainage', name: 'C&DD-24 (HOU)', sheets: 2, note: '2 sheets' },
+    { discipline: 'Drainage', name: 'PB' },
+    { discipline: 'Drainage', name: 'PBGC' },
+    { discipline: 'Drainage', name: 'PJB' },
+    { discipline: 'Drainage', name: 'PDD' },
+    { discipline: 'Drainage', name: 'PRM' },
+    { discipline: 'Drainage', name: 'PSL', sheets: 2, note: '2 sheets' },
+    { discipline: 'Drainage', name: 'SCP-3' },
+    { discipline: 'Drainage', name: 'SCP-4' },
+    { discipline: 'Drainage', name: 'SCP-5' },
+    { discipline: 'Drainage', name: 'SCP-6' },
+    { discipline: 'Drainage', name: 'SCP-MD' },
+    { discipline: 'Drainage', name: 'BCS' },
+    { discipline: 'Drainage', name: 'SW-0', sheets: 2, note: '2 sheets' },
+    { discipline: 'Drainage', name: 'SETP-CD' },
+    { discipline: 'Drainage', name: 'PSET-SC' },
+    { discipline: 'Drainage', name: 'PSET-RC' },
+    { discipline: 'Drainage', name: 'CH-FW-0' },
+    { discipline: 'Drainage', name: 'CH-FW-30' },
     { discipline: 'SWP3', name: 'EC(1)-16', note: 'Fence and vertical tracking' },
     { discipline: 'SWP3', name: 'EC(2)-16', note: 'Rock filter dams' },
     { discipline: 'SWP3', name: 'EC(3)-16', note: 'Construction exits' },
@@ -74,23 +94,33 @@
   function standardsForSection(sec) {
     if (!isStdSec(sec)) return [];
     const disc = sec.discipline === 'SWP3' ? 'SWP3' : 'Drainage';
-    return STANDARD_SHEETS.filter((s) => s.discipline === disc).map((s) => ({ name: s.name, note: s.note || '' }));
+    return STANDARD_SHEETS.filter((s) => s.discipline === disc).map((s) => ({ name: s.name, note: s.note || '', sheets: s.sheets > 1 ? s.sheets : 1 }));
+  }
+  function standardSheetTitles(entry) {
+    const n = entry.sheets > 1 ? entry.sheets : 1;
+    if (n === 1) return [entry.name];
+    return Array.from({ length: n }, (_, i) => entry.name + ' (' + (i + 1) + ' of ' + n + ')');
   }
   function addStandardSheets(st, secId, names) {
     const hit = findSeg(st, secId);
     if (!hit) throw new Error('No such section');
     if (!isStdSec(hit.seg)) throw new Error('Standard sheets are added in a Standards section.');
-    const allow = new Map(standardsForSection(hit.seg).map((s) => [s.name.toLowerCase(), s.name]));
+    const disc = hit.seg.discipline === 'SWP3' ? 'SWP3' : 'Drainage';
+    const allow = new Map(STANDARD_SHEETS.filter((s) => s.discipline === disc).map((s) => [s.name.toLowerCase(), s]));
     const have = new Set(hit.seg.sheets.map((s) => String(s.title || '').trim().toLowerCase()));
     const ids = []; let skipped = 0;
     for (const raw of names || []) {
       const key = String(raw || '').trim().toLowerCase();
       if (!key) continue;
-      const name = allow.get(key);
-      if (!name || have.has(key)) { skipped++; continue; }
-      const sh = newSheet({ title: name, discipline: hit.seg.discipline });
-      sh.series = ''; sh.road = '';
-      hit.seg.sheets.push(sh); have.add(key); ids.push(sh.id);
+      const entry = allow.get(key);
+      if (!entry) { skipped++; continue; }
+      const missing = standardSheetTitles(entry).filter((t) => !have.has(t.toLowerCase()));
+      if (!missing.length) { skipped++; continue; }
+      for (const title of missing) {
+        const sh = newSheet({ title, discipline: hit.seg.discipline });
+        sh.series = ''; sh.road = '';
+        hit.seg.sheets.push(sh); have.add(title.toLowerCase()); ids.push(sh.id);
+      }
     }
     if (ids.length) log(st, subTag(hit.sub) + ' · ' + hit.seg.title + ': added ' + ids.length + ' standard sheet' + (ids.length === 1 ? '' : 's'), { t: 'seg', id: hit.seg.id });
     return { added: ids.length, skipped, ids };

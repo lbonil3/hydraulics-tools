@@ -384,6 +384,10 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.13 (drainage standards from the plan-set index)
+
+The Drainage Standards pick-list is the sheet names from the plan-set index, in that order. HCFCD-ISD-25 (HOU), C&DD-24 (HOU), PSL, and SW-0 each add two sheets, titled “(1 of 2)” and “(2 of 2)”. Sheets already saved under an older title, including a single sheet titled PSL, are left as they are. The SWP3 EC(1)-16 … EC(9)-16 list is unchanged.
+
 ## v3.12 (Bridge Deck Drain Details by count)
 
 Bridge Deck Drain Details takes a sheet count, with no road. Same pattern as Bridge Deck Drawing Details, Bridge Deck Drain Summary, Standards, and Drainage Laterals. Existing sheets in that section are kept; setting a count adopts a sheet titled like the section and leaves any other sheets in place.
