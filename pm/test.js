@@ -155,10 +155,10 @@ t('section lists are editable: add / rename / reorder / remove / roads on-off', 
   assert.throws(() => M.removeSectionDef(st, d.key), /still has 1/);
   M.deleteSheet(st, sec.sheets[0].id); M.removeSectionDef(st, d.key);
   assert.ok(!st.subs[0].segments.some((x) => x.key === d.key));
-  M.setSectionPP(st, 'dr-bd-det', true); const det = M.secOf(st.subs[0], 'dr-bd-det');
+  M.setSectionPP(st, 'dr-odam', true); const det = M.secOf(st.subs[0], 'dr-odam');
   M.addRoad(st, det.id, { road: 'Pond 1', start: '0+00', end: '13+00' });
   assert.strictEqual(M.segPP(st, st.subs[0], det).total, 2);
-  assert.throws(() => M.setSectionPP(st, 'dr-bd-det', false), /road entries/);
+  assert.throws(() => M.setSectionPP(st, 'dr-odam', false), /road entries/);
   M.setSectionPP(st, 'dr-std', true); M.setSectionPP(st, 'dr-std', false); assert.ok(!M.isPPSec(M.secOf(st.subs[0], 'dr-std')));
   assert.throws(() => { for (const x of M.secDefs(st, 'SWP3').slice()) M.removeSectionDef(st, x.key); }, /at least one/);
 });
@@ -946,7 +946,7 @@ t('v3.11 laterals, ponds (4 sheets), junction boxes (3 sheets), optional counts,
   assert.ok(M.isLatSec(lat) && M.isPlainCountSec(lat) && !M.isPPSec(lat), 'laterals are counted sheets, not a road section');
   assert.ok(M.isPondSec(det) && M.unitSlots(det).map((s) => s.label).join('|') === 'Layout|Cross Sections|Geometric Layout (1 of 2)|Geometric Layout (2 of 2)');
   assert.ok(M.isBoxSec(jb) && M.unitSlots(jb).length === 3, 'each special junction box is 3 sheets');
-  assert.ok(M.isOptCountSec(weld) && M.isOptCountSec(sum) && M.isOptCountSec(std) && !M.isOptCountSec(deck) && !M.isOptCountSec(lat));
+  assert.ok(M.isOptCountSec(weld) && M.isOptCountSec(sum) && M.isOptCountSec(std) && M.isOptCountSec(deck) && !M.isOptCountSec(lat));
   assert.ok(!st.subs.some((s) => s.segments.some((g) => g.key === 'dr-det-xs')) && !M.secDef(st, 'dr-det-xs'), 'the old cross-section branch is gone');
   assert.ok(!st.index.some((t) => /detention basin layout|detention basin cross section|special junction box details/i.test(t.title)));
   assert.throws(() => M.addRoad(st, lat.id, { road: 'Lateral A' }), /count|no road entries/);
@@ -1058,6 +1058,28 @@ t('v3.11 laterals, ponds (4 sheets), junction boxes (3 sheets), optional counts,
   assert(/detention pond/.test(ptxt) && /Layout, Cross Sections, and two Geometric Layout/.test(ptxt), ptxt);
   assert(/special junction box/.test(ptxt) && /3 sheets/.test(ptxt), ptxt);
   assert(/double-banked/.test(ptxt) && /lateral/.test(ptxt), ptxt);
+});
+t('v3.12 Bridge Deck Drain Details by count, no road', () => {
+  const st = M.newState('P'); const deck = M.secOf(st.subs[0], 'dr-bd-det');
+  assert.ok(M.isOptCountSec(deck) && M.isSheetCountSec(deck) && !M.isPPSec(deck), 'Bridge Deck Drain Details is a counted section');
+  assert.throws(() => M.addRoad(st, deck.id, { road: 'Bent 4' }), /count/);
+  M.addSheet(st, deck.id, { title: deck.title, owner: 'Ana', notes: 'bent 2' });
+  const before = JSON.stringify(st);
+  const P = M.planSheetCount(st, deck.id, 3);
+  assert.strictEqual(JSON.stringify(st), before, 'planning does not change data');
+  assert.deepStrictEqual([P.cur, P.create, !!P.adopt], [1, 2, true]);
+  const r = M.setSheetCount(st, deck.id, 3);
+  assert.deepStrictEqual([r.adopted, r.created], [1, 2]);
+  const counted = deck.sheets.filter((q) => q.cnt);
+  assert.deepStrictEqual(counted.map((q) => q.title), [1, 2, 3].map((i) => 'Bridge Deck Drain Details (' + i + ' of 3)'));
+  assert.ok(counted.every((q) => !q.road && !q.gen));
+  assert.strictEqual(counted[0].owner, 'Ana');
+  assert.strictEqual(counted[0].notes, 'bent 2');
+  counted[1].title = 'Deck drains at bent 4';
+  M.setSheetCount(st, deck.id, 3);
+  assert.strictEqual(counted[1].title, 'Deck drains at bent 4', 'edited titles are kept');
+  const back = M.migrate(JSON.parse(JSON.stringify(st)));
+  assert.deepStrictEqual(M.secOf(back.subs[0], 'dr-bd-det').sheets.map((q) => q.title), deck.sheets.map((q) => q.title), 'saved projects round-trip');
 });
 t('engineering report: counts v3.9 hydraulic data sheets (by count)', () => {
   const st = engState(); const A = st.subs[0];

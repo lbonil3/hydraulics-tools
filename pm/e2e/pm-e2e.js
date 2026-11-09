@@ -496,6 +496,13 @@ function v2Fixture() {
   ok(await has('#hydBox') && !(await has('#addRoadName')), 'Bridge Deck Drawing Details has the sheet-count option');
   await openSec('dr-bd-sum');
   ok(await has('#hydBox'), 'Summary has the sheet-count option');
+  await openSec('dr-bd-det');
+  ok(await has('#hydBox') && await has('#hydCount') && !(await has('#addRoadName')) && !(await has('#addSheetRoad')), 'Bridge Deck Drain Details: sheet count, no road');
+  await setVal('#hydCount', '2'); await sleep(150); await click('#hydSet'); await sleep(300);
+  D = await data();
+  const deckCnt = D.subs[0].segments.find((g) => g.key === 'dr-bd-det').sheets.filter((q) => q.cnt);
+  ok(deckCnt.length === 2 && deckCnt.every((q) => !q.road) && deckCnt.map((q) => q.title).join('|') === 'Bridge Deck Drain Details (1 of 2)|Bridge Deck Drain Details (2 of 2)', 'two Bridge Deck Drain Details sheets, generic titles, no road');
+  await shot('19-deck-drain-details');
   await shot('18-optional-counts');
   void weld;
 

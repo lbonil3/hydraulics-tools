@@ -1,4 +1,4 @@
-/* PM data model v3.11: pure functions, no DOM, no storage.
+/* PM data model v3.12: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -2166,7 +2166,7 @@
     log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' sheet' + (P.n === 1 ? '' : 's') + ' (' + (made.length ? '+' + made.length : '') + (P.remove.length ? (made.length ? ', ' : '') + '−' + P.remove.length : '') + (!made.length && !P.remove.length ? 'no change' : '') + ')', { t: 'seg', id: sec.id });
     return { created: made.length, removed: P.remove.length, adopted: P.adopt ? 1 : 0, n: P.n, ids: made.map((q) => q.id) };
   }
-  /* ---- v3.11 counted sheets (no road): laterals, and an option on Bridge Deck Drawing Details, Summary, and Standards.
+  /* ---- v3.11 counted sheets (no road): laterals, and an option on Bridge Deck Drawing Details, Bridge Deck Drain Details, Summary, and Standards.
      Same shape as hydraulic sheets, stored on sh.cnt so the engineering report still treats only sh.hyd as computations.
      Ponds and special junction boxes are counted by unit: sh.unit = { kind, n, of, slot, title }. ---- */
   function titleTagEdited(sh, tag) { return !!(sh && sh[tag] && sh[tag].title && sh.title !== sh[tag].title); }
@@ -2176,8 +2176,9 @@
   function isOptCountSec(sec) {
     if (!sec) return false;
     const k = String(sec.key || ''), t = String(sec.title || '');
-    if (k === 'dr-bd-welded' || k === 'dr-bd-sum' || k === 'dr-std') return true;
+    if (k === 'dr-bd-welded' || k === 'dr-bd-det' || k === 'dr-bd-sum' || k === 'dr-std') return true;
     if (/bridge deck drawing details/i.test(t)) return true;
+    if (/bridge deck drain details/i.test(t)) return true;
     if (/bridge deck drain summary/i.test(t)) return true;
     if (/^standards$/i.test(t.trim())) return true;
     return false;
