@@ -1,4 +1,4 @@
-/* PM data model v3.14: pure functions, no DOM, no storage.
+/* PM data model v3.15: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -740,6 +740,7 @@
       delete g.deps;
     }
     if ('road' in g) g.road = String(g.road || '').trim();
+    if (isCarryOn(sh)) { delete g.title; delete g.number; }
     const reopened = sh.status === 'Done' && 'status' in g && g.status !== 'Done';
     if ('title' in g && sh.gen && g.title !== sh.title) sh.gen.titleEdited = true;
     if (g.status === 'Done' && !('pct' in g)) g.pct = 100;
@@ -748,12 +749,15 @@
     Object.assign(sh, g);
     if (sh.owner) addStaff(st, sh.owner);
     if (reopened) markRevised(st, { t: 'sheet', id: sh.id }, 'Re-opened (was Done)');
+    if (!isCarryOn(sh) && (changed.includes('title') || changed.includes('number'))) syncCarryFrom(st, sh.id);
     if (changed.length) log(st, sh.title + ': ' + changed.map((k) => k + (['notes', 'qc'].includes(k) ? '' : ' → ' + (g[k] === '' ? '(blank)' : g[k]))).join(', '), { t: 'sheet', id: sh.id });
     return sh;
   }
   function deleteSheet(st, sheetId) {
     const hit = findSheet(st, sheetId);
     if (hit) {
+      const originId = hit.sh.id;
+      for (const r of allSheets(st)) if (r.sh !== hit.sh && isCarryOn(r.sh) && r.sh.carry.src === originId) r.seg.sheets = r.seg.sheets.filter((s) => s !== r.sh);
       hit.seg.sheets = hit.seg.sheets.filter((s) => s !== hit.sh);
       if (hit.seg.sheets.some((q) => q.hyd)) syncHyd(hit.seg);
       if (hit.seg.sheets.some((q) => q.cnt)) syncCounted(hit.seg, 'cnt');
@@ -768,7 +772,7 @@
     if (!hit) throw new Error('No such sheet');
     const copy = { ...clone(hit.sh), id: uid(), title: hit.sh.title + ' (copy)', status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], gen: null };
     delete copy.dam; /* a duplicate is a plain sheet, not a linked DAM copy */
-    delete copy.hyd; delete copy.cnt; delete copy.unit;
+    delete copy.hyd; delete copy.cnt; delete copy.unit; delete copy.carry;
     hit.seg.sheets.splice(hit.seg.sheets.indexOf(hit.sh) + 1, 0, copy);
     log(st, 'Duplicated sheet ' + hit.sh.title, { t: 'sheet', id: copy.id });
     return copy;
@@ -881,7 +885,8 @@
     today = today || todayISO();
     const rows = allSheets(st);
     const subs = st.subs.map((sub) => ({ sub, ...progress(rows.filter((r) => r.sub === sub).map((r) => r.sh)) }));
-    const discs = DISCIPLINES.map((d) => ({ disc: d, ...progress(rows.filter((r) => r.seg.discipline === d).map((r) => r.sh)) }));
+    const uniq = rows.filter((r) => !isCarryOn(r.sh));
+    const discs = DISCIPLINES.map((d) => ({ disc: d, ...progress(uniq.filter((r) => r.seg.discipline === d).map((r) => r.sh)) }));
     const overdue = rows.filter((r) => isOverdue(r.sh, today)).sort((a, b) => a.sh.due.localeCompare(b.sh.due));
     const upcoming = rows.filter((r) => isUpcoming(r.sh, today, 14)).sort((a, b) => a.sh.due.localeCompare(b.sh.due));
     const byOwner = {};
@@ -894,8 +899,8 @@
       if (isOverdue(r.sh, today)) o.overdue++;
       o.hoursBudget += Number(r.sh.hoursBudget) || 0; o.hoursActual += Number(r.sh.hoursActual) || 0;
     }
-    const milestones = st.milestones.map((m) => ({ m, ...progress(rows.filter((r) => r.sh.milestone === m.id).map((r) => r.sh)) }));
-    return { overall: progress(rows.map((r) => r.sh)), subs, discs, overdue, upcoming, milestones,
+    const milestones = st.milestones.map((m) => ({ m, ...progress(uniq.filter((r) => r.sh.milestone === m.id).map((r) => r.sh)) }));
+    return { overall: progress(uniq.map((r) => r.sh)), subs, discs, overdue, upcoming, milestones,
       workload: Object.values(byOwner).sort((a, b) => b.open - a.open || a.owner.localeCompare(b.owner)) };
   }
   function filterRows(rows, f, today) {
@@ -1184,7 +1189,9 @@
           if ('dam' in sh && !(sh.dam && typeof sh.dam === 'object' && Number.isFinite(sh.dam.start) && Number.isFinite(sh.dam.end))) delete sh.dam;
           if ('hyd' in sh && !(sh.hyd && typeof sh.hyd === 'object' && Number.isFinite(sh.hyd.idx) && sh.hyd.idx > 0)) delete sh.hyd;
           if ('cnt' in sh && !(sh.cnt && typeof sh.cnt === 'object' && Number.isFinite(sh.cnt.idx) && sh.cnt.idx > 0)) delete sh.cnt;
-          if ('unit' in sh && !(sh.unit && typeof sh.unit === 'object' && sh.unit.kind === unitKind(sec) && Number.isFinite(sh.unit.n) && sh.unit.n > 0 && Number.isFinite(sh.unit.slot) && sh.unit.slot > 0)) delete sh.unit; }
+          if ('unit' in sh && !(sh.unit && typeof sh.unit === 'object' && sh.unit.kind === unitKind(sec) && Number.isFinite(sh.unit.n) && sh.unit.n > 0 && Number.isFinite(sh.unit.slot) && sh.unit.slot > 0)) delete sh.unit;
+          if (sh.unit && 'name' in sh.unit) { const nm = typeof sh.unit.name === 'string' ? sh.unit.name.trim().replace(/\s+/g, ' ').slice(0, 60) : ''; if (nm) sh.unit.name = nm; else delete sh.unit.name; }
+          if ('carry' in sh && !isCarryOn(sh)) delete sh.carry; }
         if (sec.sheets.some((q) => q.hyd)) syncHyd(sec);
         if (sec.sheets.some((q) => q.cnt)) syncCounted(sec, 'cnt');
         if (sec.sheets.some((q) => q.unit)) { syncUnits(sec); sortUnits(sec); }
@@ -1200,6 +1207,7 @@
       for (const t of sub.templates) if (!t.sec || !secDef(st, t.sec)) { t.sec = mapSection(st, t.title, t.discipline); ensureSection(st, t.sec); }
     }
     for (const t of st.index) if (!t.sec || !secDef(st, t.sec)) { t.sec = mapSection(st, t.title, t.discipline); ensureSection(st, t.sec); }
+    tidyCarry(st);
     pruneLinks(st);
     pruneProps(st);
     return st;
@@ -1373,7 +1381,7 @@
   /* a whole discipline across A–D */
   function discStats(st, disc, today) {
     const B = st.subs.map((sub) => branchStats(st, sub, disc, null, today));
-    const sheets = B.flatMap((b) => b.sheets), p = progress(sheets);
+    const sheets = B.flatMap((b) => b.sheets).filter((sh) => !isCarryOn(sh)), p = progress(sheets);
     return { disc, subs: B, sheets, total: sheets.length, done: p.done, pct: p.pct, pp: B.reduce((a, b) => a + b.pp, 0), overdue: B.reduce((a, b) => a + b.overdue, 0), blocked: B.reduce((a, b) => a + b.blocked, 0), update: B.reduce((a, b) => a + b.update, 0), roads: B.reduce((a, b) => a + b.roads, 0) };
   }
   function roads(st) { return [...new Set(st.subs.flatMap((s) => s.roads.map((g) => g.road).concat(s.segments.flatMap((x) => x.sheets.map((q) => q.road)))).filter(Boolean))].sort(); }
@@ -1433,7 +1441,7 @@
     const out = [];
     const num = String(sh.number || '').trim();
     if (!num) return out;
-    const dup = allSheets(st).filter((x) => x.sh !== sh && String(x.sh.number || '').trim().toLowerCase() === num.toLowerCase());
+    const dup = allSheets(st).filter((x) => x.sh !== sh && !samePlanSheet(x.sh, sh) && String(x.sh.number || '').trim().toLowerCase() === num.toLowerCase());
     if (dup.length) out.push('Duplicate sheet number — also on ' + dup.map((x) => subTag(x.sub) + ' · ' + x.sh.title).join(', '));
     const v = numVal(num), r = rangeFor(st, sh);
     if (r && v != null && (v < r.from || v > r.to)) out.push('Out of range: ' + r.label + ' uses ' + r.from + '–' + r.to);
@@ -1450,6 +1458,7 @@
     const used = new Set(all ? [] : rows.map((x) => String(x.sh.number).trim().toLowerCase()).filter(Boolean));
     let n = 0;
     for (const x of rows) {
+      if (isCarryOn(x.sh)) continue;
       if (!all && String(x.sh.number || '').trim()) continue;
       const v = suggestNumber(st, x.sh, used);
       if (v) { x.sh.number = v; used.add(v); n++; }
@@ -2380,9 +2389,11 @@
     const f = countField(hit.seg); if (!f) throw new Error('This section is not counted by number of sheets.');
     return setCounted(st, secId, n, f, opts);
   }
-  function unitTitle(sec, n, slot) {
+  function defaultUnitName(kind, n) { return (kind === 'box' ? 'Box ' : 'Pond ') + n; }
+  function storedUnitName(sh) { return sh && sh.unit && typeof sh.unit.name === 'string' ? sh.unit.name.trim() : ''; }
+  function unitTitle(sec, n, slot, unitName) {
     const name = String(sec.title || (isBoxSec(sec) ? 'Special Junction Box' : 'Detention Basin')).trim();
-    if (isPondSec(sec)) return name + ' – Pond ' + n + ' – ' + slot.label;
+    if (isPondSec(sec)) return name + ' – ' + (unitName || defaultUnitName('pond', n)) + ' – ' + slot.label;
     return name + ' – Box ' + n + ' (' + slot.slot + ' of ' + (unitSlots(sec).length || 3) + ')';
   }
   function unitSheets(sec) {
@@ -2393,7 +2404,12 @@
     const out = [];
     for (const sh of unitSheets(sec)) {
       let g = out[out.length - 1];
-      if (!g || g.n !== sh.unit.n) { g = { n: sh.unit.n, of: sh.unit.of, kind: sh.unit.kind, name: (sh.unit.kind === 'box' ? 'Box ' : 'Pond ') + sh.unit.n, sheets: [] }; out.push(g); }
+      if (!g || g.n !== sh.unit.n) {
+        const nm = sh.unit.kind === 'box' ? defaultUnitName('box', sh.unit.n) : (storedUnitName(sh) || defaultUnitName('pond', sh.unit.n));
+        g = { n: sh.unit.n, of: sh.unit.of, kind: sh.unit.kind, name: nm, sheets: [] }; out.push(g);
+      } else if (g.kind === 'pond' && g.name.toLowerCase() === defaultUnitName('pond', g.n).toLowerCase()) {
+        const nm = storedUnitName(sh); if (nm && nm.toLowerCase() !== g.name.toLowerCase()) g.name = nm;
+      }
       g.sheets.push(sh);
     }
     return out;
@@ -2405,11 +2421,15 @@
     const groups = unitGroups(sec), of = groups.length;
     groups.forEach((g, i) => {
       const n = i + 1;
+      const fallback = defaultUnitName(kind, g.n);
+      let label = kind === 'box' ? defaultUnitName('box', n) : g.name;
+      if (kind === 'pond' && (!label || label.toLowerCase() === fallback.toLowerCase())) label = defaultUnitName('pond', n);
       for (const sh of g.sheets) {
         const slot = slots.get(sh.unit.slot) || { slot: sh.unit.slot, label: 'Sheet ' + sh.unit.slot };
         const edited = sh.unit.title && sh.title !== sh.unit.title;
         sh.unit.kind = kind; sh.unit.n = n; sh.unit.of = of;
-        const t = unitTitle(sec, n, slot);
+        if (kind === 'pond') sh.unit.name = label; else if ('name' in sh.unit) delete sh.unit.name;
+        const t = unitTitle(sec, n, slot, kind === 'pond' ? label : '');
         if (!edited) sh.title = t;
         sh.unit.title = edited ? sh.unit.title : t;
       }
@@ -2494,6 +2514,95 @@
   function setBoxCount(st, secId, n, opts) {
     const hit = findSeg(st, secId); if (!hit || !isBoxSec(hit.seg)) throw new Error('Not a special junction box section.');
     return setUnitCount(st, secId, n, opts);
+  }
+  function setPondName(st, secId, n, name) {
+    const hit = findSeg(st, secId);
+    if (!hit || !isPondSec(hit.seg)) throw new Error('Not a detention basin section.');
+    n = Number(n);
+    const g = unitGroups(hit.seg).find((x) => x.n === n);
+    if (!g) throw new Error('No such pond.');
+    let nm = String(name == null ? '' : name).trim().replace(/\s+/g, ' ').slice(0, 60);
+    if (!nm) nm = defaultUnitName('pond', n);
+    if (unitGroups(hit.seg).some((x) => x.n !== n && x.name.toLowerCase() === nm.toLowerCase())) throw new Error('Another pond is already named “' + nm + '”.');
+    for (const sh of g.sheets) if (sh.unit) sh.unit.name = nm;
+    syncUnits(hit.seg);
+    log(st, subTag(hit.sub) + ' · ' + hit.seg.title + ': ' + nm, { t: 'seg', id: hit.seg.id });
+    return nm;
+  }
+  /* v3.15 carry-on: a later package keeps its own entry for a sheet that started in an earlier package.
+     sh.carry = { src: originSheetId } on the later entry only. Title and number are copied from the origin
+     and refreshed when the origin changes. Status, owner, due, notes and QC stay on the later entry. */
+  function isCarryOn(sh) { return !!(sh && sh.carry && typeof sh.carry.src === 'string' && sh.carry.src); }
+  function samePlanSheet(a, b) {
+    if (!a || !b) return false;
+    const as = isCarryOn(a) ? a.carry.src : a.id, bs = isCarryOn(b) ? b.carry.src : b.id;
+    return !!(as && as === bs);
+  }
+  function carryOrigin(st, sh) {
+    if (!sh) return null;
+    if (!isCarryOn(sh)) return findSheet(st, sh.id);
+    const o = findSheet(st, sh.carry.src);
+    return o && !isCarryOn(o.sh) ? o : null;
+  }
+  function carriersOf(st, originId) { return allSheets(st).filter((r) => isCarryOn(r.sh) && r.sh.carry.src === originId); }
+  function carryChain(st, sheetId) {
+    const hit = findSheet(st, sheetId); if (!hit) return [];
+    const origin = isCarryOn(hit.sh) ? carryOrigin(st, hit.sh) : hit;
+    if (!origin) return [];
+    return [{ role: 'origin', sub: origin.sub, seg: origin.seg, sh: origin.sh }].concat(carriersOf(st, origin.sh.id).map((r) => ({ role: 'carry', sub: r.sub, seg: r.seg, sh: r.sh })))
+      .sort((a, b) => subOrder(st, a.sub) - subOrder(st, b.sub) || (a.role === b.role ? 0 : a.role === 'origin' ? -1 : 1));
+  }
+  function syncCarryFrom(st, originId) {
+    const o = findSheet(st, originId); if (!o || isCarryOn(o.sh)) return;
+    for (const r of carriersOf(st, originId)) { r.sh.title = o.sh.title; r.sh.number = o.sh.number || ''; }
+  }
+  function tidyCarry(st) {
+    const byId = new Map(allSheets(st).map((r) => [r.sh.id, r]));
+    const seen = new Set();
+    for (const sub of st.subs) for (const sec of sub.segments) {
+      sec.sheets = sec.sheets.filter((sh) => {
+        if (!isCarryOn(sh)) return true;
+        const o = byId.get(sh.carry.src);
+        if (!o || o.sh === sh || isCarryOn(o.sh)) return false;
+        const k = sub.id + '\0' + sh.carry.src;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        sh.title = o.sh.title; sh.number = o.sh.number || '';
+        return true;
+      });
+    }
+  }
+  function carryCandidates(st, secId) {
+    const hit = findSeg(st, secId); if (!hit) return [];
+    const have = new Set(hit.seg.sheets.filter(isCarryOn).map((s) => s.carry.src));
+    return allSheets(st).filter((r) => r.sub !== hit.sub && r.seg.key === hit.seg.key && !isCarryOn(r.sh) && !have.has(r.sh.id))
+      .sort((a, b) => subOrder(st, a.sub) - subOrder(st, b.sub) || String(a.sh.title).localeCompare(String(b.sh.title)))
+      .map((r) => ({ id: r.sh.id, title: r.sh.title, sub: r.sub, label: subTag(r.sub) + ' · ' + r.sh.title }));
+  }
+  function addCarryOn(st, originId, toSubId) {
+    const origin = findSheet(st, originId);
+    if (!origin) throw new Error('No such sheet');
+    if (isCarryOn(origin.sh)) throw new Error('Carry on the original sheet, not a carry-on.');
+    const to = findSub(st, toSubId);
+    if (!to) throw new Error('No such package');
+    if (to === origin.sub) throw new Error('A package cannot carry on its own sheet.');
+    if (carriersOf(st, origin.sh.id).some((r) => r.sub === to)) throw new Error(subTag(to) + ' already carries this sheet.');
+    const sec = secOf(to, origin.seg.key);
+    if (!sec) throw new Error(subTag(to) + ' has no matching section.');
+    const sh = newSheet({ title: origin.sh.title, discipline: sec.discipline, number: origin.sh.number || '' });
+    sh.series = ''; sh.road = ''; sh.carry = { src: origin.sh.id };
+    sh.title = origin.sh.title; sh.number = origin.sh.number || '';
+    sec.sheets.push(sh);
+    log(st, subTag(to) + ' carries on “' + origin.sh.title + '” from ' + subTag(origin.sub), { t: 'sheet', id: sh.id });
+    return sh;
+  }
+  function removeCarryOn(st, sheetId) {
+    const hit = findSheet(st, sheetId);
+    if (!hit || !isCarryOn(hit.sh)) throw new Error('Not a carry-on entry.');
+    hit.seg.sheets = hit.seg.sheets.filter((s) => s !== hit.sh);
+    pruneLinks(st);
+    log(st, 'Removed carry-on “' + hit.sh.title + '” from ' + subTag(hit.sub));
+    return true;
   }
   /* ---- v3.8 DAM road branches: Drainage Area Map > Road > sheets ----
      A DAM section may hold sec.damRoads = [{ id, road, alignment?, src:[source road entry ids], notes }] (optional field).
@@ -2693,7 +2802,7 @@
       if (!Object.keys(e).length) delete st.props[k];
     }
   }
-  return { isTrunkSec, trunkSources, planCopyTrunk, copyTrunkLines, isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, syncUnits, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { isTrunkSec, trunkSources, planCopyTrunk, copyTrunkLines, isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, setPondName, syncUnits, isCarryOn, carryOrigin, carriersOf, carryChain, carryCandidates, addCarryOn, removeCarryOn, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
