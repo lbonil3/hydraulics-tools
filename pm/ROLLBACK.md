@@ -384,11 +384,19 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.18 (carry-ons stay in their group and count as sheets)
+
+A sheet carried into a later package is shown in that package under the same section and the same sub-group as the original: the same pond name, junction box, road, trunk line, or drainage-area-map road. If that package already has the group, the carried sheet sits in it, ordered by sheet number. If it does not, the group is shown with the original’s name. Renaming the original pond renames that group. Flat sections, such as laterals, bridge deck, and standards, keep the carried sheet in the section with the other sheets, ordered by sheet number, rather than in a separate carried list.
+
+A carried sheet counts as a sheet in every package that has it: the package total, the section and group counts, progress, and the per-package numbers in the status report, the engineering report, and the work description. Adding the packages counts it again. Reports that mention unique plan sheets label that figure separately.
+
+The engineering report’s sheets-by-package table has a Carry-on sheets column. Each section, and each group inside a section, shows how many of its sheets are carried on. Each package has an All sections row, and a Total row adds the carry-on sheets across packages. The Sheets column includes the carry-ons.
+
 ## v3.17 (find carry-ons)
 
 Find carry-ons scans every package, in the project’s package order, for a sheet in a later package that repeats a sheet from an earlier one. Nothing is linked until you click. The strongest match wins: the same standard name (a pick-list name or the same custom title, with “(1 of 2)” kept paired), then the same road with overlapping stations on a plan and profile, trunk line, or drainage area map, then the same pond or junction box name and sheet, then the same sheet title in the same section. A match is Exact when the names or titles are the same, and Likely when the road and stations overlap but the titles differ.
 
-Link as carry-on turns that later sheet into a carry-on of the original and keeps its status, owner, due date, notes, and QC. The title and sheet number then follow the original, and project totals count the sheet once. Ignore hides that pair until Reset ignored. Link all exact matches asks first and leaves the likely ones for review. Sheets that are already carry-ons are skipped. Older projects have no ignore list until you ignore a suggestion.
+Link as carry-on turns that later sheet into a carry-on of the original and keeps its status, owner, due date, notes, and QC. The title and sheet number then follow the original. Ignore hides that pair until Reset ignored. Link all exact matches asks first and leaves the likely ones for review. Sheets that are already carry-ons are skipped. Older projects have no ignore list until you ignore a suggestion.
 
 ## v3.16 (engineering report detail)
 

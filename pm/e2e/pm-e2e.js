@@ -611,11 +611,11 @@ function v2Fixture() {
   ok(/A — 3 sheets/.test(proposed), 'drainage laterals are counted for the sub-project');
   ok(/Bridge deck drain details — \d+ sheets?/.test(proposed), 'bridge deck drain details are counted for the sub-project');
   const scopeTxt = await txt('#eng-scope');
-  ok(/Sheets by package/.test(scopeTxt) && /1 from A/.test(scopeTxt), 'scope table notes the sheet package B carries from A');
+  ok(/Sheets by package/.test(scopeTxt) && /Carry-on sheets/.test(scopeTxt) && /Total/.test(scopeTxt), 'scope table counts carry-on sheets and totals them');
   const sheetTxt = await txt('#eng-sheets');
   ok(/HIL-C-25 \(HOU\)/.test(sheetTxt) && /PSL/.test(sheetTxt) && /EC\(1\)-16/.test(sheetTxt) && /Pick list/.test(sheetTxt) && /Custom/.test(sheetTxt), 'standards table splits the pick-list and custom sheets');
   const plain = await pg.evaluate(() => window.PMEng.text(JSON.parse(localStorage.getItem('pm.data.v3'))));
-  ok(/North Pond/.test(plain) && /SHEETS BY PACKAGE/.test(plain) && /HIL-C-25 \(HOU\)/.test(plain) && /1 from A/.test(plain), 'plain-text copy includes the ponds, the package table, and the standards');
+  ok(/North Pond/.test(plain) && /SHEETS BY PACKAGE/.test(plain) && /Carry-on sheets/.test(plain) && /HIL-C-25 \(HOU\)/.test(plain), 'plain-text copy includes the ponds, the package table, and the standards');
   await pg.evaluate(() => { const e = document.querySelector('#eng-proposed'); if (e) e.scrollIntoView({ block: 'start' }); });
   await shot('25-eng-ponds');
   await pg.evaluate(() => { const e = document.querySelector('#eng-sheets'); if (e) e.scrollIntoView({ block: 'start' }); });
@@ -688,7 +688,30 @@ function v2Fixture() {
     ok(linked && linked.carry && linked.carry.src === aHil.id && linked.status === bHil.status, 'linking keeps the later sheet and points it at the original');
     ok(D.subs[0].segments.find((g) => g.key === 'dr-std').sheets.some((s) => s.id === aHil.id && !s.carry), 'the original stays in the earlier package');
     const hilRows = D.subs.flatMap((s) => s.segments.find((g) => g.key === 'dr-std').sheets).filter((s) => s.title === 'HIL-C-25 (HOU)');
-    ok(hilRows.filter((s) => !s.carry).length === 1, 'the linked standard is counted once');
+    ok(hilRows.filter((s) => !s.carry).length === 1 && hilRows.some((s) => s.carry), 'package B keeps its own carry-on sheet and A keeps the original');
+    const counted = await pg.evaluate(() => { const M = window.PMModel, st = JSON.parse(localStorage.getItem('pm.data.v3')); const S = M.summary(st); return S.overall.total === M.allSheets(st).length && S.unique < S.overall.total; });
+    ok(counted, 'carry-on sheets count in the project total, with unique sheets labeled apart');
+    if (await has('#modalClose')) { await click('#modalClose'); await sleep(200); }
+    const bDet = (await data()).subs[1].segments.find((g) => g.key === 'dr-det');
+    const bDetSel = '.node[data-key="seg:' + bDet.id + '"]';
+    if (!(await has(bDetSel))) { await click('#xAll'); await sleep(300); }
+    await click(bDetSel); await sleep(300);
+    await setVal('#unitCount', '1'); await sleep(100); await click('#unitSet'); await sleep(400);
+    const pondKey = '.node[data-key="unit:' + bDet.id + ':1"]';
+    if (!(await has(pondKey))) { await click('#xAll'); await sleep(300); }
+    await click(pondKey); await sleep(250);
+    await setVal('#pondName', 'North Pond'); await sleep(300);
+    await click(bDetSel); await sleep(300);
+    const picked = await pg.evaluate(() => { const sel = document.querySelector('#carryFrom'); if (!sel) return ''; const opt = [...sel.options].find((o) => /North Pond/.test(o.textContent) && /Layout/.test(o.textContent)); if (!opt) return ''; sel.value = opt.value; return opt.value; });
+    ok(!!picked, 'package B can carry a North Pond sheet from A');
+    await click('#carryGo'); await sleep(400);
+    const placed = await pg.evaluate(() => {
+      const M = window.PMModel, st = JSON.parse(localStorage.getItem('pm.data.v3'));
+      const det = st.subs[1].segments.find((g) => g.key === 'dr-det');
+      return M.viewUnitGroups(st, det).map((g) => ({ name: g.name, n: g.sheets.length, carry: g.sheets.filter((s) => s.carry).length }));
+    });
+    ok(placed.some((g) => g.name === 'North Pond' && g.carry >= 1 && g.n > g.carry), 'the carried sheet sits in North Pond next to B’s own sheets');
+    await shot('28-carry-pond-group');
   }
 
   /* 11. persistence, v2 untouched, no external requests, errors */
