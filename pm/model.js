@@ -1,4 +1,4 @@
-/* PM data model v3.15: pure functions, no DOM, no storage.
+/* PM data model v3.16: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
