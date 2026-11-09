@@ -384,6 +384,18 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.16 (engineering report detail)
+
+The engineering report still only restates what is entered in the tracker. Bracketed placeholders stay where an engineer has to supply a value.
+
+Proposed Drainage Improvements lists each detention pond by name, with its Layout, Cross Sections, and Geometric Layout sheets, grouped by sub-project. Special junction boxes are listed one by one, with 3 sheets each. Drainage laterals and the three bridge deck sections are counted per sub-project.
+
+Deliverables adds a standards table for Drainage and one for SWP3. A name from the pick-list is marked Pick list. Any other sheet in a standards section is marked Custom. A standard that spans “(1 of 2)” and “(2 of 2)” is one row with a sheet count of 2. The row names the sub-projects that use it, and notes a later package that carries it on.
+
+Scope of Work adds a table of sheets per package, discipline, and section. The sheet count is the sheets that start in that package. A carry-on is noted in its own column and is not counted again in the project totals.
+
+The copy-as-text output includes the same headings, lists, and tables as the printed report.
+
 ## v3.15 (pond names, carry-on sheets, work description)
 
 Detention ponds can be named. The name starts as Pond 1, Pond 2, and so on, and it is written into sheet titles that have not been edited by hand. Changing the pond count keeps names already entered; a new pond gets the next default name. A blank name goes back to Pond N. Older projects get the default names when they are opened.

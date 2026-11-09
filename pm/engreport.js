@@ -1,5 +1,6 @@
-/* Project Tracker v3.15: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.16: Engineering Report (drainage design report style), derived from the tracker data.
    Project-wide sheet counts skip carry-on entries so a sheet updated by a later package is counted once.
+   v3.16 lists each pond, each standard, each package’s sections, and per-item counts from the sheets already entered.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
    Stored in the optional st.engReport = { meta: { csj, highway, limits, county, district, title }, secs: { <id>: { on, text, mode } }, refs }.
    Generated text only restates tracker data (names, roads, stations, sheet counts, dates). Anything an engineer must supply
@@ -86,6 +87,67 @@
     return { subs, all, roads, secsWith };
   }
   const isHds = (g) => typeof M.isHydSec === 'function' ? M.isHydSec(g) : /^dr-hds/.test(String(g.key || '')) || /hydraulic data/i.test(String(g.title || ''));
+  const carryOn = (sh) => typeof M.isCarryOn === 'function' && M.isCarryOn(sh);
+  function pkgCode(sub) { return sub.code + (M.subCustom(sub) ? ' (' + M.subName(sub) + ')' : ''); }
+  function carryCell(st, sheets) {
+    const cs = (sheets || []).filter(carryOn);
+    if (!cs.length) return '—';
+    const by = new Map();
+    for (const sh of cs) {
+      const o = typeof M.carryOrigin === 'function' ? M.carryOrigin(st, sh) : null;
+      const code = o && o.sub ? o.sub.code : '?';
+      by.set(code, (by.get(code) || 0) + 1);
+    }
+    return [...by.entries()].map(([c, n]) => n + ' from ' + c).join('; ');
+  }
+  function pondSheetList(sec, g) {
+    const slots = M.unitSlots(sec);
+    return g.sheets.slice().sort((a, b) => a.unit.slot - b.unit.slot).map((sh) => {
+      const slot = slots.find((s) => s.slot === sh.unit.slot);
+      const label = slot ? slot.label : sh.title;
+      return sh.unit && sh.unit.title && sh.title !== sh.unit.title ? label + ' (' + sh.title + ')' : label;
+    }).join(', ');
+  }
+  function stdIdentity(title, disc) {
+    const t = String(title || '').trim();
+    const list = (M.STANDARD_SHEETS || []).filter((s) => s.discipline === disc);
+    const pair = /^(.*)\s+\((\d+)\s+of\s+(\d+)\)$/i.exec(t);
+    const base = pair ? pair[1].trim() : t;
+    const known = list.find((s) => s.name.toLowerCase() === base.toLowerCase());
+    if (known) return { name: known.name, known: true };
+    if (pair && Number(pair[3]) > 1) return { name: base, known: false };
+    return { name: t, known: false };
+  }
+  function standardGroups(st) {
+    const groups = [];
+    for (const r of M.allSheets(st)) {
+      if (!M.isStdSec(r.seg) || carryOn(r.sh)) continue;
+      const disc = r.seg.discipline === 'SWP3' ? 'SWP3' : 'Drainage';
+      const info = stdIdentity(r.sh.title, disc);
+      let g = groups.find((x) => x.disc === disc && x.name.toLowerCase() === info.name.toLowerCase());
+      if (!g) { g = { name: info.name, disc, known: info.known, n: 0, subs: new Set(), carried: new Set() }; groups.push(g); }
+      g.n++; g.subs.add(r.sub.code);
+      if (typeof M.carriersOf === 'function') for (const c of M.carriersOf(st, r.sh.id)) g.carried.add(c.sub.code);
+    }
+    return groups;
+  }
+  function standardTable(groups, disc) {
+    const list = (M.STANDARD_SHEETS || []).filter((s) => s.discipline === disc);
+    const rows = [], used = new Set();
+    for (const s of list) {
+      const g = groups.find((x) => x.disc === disc && x.name.toLowerCase() === s.name.toLowerCase());
+      if (!g) continue;
+      rows.push(g); used.add(g);
+    }
+    for (const g of groups.filter((x) => x.disc === disc && !used.has(x)).sort((a, b) => a.name.localeCompare(b.name))) rows.push(g);
+    if (!rows.length) return null;
+    return { table: { head: ['Standard', 'Sheets', 'Sub-projects', 'Source'], rows: rows.map((g) => {
+      let who = [...g.subs].sort().join(', ');
+      const carried = [...g.carried].sort();
+      if (carried.length) who += ' (carried on by ' + carried.join(', ') + ')';
+      return [g.name, String(g.n), who || '—', g.known ? 'Pick list' : 'Custom'];
+    }), cls: disc === 'SWP3' ? 'std-sw' : 'std-dr' } };
+  }
   /* ---- the sections: blocks = [{ p } | { ul } | { table:{ head, rows } }]; ph = the placeholder shown when the engineer adds nothing ---- */
   function build(st, today) {
     today = today || M.todayISO();
@@ -118,7 +180,18 @@
       scope.push({ p: (d === 'SWP3' ? 'SWP3' : 'Drainage') + ' scope: ' + pl(n, 'plan sheet') + ' in ' + pl(bySec.size, 'section') + ':' });
       scope.push({ ul: [...bySec.entries()].map(([k, v]) => k + ' — ' + pl(v, 'sheet')) });
     }
-    if (!scope.length) scope.push({ p: 'No plan sheets are tracked yet.' });
+    const pkgRows = [];
+    for (const sub of F.subs) for (const d of M.DISCIPLINES) for (const g of M.sectionsOf(sub, d)) {
+      const own = ownCount(g), carried = g.sheets.filter(carryOn).length;
+      if (!own && !carried) continue;
+      pkgRows.push([pkgCode(sub), d, g.title, String(own), carryCell(st, g.sheets)]);
+    }
+    if (!scope.length && !pkgRows.length) scope.push({ p: 'No plan sheets are tracked yet.' });
+    if (pkgRows.length) {
+      scope.push({ h: 'Sheets by package' });
+      scope.push({ p: 'Each row is one section of one package. The sheet count is the sheets that start in that package. A sheet carried forward is counted with the package that started it, not again as a new sheet. The carry-on column notes the later package’s entry and where it comes from.' });
+      scope.push({ table: { head: ['Package', 'Discipline', 'Section', 'Sheets', 'Carry-on'], rows: pkgRows, cls: 'pkgs' } });
+    }
     if (R.pp && R.pp.total) scope.push({ p: 'Plan and profile sheets are counted from the road stations and plan scale: ' + R.pp.total + ' in total (Drainage ' + R.pp.byDisc.Drainage + ', SWP3 ' + R.pp.byDisc.SWP3 + ').' });
     out.scope = scope;
     /* 4 */
@@ -152,30 +225,41 @@
     if (lats.length) {
       prop.push({ h: 'Drainage laterals' });
       prop.push({ p: 'Drainage laterals are double-banked profile sheets. ' + pl(lats.reduce((a, x) => a + ownCount(x.g), 0), 'sheet') + ' are tracked, counted by how many sheets are needed rather than by road.' });
+      prop.push({ ul: lats.map((x) => M.subTag(x.sub) + ' — ' + pl(ownCount(x.g), 'sheet')) });
     }
     const ponds = F.secsWith((g) => typeof M.isPondSec === 'function' && M.isPondSec(g) && M.unitSheets(g).length);
     if (ponds.length) {
       const ng = ponds.reduce((a, x) => a + M.unitGroups(x.g).length, 0), ns = ponds.reduce((a, x) => a + M.unitSheets(x.g).length, 0);
       prop.push({ h: 'Detention basins' });
       prop.push({ p: pl(ng, 'detention pond') + ' (' + pl(ns, 'sheet') + '). Each pond has a Layout, Cross Sections, and two Geometric Layout sheets.' });
+      prop.push({ table: { head: ['Sub-project', 'Pond', 'Sheets'], rows: ponds.flatMap((x) => M.unitGroups(x.g).map((g) => [M.subTag(x.sub), g.name, pondSheetList(x.g, g)])), cls: 'ponds' } });
     }
     const boxes = F.secsWith((g) => typeof M.isBoxSec === 'function' && M.isBoxSec(g) && M.unitSheets(g).length);
     if (boxes.length) {
       const ng = boxes.reduce((a, x) => a + M.unitGroups(x.g).length, 0), ns = boxes.reduce((a, x) => a + M.unitSheets(x.g).length, 0);
       prop.push({ h: 'Special junction boxes' });
       prop.push({ p: ng + ' special junction box' + (ng === 1 ? '' : 'es') + ', 3 sheets each (' + pl(ns, 'sheet') + ').' });
+      prop.push({ ul: boxes.flatMap((x) => M.unitGroups(x.g).map((g) => M.subTag(x.sub) + ' · ' + g.name + ' — ' + pl(g.sheets.length, 'sheet'))) });
     }
-    const other = [['dr-bd-welded', 'Bridge deck drainage'], ['dr-bd-det', 'Bridge deck drainage'], ['dr-bd-sum', 'Bridge deck drainage']];
-    const og = new Map(); for (const [k, lab] of other) for (const x of F.secsWith((g) => g.key === k && g.sheets.length)) { if (!og.has(lab)) og.set(lab, new Set()); og.get(lab).add(x.g.title); }
-    if (og.size) { prop.push({ h: 'Other drainage elements' }); prop.push({ ul: [...og.entries()].map(([lab, s]) => lab + ': ' + list([...s])) }); }
+    const deck = [['dr-bd-welded', 'Bridge deck drawing details (welded)'], ['dr-bd-det', 'Bridge deck drain details'], ['dr-bd-sum', 'Bridge deck drain summary']];
+    const deckLines = [];
+    for (const [k, lab] of deck) for (const x of F.secsWith((g) => g.key === k && ownCount(g))) deckLines.push(M.subTag(x.sub) + ' · ' + lab + ' — ' + pl(ownCount(x.g), 'sheet'));
+    if (deckLines.length) { prop.push({ h: 'Bridge deck drainage' }); prop.push({ ul: deckLines }); }
     out.proposed = prop;
     /* 7 */
     const sw = F.subs.flatMap((sub) => M.sectionsOf(sub, 'SWP3').filter((g) => ownCount(g)).map((g) => ({ sub, g })));
     out.swp3 = sw.length ? [{ p: 'SWP3 sheets are tracked for ' + list([...new Set(sw.map((x) => M.subLabel(x.sub)))]) + ': ' + list([...new Set(sw.map((x) => x.g.title))]) + ' (' + pl(sw.reduce((a, x) => a + ownCount(x.g), 0), 'sheet') + ').' }] : null;
     /* 8 */
-    const rows = M.orderedRows(st).filter((x) => !(typeof M.isCarryOn === 'function' && M.isCarryOn(x.sh)));
-    out.sheets = rows.length ? [{ p: pl(rows.length, 'plan sheet') + ' are tracked (' + R.overall.done + ' done). Sheet numbers are as assigned in the tracker.' },
-      { table: { head: ['No.', 'Sheet title', 'Sub-project', 'Section', 'Status'], rows: rows.map((x) => { const by = typeof M.carriersOf === 'function' ? M.carriersOf(st, x.sh.id) : []; return [String(x.sh.number || '—'), x.sh.title + (by.length ? ' (carried on by ' + by.map((c) => c.sub.code).join(', ') + ')' : ''), x.sub.code, x.seg.title, x.sh.status]; }), cls: 'eidx' } }] : [{ p: 'No plan sheets are tracked yet.' }];
+    const rows = M.orderedRows(st).filter((x) => !carryOn(x.sh));
+    const stdGroups = standardGroups(st);
+    const sheetBlocks = [];
+    if (rows.length) sheetBlocks.push({ p: pl(rows.length, 'plan sheet') + ' are tracked (' + R.overall.done + ' done). Sheet numbers are as assigned in the tracker.' });
+    for (const [disc, title] of [['Drainage', 'Drainage standards'], ['SWP3', 'SWP3 standards']]) {
+      const tab = standardTable(stdGroups, disc);
+      if (tab) sheetBlocks.push({ h: title }, tab);
+    }
+    if (rows.length) sheetBlocks.push({ table: { head: ['No.', 'Sheet title', 'Sub-project', 'Section', 'Status'], rows: rows.map((x) => { const by = typeof M.carriersOf === 'function' ? M.carriersOf(st, x.sh.id) : []; return [String(x.sh.number || '—'), x.sh.title + (by.length ? ' (carried on by ' + by.map((c) => c.sub.code).join(', ') + ')' : ''), x.sub.code, x.seg.title, x.sh.status]; }), cls: 'eidx' } });
+    out.sheets = sheetBlocks.length ? sheetBlocks : [{ p: 'No plan sheets are tracked yet.' }];
     /* 9 */
     const sch = [{ p: 'As of ' + today + ', the plan sheets are ' + Math.round(R.overall.pct) + '% complete (weighted by status): ' + R.overall.done + ' of ' + pl(R.overall.total, 'sheet') + ' done.' }];
     const ms = R.milestones.filter((x) => x.m.name);
