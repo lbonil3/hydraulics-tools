@@ -1516,6 +1516,51 @@ t('engineering report: counts v3.9 hydraulic data sheets (by count)', () => {
   const idx = E.outline(st, today).find((s) => s.id === 'sheets').auto.find((b) => b.table && b.table.cls === 'eidx').table.rows;
   assert(idx.some((r) => /Inlet Computations \(3 of 3\)/.test(r[1])) && idx.some((r) => /Crossing \(2 of 2\)/.test(r[1])));
 });
+t('v3.20 report font choices stay out of the project', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const RF = require('./reportfont.js');
+  assert.deepStrictEqual(RF.FONTS.map((f) => f.id), ['source', 'inter', 'plex', 'calibri']);
+  assert.strictEqual(RF.DEFAULT, 'source');
+  assert.strictEqual(RF.reportFont('nope').id, 'source');
+  assert.strictEqual(RF.reportFont('inter').id, 'inter');
+  assert.ok(RF.reportFont('source').body.includes('Source Sans 3') && RF.reportFont('source').heading.includes('Source Serif 4'));
+  assert.ok(RF.reportFont('plex').body.includes('IBM Plex Sans') && RF.reportFont('plex').num.includes('IBM Plex Figures'));
+  assert.ok(RF.reportFont('calibri').body.includes('Carlito') && RF.reportFont('calibri').body.includes('Arial'));
+  assert.ok(RF.reportFont('calibri').heading.includes('Caladea') && RF.reportFont('calibri').heading.includes('Georgia'));
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  for (const f of RF.FONTS) {
+    assert.ok(css.includes(f.body), f.id + ' body');
+    assert.ok(css.includes(f.heading), f.id + ' heading');
+    assert.ok(css.includes(f.num), f.id + ' numbers');
+  }
+  const faces = css.match(/@font-face\s*\{[^}]+\}/g) || [];
+  assert.ok(faces.length >= 14);
+  const weights = new Set();
+  for (const face of faces) {
+    assert.ok(/font-display:\s*swap/.test(face), face);
+    assert.ok(/url\("fonts\/[a-z0-9-]+\.woff2"\)/.test(face), face);
+    assert.ok(!/https?:/.test(face));
+    assert.ok(!/italic/.test(face));
+    const w = face.match(/font-weight:\s*(\d+)/);
+    assert.ok(w && ['400', '600', '700'].includes(w[1]), face);
+    weights.add(w[1]);
+  }
+  assert.deepStrictEqual([...weights].sort(), ['400', '600', '700']);
+  const urls = [...css.matchAll(/url\("fonts\/([^"]+\.woff2)"\)/g)].map((m) => m[1]);
+  const files = fs.readdirSync(path.join(__dirname, 'fonts')).filter((f) => f.endsWith('.woff2')).sort();
+  assert.deepStrictEqual(files, [...new Set(urls)].sort());
+  for (const name of ['source-sans-3', 'source-serif-4', 'inter', 'ibm-plex-sans', 'ibm-plex-mono']) {
+    const lic = fs.readFileSync(path.join(__dirname, 'fonts', 'OFL-' + name + '.txt'), 'utf8');
+    assert.ok(/SIL Open Font License/.test(lic), name);
+  }
+  assert.ok(!/fonts\.(google|gstatic)|cdnjs|fontsource/i.test(css + html));
+  assert.ok(html.indexOf('reportfont.js') < html.indexOf('app.js'));
+  const st = M.migrate(JSON.parse(JSON.stringify(M.newState('Font check'))));
+  assert.ok(!Object.prototype.hasOwnProperty.call(st, 'rptFont'));
+  assert.ok(!JSON.stringify(st).includes('rptFont'));
+});
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {
