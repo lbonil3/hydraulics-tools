@@ -9,7 +9,7 @@ const path = require('path');
 const V2 = require('../legacy/model-v2.js');
 const BASE = process.env.PM_BASE || 'https://pm.local/pm/';
 const ROOT = path.resolve(__dirname, '../..');
-const TYPES = { html: 'text/html', js: 'text/javascript', css: 'text/css', png: 'image/png', json: 'application/json' };
+const TYPES = { html: 'text/html', js: 'text/javascript', css: 'text/css', png: 'image/png', json: 'application/json', woff2: 'font/woff2' };
 const SHOTS = '/workspace/pm-shots/';
 const MODE = process.argv[2] || '1440x900';
 const MOBILE = MODE === 'iphone';
@@ -603,6 +603,62 @@ function v2Fixture() {
   /* 10d. v3.10 Engineering report */
   await click('#vReport'); await sleep(250);
   ok(await has('#rptType'), 'report type selector on the Report view');
+  ok(await has('#rptFont'), 'report font picker beside the report controls');
+  const fontOf = (sel) => pg.$eval(sel, (e) => getComputedStyle(e).fontFamily);
+  ok(/Source Sans 3/.test(await fontOf('#reportWrap .narr')), 'status report starts in Source Sans 3');
+  ok(/Source Serif 4/.test(await fontOf('#reportWrap .narr h3')), 'status report headings start in Source Serif 4');
+  await pg.$eval('#rptFont', (e) => e.scrollIntoView({ block: 'center' }));
+  await shot('27-report-fonts');
+  const loaded = await pg.evaluate(async () => {
+    await document.fonts.load('16px "Source Sans 3"');
+    await document.fonts.load('700 16px "Source Serif 4"');
+    await document.fonts.load('16px Inter');
+    await document.fonts.load('16px "IBM Plex Sans"');
+    await document.fonts.load('16px "IBM Plex Mono"');
+    await document.fonts.ready;
+    const names = performance.getEntriesByType('resource').map((e) => e.name);
+    const local = (file) => names.some((n) => n.includes('/fonts/' + file));
+    return {
+      source: document.fonts.check('16px "Source Sans 3"'),
+      serif: document.fonts.check('700 16px "Source Serif 4"'),
+      inter: document.fonts.check('16px Inter'),
+      plex: document.fonts.check('16px "IBM Plex Sans"'),
+      mono: document.fonts.check('16px "IBM Plex Mono"') && local('ibm-plex-mono-latin-400-normal.woff2'),
+      offsite: names.some((n) => /fonts\.(google|gstatic)|use\.typekit|cdn/.test(n)),
+    };
+  });
+  ok(loaded.source && loaded.serif && loaded.inter && loaded.plex && loaded.mono && !loaded.offsite, 'bundled report fonts loaded from the page');
+  await click('#rptFont [data-font="inter"]');
+  ok(/Inter/.test(await fontOf('#reportWrap .narr')), 'status report switches to Inter');
+  await pg.select('#rptType', 'eng'); await sleep(200);
+  ok(/Inter/.test(await fontOf('#reportWrap .narr')), 'engineering report uses Inter');
+  ok(/tabular-nums/.test(await pg.$eval('#eng-scope .rtab', (e) => getComputedStyle(e).fontVariantNumeric)), 'table figures are tabular');
+  await pg.select('#rptType', 'work'); await sleep(200);
+  ok(/Inter/.test(await fontOf('#workReport')), 'work description uses Inter');
+  const stored = await pg.evaluate(() => ({ ui: JSON.parse(localStorage.getItem('pm.ui.v3')), data: localStorage.getItem('pm.data.v3') }));
+  ok(stored.ui.rptFont === 'inter' && !/rptFont/.test(stored.data), 'font choice is in the UI store and not in the project');
+  await pg.select('#rptType', 'status'); await sleep(150);
+  await pg.reload({ waitUntil: 'domcontentloaded' }); await sleep(400);
+  ok(await pg.evaluate(() => document.documentElement.dataset.rptfont === 'inter'), 'font choice is restored after reload');
+  ok(/Inter/.test(await fontOf('#reportWrap .narr')), 'status report is still Inter after reload');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  await pg.emulateMediaType('print');
+  ok(/Inter/.test(await fontOf('#report')), 'printed report uses Inter');
+  ok(/Inter/.test(await fontOf('#report h2')), 'printed headings use Inter');
+  await pg.emulateMediaType('screen');
+  await click('#rptFont [data-font="plex"]');
+  ok(/IBM Plex Sans/.test(await fontOf('#reportWrap .narr')), 'report body switches to IBM Plex Sans');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  await pg.emulateMediaType('print');
+  ok(/IBM Plex Figures/.test(await fontOf('#report .rtab')), 'printed tables use IBM Plex figures');
+  await pg.emulateMediaType('screen');
+  await click('#rptFont [data-font="calibri"]');
+  const cal = await fontOf('#reportWrap .narr');
+  const calH = await fontOf('#reportWrap .narr h3');
+  ok(/Calibri/.test(cal) && /Carlito/.test(cal) && /Arial/.test(cal), 'Calibri body stack includes the fallbacks');
+  ok(/Cambria/.test(calH) && /Caladea/.test(calH) && /Georgia/.test(calH), 'Cambria heading stack includes the fallbacks');
+  await click('#rptFont [data-font="source"]');
+  ok(/Source Sans 3/.test(await fontOf('#reportWrap .narr')), 'report font returns to Source Sans 3');
   await pg.select('#rptType', 'eng'); await sleep(250);
   ok(/Engineering report/.test(await txt('#reportWrap h2')) && (await pg.$$('#reportWrap .esec')).length === 10, 'Engineering report editor: 10 sections');
   const proposed = await txt('#eng-proposed');

@@ -1,5 +1,5 @@
-/* Project Tracker v3.19 (testing mode: plain JSON in localStorage, no login).
-   Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs).
+/* Project Tracker v3.20 (testing mode: plain JSON in localStorage, no login).
+   Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs, including the report font).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
 (function () {
@@ -23,7 +23,9 @@
   let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, rptType: ui.rptType === 'eng' || ui.rptType === 'work' ? ui.rptType : undefined, rpt: ui.rpt, hideStart: ui.hideStart, filt })); }
+  function reportFontId() { return (window.PMReportFont ? window.PMReportFont.reportFont(ui.rptFont) : { id: 'source' }).id; }
+  function applyReportFont() { ui.rptFont = reportFontId(); document.documentElement.dataset.rptfont = ui.rptFont; }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, rptType: ui.rptType === 'eng' || ui.rptType === 'work' ? ui.rptType : undefined, rptFont: reportFontId() === 'source' ? undefined : reportFontId(), rpt: ui.rpt, hideStart: ui.hideStart, filt })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -553,6 +555,14 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     return h('label', { class: 'rptype' }, h('span', { class: 'muted small' }, 'Report type '), select([['status', 'Status report'], ['eng', 'Engineering report'], ['work', 'Work description']], cur, { id: 'rptType', 'aria-label': 'Report type',
       onchange: (e) => { ui.rptType = e.target.value; saveUI(); renderReportView(); } }));
   }
+  function rptFontSel() {
+    const RF = window.PMReportFont, cur = reportFontId();
+    return h('div', { class: 'rptfonts', id: 'rptFont', role: 'radiogroup', 'aria-label': 'Report font' },
+      h('span', { class: 'muted small' }, 'Report font'),
+      RF.FONTS.map((f) => h('button', { type: 'button', role: 'radio', class: 'rptfont' + (f.id === cur ? ' on' : ''), 'data-font': f.id, 'aria-checked': f.id === cur ? 'true' : 'false', title: f.note,
+        onclick: () => { ui.rptFont = f.id; saveUI(); applyReportFont(); renderReportView(); } },
+        h('b', {}, f.name), h('span', { class: 'rptprev' }, 'Sta 10+00'))));
+  }
   function engBlocks(blocks, refsEl) {
     return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? (refsEl || h('ol', { class: 'erefs' }, E.refs(st).map((x) => h('li', {}, x)))) :
       b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab ' + (b.table.cls || '') }, h('thead', {}, h('tr', {}, b.table.head.map((x) => h('th', {}, x)))), h('tbody', {}, b.table.rows.map((r, i) => { const k = (b.table.kinds && b.table.kinds[i]) || ''; const cls = k === 'sub' ? 'rsub' : k === 'pkg' ? 'rpkg' : k === 'sec' ? 'rsecsub' : k === 'total' ? 'rtot' : ''; return h('tr', { class: cls || null }, r.map((c) => h('td', {}, c))); })))) : null);
@@ -577,7 +587,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         on ? [h('div', { class: 'gen egen' + (e.mode === 'replace' && e.text.trim() ? ' struck' : '') }, h('div', { class: 'muted small' }, 'Generated from the tracker data' + (e.mode === 'replace' && e.text.trim() ? ' (replaced by your text)' : '')), engBlocks(s.blocks, refsEl), !(s.blocks || []).length && !refsEl ? h('p', { class: 'muted' }, 'Nothing in the tracker for this section yet.') : null),
           h('div', { class: 'eedit' }, ta, h('div', { class: 'row small' }, mode, h('span', { class: 'muted' }, e.text.trim() ? '' : s.ph ? 'Empty: the bracketed placeholder is printed.' : '')))] : null);
     });
-    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Engineering report'), rptTypeSel(),
+    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Engineering report'), rptTypeSel(), rptFontSel(),
         h('span', { class: 'vfbar' }, h('button', { type: 'button', class: 'btn sec sm', id: 'engCopy', onclick: () => { const t = E.text(st); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => toast('Engineering report copied as text.'), () => toast('Copy failed.')); else toast('Copy is not available here.'); } }, 'Copy as text'),
           h('button', { type: 'button', class: 'btn sm', id: 'engPrint', onclick: () => $('#printBtn').click() }, '⎙ Print / PDF'))),
       h('p', { class: 'muted small epurpose' }, 'A narrative drainage design report built from the tracker (roads, alignments, stations, sections, sheets, milestones). It never makes up engineering values: anything only you can supply is a [bracketed placeholder] until you write it. Your text is saved on this device.'),
@@ -613,7 +623,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   }
   function renderWorkView() {
     const b = WR.build(st);
-    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Work description'), rptTypeSel(),
+    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Work description'), rptTypeSel(), rptFontSel(),
         h('span', { class: 'vfbar' }, h('button', { type: 'button', class: 'btn sec sm', id: 'workCopy', onclick: () => copyText(WR.text(st)) }, 'Copy as text'),
           h('button', { type: 'button', class: 'btn sm', id: 'workPrint', onclick: () => $('#printBtn').click() }, '⎙ Print / PDF'))),
       h('p', { class: 'muted small' }, 'What each package will cover, written from the roads, sections, sheet counts and carry-ons already entered.'),
@@ -637,7 +647,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (ui.rptType === 'eng') return renderEngView();
     if (ui.rptType === 'work') return renderWorkView();
     const N = M.narrative(st);
-    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Project report'), rptTypeSel(), h('span', { class: 'muted' }, 'Generated from the data as of ' + N.today + ' · your notes are kept separately'),
+    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Project report'), rptTypeSel(), rptFontSel(), h('span', { class: 'muted' }, 'Generated from the data as of ' + N.today + ' · your notes are kept separately'),
         h('span', { class: 'vfbar' }, h('button', { type: 'button', class: 'btn sec sm', id: 'copyNarr', onclick: () => copyText(M.narrativeText(st)) }, '⧉ Copy narrative'), h('button', { type: 'button', class: 'btn sm', onclick: () => $('#printBtn').click() }, '⎙ Print report'))),
       rptSettings(),
       h('article', { class: 'narr' },
@@ -2745,6 +2755,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
 
   /* ---------- start ---------- */
   applyTheme();
+  applyReportFont();
   st = load();
   const needMigration = !st && !!localStorage.getItem(OLDKEY);
   if (!st) st = M.newState();

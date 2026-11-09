@@ -384,6 +384,14 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.20 (report font)
+
+The Report view has a Report font control beside Report type. The same choice is used by the status report, the engineering report, and the work description, on screen and in the printed PDF. It is saved in pm.ui.v3 on this browser. It is not stored in the project.
+
+Source Sans is the default: Source Sans 3 for the body and the tables, Source Serif 4 for the headings, with tabular figures in the tables. Inter uses that one family throughout. IBM Plex uses IBM Plex Sans, and the figures in the tables are IBM Plex Mono. Calibri uses Calibri for the body and Cambria for the headings. When those are not installed it falls back to Carlito and Caladea, then Arial and Georgia.
+
+The open fonts are woff2 files in pm/fonts, under the SIL Open Font License (the OFL files sit next to them). The page does not request them from a font host, so the reports keep their font offline and on GitHub Pages.
+
 ## v3.19 (engineering report subtotals)
 
 The engineering report adds a subtotal only where a table has more than one row in a group. Sheets by package: a section subtotal when a section has more than one group, the All sections row for each package, an All packages row when the same section appears in more than one package, and the Total at the bottom. Sheets and Carry-on sheets both add up. Those cross-package rows are another way of reading the same sheets, so the Total is the sum of the package rows only.
