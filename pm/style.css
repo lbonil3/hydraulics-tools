@@ -527,7 +527,9 @@ textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size
 .node .nt.editing .subname-in{font-size:13px;padding:2px 5px}
 .ordrow .grow .subname-in{max-width:280px}
 .nren{display:none;opacity:1}
-.node.n-disc:hover .nren,.node.n-disc.sel .nren,.node.n-disc:focus-within .nren{display:inline-block}
+.node.n-disc:hover .nren,.node.n-disc.sel .nren,.node.n-disc:focus-within .nren,.node.n-unit:hover .nren,.node.n-unit.sel .nren,.node.n-unit:focus-within .nren{display:inline-block}
+.cbadge{display:inline-block;margin-left:6px;padding:0 6px;border-radius:99px;background:var(--brand-soft);color:var(--brand);font-size:11px;font-weight:650;white-space:nowrap}
+.carrynote{background:var(--brand-soft);border-radius:8px;padding:8px 10px;margin:0 0 10px}
 @media (hover:none){.node.n-disc:hover .nren{display:none}.node.n-disc.sel .nren{display:inline-block}}
 /* v3.2 road branches + sheet station ranges */
 .node.n-road,.node.n-unit{display:flex;align-items:center;gap:8px;padding:8px 10px;border-left:4px solid var(--brand);background:color-mix(in srgb,var(--brand) 5%,var(--surface))}

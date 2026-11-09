@@ -478,6 +478,21 @@ function v2Fixture() {
   if (!(await has('.node.n-unit'))) { await click('.node[data-key="seg:' + det.id + '"] .nbtn.tog'); await sleep(200); }
   ok((await pg.$$('.node.n-unit')).length >= 2, 'each pond is a branch in the tree');
   await shot('16-ponds');
+  const pondKey = '.node[data-key="unit:' + det.id + ':1"]';
+  if (!(await has(pondKey))) { await click('.node[data-key="seg:' + det.id + '"] .nbtn.tog'); await sleep(200); }
+  await click(pondKey); await sleep(300);
+  ok(await has('#pondName') && (await pg.$eval('#pondName', (e) => e.value)) === 'Pond 1', 'pond drawer starts at Pond 1');
+  await setVal('#pondName', 'North Pond'); await sleep(400);
+  D = await data();
+  const pondNamed = D.subs[0].segments.find((g) => g.key === 'dr-det').sheets.filter((q) => q.unit && q.unit.n === 1);
+  ok(pondNamed.length === 4 && pondNamed.every((q) => q.unit.name === 'North Pond' && q.title.startsWith('Detention Basin – North Pond – ')), 'renaming a pond updates its sheet titles');
+  await openSec('dr-det');
+  await setVal('#unitCount', '3'); await sleep(120); await click('#unitSet'); await sleep(400);
+  D = await data();
+  const det3 = D.subs[0].segments.find((g) => g.key === 'dr-det');
+  ok(det3.sheets.filter((q) => q.unit && q.unit.n === 1).every((q) => q.unit.name === 'North Pond'), 'raising the pond count keeps the name');
+  ok(det3.sheets.filter((q) => q.unit && q.unit.n === 3).every((q) => q.title.startsWith('Detention Basin – Pond 3 – ')), 'the new pond is Pond 3');
+  await shot('16b-pond-name');
   await openSec('dr-jb');
   ok(/how many special boxes/i.test(await txt('#unitBox')) && /3 sheets/i.test(await txt('#unitBox')), 'special junction boxes: count of boxes, 3 sheets each');
   await setVal('#unitCount', '2'); await sleep(150);
@@ -553,6 +568,35 @@ function v2Fixture() {
     ok((await data()).subs[1].roads.filter((r) => r.sec === bTrunk.id).length === 2, 'the second copy is appended');
     await shot('22-copy-trunk');
   }
+  /* v3.15 carry-on: B updates a sheet that started in A */
+  {
+    D = await data();
+    const aLat = D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets[0];
+    const bLat = D.subs[1].segments.find((g) => g.key === 'dr-lat');
+    const bSel = '.node[data-key="seg:' + bLat.id + '"]';
+    if (!(await has(bSel))) { await click('#xAll'); await sleep(400); }
+    await click(bSel); await sleep(300);
+    ok(await has('#carryBox') && await has('#carryFrom') && await has('#carryGo'), 'a section can carry on a sheet from another package');
+    await pg.select('#carryFrom', aLat.id); await sleep(100);
+    await click('#carryGo'); await sleep(400);
+    D = await data();
+    const bCarry = D.subs[1].segments.find((g) => g.key === 'dr-lat').sheets.find((s) => s.carry && s.carry.src === aLat.id);
+    const aStill = D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.find((s) => s.id === aLat.id);
+    ok(bCarry && aStill && bCarry.id !== aStill.id && bCarry.title === aStill.title && bCarry.status === 'Not started', 'B has its own entry linked to A’s sheet');
+    if (!(await has('.node[data-key="sheet:' + bCarry.id + '"]'))) { await click('#xAll'); await sleep(400); }
+    await click('.node[data-key="sheet:' + bCarry.id + '"]'); await sleep(300);
+    ok(/Carried from A/.test(await txt('#carryBadge')) && (await pg.$eval('#shTitle', (e) => e.readOnly)), 'carry-on shows carried from A and a read-only title');
+    await pg.select('#drawer .stsel', 'In review'); await sleep(300);
+    D = await data();
+    ok(D.subs[1].segments.find((g) => g.key === 'dr-lat').sheets.find((s) => s.id === bCarry.id).status === 'In review', 'B keeps its own status');
+    ok(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.find((s) => s.id === aLat.id).status === aStill.status, 'changing B does not change A');
+    await shot('23-carry-on');
+    await click('#carryRemove'); await sleep(400);
+    D = await data();
+    ok(D.subs[0].segments.find((g) => g.key === 'dr-lat').sheets.some((s) => s.id === aLat.id) && !D.subs[1].segments.find((g) => g.key === 'dr-lat').sheets.some((s) => s.carry && s.carry.src === aLat.id), 'removing the carry-on leaves A in place');
+    await pg.select('#carryFrom', aLat.id); await sleep(100);
+    await click('#carryGo'); await sleep(300);
+  }
   await shot('18-optional-counts');
   void weld;
 
@@ -582,6 +626,16 @@ function v2Fixture() {
   await pg.select('#rptType', 'status'); await sleep(250);
   await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
   ok(/Project report/.test(await txt('#reportWrap h2')) && !(await has('#report.eng')), 'switching back prints the status report');
+  await pg.select('#rptType', 'work'); await sleep(300);
+  const workTxt = await txt('#workReport');
+  ok(/Work description/.test(await txt('#reportWrap h2')) && /North Pond/.test(workTxt) && /carries on and updates/.test(workTxt) && /Package A/.test(workTxt) && /Package B/.test(workTxt), 'work description names the packages, the pond and the carry-on');
+  ok(!/% complete/.test(workTxt) && !/Not started/.test(workTxt), 'work description does not report status or percent complete');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
+  ok(/Work description/.test(await pg.$eval('#report', (e) => e.textContent)) && !(await has('#report.eng')), 'the work description prints on its own');
+  await click('#workCopy'); await sleep(200);
+  ok(/copied|Copy/i.test(await txt('#toast')), 'work description copies as text');
+  await shot('24-work-description');
+  await pg.select('#rptType', 'status'); await sleep(200);
   await click('#vTree'); await sleep(200);
   D = await data();
 

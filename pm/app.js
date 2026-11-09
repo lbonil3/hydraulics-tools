@@ -1,4 +1,4 @@
-/* Project Tracker v3.14 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.15 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -23,7 +23,7 @@
   let impactKey = null; // node key whose impact (upstream/downstream) is highlighted
 
   function safeJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
-  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, rptType: ui.rptType === 'eng' ? 'eng' : undefined, rpt: ui.rpt, hideStart: ui.hideStart, filt })); }
+  function saveUI() { localStorage.setItem(UIKEY, JSON.stringify({ view: ui.view, timeline: ui.timeline, theme: ui.theme, collapsed: ui.collapsed, cols: ui.cols, sort: ui.sort, links: ui.links, linkSel: ui.linkSel, branch: ui.branch, group: ui.group, lastRoad: ui.lastRoad, lastScale: ui.lastScale, vf: ui.vf, rptType: ui.rptType === 'eng' || ui.rptType === 'work' ? ui.rptType : undefined, rpt: ui.rpt, hideStart: ui.hideStart, filt })); }
 
   /* ---------- DOM helpers (textContent only) ---------- */
   function h(tag, attrs, ...kids) {
@@ -304,6 +304,7 @@
   function rbar(p) { return h('span', { class: 'rbar' }, h('i', { 'data-w': Math.round(p) })); }
   function renderReport() {
     if (ui.rptType === 'eng') return renderEngPrint();
+    if (ui.rptType === 'work') return renderWorkPrint();
     const P = M.printReport(st), R = P.R, O = rptOpts(), MAX = 12;
     const pct = (x) => Math.round(x) + '%';
     const blank = (v, ph) => v ? h('span', {}, v) : h('span', { class: 'rblank' }, ph);
@@ -544,8 +545,10 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   }
   /* ----- v3.10 Engineering Report (drainage design report style) ----- */
   const E = window.PMEng;
+  const WR = window.PMWork;
   function rptTypeSel() {
-    return h('label', { class: 'rptype' }, h('span', { class: 'muted small' }, 'Report type '), select([['status', 'Status report'], ['eng', 'Engineering report']], ui.rptType === 'eng' ? 'eng' : 'status', { id: 'rptType', 'aria-label': 'Report type',
+    const cur = ui.rptType === 'eng' || ui.rptType === 'work' ? ui.rptType : 'status';
+    return h('label', { class: 'rptype' }, h('span', { class: 'muted small' }, 'Report type '), select([['status', 'Status report'], ['eng', 'Engineering report'], ['work', 'Work description']], cur, { id: 'rptType', 'aria-label': 'Report type',
       onchange: (e) => { ui.rptType = e.target.value; saveUI(); renderReportView(); } }));
   }
   function engBlocks(blocks, refsEl) {
@@ -606,8 +609,31 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('thead', {}, h('tr', {}, h('td', {}, h('div', { class: 'rrun' }, h('b', {}, st.project.name || 'Project'), h('span', {}, (m.title || 'Drainage Design Report') + (m.csj ? ' · CSJ ' + m.csj : '') + ' · Preliminary, not sealed'))))),
       h('tbody', {}, h('tr', {}, h('td', {}, body)))));
   }
+  function renderWorkView() {
+    const b = WR.build(st);
+    $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Work description'), rptTypeSel(),
+        h('span', { class: 'vfbar' }, h('button', { type: 'button', class: 'btn sec sm', id: 'workCopy', onclick: () => copyText(WR.text(st)) }, 'Copy as text'),
+          h('button', { type: 'button', class: 'btn sm', id: 'workPrint', onclick: () => $('#printBtn').click() }, '⎙ Print / PDF'))),
+      h('p', { class: 'muted small' }, 'What each package will cover, written from the roads, sections, sheet counts and carry-ons already entered.'),
+      h('article', { class: 'narr', id: 'workReport' },
+        h('section', { class: 'npart', id: 'workIntro' }, h('h3', {}, 'The project'), h('p', {}, b.intro)),
+        b.packages.map((p) => h('section', { class: 'npart', 'data-pkg': p.code }, h('h3', {}, 'Package ' + p.code), h('p', {}, p.text)))));
+  }
+  function renderWorkPrint() {
+    const b = WR.build(st), O = rptOpts();
+    const body = [h('div', { class: 'rcover' },
+      h('div', { class: 'rband' }, h('span', {}, 'Drainage & SWP3 Design'), h('span', {}, 'Work description')),
+      h('h1', {}, st.project.name || 'Project'),
+      h('p', {}, b.intro))];
+    b.packages.forEach((p, i) => { body.push(h('h2', {}, h('span', { class: 'rnum' }, (i + 1) + '.'), ' Package ' + p.code), h('p', {}, p.text)); });
+    $('#report').className = 'report ' + (O.paper === 'a4' ? 'pg-a4' : 'pg-letter');
+    $('#report').replaceChildren(h('table', { class: 'rpage' },
+      h('thead', {}, h('tr', {}, h('td', {}, h('div', { class: 'rrun' }, h('b', {}, st.project.name || 'Project'), h('span', {}, 'Work description · what each package will cover'))))),
+      h('tbody', {}, h('tr', {}, h('td', {}, body)))));
+  }
   function renderReportView() {
     if (ui.rptType === 'eng') return renderEngView();
+    if (ui.rptType === 'work') return renderWorkView();
     const N = M.narrative(st);
     $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Project report'), rptTypeSel(), h('span', { class: 'muted' }, 'Generated from the data as of ' + N.today + ' · your notes are kept separately'),
         h('span', { class: 'vfbar' }, h('button', { type: 'button', class: 'btn sec sm', id: 'copyNarr', onclick: () => copyText(M.narrativeText(st)) }, '⧉ Copy narrative'), h('button', { type: 'button', class: 'btn sm', onclick: () => $('#printBtn').click() }, '⎙ Print report'))),
@@ -1111,7 +1137,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('div', { class: 'nrow' }, shs.length ? bar(p.pct, 'Progress ' + n.br.road) : h('span', { class: 'ns' }, 'No sheets yet'))), ring(p.pct, 40)];
     } else if (n.type === 'unit') {
       const shs = n.kids.map((k) => k.sh), p = M.progress(shs);
-      body = [h('span', { class: 'rdicon', 'aria-hidden': 'true' }, n.g.kind === 'box' ? '▣' : '◌'), h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, n.g.name),
+      body = [h('span', { class: 'rdicon', 'aria-hidden': 'true' }, n.g.kind === 'box' ? '▣' : '◌'), h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, n.g.name, n.g.kind === 'pond' ? h('button', { type: 'button', class: 'nren', title: 'Rename ' + n.g.name, 'aria-label': 'Rename ' + n.g.name, onclick: (e) => { e.stopPropagation(); select_('unit', n.seg.id + ':' + n.g.n); setTimeout(() => { const i = $('#pondName'); if (i) { i.focus(); i.select(); } }, 30); } }, '✎') : null),
         h('div', { class: 'ns' }, plural(shs.length, 'sheet') + ' · ' + p.done + ' done'),
         h('div', { class: 'nrow' }, shs.length ? bar(p.pct, 'Progress ' + n.g.name) : null)), ring(p.pct, 40)];
     } else if (n.type === 'oth') {
@@ -1136,6 +1162,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
           blocked || upd ? h('div', { class: 'nflags' }, blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked by ' + blocked + ' unfinished prerequisite(s)' }, '⛓ Blocked by ' + blocked) : null,
             upd ? h('span', { class: 'fl fl-upd', title: 'An upstream item changed' }, '⟳ Update needed') : null) : null),
         nl.in.length + nl.out.length ? h('span', { class: 'lkcount', title: nl.in.length + ' in, ' + nl.out.length + ' out' }, '↔' + (nl.in.length + nl.out.length)) : null,
+        M.isCarryOn(sh) ? h('span', { class: 'cbadge', title: 'This package updates a sheet from another package' }, 'from ' + ((M.carryOrigin(st, sh) || { sub: { code: '?' } }).sub.code)) : (M.carriersOf(st, sh.id).length ? h('span', { class: 'cbadge', title: 'Later packages update this sheet' }, 'by ' + M.carriersOf(st, sh.id).map((c) => c.sub.code).join(', ')) : null),
         od ? h('span', { class: 'flag', title: 'Overdue' }, '⚑') : null,
         sh.owner ? h('span', { class: 'av', title: sh.owner }, initials(sh.owner)) : h('span', { class: 'av none', title: 'Unassigned' }, '–')];
     }
@@ -1786,9 +1813,16 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   }
   function unitDrawer({ sub, seg, g }) {
     const p = M.progress(g.sheets);
+    const nameIn = g.kind === 'pond' ? h('input', { id: 'pondName', value: g.name, maxlength: 60, 'aria-label': 'Pond name' }) : null;
+    if (nameIn) {
+      const save = () => { const r = commit(() => M.setPondName(st, seg.id, g.n, nameIn.value)); if (r == null) nameIn.value = g.name; };
+      nameIn.addEventListener('change', save);
+      nameIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); nameIn.blur(); } else if (e.key === 'Escape') { nameIn.value = g.name; nameIn.blur(); } });
+    }
     return h('div', { class: 'dbody' },
       crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subLabel(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]]),
       h('h2', {}, g.name),
+      nameIn ? h('label', { class: 'f', id: 'pondNameBox' }, h('span', {}, 'Pond name'), nameIn, h('small', { class: 'muted' }, 'Blank restores “Pond ' + g.n + '”. Sheet titles that have not been edited follow this name.')) : null,
       h('p', { class: 'muted' }, seg.title + ' · ' + plural(g.sheets.length, 'sheet') + ' · ' + p.done + ' done'),
       h('ul', { class: 'dlist' }, g.sheets.map((sh) => h('li', {}, h('button', { type: 'button', class: 'rowbtn st-' + slug(sh.status), onclick: () => select_('sheet', sh.id) },
         h('span', { class: 'grow' }, sh.title), h('span', { class: 'stpill' }, sh.status))))));
@@ -1845,6 +1879,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       M.isSheetCountSec(seg) ? hydBox(sub, seg) : null,
       M.isStdSec(seg) ? stdPicker(sub, seg) : null,
       M.unitKind(seg) ? unitBox(sub, seg) : null,
+      carryBox(sub, seg),
       pp ? h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, 'Roads in this section'),
         h('p', { class: 'muted small' }, 'PP sheets = ceil(length ÷ feet per sheet): 20 scale = 240 ft, 40 = 480, 50 = 600, 100 = 1,200 ft per sheet. Edit the cells directly.'),
         roadTable(sub, seg), addRoadForm(sub, seg),
@@ -1860,7 +1895,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       connectorsBox({ t: 'seg', id: seg.id }),
       h('h3', {}, 'Sheets (' + seg.sheets.length + ')'),
       seg.sheets.length ? h('ul', { class: 'dlist' }, seg.sheets.map((sh) => h('li', {}, h('button', { type: 'button', class: 'rowbtn st-' + slug(sh.status), onclick: () => select_('sheet', sh.id) },
-        h('span', { class: 'grow' }, sh.title), M.sheetRoad(st, sub, sh) && !sh.gen ? h('span', { class: 'muted small' }, M.sheetRoad(st, sub, sh) + ' ') : null, h('span', { class: 'stpill' }, sh.status))))) : h('p', { class: 'muted' }, 'No sheets yet.'));
+        h('span', { class: 'grow' }, sh.title, M.isCarryOn(sh) ? h('span', { class: 'cbadge' }, ' from ' + ((M.carryOrigin(st, sh) || { sub: { code: '?' } }).sub.code)) : null), M.sheetRoad(st, sub, sh) && !sh.gen ? h('span', { class: 'muted small' }, M.sheetRoad(st, sub, sh) + ' ') : null, h('span', { class: 'stpill' }, sh.status))))) : h('p', { class: 'muted' }, 'No sheets yet.'));
   }
   /* v2.12 stations editor (on a road entry): inline start/end, live validation/length/PP, regenerate preview + confirm, shift, reverse */
   function planText(pv) {
@@ -2065,6 +2100,31 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         sug && String(sh.number).trim() !== sug ? [' · next free ', h('b', {}, sug), ' ', h('button', { type: 'button', class: 'link', id: 'useNum', onclick: () => commit(() => M.updateSheet(st, sh.id, { number: sug })) }, 'Use')] : null),
       iss.length ? h('small', { class: 'err', id: 'numWarn', role: 'alert' }, '⚠ ' + iss.join(' · ')) : null);
   }
+  function carryBox(sub, seg) {
+    const opts = M.carryCandidates(st, seg.id);
+    if (!opts.length) return null;
+    const sel = h('select', { id: 'carryFrom', 'aria-label': 'Sheet to carry on from another package' }, opts.map((o) => h('option', { value: o.id }, o.label)));
+    return h('section', { class: 'box', id: 'carryBox' },
+      h('h3', {}, 'Carry on a sheet from another package'),
+      h('p', { class: 'muted small' }, 'Adds an entry in this package for a sheet that started in another package. This package keeps its own status. The title and sheet number stay with the original. Removing the carry-on here leaves the original in place.'),
+      h('div', { class: 'row' }, sel, h('button', { type: 'button', class: 'btn', id: 'carryGo', onclick: () => {
+        const sh = commit(() => M.addCarryOn(st, sel.value, sub.id));
+        if (!sh) return;
+        setSeg(seg.id, false); saveUI(); renderAll();
+        const o = M.carryOrigin(st, sh);
+        toast('Carried on from ' + (o ? o.sub.code : 'the other package') + '.');
+      } }, 'Carry on')));
+  }
+  function carryNote(sh) {
+    const chain = M.carryChain(st, sh.id).map((x) => x.sub.code).join(' → ');
+    if (M.isCarryOn(sh)) {
+      const o = M.carryOrigin(st, sh);
+      return h('p', { class: 'carrynote', id: 'carryBadge' }, 'Carried from ' + (o ? o.sub.code : 'another package') + '. This package keeps its own status for the update. The title and sheet number stay with the original.' + (chain ? ' Chain: ' + chain + '.' : ''));
+    }
+    const cs = M.carriersOf(st, sh.id);
+    if (!cs.length) return null;
+    return h('p', { class: 'carrynote', id: 'carriedBy' }, 'Carried on by ' + cs.map((c) => c.sub.code).join(', ') + '. Each of those packages keeps its own status. The title and sheet number stay here.' + (chain ? ' Chain: ' + chain + '.' : ''));
+  }
   function sheetDrawer({ sub, seg, sh }) {
     const up = (f) => commit(() => M.updateSheet(st, sh.id, f));
     const inp = (k, attrs) => { const i = h('input', Object.assign({ value: sh[k] == null ? '' : sh[k] }, attrs || {})); i.addEventListener('change', () => up({ [k]: i.type === 'number' ? Number(i.value) || 0 : i.value })); return i; };
@@ -2082,9 +2142,15 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     const notes = h('textarea', { rows: 4 }); notes.value = sh.notes || ''; notes.addEventListener('change', () => up({ notes: notes.value }));
     const blocked = sh.status === 'Done' ? [] : M.blockers(st, { t: 'sheet', id: sh.id });
     const groad = sh.gen && M.findRoad(st, sh.gen.road);
+    const carried = M.isCarryOn(sh), origin = carried ? M.carryOrigin(st, sh) : null;
+    const titleIn = h('input', { id: 'shTitle', value: origin ? origin.sh.title : sh.title, readonly: carried });
+    if (!carried) titleIn.addEventListener('change', () => up({ title: titleIn.value }));
+    const numIn = h('input', { id: 'shNum', placeholder: 'e.g. 12', value: origin ? (origin.sh.number || '') : (sh.number || ''), readonly: carried });
+    if (!carried) numIn.addEventListener('change', () => up({ number: numIn.value }));
     return h('div', { class: 'dbody' },
       crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subTag(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]].concat(groad ? [[groad.road.name, () => select_('road', groad.road.id)]] : [])),
-      field('Title', inp('title', { id: 'shTitle' })),
+      field('Title', titleIn),
+      carryNote(sh),
       sh.gen ? h('p', { class: 'pill' }, 'Generated PP sheet ' + sh.gen.idx + ' of ' + sh.gen.of + (M.sheetScale(st, sub, sh) ? ' · ' + M.sheetScale(st, sub, sh) + ' scale' : '') + (M.sheetAlign(st, sub, seg, sh) ? ' · Alignment ' + M.sheetAlign(st, sub, seg, sh) : '')) : null,
       sh.dam ? damPill(sub, seg, sh) : null,
       M.isPPSec(seg) || sh.dam ? (() => { const e = staEditor(sh, { ids: true }); const ws = M.rangeWarnings(st, sub, seg).filter((w) => w.sheet === sh.id);
@@ -2095,7 +2161,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       blocked.length ? h('p', { class: 'warnbox', id: 'blockedMsg' }, '⛓ Blocked by ' + blocked.length + ': ' + blocked.map((r) => M.refLabel(st, r)).join(', ')) : null,
       h('div', { class: 'g2' }, field('Status', status), field('Owner', owner), field('Due date', inp('due', { type: 'date' })), field('Milestone', ms),
         field('Section', secSel), field('Road', roadIn), h('datalist', { id: 'roadList4' }, M.roads(st).map((r) => h('option', { value: r }))),
-        field('Discipline', disc), numberField(sh, inp('number', { placeholder: 'e.g. 12', id: 'shNum' })), field('Series', inp('series', { placeholder: 'e.g. Drainage Plan & Profile' })),
+        field('Discipline', disc), carried ? field('Sheet number', numIn) : numberField(sh, numIn), field('Series', inp('series', { placeholder: 'e.g. Drainage Plan & Profile' })),
         h('div', { class: 'f' }, h('label', { for: pct.id = 'pct' + sh.id }, '% complete'), h('div', { class: 'rangebox' }, pct, pctOut)),
         field('Hours budget', inp('hoursBudget', { type: 'number', min: 0, step: 0.5 })), field('Hours actual', inp('hoursActual', { type: 'number', min: 0, step: 0.5 }))),
       h('fieldset', { class: 'qc' }, h('legend', {}, 'QC checklist'),
@@ -2104,7 +2170,11 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       field('Notes', notes),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn sec', onclick: () => { const c = commit(() => M.duplicateSheet(st, sh.id)); if (c) select_('sheet', c.id); } }, 'Duplicate'),
-        h('button', { type: 'button', class: 'btn danger', onclick: () => { if (confirm('Delete sheet “' + sh.title + '”?')) { commit(() => M.deleteSheet(st, sh.id)); select_('seg', seg.id); } } }, 'Delete')));
+        h('button', { type: 'button', class: 'btn danger', id: carried ? 'carryRemove' : 'shDelete', onclick: () => {
+          if (carried) { if (confirm('Remove this carry-on from ' + M.subTag(sub) + '? The sheet in ' + (origin ? origin.sub.code : 'the original package') + ' stays.')) { commit(() => M.removeCarryOn(st, sh.id)); select_('seg', seg.id); } return; }
+          const by = M.carriersOf(st, sh.id);
+          if (confirm(by.length ? 'Delete “' + sh.title + '”? Carry-on entries in ' + by.map((c) => c.sub.code).join(', ') + ' will be removed too.' : 'Delete sheet “' + sh.title + '”?')) { commit(() => M.deleteSheet(st, sh.id)); select_('seg', seg.id); }
+        } }, carried ? 'Remove carry-on' : 'Delete')));
   }
   /* Stations table view (Excel-like: Enter navigation, paste TSV rows) — every road entry of every P&P section */
   const SCOLS = ['road', 'start', 'end', 'scale', 'alignment']; /* alignment last: Excel paste order Road, Start, End, Scale stays the same */

@@ -1,4 +1,5 @@
-/* Project Tracker v3.11: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.15: Engineering Report (drainage design report style), derived from the tracker data.
+   Project-wide sheet counts skip carry-on entries so a sheet updated by a later package is counted once.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
    Stored in the optional st.engReport = { meta: { csj, highway, limits, county, district, title }, secs: { <id>: { on, text, mode } }, refs }.
    Generated text only restates tracker data (names, roads, stations, sheet counts, dates). Anything an engineer must supply
@@ -90,6 +91,7 @@
     today = today || M.todayISO();
     const F = facts(st), R = M.report(st, today), rm = M.reportMeta(st), m = meta(st);
     const pname = st.project.name || 'the project';
+    const ownCount = (g) => g.sheets.filter((s) => !(typeof M.isCarryOn === 'function' && M.isCarryOn(s))).length;
     const out = {};
     const subNames = F.subs.map((s) => M.subLabel(s));
     const nSheets = F.all.length;
@@ -109,10 +111,10 @@
     /* 3 */
     const scope = [];
     for (const d of M.DISCIPLINES) {
-      const rows = F.subs.flatMap((sub) => M.sectionsOf(sub, d).map((g) => ({ sub, g }))).filter((x) => x.g.sheets.length);
+      const rows = F.subs.flatMap((sub) => M.sectionsOf(sub, d).map((g) => ({ sub, g }))).filter((x) => ownCount(x.g));
       if (!rows.length) continue;
-      const bySec = new Map(); for (const x of rows) { const k = x.g.title; bySec.set(k, (bySec.get(k) || 0) + x.g.sheets.length); }
-      const n = rows.reduce((a, x) => a + x.g.sheets.length, 0);
+      const bySec = new Map(); for (const x of rows) { const k = x.g.title; bySec.set(k, (bySec.get(k) || 0) + ownCount(x.g)); }
+      const n = rows.reduce((a, x) => a + ownCount(x.g), 0);
       scope.push({ p: (d === 'SWP3' ? 'SWP3' : 'Drainage') + ' scope: ' + pl(n, 'plan sheet') + ' in ' + pl(bySec.size, 'section') + ':' });
       scope.push({ ul: [...bySec.entries()].map(([k, v]) => k + ' — ' + pl(v, 'sheet')) });
     }
@@ -132,24 +134,24 @@
       prop.push({ p: 'Drainage plan and profile sheets are being prepared for:' });
       prop.push({ ul: ppRows.map((x) => M.subTag(x.sub) + ' · ' + x.g.title + ' — ' + x.rg.name + (M.groupAligns(x.rg.entries).length ? ' (' + M.groupAligns(x.rg.entries).join(', ') + ')' : '') + ', ' + x.rg.entries.map(sta).join('; ') + ' — ' + pl(x.n, 'sheet')) });
     }
-    const hds = F.secsWith((g) => isHds(g) && g.sheets.length);
+    const hds = F.secsWith((g) => isHds(g) && ownCount(g));
     if (hds.length) {
       prop.push({ h: 'Hydraulic computations (hydraulic data sheets)' });
-      const by = new Map(); for (const x of hds) by.set(x.g.title, (by.get(x.g.title) || 0) + x.g.sheets.length);
+      const by = new Map(); for (const x of hds) by.set(x.g.title, (by.get(x.g.title) || 0) + ownCount(x.g));
       prop.push({ p: 'Hydraulic computations are documented on hydraulic data sheets: ' + list([...by.entries()].map(([k, v]) => pl(v, 'sheet') + ' of ' + k.replace(/^Hydraulic Data Sheet\s*-\s*/i, ''))) + '.' });
       const cross = hds.filter((x) => /crossing|culvert/i.test(x.g.title)).flatMap((x) => x.g.sheets.filter((s) => s.road || !/^hydraulic data sheet/i.test(s.title)).map((s) => M.subTag(x.sub) + ' · ' + s.title + (s.road ? ' (' + s.road + ')' : '')));
       if (cross.length) prop.push({ p: 'Crossings tracked:' }, { ul: cross });
     }
-    const dams = F.subs.map((sub) => ({ sub, g: M.damSection(sub) })).filter((x) => x.g && x.g.sheets.length);
-    const odam = F.secsWith((g) => g.key === 'dr-odam' && g.sheets.length);
+    const dams = F.subs.map((sub) => ({ sub, g: M.damSection(sub) })).filter((x) => x.g && ownCount(x.g));
+    const odam = F.secsWith((g) => g.key === 'dr-odam' && ownCount(g));
     if (dams.length || odam.length) {
       prop.push({ h: 'Drainage area maps' });
-      prop.push({ p: (odam.length ? pl(odam.reduce((a, x) => a + x.g.sheets.length, 0), 'overall drainage area map') + ' and ' : '') + pl(dams.reduce((a, x) => a + x.g.sheets.length, 0), 'drainage area map sheet') + ' are tracked' + (dams.some((x) => (M.damBranches ? M.damBranches(x.g) : []).length) ? ', following the plan and profile sheet breaks of ' + list([...new Set(dams.flatMap((x) => (M.damBranches ? M.damBranches(x.g) : []).map((b) => b.road)))]) : '') + '.' });
+      prop.push({ p: (odam.length ? pl(odam.reduce((a, x) => a + ownCount(x.g), 0), 'overall drainage area map') + ' and ' : '') + pl(dams.reduce((a, x) => a + ownCount(x.g), 0), 'drainage area map sheet') + ' are tracked' + (dams.some((x) => (M.damBranches ? M.damBranches(x.g) : []).length) ? ', following the plan and profile sheet breaks of ' + list([...new Set(dams.flatMap((x) => (M.damBranches ? M.damBranches(x.g) : []).map((b) => b.road)))]) : '') + '.' });
     }
-    const lats = F.secsWith((g) => typeof M.isLatSec === 'function' && M.isLatSec(g) && g.sheets.length);
+    const lats = F.secsWith((g) => typeof M.isLatSec === 'function' && M.isLatSec(g) && ownCount(g));
     if (lats.length) {
       prop.push({ h: 'Drainage laterals' });
-      prop.push({ p: 'Drainage laterals are double-banked profile sheets. ' + pl(lats.reduce((a, x) => a + x.g.sheets.length, 0), 'sheet') + ' are tracked, counted by how many sheets are needed rather than by road.' });
+      prop.push({ p: 'Drainage laterals are double-banked profile sheets. ' + pl(lats.reduce((a, x) => a + ownCount(x.g), 0), 'sheet') + ' are tracked, counted by how many sheets are needed rather than by road.' });
     }
     const ponds = F.secsWith((g) => typeof M.isPondSec === 'function' && M.isPondSec(g) && M.unitSheets(g).length);
     if (ponds.length) {
@@ -168,12 +170,12 @@
     if (og.size) { prop.push({ h: 'Other drainage elements' }); prop.push({ ul: [...og.entries()].map(([lab, s]) => lab + ': ' + list([...s])) }); }
     out.proposed = prop;
     /* 7 */
-    const sw = F.subs.flatMap((sub) => M.sectionsOf(sub, 'SWP3').filter((g) => g.sheets.length).map((g) => ({ sub, g })));
-    out.swp3 = sw.length ? [{ p: 'SWP3 sheets are tracked for ' + list([...new Set(sw.map((x) => M.subLabel(x.sub)))]) + ': ' + list([...new Set(sw.map((x) => x.g.title))]) + ' (' + pl(sw.reduce((a, x) => a + x.g.sheets.length, 0), 'sheet') + ').' }] : null;
+    const sw = F.subs.flatMap((sub) => M.sectionsOf(sub, 'SWP3').filter((g) => ownCount(g)).map((g) => ({ sub, g })));
+    out.swp3 = sw.length ? [{ p: 'SWP3 sheets are tracked for ' + list([...new Set(sw.map((x) => M.subLabel(x.sub)))]) + ': ' + list([...new Set(sw.map((x) => x.g.title))]) + ' (' + pl(sw.reduce((a, x) => a + ownCount(x.g), 0), 'sheet') + ').' }] : null;
     /* 8 */
-    const rows = M.orderedRows(st);
+    const rows = M.orderedRows(st).filter((x) => !(typeof M.isCarryOn === 'function' && M.isCarryOn(x.sh)));
     out.sheets = rows.length ? [{ p: pl(rows.length, 'plan sheet') + ' are tracked (' + R.overall.done + ' done). Sheet numbers are as assigned in the tracker.' },
-      { table: { head: ['No.', 'Sheet title', 'Sub-project', 'Section', 'Status'], rows: rows.map((x) => [String(x.sh.number || '—'), x.sh.title, x.sub.code, x.seg.title, x.sh.status]), cls: 'eidx' } }] : [{ p: 'No plan sheets are tracked yet.' }];
+      { table: { head: ['No.', 'Sheet title', 'Sub-project', 'Section', 'Status'], rows: rows.map((x) => { const by = typeof M.carriersOf === 'function' ? M.carriersOf(st, x.sh.id) : []; return [String(x.sh.number || '—'), x.sh.title + (by.length ? ' (carried on by ' + by.map((c) => c.sub.code).join(', ') + ')' : ''), x.sub.code, x.seg.title, x.sh.status]; }), cls: 'eidx' } }] : [{ p: 'No plan sheets are tracked yet.' }];
     /* 9 */
     const sch = [{ p: 'As of ' + today + ', the plan sheets are ' + Math.round(R.overall.pct) + '% complete (weighted by status): ' + R.overall.done + ' of ' + pl(R.overall.total, 'sheet') + ' done.' }];
     const ms = R.milestones.filter((x) => x.m.name);

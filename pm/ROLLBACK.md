@@ -384,6 +384,14 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.15 (pond names, carry-on sheets, work description)
+
+Detention ponds can be named. The name starts as Pond 1, Pond 2, and so on, and it is written into sheet titles that have not been edited by hand. Changing the pond count keeps names already entered; a new pond gets the next default name. A blank name goes back to Pond N. Older projects get the default names when they are opened.
+
+A later package can carry on a sheet that started in an earlier package. The later package gets its own entry, with its own status, owner, due date, notes, and QC. The title and sheet number stay with the original and update when that original changes. The later entry is marked carried from that package, and the original shows which packages carry it. The chain is every package that carries that same original, in package order (A → B → C). Each package’s sheet list includes its own entry. Project-wide totals count the sheet once. Removing the carry-on leaves the original in place. Deleting the original removes the carry-on entries too. Saved projects have no carry-on links until someone adds one.
+
+The work description is a third report, beside the status report and the engineering report. It says what each package will cover: branches and sections, roads and stations, counts of laterals, ponds, junction boxes and other sheets, standard names, and which sheets a package carries on from another. It does not report status counts or percent complete. It prints and copies as text the same way as the other reports.
+
 ## v3.14 (copy trunk lines from another branch)
 
 On a sub-project’s Trunkline section, “Copy trunk lines from another branch” copies every trunk line road (name, stations, scale, alignment) and its generated sheets from another sub-project in the same project. The copies are new records. Changing one does not change the other. Sheet status on a copy starts at Not started; an edited title is kept. If this branch already has trunk lines, the app asks before appending and the notice says they were appended. The source list is other sub-projects that already have trunk lines. SWP3 has no Trunkline section, so it is not a source. Nothing is stored beyond the new roads and sheets, so older projects load unchanged.
