@@ -654,6 +654,43 @@ function v2Fixture() {
   await click('#vTree'); await sleep(200);
   D = await data();
 
+  /* v3.17 find carry-ons */
+  {
+    const bStd = D.subs[1].segments.find((g) => g.key === 'dr-std');
+    const bSel = '.node[data-key="seg:' + bStd.id + '"]';
+    if (!(await has(bSel))) { await click('#xAll'); await sleep(400); }
+    await click(bSel); await sleep(300);
+    ok(await has('#stdList'), 'package B standards list is open');
+    await pg.evaluate(() => { for (const name of ['HIL-C-25 (HOU)', 'PSL']) { const box = [...document.querySelectorAll('#stdList input')].find((el) => el.value === name); if (box) box.click(); } });
+    await click('#stdAdd'); await sleep(400);
+    D = await data();
+    const aHil = D.subs[0].segments.find((g) => g.key === 'dr-std').sheets.find((s) => s.title === 'HIL-C-25 (HOU)');
+    const bHil = D.subs[1].segments.find((g) => g.key === 'dr-std').sheets.find((s) => s.title === 'HIL-C-25 (HOU)' && !s.carry);
+    ok(aHil && bHil, 'package B has its own HIL-C-25, not yet linked');
+    await click('#carryFindBtn'); await sleep(300);
+    const findTxt = await txt('#carryFind');
+    ok(/HIL-C-25 \(HOU\)/.test(findTxt) && /Exact/.test(findTxt) && /Same standard name/.test(findTxt), 'finder lists the repeated standard as an exact match');
+    await shot('27-find-carry-ons');
+    await click('.carryIgnore[data-later="' + bHil.id + '"]'); await sleep(300);
+    ok(!(await pg.$('.carryLink[data-later="' + bHil.id + '"]')), 'an ignored pair is not suggested again');
+    ok(/PSL \(1 of 2\)/.test(await txt('#carryFind')), 'the other exact match stays listed');
+    await click('#carryLinkAll'); await sleep(400);
+    D = await data();
+    const bPsl = D.subs[1].segments.find((g) => g.key === 'dr-std').sheets.find((s) => s.carry && s.title === 'PSL (1 of 2)');
+    const bHilStill = D.subs[1].segments.find((g) => g.key === 'dr-std').sheets.find((s) => s.id === bHil.id);
+    ok(bPsl && bPsl.carry.src, 'link all exact matches converts the later PSL sheet into a carry-on');
+    ok(bHilStill && !bHilStill.carry, 'the ignored sheet is not linked');
+    await click('#carryResetIgnore'); await sleep(300);
+    ok(await has('.carryLink[data-later="' + bHil.id + '"]'), 'reset brings the ignored suggestion back');
+    await click('.carryLink[data-later="' + bHil.id + '"]'); await sleep(300);
+    D = await data();
+    const linked = D.subs[1].segments.find((g) => g.key === 'dr-std').sheets.find((s) => s.id === bHil.id);
+    ok(linked && linked.carry && linked.carry.src === aHil.id && linked.status === bHil.status, 'linking keeps the later sheet and points it at the original');
+    ok(D.subs[0].segments.find((g) => g.key === 'dr-std').sheets.some((s) => s.id === aHil.id && !s.carry), 'the original stays in the earlier package');
+    const hilRows = D.subs.flatMap((s) => s.segments.find((g) => g.key === 'dr-std').sheets).filter((s) => s.title === 'HIL-C-25 (HOU)');
+    ok(hilRows.filter((s) => !s.carry).length === 1, 'the linked standard is counted once');
+  }
+
   /* 11. persistence, v2 untouched, no external requests, errors */
   await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
   ok(!(await pg.$('#migV3')), 'migration notice only once');

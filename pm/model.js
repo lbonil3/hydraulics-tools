@@ -1,4 +1,4 @@
-/* PM data model v3.16: pure functions, no DOM, no storage.
+/* PM data model v3.17: pure functions, no DOM, no storage.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -1208,6 +1208,7 @@
     }
     for (const t of st.index) if (!t.sec || !secDef(st, t.sec)) { t.sec = mapSection(st, t.title, t.discipline); ensureSection(st, t.sec); }
     tidyCarry(st);
+    tidyCarryIgnore(st);
     pruneLinks(st);
     pruneProps(st);
     return st;
@@ -2604,6 +2605,150 @@
     log(st, 'Removed carry-on “' + hit.sh.title + '” from ' + subTag(hit.sub));
     return true;
   }
+  /* v3.17 carry-on finder. A later package’s sheet that repeats an earlier package’s sheet is a suggestion,
+     not a link, until someone accepts it. Ignored pairs live in the optional st.carryIgnore list. */
+  function normSheetTitle(title) {
+    let t = String(title || '').toLowerCase().replace(/[–—]/g, '-');
+    t = t.replace(/\(pp\s+\d+\s+of\s+\d+\)/g, ' ');
+    t = t.replace(/\b(package|sub-?project)\s+[a-d]\b/g, ' ');
+    t = t.replace(/(^|\s)[a-d]\s*[·•]\s*/g, ' ');
+    t = t.replace(/^[a-d]\s*[-:]\s*/, '');
+    t = t.replace(/[·•|]+/g, ' ');
+    t = t.replace(/#\s*\d+\b/g, ' ');
+    t = t.replace(/\bno\.?\s*\d+\b/g, ' ');
+    return t.replace(/\s+/g, ' ').trim();
+  }
+  function titlePair(title) {
+    const m = /^(.*)\s+\((\d+)\s+of\s+(\d+)\)$/i.exec(String(title || '').trim());
+    return m ? { base: m[1].trim(), part: m[2] + '/' + m[3] } : { base: String(title || '').trim(), part: '' };
+  }
+  function stdMatchKey(sec, sh) {
+    if (!isStdSec(sec)) return '';
+    const disc = sec.discipline === 'SWP3' ? 'SWP3' : 'Drainage';
+    const p = titlePair(sh.title);
+    const base = p.base.replace(/\s+/g, ' ').trim();
+    if (!base) return '';
+    const known = STANDARD_SHEETS.find((s) => s.discipline === disc && s.name.toLowerCase() === base.toLowerCase());
+    return disc + '\0' + (known ? known.name : base).toLowerCase() + '\0' + p.part;
+  }
+  function unitMatchKey(sec, sh) {
+    if (!sh.unit || unitKind(sec) !== sh.unit.kind) return '';
+    const name = storedUnitName(sh) || defaultUnitName(sh.unit.kind, sh.unit.n);
+    return sh.unit.kind + '\0' + name.toLowerCase() + '\0' + sh.unit.slot;
+  }
+  function isRangeSec(sec) { return !!(sec && (isPPSec(sec) || sec.key === 'dr-dam' || sec.key === 'dr-odam' || /drainage area map/i.test(String(sec.title || '')))); }
+  function sheetRoadName(sub, sec, sh) {
+    if (sh.gen && sh.gen.road) { const r = (sub.roads || []).find((x) => x.id === sh.gen.road); if (r && r.road) return String(r.road); }
+    const br = damBranchOf(sec, sh); if (br && br.road) return String(br.road);
+    if (sh.dam && sh.dam.road) { const r = (sub.roads || []).find((x) => x.id === sh.dam.road); if (r && r.road) return String(r.road); }
+    return sh.road ? String(sh.road) : '';
+  }
+  function rangesOverlap(a, b) { return !!(a && b && a.start < b.end - 0.01 && b.start < a.end - 0.01); }
+  function scoreCarryPair(a, b) {
+    const reasons = [];
+    const sk = stdMatchKey(a.seg, a.sh);
+    if (sk && sk === stdMatchKey(b.seg, b.sh)) reasons.push({ rank: 40, confidence: 'exact', reason: 'Same standard name' });
+    if (isRangeSec(a.seg) && isRangeSec(b.seg)) {
+      const ra = sheetRoadName(a.sub, a.seg, a.sh), rb = sheetRoadName(b.sub, b.seg, b.sh);
+      const ga = sheetRange(a.sh), gb = sheetRange(b.sh);
+      if (ra && rb && ra.trim().toLowerCase().replace(/\s+/g, ' ') === rb.trim().toLowerCase().replace(/\s+/g, ' ') && rangesOverlap(ga, gb)) {
+        const sameTitle = normSheetTitle(a.sh.title) && normSheetTitle(a.sh.title) === normSheetTitle(b.sh.title);
+        reasons.push({ rank: 30, confidence: sameTitle ? 'exact' : 'likely', reason: sameTitle ? 'Same road, overlapping stations, and the same sheet title' : 'Same road and overlapping stations' });
+      }
+    }
+    const uk = unitMatchKey(a.seg, a.sh);
+    if (uk && uk === unitMatchKey(b.seg, b.sh)) reasons.push({ rank: 20, confidence: 'exact', reason: a.sh.unit.kind === 'box' ? 'Same junction box name' : 'Same pond name' });
+    const nt = normSheetTitle(a.sh.title);
+    if (nt.length >= 3 && nt === normSheetTitle(b.sh.title)) reasons.push({ rank: 10, confidence: 'exact', reason: 'Same sheet title' });
+    if (!reasons.length) return null;
+    reasons.sort((x, y) => y.rank - x.rank);
+    return reasons[0];
+  }
+  function carryIgnoreKey(originId, laterId) { return originId + '\t' + laterId; }
+  function tidyCarryIgnore(st) {
+    if (!('carryIgnore' in st)) return;
+    if (!Array.isArray(st.carryIgnore)) { delete st.carryIgnore; return; }
+    const ids = new Set(allSheets(st).map((r) => r.sh.id));
+    const out = [];
+    for (const x of st.carryIgnore) {
+      if (typeof x !== 'string') continue;
+      const p = x.split('\t');
+      if (p.length !== 2 || !ids.has(p[0]) || !ids.has(p[1]) || p[0] === p[1]) continue;
+      const k = p[0] + '\t' + p[1];
+      if (!out.includes(k)) out.push(k);
+    }
+    if (out.length) st.carryIgnore = out; else delete st.carryIgnore;
+  }
+  function findCarryOns(st) {
+    const ignored = new Set(Array.isArray(st.carryIgnore) ? st.carryIgnore : []);
+    const rows = [];
+    for (const sub of orderedSubs(st)) for (const seg of sub.segments) for (const sh of seg.sheets) if (!isCarryOn(sh)) rows.push({ sub, seg, sh, ord: subOrder(st, sub) });
+    const best = new Map();
+    for (const a of rows) for (const b of rows) {
+      if (a.ord >= b.ord || a.sub === b.sub || a.seg.key !== b.seg.key) continue;
+      if (ignored.has(carryIgnoreKey(a.sh.id, b.sh.id))) continue;
+      if (carriersOf(st, a.sh.id).some((r) => r.sub === b.sub)) continue;
+      const score = scoreCarryPair(a, b);
+      if (!score) continue;
+      const prev = best.get(b.sh.id);
+      if (!prev || score.rank > prev.score.rank || (score.rank === prev.score.rank && a.ord < prev.origin.ord)) best.set(b.sh.id, { origin: a, score });
+    }
+    const groups = new Map();
+    for (const [laterId, hit] of best) {
+      const o = hit.origin, b = rows.find((r) => r.sh.id === laterId);
+      if (!groups.has(o.sh.id)) groups.set(o.sh.id, { origin: { id: o.sh.id, package: o.sub.code, subId: o.sub.id, section: o.seg.title, title: o.sh.title }, matches: [] });
+      groups.get(o.sh.id).matches.push({ id: b.sh.id, package: b.sub.code, subId: b.sub.id, section: b.seg.title, title: b.sh.title, status: b.sh.status, owner: b.sh.owner || '', confidence: hit.score.confidence, reason: hit.score.reason, rank: hit.score.rank });
+    }
+    const list = [...groups.values()].sort((a, b) => subOrder(st, findSub(st, a.origin.subId)) - subOrder(st, findSub(st, b.origin.subId)) || a.origin.section.localeCompare(b.origin.section) || a.origin.title.localeCompare(b.origin.title));
+    for (const g of list) g.matches.sort((a, b) => subOrder(st, findSub(st, a.subId)) - subOrder(st, findSub(st, b.subId)) || a.title.localeCompare(b.title));
+    return { groups: list };
+  }
+  function linkAsCarryOn(st, originId, laterId) {
+    const origin = findSheet(st, originId), later = findSheet(st, laterId);
+    if (!origin || !later) throw new Error('No such sheet');
+    if (origin.sh === later.sh) throw new Error('A sheet cannot carry on itself.');
+    if (isCarryOn(origin.sh)) throw new Error('Carry on the original sheet, not a carry-on.');
+    if (isCarryOn(later.sh)) throw new Error('That sheet is already a carry-on.');
+    if (origin.sub === later.sub) throw new Error('A package cannot carry on its own sheet.');
+    if (subOrder(st, later.sub) <= subOrder(st, origin.sub)) throw new Error('The original must be in an earlier package.');
+    if (carriersOf(st, origin.sh.id).some((r) => r.sub === later.sub)) throw new Error(subTag(later.sub) + ' already carries this sheet.');
+    const sec = later.seg, had = { unit: !!later.sh.unit, hyd: !!later.sh.hyd, cnt: !!later.sh.cnt };
+    later.sh.carry = { src: origin.sh.id };
+    later.sh.title = origin.sh.title;
+    later.sh.number = origin.sh.number || '';
+    later.sh.series = '';
+    later.sh.road = '';
+    delete later.sh.gen; delete later.sh.unit; delete later.sh.hyd; delete later.sh.cnt; delete later.sh.dam; delete later.sh.sta;
+    if (had.hyd) syncHyd(sec);
+    if (had.cnt) syncCounted(sec, 'cnt');
+    if (had.unit) { syncUnits(sec); sortUnits(sec); }
+    if (Array.isArray(st.carryIgnore)) st.carryIgnore = st.carryIgnore.filter((k) => k !== carryIgnoreKey(origin.sh.id, later.sh.id));
+    if (st.carryIgnore && !st.carryIgnore.length) delete st.carryIgnore;
+    log(st, subTag(later.sub) + ' carries on “' + origin.sh.title + '” from ' + subTag(origin.sub), { t: 'sheet', id: later.sh.id });
+    return later.sh;
+  }
+  function linkExactCarryOns(st) {
+    const found = findCarryOns(st);
+    let linked = 0, skipped = 0;
+    for (const g of found.groups) for (const m of g.matches) if (m.confidence === 'exact') {
+      try { linkAsCarryOn(st, g.origin.id, m.id); linked++; } catch (e) { skipped++; }
+    }
+    return { linked, skipped };
+  }
+  function ignoreCarryPair(st, originId, laterId) {
+    if (!findSheet(st, originId) || !findSheet(st, laterId)) throw new Error('No such sheet');
+    if (!Array.isArray(st.carryIgnore)) st.carryIgnore = [];
+    const k = carryIgnoreKey(originId, laterId);
+    if (!st.carryIgnore.includes(k)) st.carryIgnore.push(k);
+    log(st, 'Ignored a carry-on suggestion');
+    return k;
+  }
+  function resetCarryIgnore(st) {
+    const n = Array.isArray(st.carryIgnore) ? st.carryIgnore.length : 0;
+    delete st.carryIgnore;
+    if (n) log(st, 'Cleared ignored carry-on suggestions');
+    return n;
+  }
   /* ---- v3.8 DAM road branches: Drainage Area Map > Road > sheets ----
      A DAM section may hold sec.damRoads = [{ id, road, alignment?, src:[source road entry ids], notes }] (optional field).
      A copied sheet points at its branch with sh.dam.branch. A branch mirrors its source road (name + alignment) while it has
@@ -2802,7 +2947,7 @@
       if (!Object.keys(e).length) delete st.props[k];
     }
   }
-  return { isTrunkSec, trunkSources, planCopyTrunk, copyTrunkLines, isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, setPondName, syncUnits, isCarryOn, carryOrigin, carriersOf, carryChain, carryCandidates, addCarryOn, removeCarryOn, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
+  return { isTrunkSec, trunkSources, planCopyTrunk, copyTrunkLines, isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, setPondName, syncUnits, isCarryOn, carryOrigin, carriersOf, carryChain, carryCandidates, addCarryOn, removeCarryOn, findCarryOns, linkAsCarryOn, linkExactCarryOns, ignoreCarryPair, resetCarryIgnore, normSheetTitle, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
     TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
