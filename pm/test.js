@@ -1081,6 +1081,32 @@ t('v3.12 Bridge Deck Drain Details by count, no road', () => {
   const back = M.migrate(JSON.parse(JSON.stringify(st)));
   assert.deepStrictEqual(M.secOf(back.subs[0], 'dr-bd-det').sheets.map((q) => q.title), deck.sheets.map((q) => q.title), 'saved projects round-trip');
 });
+t('v3.12 standard sheet list: drainage vs SWP3, titles, no road, no duplicates', () => {
+  const st = M.newState('P'); const A = st.subs[0];
+  const dr = M.secOf(A, 'dr-std'), sw = M.secOf(A, 'sw-std'), pp = M.secOf(A, 'dr-pp');
+  assert.ok(M.isStdSec(dr) && M.isStdSec(sw) && !M.isStdSec(pp));
+  const dNames = M.standardsForSection(dr).map((s) => s.name);
+  const sNames = M.standardsForSection(sw).map((s) => s.name);
+  for (const n of ['HIL-C-25', 'PSL', 'PSET', 'SETP', 'CH-PW']) assert.ok(dNames.includes(n), n);
+  for (const n of ['EC(1)-16', 'EC(2)-16', 'EC(3)-16', 'EC(9)-16']) assert.ok(sNames.includes(n), n);
+  assert.ok(!dNames.some((n) => /^EC\(/.test(n)), 'drainage list has no SWP3 sheets');
+  assert.ok(!sNames.some((n) => /HIL|PSET|SETP|CH-PW|^PSL$/.test(n)), 'SWP3 list has no drainage sheets');
+  assert.strictEqual(M.standardsForSection(pp).length, 0, 'the list is only on a Standards section');
+  const r = M.addStandardSheets(st, dr.id, ['HIL-C-25', 'PSL', 'EC(1)-16', 'HIL-C-25']);
+  assert.deepStrictEqual([r.added, r.skipped], [2, 2], 'unknown branch and a repeat are skipped');
+  assert.deepStrictEqual(dr.sheets.map((q) => q.title), ['HIL-C-25', 'PSL']);
+  assert.ok(dr.sheets.every((q) => !q.road && !q.gen && q.discipline === 'Drainage'));
+  M.addSheet(st, dr.id, { title: 'My extra standard' });
+  M.setSheetCount(st, dr.id, 1);
+  assert.ok(dr.sheets.some((q) => q.title === 'My extra standard') && dr.sheets.some((q) => q.title === 'HIL-C-25') && dr.sheets.some((q) => q.cnt), 'free-text add and the sheet count stay');
+  const swAdd = M.addStandardSheets(st, sw.id, ['EC(1)-16', 'HIL-C-25']);
+  assert.strictEqual(swAdd.added, 1);
+  assert.deepStrictEqual(sw.sheets.map((q) => q.title), ['EC(1)-16']);
+  assert.strictEqual(M.addStandardSheets(st, sw.id, ['EC(1)-16']).added, 0, 'already there');
+  assert.throws(() => M.addStandardSheets(st, pp.id, ['PSL']), /Standards section/);
+  const back = M.migrate(JSON.parse(JSON.stringify(st)));
+  assert.deepStrictEqual(M.secOf(back.subs[0], 'dr-std').sheets.map((q) => q.title), dr.sheets.map((q) => q.title));
+});
 t('engineering report: counts v3.9 hydraulic data sheets (by count)', () => {
   const st = engState(); const A = st.subs[0];
   const inl = M.secOf(A, 'dr-hds-inlet'), x = M.secOf(A, 'dr-hds-x');

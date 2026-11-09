@@ -503,6 +503,25 @@ function v2Fixture() {
   const deckCnt = D.subs[0].segments.find((g) => g.key === 'dr-bd-det').sheets.filter((q) => q.cnt);
   ok(deckCnt.length === 2 && deckCnt.every((q) => !q.road) && deckCnt.map((q) => q.title).join('|') === 'Bridge Deck Drain Details (1 of 2)|Bridge Deck Drain Details (2 of 2)', 'two Bridge Deck Drain Details sheets, generic titles, no road');
   await shot('19-deck-drain-details');
+  await openSec('dr-std');
+  ok(await has('#stdBox') && await has('#stdList') && await has('#stdAdd') && await has('#hydBox') && await has('#addSheetTitle'), 'Drainage Standards keeps the count and free-text add, and offers the list');
+  const drLabs = await pg.$$eval('#stdList label', (els) => els.map((e) => e.textContent));
+  ok(drLabs.some((t) => /HIL-C-25/.test(t)) && drLabs.some((t) => /\bPSL\b/.test(t)) && drLabs.some((t) => /CH-PW/.test(t)) && !drLabs.some((t) => /EC\(1\)/.test(t)), 'drainage list has HIL-C-25, PSL, CH-PW and no EC sheets');
+  await pg.evaluate(() => { for (const name of ['HIL-C-25', 'PSL']) { const box = [...document.querySelectorAll('#stdList input')].find((el) => el.value === name); if (box) box.click(); } });
+  await click('#stdAdd'); await sleep(300);
+  D = await data();
+  const named = D.subs[0].segments.find((g) => g.key === 'dr-std').sheets.filter((q) => q.title === 'HIL-C-25' || q.title === 'PSL');
+  ok(named.length === 2 && named.every((q) => !q.road), 'selected drainage standards become sheets titled with the name, no road');
+  await shot('20-drainage-standards');
+  await openSec('sw-std');
+  ok(await has('#stdBox') && /SWP3 standard sheets/i.test(await txt('#stdBox')), 'SWP3 standards section has its own list');
+  const swLabs = await pg.$$eval('#stdList label', (els) => els.map((e) => e.textContent));
+  ok(swLabs.some((t) => /EC\(1\)-16/.test(t)) && swLabs.some((t) => /EC\(2\)-16/.test(t)) && swLabs.some((t) => /EC\(3\)-16/.test(t)) && swLabs.some((t) => /EC\(9\)-16/.test(t)) && !swLabs.some((t) => /HIL-C-25/.test(t)), 'SWP3 list is EC sheets only');
+  await pg.evaluate(() => { const box = [...document.querySelectorAll('#stdList input')].find((el) => el.value === 'EC(1)-16'); if (box) box.click(); });
+  await click('#stdAdd'); await sleep(300);
+  D = await data();
+  ok(D.subs[0].segments.find((g) => g.key === 'sw-std').sheets.some((q) => q.title === 'EC(1)-16' && !q.road), 'EC(1)-16 added on the SWP3 branch');
+  await shot('21-swp3-standards');
   await shot('18-optional-counts');
   void weld;
 

@@ -1409,6 +1409,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (n.kids.length) items.push([n.collapsed ? 'Expand' : 'Collapse', '→ ←', () => toggleNode(n)]);
     if (n.type === 'disc') items.push(['Add a sheet…', 'n', () => { select_('disc', id); focusAdd('qaTitle'); }]);
     if (n.type === 'seg' && M.isSheetCountSec(n.seg)) items.push(['Set number of sheets…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('hydCount'); }]);
+    if (n.type === 'seg' && M.isStdSec(n.seg)) items.push(['Add standard sheets…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('stdFilter'); }]);
     if (n.type === 'seg' && M.unitKind(n.seg)) items.push(['Set number of ' + (M.unitKind(n.seg) === 'box' ? 'boxes' : 'ponds') + '…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('unitCount'); }]);
     if (n.type === 'seg') items.push([n.pp ? 'Add a road…' : 'Add a sheet…', 'n', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd(n.pp ? 'addRoadName' : 'addSheetTitle'); }]);
     if (n.type === 'road') items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: n.g.entries.map((r) => r.id) })]);
@@ -1791,6 +1792,38 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('ul', { class: 'dlist' }, g.sheets.map((sh) => h('li', {}, h('button', { type: 'button', class: 'rowbtn st-' + slug(sh.status), onclick: () => select_('sheet', sh.id) },
         h('span', { class: 'grow' }, sh.title), h('span', { class: 'stpill' }, sh.status))))));
   }
+  function stdPicker(sub, seg) {
+    const all = M.standardsForSection(seg);
+    if (!all.length) return null;
+    const branch = seg.discipline === 'SWP3' ? 'SWP3' : 'Drainage';
+    const q = h('input', { id: 'stdFilter', type: 'search', placeholder: 'Filter ' + branch + ' standards', 'aria-label': 'Filter ' + branch + ' standard sheets' });
+    const box = h('div', { class: 'stdlist', id: 'stdList' });
+    const btn = h('button', { class: 'btn', type: 'button', id: 'stdAdd' }, 'Add selected');
+    const chosen = () => [...box.querySelectorAll('input[type=checkbox]:checked')].map((el) => el.value);
+    const paint = () => {
+      const f = q.value.trim().toLowerCase();
+      const rows = all.filter((s) => !f || (s.name + ' ' + s.note).toLowerCase().includes(f));
+      const keep = new Set(chosen());
+      box.replaceChildren(...(rows.length ? rows.map((s) => h('label', { class: 'chk' },
+        h('input', { type: 'checkbox', value: s.name, checked: keep.has(s.name) }),
+        h('span', {}, h('b', {}, s.name), s.note ? h('span', { class: 'note' }, ' — ' + s.note) : null))) : [h('p', { class: 'muted small' }, 'No match.')]));
+      btn.disabled = !rows.length;
+    };
+    q.addEventListener('input', paint);
+    btn.addEventListener('click', () => {
+      const names = chosen();
+      if (!names.length) return toast('Select at least one standard.');
+      const r = commit(() => M.addStandardSheets(st, seg.id, names));
+      if (!r) return;
+      setSeg(seg.id, false); saveUI(); renderAll();
+      toast(r.added ? 'Added ' + plural(r.added, 'standard sheet') + (r.skipped ? ' · ' + r.skipped + ' already here or not in this branch' : '') + '.' : 'Those standards are already in this section.');
+    });
+    setTimeout(paint, 0);
+    return h('section', { class: 'box', id: 'stdBox' },
+      h('h3', {}, branch + ' standard sheets'),
+      h('p', { class: 'muted small' }, 'Pick TxDOT standard sheets for this ' + branch + ' branch. Each one becomes a sheet titled with its name. The list is in the app data (STANDARD_SHEETS) if a name needs to change.'),
+      q, box, h('div', { class: 'row' }, btn));
+  }
   function segDrawer({ sub, seg }) {
     const d = seg.discipline, pp = M.isPPSec(seg);
     const p = M.progress(seg.sheets);
@@ -1809,6 +1842,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         actions: pp && M.roadsOf(sub, seg).length ? damBtn({ subs: [sub.id], roads: M.roadsOf(sub, seg).map((r) => r.id) }) : M.damSection(sub) === seg ? [damBtn({ subs: [sub.id] }, 'Copy P&P sheets here…'), damSyncBtn([sub.id])] : null }),
       M.damSection(sub) === seg ? damBox(sub, seg) : null,
       M.isSheetCountSec(seg) ? hydBox(sub, seg) : null,
+      M.isStdSec(seg) ? stdPicker(sub, seg) : null,
       M.unitKind(seg) ? unitBox(sub, seg) : null,
       pp ? h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, 'Roads in this section'),
         h('p', { class: 'muted small' }, 'PP sheets = ceil(length ÷ feet per sheet): 20 scale = 240 ft, 40 = 480, 50 = 600, 100 = 1,200 ft per sheet. Edit the cells directly.'),

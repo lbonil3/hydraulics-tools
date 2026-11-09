@@ -388,6 +388,8 @@ Data: no schema change. Optional fields project.report {preparedFor, preparedBy,
 
 Bridge Deck Drain Details takes a sheet count, with no road. Same pattern as Bridge Deck Drawing Details, Bridge Deck Drain Summary, Standards, and Drainage Laterals. Existing sheets in that section are kept; setting a count adopts a sheet titled like the section and leaves any other sheets in place.
 
+Standards sections also offer a pick-list of TxDOT standard sheets (`STANDARD_SHEETS` in `pm/model.js`). Drainage Standards shows only the drainage names; SWP3 Standard Details shows only the EC sheets. A picked name becomes the sheet title. The free-text add and the sheet count stay. The list is not stored in the project, so older projects are unchanged.
+
 ## v3.11 (ponds, laterals, junction boxes, optional counts)
 
 Detention is one branch: each pond is Layout, Cross Sections, and Geometric Layout (2 sheets). The old Detention Basin Layout and Detention Basin Cross Section sections are folded into it on load. Drainage laterals are a sheet count (double-banked profiles, no road). Special junction boxes are a count of boxes, 3 sheets each. Bridge Deck Drawing Details, Bridge Deck Drain Summary, and Standards can also be entered as a sheet count. Saved projects keep sheet status, owners, notes, and edited titles; generated lateral sheets become counted sheets.

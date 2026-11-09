@@ -532,6 +532,9 @@ textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size
 /* v3.2 road branches + sheet station ranges */
 .node.n-road,.node.n-unit{display:flex;align-items:center;gap:8px;padding:8px 10px;border-left:4px solid var(--brand);background:color-mix(in srgb,var(--brand) 5%,var(--surface))}
 .node.n-unit{background:color-mix(in srgb,var(--brand) 9%,var(--surface))}
+.stdlist{max-height:240px;overflow:auto;margin:8px 0;padding:4px 8px;border:1px solid var(--line,#d0d5dd);border-radius:8px}
+.stdlist .chk{align-items:flex-start}
+.stdlist .note{color:var(--muted);font-size:12px}
 .node.n-road.d-sw{border-left:4px dashed var(--sw)}
 .node.n-road .rdicon,.node.n-unit .rdicon{font-size:18px;color:var(--brand);flex:none}
 .node.n-road .rranges{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
