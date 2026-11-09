@@ -384,6 +384,10 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.14 (copy trunk lines from another branch)
+
+On a sub-project’s Trunkline section, “Copy trunk lines from another branch” copies every trunk line road (name, stations, scale, alignment) and its generated sheets from another sub-project in the same project. The copies are new records. Changing one does not change the other. Sheet status on a copy starts at Not started; an edited title is kept. If this branch already has trunk lines, the app asks before appending and the notice says they were appended. The source list is other sub-projects that already have trunk lines. SWP3 has no Trunkline section, so it is not a source. Nothing is stored beyond the new roads and sheets, so older projects load unchanged.
+
 ## v3.13 (drainage standards from the plan-set index)
 
 The Drainage Standards pick-list is the sheet names from the plan-set index, in that order. HCFCD-ISD-25 (HOU), C&DD-24 (HOU), PSL, and SW-0 each add two sheets, titled “(1 of 2)” and “(2 of 2)”. Sheets already saved under an older title, including a single sheet titled PSL, are left as they are. The SWP3 EC(1)-16 … EC(9)-16 list is unchanged.

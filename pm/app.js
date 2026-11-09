@@ -1,4 +1,4 @@
-/* Project Tracker v3.13 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.14 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -1410,6 +1410,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     if (n.type === 'disc') items.push(['Add a sheet…', 'n', () => { select_('disc', id); focusAdd('qaTitle'); }]);
     if (n.type === 'seg' && M.isSheetCountSec(n.seg)) items.push(['Set number of sheets…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('hydCount'); }]);
     if (n.type === 'seg' && M.isStdSec(n.seg)) items.push(['Add standard sheets…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('stdFilter'); }]);
+    if (n.type === 'seg' && M.isTrunkSec(n.seg)) items.push(['Copy trunk lines from another branch…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('trunkFrom'); }]);
     if (n.type === 'seg' && M.unitKind(n.seg)) items.push(['Set number of ' + (M.unitKind(n.seg) === 'box' ? 'boxes' : 'ponds') + '…', '', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd('unitCount'); }]);
     if (n.type === 'seg') items.push([n.pp ? 'Add a road…' : 'Add a sheet…', 'n', () => { ui.collapsed[n.key] = false; saveUI(); select_('seg', id); focusAdd(n.pp ? 'addRoadName' : 'addSheetTitle'); }]);
     if (n.type === 'road') items.push(['Copy to Drainage Area Maps…', '', () => openDamCopy({ subs: [n.sub.id], roads: n.g.entries.map((r) => r.id) })]);
@@ -1847,7 +1848,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       pp ? h('section', { class: 'box', id: 'roadsBox' }, h('h3', {}, 'Roads in this section'),
         h('p', { class: 'muted small' }, 'PP sheets = ceil(length ÷ feet per sheet): 20 scale = 240 ft, 40 = 480, 50 = 600, 100 = 1,200 ft per sheet. Edit the cells directly.'),
         roadTable(sub, seg), addRoadForm(sub, seg),
-        h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', id: 'genBtn', disabled: !pending, onclick: () => genSection(seg) }, pending ? 'Generate PP sheets (' + pending + ' change' + (pending === 1 ? '' : 's') + ')' : 'PP sheets up to date ✓'))) : null,
+        h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', id: 'genBtn', disabled: !pending, onclick: () => genSection(seg) }, pending ? 'Generate PP sheets (' + pending + ' change' + (pending === 1 ? '' : 's') + ')' : 'PP sheets up to date ✓')),
+        M.isTrunkSec(seg) ? trunkCopyBox(sub, seg) : null) : null,
       h('section', { class: 'box' }, h('h3', {}, pp ? 'Other sheets in this section' : M.isSheetCountSec(seg) || M.unitKind(seg) ? 'Add one sheet with its own title' : 'Add sheets'),
         h('form', { class: 'addrow', id: 'addSheetForm', onsubmit: (e) => { e.preventDefault(); if (!nt.value.trim()) return; const shx = commit(() => M.addSheet(st, seg.id, { title: nt.value, road: nr.value })); setSeg(seg.id, false); saveUI(); renderAll(); if (shx) { toast('Added “' + shx.title + '”.'); const i = $('#addSheetTitle'); if (i) i.focus(); } } },
           nt, M.isSheetCountSec(seg) || M.unitKind(seg) ? null : nr, h('button', { class: 'btn', type: 'submit' }, 'Add')),
@@ -1909,6 +1911,21 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         commit(() => M.shiftStations(st, seg.id, d)); toast('Shifted by ' + (d > 0 ? '+' : '') + d + ' ft.');
       } }, off, h('button', { type: 'submit', class: 'btn sec', id: 'stShift' }, 'Shift road')) : null,
       M.hasSta(seg) ? splitMerge(sub, seg) : null, copyBox(sub, seg));
+  }
+  function trunkCopyBox(sub, seg) {
+    const sources = M.trunkSources(st, sub.id);
+    if (!sources.length) return h('section', { class: 'box', id: 'trunkCopyBox' }, h('h3', {}, 'Copy trunk lines from another branch'),
+      h('p', { class: 'muted small', id: 'trunkCopyNone' }, 'No other branch has trunk lines yet. Trunk lines are only on each sub-project’s Trunkline section, not on SWP3.'));
+    const from = select(sources.map((s) => [s.sub.id, M.subLabel(s.sub) + ' · ' + plural(s.roads, 'road') + ' · ' + plural(s.sheets, 'sheet')]), sources[0].sub.id, { id: 'trunkFrom', 'aria-label': 'Copy trunk lines from branch' });
+    return h('section', { class: 'box', id: 'trunkCopyBox' }, h('h3', {}, 'Copy trunk lines from another branch'),
+      h('p', { class: 'muted small' }, 'Copies the road names, stations, scale and trunk line sheets into this branch. The copies are separate: editing them does not change the source.'),
+      h('form', { class: 'addrow', onsubmit: (e) => {
+        e.preventDefault();
+        let plan; try { plan = M.planCopyTrunk(st, seg.id, from.value); } catch (err) { return toast(err.message); }
+        if (plan.appended && !confirm(M.subLabel(sub) + ' already has trunk lines.\n\nAppend ' + plural(plan.roads, 'trunk line') + ' (' + plural(plan.sheets, 'sheet') + ') from ' + plan.from + '?\n\nThe copies are new. Editing them will not change ' + plan.from + '.')) return;
+        const r = commit(() => M.copyTrunkLines(st, seg.id, from.value));
+        if (r) { setSeg(seg.id, false); saveUI(); renderAll(); toast((r.appended ? 'Appended ' : 'Copied ') + plural(r.roads, 'trunk line') + ' (' + plural(r.sheets, 'sheet') + ') from ' + r.from + '. They are separate from the source. Undo with Ctrl+Z.'); }
+      } }, from, h('button', { type: 'submit', class: 'btn sec', id: 'trunkCopy' }, 'Copy here')));
   }
   function copyBox(sub, seg) {
     const to = select(st.subs.filter((x) => x !== sub).map((x) => [x.id, 'to ' + M.subLabel(x)]), '', { id: 'cpTo', 'aria-label': 'Copy to sub-project' });
