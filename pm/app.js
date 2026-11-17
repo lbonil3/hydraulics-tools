@@ -565,7 +565,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   }
   function colClass(c) {
     if (!c) return null;
-    return [c.align === 'right' ? 'cnum' : c.align === 'center' ? 'cmid' : '', c.stack ? 'clines' : ''].filter(Boolean).join(' ') || null;
+    return [c.cls || '', c.align === 'right' ? 'cnum' : c.align === 'center' ? 'cmid' : '', c.stack ? 'clines' : ''].filter(Boolean).join(' ') || null;
   }
   function stackParts(s) { return String(s == null ? '' : s).split(/\n|;\s+|,\s+/).map((x) => x.trim()).filter(Boolean); }
   function cellBody(text, col) {

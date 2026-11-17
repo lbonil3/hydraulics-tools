@@ -130,7 +130,7 @@
       const body = lines.map((line, i) => {
         const cells = [i === 0 ? road.name : '', line.aligns, line.sta, line.ft ? fmtFt(line.ft) : '—', line.label];
         if (n === 1) return cells;
-        const row = { cells, cls: i === n - 1 ? 'rend' : 'rmid' };
+        const row = { cells, cls: i === 0 ? 'rmid' : (i === n - 1 ? 'rcont rlast' : 'rcont') };
         if (i === 0) row.span = { 0: n };
         else row.skip = [0];
         return row;
@@ -268,11 +268,11 @@
     if (sheet.rows.length) {
       desc.push({ p: 'Roadway drainage work is tracked on ' + pl(sheet.bodies.length, 'road') + ':' });
       desc.push({ table: { cls: 'roads', cols: [
-        { w: '20%' },
-        { w: '24%', stack: true },
-        { w: '26%', stack: true },
-        { w: '14%', align: 'right' },
-        { w: '16%', align: 'center' },
+        { w: '20%', cls: 'c-road' },
+        { w: '24%', stack: true, cls: 'c-align' },
+        { w: '26%', stack: true, cls: 'c-sta' },
+        { w: '14%', align: 'right', cls: 'c-len' },
+        { w: '16%', align: 'center', cls: 'c-sp' },
       ], head: ['Road', 'Alignment', 'Stations', 'Length', 'Sub-project'], rows: sheet.rows, bodies: sheet.bodies, note: sheet.note } });
     } else desc.push({ p: 'No road entries are tracked yet.' });
     out.desc = desc;

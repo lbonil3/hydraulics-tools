@@ -935,7 +935,8 @@ t('v3.23 roads table gives each sub-project its own row', () => {
   assert.strictEqual(shared[1].cells[4], 'D');
   assert.ok(!/CSJ/.test(tab.rows.map((r) => cells(r)[4]).join(' ')));
   const css = require('fs').readFileSync(require('path').join(__dirname, 'style.css'), 'utf8');
-  assert.ok(/\.rtab\.roads tr\.rmid>td\{border-bottom:[^}]*dashed/.test(css));
+  assert.ok(/tr\.rcont>td\{border-top:1px dashed #999/.test(css));
+  assert.strictEqual(fm[1].cls, 'rcont rlast');
   assert.ok(/counted once/.test(tab.note));
   const shown = tab.rows.reduce((a, r) => a + Number(String(cells(r)[3]).replace(/[^0-9.]/g, '') || 0), 0);
   const pie = E.build(st, today).find((s) => s.id === 'length').blocks.find((b) => b.pie).pie.total;
