@@ -923,7 +923,7 @@ t('v3.23 roads table gives each sub-project its own row', () => {
   assert.strictEqual(fm[1].cells[1], 'RP045SB301_A');
   assert.ok(/10\+00 to 58\+00/.test(fm[0].cells[2]) && /4\+71 to 32\+70/.test(fm[0].cells[2]) && !/10\+96 to 25\+74/.test(fm[0].cells[2]));
   assert.ok(/10\+96 to 25\+74/.test(fm[1].cells[2]));
-  assert.strictEqual(fm[0].cells[4], 'A · CSJ-1');
+  assert.strictEqual(fm[0].cells[4], 'A');
   assert.strictEqual(fm[1].cells[4], 'B');
   const spring = tab.rows.find((r) => Array.isArray(r) && r[0] === 'Spring Cypress Rd');
   assert.ok(spring && spring[4] === 'B' && !spring.span);
@@ -931,6 +931,12 @@ t('v3.23 roads table gives each sub-project its own row', () => {
   assert.ok(/†/.test(shared[0].cells[2]) && /†/.test(shared[1].cells[2]));
   assert.strictEqual(shared[0].cells[3], '250 ft');
   assert.strictEqual(shared[1].cells[3], '250 ft');
+  assert.strictEqual(shared[0].cells[4], 'C');
+  assert.strictEqual(shared[1].cells[4], 'D');
+  assert.ok(!/CSJ/.test(tab.rows.map((r) => cells(r)[4]).join(' ')));
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'style.css'), 'utf8');
+  assert.ok(/tr\.rcont>td\{border-top:1px dashed #999/.test(css));
+  assert.strictEqual(fm[1].cls, 'rcont rlast');
   assert.ok(/counted once/.test(tab.note));
   const shown = tab.rows.reduce((a, r) => a + Number(String(cells(r)[3]).replace(/[^0-9.]/g, '') || 0), 0);
   const pie = E.build(st, today).find((s) => s.id === 'length').blocks.find((b) => b.pie).pie.total;

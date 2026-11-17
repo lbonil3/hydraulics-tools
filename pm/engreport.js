@@ -1,4 +1,4 @@
-/* Project Tracker v3.23: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.24: Engineering Report (drainage design report style), derived from the tracker data.
    A carried sheet counts in every package that has it. Unique plan sheets are labeled separately.
    Sheets carried into a package are listed in the same section and group as the original.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
@@ -86,13 +86,9 @@
     return { rows, total, totalText: fmtFt(total), totalMi: fmtMi(total), totalPct: total > 0 ? '100%' : '0%', split };
   }
   const sta = (r) => M.hasSta(r) ? 'Sta ' + M.formatStation(r.start) + ' to ' + M.formatStation(r.end) : 'stations not yet set';
-  function subFit(sub) {
-    if (!M.subCustom(sub)) return sub.code;
-    const both = sub.code + ' · ' + M.subName(sub);
-    return both.length <= 18 ? both : sub.code;
-  }
-  /* One row per sub-project. A station range that is identical in more than one sub-project
-     is listed under each, marked, and the length on the row is that sub-project's share. */
+  /* One row per sub-project. The cell is only the package letter. A station range that is
+     identical in more than one sub-project is listed under each, marked, and the length on
+     the row is that sub-project's share. */
   function roadSheet(st) {
     const subs = M.orderedSubs(st);
     const order = new Map(subs.map((s, i) => [s.id, i]));
@@ -128,13 +124,13 @@
           ft += many ? rec.ft / rec.subs.length : rec.ft;
           return rec.text + (many ? ' †' : '');
         });
-        return { aligns: bucket.aligns.join('\n') || '—', sta: staLines.join('\n') || '—', ft, label: subFit(bucket.sub) };
+        return { aligns: bucket.aligns.join('\n') || '—', sta: staLines.join('\n') || '—', ft, label: bucket.sub.code };
       });
       const n = lines.length;
       const body = lines.map((line, i) => {
         const cells = [i === 0 ? road.name : '', line.aligns, line.sta, line.ft ? fmtFt(line.ft) : '—', line.label];
         if (n === 1) return cells;
-        const row = { cells, cls: i === n - 1 ? 'rend' : 'rmid' };
+        const row = { cells, cls: i === 0 ? 'rmid' : (i === n - 1 ? 'rcont rlast' : 'rcont') };
         if (i === 0) row.span = { 0: n };
         else row.skip = [0];
         return row;
@@ -272,11 +268,11 @@
     if (sheet.rows.length) {
       desc.push({ p: 'Roadway drainage work is tracked on ' + pl(sheet.bodies.length, 'road') + ':' });
       desc.push({ table: { cls: 'roads', cols: [
-        { w: '20%' },
-        { w: '24%', stack: true },
-        { w: '26%', stack: true },
-        { w: '14%', align: 'right' },
-        { w: '16%', align: 'center' },
+        { w: '20%', cls: 'c-road' },
+        { w: '24%', stack: true, cls: 'c-align' },
+        { w: '26%', stack: true, cls: 'c-sta' },
+        { w: '14%', align: 'right', cls: 'c-len' },
+        { w: '16%', align: 'center', cls: 'c-sp' },
       ], head: ['Road', 'Alignment', 'Stations', 'Length', 'Sub-project'], rows: sheet.rows, bodies: sheet.bodies, note: sheet.note } });
     } else desc.push({ p: 'No road entries are tracked yet.' });
     out.desc = desc;

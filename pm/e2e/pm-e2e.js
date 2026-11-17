@@ -672,6 +672,50 @@ function v2Fixture() {
     return { top: cs(td).verticalAlign, pad: cs(td).padding, num: cs(num).textAlign + ' ' + cs(num).whiteSpace, mid: cs(mid).textAlign + ' ' + cs(mid).whiteSpace, cols: t.querySelectorAll('colgroup col').length, layout: cs(t).tableLayout };
   });
   ok(roadCells.top === 'top' && roadCells.layout === 'fixed' && roadCells.cols === 5, 'roads table uses fixed columns and top alignment');
+  const roadType = await pg.$eval('#eng-desc table.roads', (t) => {
+    const pick = (s) => { const e = t.querySelector(s); if (!e) return ''; const c = getComputedStyle(e); return c.fontSize + '|' + c.lineHeight + '|' + c.verticalAlign; };
+    return ['th', 'tbody td', 'td.rname', 'td.cnum', 'td.cmid', '.eline'].map(pick).filter(Boolean);
+  });
+  ok(roadType.length >= 4 && roadType.every((v) => v === roadType[0]), 'roads table cells share one size, line spacing, and top alignment');
+  await pg.emulateMediaType('print');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  await sleep(100);
+  const roadCont = await pg.evaluate(() => {
+    const t = document.querySelector('#report table.roads');
+    if (!t) return { missing: true, cont: 0, bad: ['no print table'], head: {} };
+    const rows = [...t.tBodies].flatMap((tb) => [...tb.rows]);
+    const first = rows[0];
+    const cols = ['c-road', 'c-align', 'c-sta', 'c-len', 'c-sp'];
+    const base = {};
+    const bad = [];
+    if (!first) bad.push('no rows in ' + t.outerHTML.slice(0, 240));
+    else for (const c of cols) {
+      const e = [...first.cells].find((td) => td.classList.contains(c));
+      if (!e) { bad.push('first row has no ' + c + ' (' + [...first.cells].map((td) => td.className).join(' | ') + ')'); continue; }
+      const s = getComputedStyle(e);
+      base[c] = s.fontSize + '|' + s.paddingLeft + '|' + s.paddingTop + '|' + s.verticalAlign;
+    }
+    const cont = [...t.querySelectorAll('tr.rcont')];
+    for (const tr of rows) for (const c of cols) {
+      const e = [...tr.cells].find((td) => td.classList.contains(c));
+      if (!e || !base[c]) continue;
+      const s = getComputedStyle(e);
+      const key = s.fontSize + '|' + s.paddingLeft + '|' + s.paddingTop + '|' + s.verticalAlign;
+      if (key !== base[c]) bad.push(c + ' ' + key + ' vs ' + base[c]);
+      const dashed = tr.classList.contains('rcont') && c !== 'c-road';
+      if (dashed && s.borderTopStyle !== 'dashed') bad.push(c + ' border ' + s.borderTopStyle);
+      if (!dashed && s.borderTopStyle === 'dashed') bad.push(c + ' should not be dashed');
+    }
+    const head = {};
+    for (const c of ['c-road', 'c-align', 'c-sta', 'c-len', 'c-sp']) {
+      const th = t.querySelector('th.' + c);
+      head[c] = th ? getComputedStyle(th).textAlign : 'missing';
+    }
+    return { cont: cont.length, bad, head };
+  });
+  await pg.emulateMediaType('screen');
+  ok(roadCont.cont > 0 && roadCont.bad.length === 0, 'print: continuation sub-rows match the first row and use a dashed top border' + (roadCont.bad || []).join('; '));
+  ok(roadCont.head['c-len'] === 'right' && roadCont.head['c-sp'] === 'center' && roadCont.head['c-align'] === 'left' && roadCont.head['c-sta'] === 'left' && roadCont.head['c-road'] === 'left', 'print: roads headers line up with their columns');
   ok(/right/.test(roadCells.num) && /nowrap/.test(roadCells.num) && /center/.test(roadCells.mid) && /nowrap/.test(roadCells.mid), 'length is right-aligned and sub-projects are centered, both on one line');
   const proposed = await txt('#eng-proposed');
   ok(/North Pond/.test(proposed) && /Layout/.test(proposed) && /Cross Sections/.test(proposed) && /Geometric Layout \(1 of 2\)/.test(proposed) && /Geometric Layout \(2 of 2\)/.test(proposed), 'proposed section lists each pond by name and its sheets');

@@ -868,13 +868,23 @@ html[data-rptfont] #reportWrap .rtab,html[data-rptfont] .report .rtab{font-famil
 .rtab th.cmid,.rtab td.cmid{text-align:center}
 .rtab td.cmid{white-space:nowrap}
 .rtab .clines .eline{display:block}
-.rtab.roads{table-layout:fixed;width:100%}
+.rtab.roads{table-layout:fixed;width:100%;border-collapse:separate;border-spacing:0}
 .rtab.roads col.c0{width:20%}.rtab.roads col.c1{width:24%}.rtab.roads col.c2{width:26%}.rtab.roads col.c3{width:14%}.rtab.roads col.c4{width:16%}
-.rtab.roads td{border-bottom:.75pt solid #666}
-.rtab.roads tr.rmid>td{border-bottom:.5pt dotted #c5c5c5}
-.rtab.roads tr.rmid>td.rname,.rtab.roads td.rname{border-bottom:.75pt solid #666;vertical-align:top}
+.engnarr .rtab.roads th,.engnarr .rtab.roads td{font-size:12px;line-height:1.35;letter-spacing:0;vertical-align:top;padding:4pt 6pt}
+.engnarr .rtab.roads .eline{font-size:12px;line-height:1.35;letter-spacing:0;padding:0;vertical-align:top}
+.report.eng .rtab.roads th,.report.eng .rtab.roads td{font-size:8.5pt;line-height:1.35;letter-spacing:0;vertical-align:top;padding:4pt 6pt}
+.report.eng .rtab.roads .eline{font-size:8.5pt;line-height:1.35;letter-spacing:0;padding:0;vertical-align:top}
+.rtab.roads .c-road,.rtab.roads .c-align,.rtab.roads .c-sta{text-align:left}
+.rtab.roads .c-len{text-align:right;white-space:nowrap}
+.rtab.roads .c-sp{text-align:center;white-space:nowrap}
+.rtab.roads td{border-top:0;border-bottom:.75pt solid #666;border-left:0;border-right:0}
+.rtab.roads th{border-left:0;border-right:0}
+.rtab.roads tr.rmid>td:not(.c-road){border-bottom:0}
+.rtab.roads tr.rcont>td{border-top:1px dashed #999;border-bottom:0}
+.rtab.roads tr.rlast>td{border-bottom:.75pt solid #666}
 .rtab.roads tbody.rblock{break-inside:avoid;page-break-inside:avoid}
-.rfoot{margin:2pt 0 8pt;font-size:8pt;color:#333}
+.engnarr .rfoot{margin:2pt 0 8pt;font-size:12px;line-height:1.35;color:#333}
+.report.eng .rfoot{margin:2pt 0 8pt;font-size:8.5pt;line-height:1.35;color:#333}
 .pielay{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 18px;break-inside:avoid;page-break-inside:avoid}
 .pie{width:min(100%,460px);height:auto;overflow:visible}
 .pie text{font-family:inherit;fill:#111}
