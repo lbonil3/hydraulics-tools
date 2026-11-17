@@ -660,7 +660,19 @@ function v2Fixture() {
   await click('#rptFont [data-font="source"]');
   ok(/Source Sans 3/.test(await fontOf('#reportWrap .narr')), 'report font returns to Source Sans 3');
   await pg.select('#rptType', 'eng'); await sleep(250);
-  ok(/Engineering report/.test(await txt('#reportWrap h2')) && (await pg.$$('#reportWrap .esec')).length === 10, 'Engineering report editor: 10 sections');
+  ok(/Engineering report/.test(await txt('#reportWrap h2')) && (await pg.$$('#reportWrap .esec')).length === 11, 'Engineering report editor: 11 sections');
+  ok(await has('#eng-length .pie') && await has('#eng-length .piekey'), 'road length section opens the report with a pie chart and legend');
+  ok(/Total/.test(await txt('#eng-length .piekey')) && /ft/.test(await txt('#eng-length .piekey')), 'road length legend lists feet and a total');
+  ok(await has('#eng-desc table.roads'), 'location section has the roads table');
+  const roadCells = await pg.$eval('#eng-desc table.roads', (t) => {
+    const td = t.querySelector('tbody td');
+    const num = t.querySelector('td.cnum');
+    const mid = t.querySelector('td.cmid');
+    const cs = (e) => e ? getComputedStyle(e) : null;
+    return { top: cs(td).verticalAlign, pad: cs(td).padding, num: cs(num).textAlign + ' ' + cs(num).whiteSpace, mid: cs(mid).textAlign + ' ' + cs(mid).whiteSpace, cols: t.querySelectorAll('colgroup col').length, layout: cs(t).tableLayout };
+  });
+  ok(roadCells.top === 'top' && roadCells.layout === 'fixed' && roadCells.cols === 5, 'roads table uses fixed columns and top alignment');
+  ok(/right/.test(roadCells.num) && /nowrap/.test(roadCells.num) && /center/.test(roadCells.mid) && /nowrap/.test(roadCells.mid), 'length is right-aligned and sub-projects are centered, both on one line');
   const proposed = await txt('#eng-proposed');
   ok(/North Pond/.test(proposed) && /Layout/.test(proposed) && /Cross Sections/.test(proposed) && /Geometric Layout \(1 of 2\)/.test(proposed) && /Geometric Layout \(2 of 2\)/.test(proposed), 'proposed section lists each pond by name and its sheets');
   ok(/Box 1/.test(proposed) && /Box 2/.test(proposed) && /3 sheets/.test(proposed), 'junction boxes are listed one by one');
@@ -689,10 +701,11 @@ function v2Fixture() {
   await click('#engOn-scope'); await sleep(250);
   D = await data();
   ok(D.engReport && D.engReport.meta.csj === '0912-34-567' && /roadside ditches/.test(D.engReport.secs.existing.text) && D.engReport.secs.scope.on === false, 'engineering edits saved (meta, section text, toggle)');
-  ok(/^3\. Design Criteria/.test(await txt('#eng-criteria .ehead b')), 'turning a section off renumbers the rest');
+  ok(/^4\. Design Criteria/.test(await txt('#eng-criteria .ehead b')), 'turning a section off renumbers the rest');
   await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
   const ER = await pg.$eval('#report', (e) => e.textContent);
   ok(await has('#report.eng .ecover .eseal') && /NOT SEALED/.test(ER) && /0912-34-567/.test(ER), 'printed engineering report: cover with NOT SEALED seal block and CSJ');
+  ok(/Road Length by Sub-project/.test(ER) && await has('#report .pie') && await has('#report .piekey tr.rtot'), 'printed report opens with the road length chart and its total');
   ok(await has('#report .etoc') && /roadside ditches drain to the north/.test(ER) && !/Scope of Work/.test(ER) && /\[Engineer to state the design criteria/.test(ER), 'printed: TOC, engineer text, toggled-off section left out, placeholders kept');
   await click('#engCopy'); await sleep(250);
   ok(/copied|Copy/i.test(await txt('#toast')), 'copy as text responds');

@@ -1,4 +1,4 @@
-/* Project Tracker v3.19: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.22: Engineering Report (drainage design report style), derived from the tracker data.
    A carried sheet counts in every package that has it. Unique plan sheets are labeled separately.
    Sheets carried into a package are listed in the same section and group as the original.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
@@ -11,6 +11,7 @@
 })(typeof self !== 'undefined' ? self : this, function (M) {
   'use strict';
   const SECS = [
+    ['length', 'Road Length by Sub-project'],
     ['intro', 'Introduction and Purpose'],
     ['desc', 'Project Description and Location'],
     ['scope', 'Scope of Work'],
@@ -36,6 +37,7 @@
   ];
   const MAXT = 20000;
   const PH = {
+    length: '',
     intro: '[Engineer to state who authorized this report, its purpose and the design phase it supports.]',
     desc: '[Engineer to describe the project location (city, county, nearby landmarks), the existing roadway section and the proposed roadway improvements.]',
     scope: '[Engineer to confirm the drainage scope and list any work by others.]',
@@ -50,6 +52,39 @@
   const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
   const list = (a) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
   const fmtFt = (n) => Math.round(n).toLocaleString('en-US') + ' ft';
+  const fmtMi = (ft) => { const mi = ft / 5280; return (Math.abs(mi) >= 10 ? mi.toFixed(1) : mi.toFixed(2)) + ' mi'; };
+  const fmtPct = (ft, total) => { if (!(total > 0)) return '0%'; const p = ft / total * 100; return (Math.abs(p - Math.round(p)) < 0.05 ? String(Math.round(p)) : p.toFixed(1)) + '%'; };
+  const PIE_COLORS = ['#1f4e79', '#c45911', '#548235', '#7030a0', '#c00000', '#833c0c', '#2e75b6', '#bf8f00'];
+  /* Same station lengths as the roads table: each range is counted once. A range that is
+     tracked in more than one sub-project is split evenly across those sub-projects. */
+  function lengthSplit(st) {
+    const subs = M.orderedSubs(st);
+    const acc = new Map(subs.map((s) => [s.id, 0]));
+    const seen = new Map();
+    let split = false;
+    for (const sub of subs) for (const d of M.DISCIPLINES) for (const sec of M.sectionsOf(sub, d)) {
+      if (!M.isPPSec(sec)) continue;
+      for (const g of M.roadGroups(sub, sec)) for (const e of g.entries) {
+        const ft = M.segLength(e);
+        if (!(ft > 0) || !M.hasSta(e)) continue;
+        const key = g.slug + '\t' + M.parseStation(e.start) + '|' + M.parseStation(e.end);
+        if (!seen.has(key)) seen.set(key, { ft, subs: [] });
+        const rec = seen.get(key);
+        if (!rec.subs.includes(sub.id)) rec.subs.push(sub.id);
+      }
+    }
+    for (const rec of seen.values()) {
+      if (rec.subs.length > 1) split = true;
+      const share = rec.ft / rec.subs.length;
+      for (const id of rec.subs) acc.set(id, (acc.get(id) || 0) + share);
+    }
+    const total = [...acc.values()].reduce((a, n) => a + n, 0);
+    const rows = subs.map((s, i) => {
+      const ft = acc.get(s.id) || 0;
+      return { code: s.code, label: M.subLabel(s), ft, miles: ft / 5280, pct: total > 0 ? ft / total : 0, color: PIE_COLORS[i % PIE_COLORS.length], ftText: fmtFt(ft), miText: fmtMi(ft), pctText: fmtPct(ft, total) };
+    });
+    return { rows, total, totalText: fmtFt(total), totalMi: fmtMi(total), totalPct: total > 0 ? '100%' : '0%', split };
+  }
   const sta = (r) => M.hasSta(r) ? 'Sta ' + M.formatStation(r.start) + ' to ' + M.formatStation(r.end) : 'stations not yet set';
   /* ---- stored edits (tolerant reads; writes keep the data small) ---- */
   function data(st) { const e = st.engReport; return e && typeof e === 'object' && !Array.isArray(e) ? e : {}; }
@@ -161,7 +196,13 @@
     const out = {};
     const subNames = F.subs.map((s) => M.subLabel(s));
     const nSheets = F.all.length;
-    /* 1 */
+    /* 1 road length, then the narrative */
+    const split = lengthSplit(st);
+    const lengthNote = split.split ? 'Where the same station range is tracked in more than one sub-project, that length is counted once, as in the roads table, and split evenly across those sub-projects.' : '';
+    out.length = split.total > 0
+      ? [{ p: 'Road length is the station length tracked on plan and profile roads, the same lengths listed in the roads table in Project Description and Location.' }, { pie: split }, lengthNote ? { p: lengthNote } : null].filter(Boolean)
+      : [{ p: 'No roadway length is tracked yet. Add stations to a plan and profile road and the chart will split that length by sub-project.' }, { pie: split }];
+    /* 2 */
     out.intro = [{ p: 'This report documents the drainage design for ' + pname + (m.csj ? ' (CSJ ' + m.csj + ')' : '') + (m.highway ? ' on ' + m.highway : '') + (m.county ? ' in ' + m.county + ' County' : '') + (m.district ? ', TxDOT ' + m.district + ' District' : '') + '.' +
       (rm.preparedFor ? ' It is prepared for ' + rm.preparedFor + (rm.preparedBy ? ' by ' + rm.preparedBy : '') + '.' : rm.preparedBy ? ' It is prepared by ' + rm.preparedBy + '.' : '') },
       { p: 'It describes the project, the scope of the drainage' + (F.all.some((r) => r.seg.discipline === 'SWP3') ? ' and storm water pollution prevention (SWP3)' : '') + ' work, the design criteria and references, existing conditions and the proposed drainage improvements, and lists the plan sheets and schedule as tracked on ' + today + '.' }];
@@ -171,7 +212,13 @@
     desc.push({ p: 'The project is organized into ' + pl(F.subs.length, 'sub-project') + ': ' + list(subNames) + '.' });
     if (F.roads.length) {
       desc.push({ p: 'Roadway drainage work is tracked on ' + pl(F.roads.length, 'road') + ':' });
-      desc.push({ table: { head: ['Road', 'Alignment', 'Stations', 'Length', 'Sub-projects'], rows: F.roads.map((r) => [r.name, r.aligns.join(', ') || '—', r.entries.map((x) => sta(x.e).replace(/^Sta /, '')).join('; '), r.length ? fmtFt(r.length) : '—', r.subs.join(', ')]) } });
+      desc.push({ table: { cls: 'roads', cols: [
+        { w: '20%' },
+        { w: '24%', stack: true },
+        { w: '26%', stack: true },
+        { w: '14%', align: 'right' },
+        { w: '16%', align: 'center' },
+      ], head: ['Road', 'Alignment', 'Stations', 'Length', 'Sub-projects'], rows: F.roads.map((r) => [r.name, r.aligns.join('\n') || '—', r.entries.map((x) => sta(x.e).replace(/^Sta /, '')).join('\n') || '—', r.length ? fmtFt(r.length) : '—', r.subs.join(', ') || '—']) } });
     } else desc.push({ p: 'No road entries are tracked yet.' });
     out.desc = desc;
     /* 3 */
@@ -344,6 +391,11 @@
     if (b.ul) return b.ul.map((x) => '  • ' + x).join('\n');
     if (b.refs) return refs(st).map((x, i) => '  ' + (i + 1) + '. ' + x).join('\n');
     if (b.table) return [b.table.head.join(' | ')].concat(b.table.rows.map((r) => r.join(' | '))).join('\n');
+    if (b.pie) {
+      const L = b.pie.rows.map((r) => r.label + ' | ' + r.ftText + ' | ' + r.miText + ' | ' + r.pctText);
+      L.push('Total | ' + b.pie.totalText + ' | ' + b.pie.totalMi + ' | ' + b.pie.totalPct);
+      return L.join('\n');
+    }
     return '';
   }
   function text(st, today) {

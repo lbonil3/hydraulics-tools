@@ -888,19 +888,70 @@ function engState() {
 t('engineering report: sections, placeholders, no invented values', () => {
   const st = engState();
   const O = E.outline(st, today);
-  assert.deepStrictEqual(O.map((s) => s.id), ['intro', 'desc', 'scope', 'criteria', 'existing', 'proposed', 'swp3', 'sheets', 'schedule', 'concl']);
-  assert.deepStrictEqual(O.map((s) => s.no), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepStrictEqual(O.map((s) => s.id), ['length', 'intro', 'desc', 'scope', 'criteria', 'existing', 'proposed', 'swp3', 'sheets', 'schedule', 'concl']);
+  assert.deepStrictEqual(O.map((s) => s.no), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   const ex = O.find((s) => s.id === 'existing');
   assert(ex.showPh && /^\[Engineer to describe existing drainage conditions/.test(ex.ph));
   const desc = O.find((s) => s.id === 'desc'), tab = desc.auto.find((b) => b.table).table;
   const fm = tab.rows.find((r) => r[0] === 'FM 1960');
   assert(fm && fm[1] === 'BL FM 1960' && /10\+00 to 58\+00/.test(fm[2]) && fm[3] === '4,800 ft', JSON.stringify(fm));
+  assert.strictEqual(tab.cls, 'roads');
+  assert.deepStrictEqual(tab.cols.map((c) => c.align || (c.stack ? 'stack' : '')), ['', 'stack', 'stack', 'right', 'center']);
   const txt = E.text(st, today);
-  assert(/PRELIMINARY — NOT SEALED/.test(txt) && /1\. INTRODUCTION AND PURPOSE/.test(txt) && /10\. CONCLUSIONS AND RECOMMENDATIONS/.test(txt));
+  assert(/PRELIMINARY — NOT SEALED/.test(txt) && /2\. INTRODUCTION AND PURPOSE/.test(txt) && /11\. CONCLUSIONS AND RECOMMENDATIONS/.test(txt));
   assert(!/\b(cfs|in\/hr|\d+-year|year storm|acres?)\b/i.test(txt), 'no design values invented');
   const urls = txt.match(/https?:\/\/\S+/g) || [];
   assert.deepStrictEqual([...new Set(urls)], ['https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html']);
   assert(!/CSJ/.test(txt.split('\n').slice(0, 4).join('\n')), 'no CSJ line until one is entered');
+});
+t('v3.22 location roads table stacks alignments and station ranges', () => {
+  const st = engState();
+  const [A, B] = st.subs;
+  M.addRoad(st, M.secOf(A, 'dr-trunk').id, { road: 'FM 1960', start: '4+71', end: '32+70', alignment: 'FR045SB300_A' });
+  M.addRoad(st, M.secOf(B, 'dr-trunk').id, { road: 'FM 1960', start: '10+96', end: '25+74', alignment: 'RP045SB301_A' });
+  const tab = E.outline(st, today).find((s) => s.id === 'desc').auto.find((b) => b.table && b.table.cls === 'roads').table;
+  const fm = tab.rows.find((r) => r[0] === 'FM 1960');
+  assert.deepStrictEqual(fm[1].split('\n').sort(), ['BL FM 1960', 'FR045SB300_A', 'RP045SB301_A']);
+  assert.ok(fm[2].split('\n').some((s) => /4\+71 to 32\+70/.test(s)) && fm[2].split('\n').some((s) => /10\+96 to 25\+74/.test(s)) && fm[2].split('\n').some((s) => /10\+00 to 58\+00/.test(s)));
+  assert.ok(!/\n/.test(fm[3]) && /ft$/.test(fm[3]), fm[3]);
+  assert.strictEqual(fm[4], 'A, B');
+  const scope = E.outline(st, today).find((s) => s.id === 'scope').auto.find((b) => b.table && b.table.cls !== 'roads' && b.table.kinds);
+  assert.ok(scope && scope.table.kinds.includes('total') && scope.table.rows.some((r) => r[0] === 'Total'));
+});
+t('v3.22 road length chart matches the roads table and splits a shared range', () => {
+  const st = M.newState('Pie');
+  const [A, B, C, D] = st.subs;
+  M.renameSub(st, A.id, 'CSJ-1'); M.renameSub(st, B.id, 'CSJ-2'); M.renameSub(st, C.id, 'CSJ-3'); M.renameSub(st, D.id, 'CSJ-4');
+  M.addRoad(st, M.secOf(A, 'dr-pp').id, { road: 'FM 1960', start: '10+00', end: '20+00' });
+  M.addRoad(st, M.secOf(A, 'dr-trunk').id, { road: 'Main St', start: '0+00', end: '10+00' });
+  M.addRoad(st, M.secOf(B, 'dr-trunk').id, { road: 'Main St', start: '10+00', end: '40+00' });
+  M.addRoad(st, M.secOf(C, 'dr-pp').id, { road: 'Shared Rd', start: '0+00', end: '5+00' });
+  M.addRoad(st, M.secOf(D, 'dr-pp').id, { road: 'Shared Rd', start: '0+00', end: '5+00' });
+  const length = E.build(st, today).find((s) => s.id === 'length');
+  const pie = length.blocks.find((b) => b.pie).pie;
+  const roads = E.build(st, today).find((s) => s.id === 'desc').blocks.find((b) => b.table && b.table.cls === 'roads').table;
+  const roadFt = roads.rows.reduce((a, r) => a + Number(String(r[3]).replace(/[^0-9.]/g, '')), 0);
+  assert.strictEqual(Math.round(pie.total), roadFt);
+  const by = Object.fromEntries(pie.rows.map((r) => [r.code, r.ft]));
+  assert.strictEqual(by.A, 2000);
+  assert.strictEqual(by.B, 3000);
+  assert.strictEqual(by.C, 250);
+  assert.strictEqual(by.D, 250);
+  assert.ok(pie.split && length.blocks.some((b) => b.p && /split evenly/.test(b.p)));
+  assert.strictEqual(pie.rows[0].label, 'A · CSJ-1');
+  assert.ok(pie.rows.every((r) => r.ftText.endsWith(' ft') && /mi$/.test(r.miText) && /%$/.test(r.pctText)));
+  assert.ok(Math.abs(pie.rows.reduce((a, r) => a + r.pct, 0) - 1) < 1e-9);
+  const one = M.newState('One');
+  M.addRoad(one, M.secOf(one.subs[0], 'dr-pp').id, { road: 'Only', start: '0+00', end: '10+00' });
+  const onePie = E.build(one, today).find((s) => s.id === 'length').blocks.find((b) => b.pie).pie;
+  assert.strictEqual(onePie.rows.filter((r) => r.ft > 0).length, 1);
+  assert.strictEqual(onePie.rows[0].pctText, '100%');
+  assert.strictEqual(onePie.rows.filter((r) => r.ft === 0).length, 3);
+  const none = E.build(M.newState('None'), today).find((s) => s.id === 'length');
+  assert.strictEqual(none.blocks.find((b) => b.pie).pie.total, 0);
+  assert.ok(/No roadway length/.test(none.blocks[0].p));
+  assert.strictEqual(E.outline(st, today)[0].id, 'length');
+  assert.strictEqual(E.outline(st, today)[0].no, 1);
 });
 t('engineering report: edits, toggles, replace mode, refs, storage', () => {
   const st = engState();
@@ -914,7 +965,7 @@ t('engineering report: edits, toggles, replace mode, refs, storage', () => {
   assert.strictEqual(ex.auto.length, 0);
   E.setSec(st, 'scope', { on: false });
   const O = E.outline(st, today);
-  assert(!O.some((s) => s.id === 'scope') && O.find((s) => s.id === 'criteria').no === 3);
+  assert(!O.some((s) => s.id === 'scope') && O.find((s) => s.id === 'criteria').no === 4);
   const txt = E.text(st, today);
   assert(/CSJ: 1234-56-789/.test(txt) && /Harris County/.test(txt) && /Existing ditches drain north\./.test(txt) && !/SCOPE OF WORK/.test(txt));
   E.setRefs(st, 'Ref one\n\n Ref two ');
@@ -934,7 +985,7 @@ t('engineering report: SWP3 hidden without SWP3 sheets; junk tolerated', () => {
   for (const junk of [null, 5, 'x', [], { meta: 7, secs: 'no', refs: 9 }, { secs: { intro: null, existing: { text: 5, on: 'x' } } }]) {
     const s2 = engState(); s2.engReport = junk;
     assert.doesNotThrow(() => E.text(s2, today), JSON.stringify(junk));
-    assert.strictEqual(E.outline(s2, today).length, 10);
+    assert.strictEqual(E.outline(s2, today).length, 11);
   }
   const empty = M.newState('Empty');
   assert.doesNotThrow(() => E.text(empty, today));

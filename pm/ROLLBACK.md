@@ -384,6 +384,12 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.22 (engineering report roads table and length chart)
+
+The engineering report opens with Road Length by Sub-project. It is a pie chart of the same station lengths as the roads table, one slice per sub-project, drawn as part of the page so it prints with the report font. A range that belongs to one sub-project is counted there. A range tracked in more than one sub-project is counted once and split evenly, and a note under the chart says so. The legend lists each sub-project’s length in feet and miles, its share, and a total. The following sections are renumbered, including the table of contents.
+
+The roads table in Project Description and Location uses fixed column widths. Every cell in a row starts at the top, with the same padding, so Alignment, Stations, Length, and Sub-projects line up with the Road. Each alignment is on its own line, and each station range is on its own line. Length stays on one line, right-aligned, with tabular figures. Sub-projects stays on one line, centered. The header row repeats when the table breaks across pages, and a row is not split. The same top alignment and padding apply to the other engineering report tables. Subtotal rows stay bold and shaded.
+
 ## v3.21 (sheet number prefixes and stable renumbering)
 
 Each package can have a sheet-number prefix, set under Settings → Sheet number ranges or on the package itself. The number stays a plain integer. The prefix is only how it is shown, in the tree, the list, the status report, the engineering report index, and CSV export. CSV import accepts the prefixed form and stores the integer again. The prefix starts empty, so a saved project looks the same until someone sets one. A carry-on shows the original package’s prefixed number.
