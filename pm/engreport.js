@@ -264,49 +264,49 @@
     const built = data.length > 1 ? { rows: data.concat([['Total', String(rows.reduce((a, g) => a + g.n, 0)), '', '']]), kinds: data.map(() => '').concat(['total']) } : { rows: data, kinds: data.map(() => '') };
     return { table: { head: ['Standard', 'Sheets', 'Sub-projects', 'Source'], rows: built.rows, kinds: built.kinds, cls: disc === 'SWP3' ? 'std-sw' : 'std-dr' } };
   }
-  /* Packages get a bar from the earliest sheet due date to the latest. One date is a mark, not a span.
-     Milestones are a single date. Anything without a date is listed and draws nothing. */
-  function scheduleChart(st, today, milestones) {
-    const clip = (s) => s.length > 28 ? s.slice(0, 27) + '…' : s;
-    const rows = [];
-    for (const x of milestones) {
-      const date = isISO(x.m.date) ? x.m.date : '';
-      rows.push({ kind: 'milestone', label: x.m.name, date: date || null, dateText: date ? shortDate(date) : '', start: null, end: null, tbd: !date });
-    }
-    for (const sub of M.orderedSubs(st)) {
-      const dues = [];
-      let sheets = 0;
-      for (const seg of sub.segments) for (const sh of seg.sheets) { sheets++; if (isISO(sh.due)) dues.push(sh.due); }
-      if (!sheets) continue;
-      dues.sort();
-      const lo = dues[0] || null, hi = dues.length ? dues[dues.length - 1] : null, span = !!(lo && hi && lo !== hi);
-      const name = 'Package ' + sub.code + (M.subCustom(sub) ? ' · ' + M.subName(sub) : '');
-      rows.push({ kind: 'package', label: clip(name), date: !span && lo ? lo : null, dateText: !span && lo ? shortDate(lo) : '', start: span ? lo : null, end: span ? hi : null, tbd: !lo });
-    }
-    const points = [];
-    for (const r of rows) { if (r.start) points.push(r.start, r.end); if (r.date) points.push(r.date); }
-    if (!points.length) return { unit: 'none', start: null, end: null, today, todayIn: false, ticks: [], rows };
-    points.sort();
-    const lo = points[0], hi = points[points.length - 1];
-    let unit, axisStart, axisEnd, ticks;
-    if (dayDiff(lo, hi) <= 84) {
-      unit = 'week';
-      axisStart = mondayOf(lo);
-      axisEnd = plusDays(mondayOf(hi), 7);
-      ticks = [];
-      for (let t = axisStart; t < axisEnd; t = plusDays(t, 7)) ticks.push({ t, label: MONS[asDay(t).getMonth()] + ' ' + asDay(t).getDate() });
-    } else {
-      unit = 'month';
-      axisStart = monthStart(lo);
-      axisEnd = plusMonths(monthStart(hi), 1);
-      const endYear = asDay(plusDays(axisEnd, -1)).getFullYear();
-      ticks = [];
-      for (let t = axisStart; t < axisEnd; t = plusMonths(t, 1)) {
-        const d = asDay(t);
-        ticks.push({ t, label: MONS[d.getMonth()] + (d.getFullYear() !== endYear || d.getMonth() === 0 || t === axisStart ? ' ' + d.getFullYear() : '') });
+  /* Milestones only. Each dated milestone falls in one month column, or one week column when the
+     whole span is about twelve weeks or less. A blank date stays on the row as TBD. */
+  function scheduleChart(today, milestones) {
+    const dated = milestones.map((x) => isISO(x.m.date) ? x.m.date : null).filter(Boolean).sort();
+    let unit = 'none', axisStart = null, axisEnd = null;
+    const ticks = [];
+    if (dated.length) {
+      const lo = dated[0], hi = dated[dated.length - 1];
+      if (dayDiff(lo, hi) <= 84) {
+        unit = 'week';
+        axisStart = mondayOf(lo);
+        axisEnd = plusDays(mondayOf(hi), 7);
+        for (let t = axisStart; t < axisEnd; t = plusDays(t, 7)) {
+          const d = asDay(t);
+          ticks.push({ t, end: plusDays(t, 7), mon: MONS[d.getMonth()], day: d.getDate(), year: d.getFullYear() });
+        }
+      } else {
+        unit = 'month';
+        axisStart = monthStart(lo);
+        axisEnd = plusMonths(monthStart(hi), 1);
+        for (let t = axisStart; t < axisEnd; t = plusMonths(t, 1)) {
+          const d = asDay(t);
+          ticks.push({ t, end: plusMonths(t, 1), mon: MONS[d.getMonth()], day: null, year: d.getFullYear() });
+        }
       }
+      let prev = null;
+      for (const tk of ticks) { tk.showYear = prev !== tk.year; prev = tk.year; }
     }
-    return { unit, start: axisStart, end: axisEnd, today, todayIn: today >= axisStart && today < axisEnd, ticks, rows };
+    const place = (iso) => {
+      const i = ticks.findIndex((tk) => iso >= tk.t && iso < tk.end);
+      if (i < 0) return { col: -1, frac: 0 };
+      const days = Math.max(1, dayDiff(ticks[i].t, ticks[i].end));
+      const off = Math.min(days - 1, Math.max(0, dayDiff(ticks[i].t, iso)));
+      return { col: i, frac: (off + 0.5) / days };
+    };
+    const rows = milestones.map((x) => {
+      const date = isISO(x.m.date) ? x.m.date : null;
+      const pos = date ? place(date) : { col: -1, frac: 0 };
+      return { kind: 'milestone', label: x.m.name, date, dateText: date ? shortDate(date) : 'TBD', tbd: !date, done: x.total ? x.done + ' of ' + x.total : '—', col: pos.col, frac: pos.frac };
+    });
+    const todayIn = !!(axisStart && today >= axisStart && today < axisEnd);
+    const here = todayIn ? place(today) : { col: -1, frac: 0 };
+    return { unit, start: axisStart, end: axisEnd, today, todayIn, todayCol: here.col, todayFrac: here.frac, ticks, rows };
   }
   /* ---- the sections: blocks = [{ p } | { ul } | { table:{ head, rows } }]; ph = the placeholder shown when the engineer adds nothing ---- */
   function build(st, today) {
@@ -493,9 +493,8 @@
     /* 9 */
     const sch = [{ p: 'As of ' + today + ', the plan sheets are ' + Math.round(R.overall.pct) + '% complete (weighted by status): ' + R.overall.done + ' of ' + pl(R.overall.total, 'sheet') + ' done.' }];
     const ms = R.milestones.filter((x) => x.m.name);
-    const gantt = scheduleChart(st, today, ms);
+    const gantt = scheduleChart(today, ms);
     if (gantt.rows.length) sch.push({ gantt });
-    if (ms.length) sch.push({ table: { head: ['Milestone', 'Date', 'Sheets done'], rows: ms.map((x) => [x.m.name, x.m.date || '[date]', x.total ? x.done + ' of ' + x.total : '—']) } });
     sch.push({ p: 'TxDOT lists milestone submittals of Initial (30%), Detailed (60%), Final (90/95%), Sealed (100%) and Ready to Let (PS&E Preparation Manual, Table 6-1).' });
     out.schedule = sch;
     /* 10 */
@@ -520,7 +519,7 @@
       L.push('Total | ' + b.pie.totalText + ' | ' + b.pie.totalMi + ' | ' + b.pie.totalPct);
       return L.join('\n');
     }
-    if (b.gantt) return b.gantt.rows.map((r) => r.label + ' — ' + (r.tbd ? 'TBD' : r.start ? r.start + ' to ' + r.end : r.date)).join('\n');
+    if (b.gantt) return b.gantt.rows.map((r) => r.label + ' — ' + (r.tbd ? 'TBD' : r.date) + ' — ' + r.done).join('\n');
     return '';
   }
   function text(st, today) {

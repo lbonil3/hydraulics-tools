@@ -664,9 +664,9 @@ function v2Fixture() {
   ok(await has('#eng-length .pie') && await has('#eng-length .piekey'), 'road length section opens the report with a pie chart and legend');
   ok(/Total/.test(await txt('#eng-length .piekey')) && /ft/.test(await txt('#eng-length .piekey')), 'road length legend lists feet and a total');
   ok(await has('#eng-desc table.roads'), 'location section has the roads table');
-  ok(await has('#eng-schedule .gantt') && /TBD/.test(await txt('#eng-schedule')) && /Milestone/.test(await txt('#eng-schedule')), 'schedule section shows a gantt and keeps the milestone table');
+  ok(await has('#eng-schedule .gantt') && /TBD/.test(await txt('#eng-schedule')) && /30% submittal/.test(await txt('#eng-schedule')) && !/Package /.test(await txt('#eng-schedule')), 'schedule chart lists milestones only, with TBD for a blank date');
   ok((await pg.$eval('#eng-length .piesw rect', (e) => e.getAttribute('fill'))) === '#002856', 'road length chart starts with navy');
-  ok((await pg.$eval('#eng-schedule .rtab th', (e) => getComputedStyle(e).borderTopColor)) === 'rgb(0, 40, 86)', 'engineering table headers use the navy rule');
+  ok((await pg.$eval('#eng-desc table.roads th', (e) => getComputedStyle(e).borderTopColor)) === 'rgb(0, 40, 86)', 'engineering table headers use the navy rule');
   const roadCells = await pg.$eval('#eng-desc table.roads', (t) => {
     const td = t.querySelector('tbody td');
     const num = t.querySelector('td.cnum');

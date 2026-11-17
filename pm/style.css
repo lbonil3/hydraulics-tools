@@ -912,16 +912,16 @@ html[data-rptfont] .pie text,html[data-rptfont] .gantt text{font-family:var(--rp
 .ganttwrap{margin:4pt 0 8pt;break-inside:avoid;page-break-inside:avoid}
 .gantt{width:100%;height:auto;display:block}
 .gantt text{font-family:inherit;fill:var(--mb-char,#333333)}
+.gantt-headbg{fill:var(--mb-light,#E6E6E6)}
+.gantt-head{font-size:10px;font-weight:700;fill:var(--mb-navy,#002856)}
 .gantt-lab{font-size:11px}
-.gantt-tick,.gantt-date{font-size:10px;fill:var(--mb-dark,#666666)}
-.gantt-tbd{font-size:11px;fill:var(--mb-dark,#666666);font-style:italic}
-.gantt-plot{fill:#ffffff;stroke:var(--mb-gray,#999999);stroke-width:1}
+.gantt-date,.gantt-done{font-size:10px;fill:var(--mb-char,#333333)}
+.gantt-tbd{font-size:10px;fill:var(--mb-dark,#666666);font-style:italic}
+.gantt-shade{fill:var(--mb-light,#E6E6E6)}
 .gantt-grid{stroke:var(--mb-gray,#999999);stroke-width:1}
-.gantt-bar{fill:var(--mb-navy,#002856)}
 .gantt-dia{fill:var(--mb-blue,#0085CA)}
-.gantt-mark{fill:var(--mb-navy,#002856)}
 .gantt-today{stroke:var(--mb-char,#333333);stroke-width:1;stroke-dasharray:3 2}
-.gantt-todaylab{font-size:9px;fill:var(--mb-char,#333333)}
+.gantt-todaylab{font-size:8px;fill:var(--mb-char,#333333)}
 .numline,.numcell{display:inline-flex;align-items:center;gap:2px}
 .numpre{color:var(--muted);font-variant-numeric:tabular-nums}
 .numcell .c-number{width:4.5em}

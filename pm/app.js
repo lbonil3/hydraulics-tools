@@ -616,40 +616,51 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     return h('div', { class: 'pielay' }, chart, key);
   }
   function ganttBlock(g) {
-    const labelW = 188, plotW = 520, rowH = 26, headH = 28, padR = 10;
-    const W = labelW + plotW + padR;
-    const n = Math.max(g.rows.length, 1);
-    const H = headH + n * rowH + 6;
-    const span = g.start && g.end ? Math.max(1, (new Date(g.end + 'T12:00:00') - new Date(g.start + 'T12:00:00')) / 86400000) : 1;
-    const xOf = (iso) => labelW + ((new Date(iso + 'T12:00:00') - new Date(g.start + 'T12:00:00')) / 86400000) / span * plotW;
-    const kids = [svg('rect', { class: 'gantt-plot', x: labelW, y: headH, width: plotW, height: n * rowH })];
-    if (g.unit !== 'none') for (const tk of g.ticks) {
-      const x = xOf(tk.t);
-      kids.push(svg('line', { class: 'gantt-grid', x1: x, x2: x, y1: 4, y2: H - 4 }));
-      kids.push(svg('text', { class: 'gantt-tick', x: x + 3, y: 16 }, tk.label));
-    }
+    const labW = 128, dateW = 100, doneW = 64, left = labW + dateW + doneW;
+    const nCol = g.ticks.length, plotW = nCol ? 440 : 0, colW = nCol ? plotW / nCol : 0;
+    const headH = 34, rowH = 24, n = Math.max(g.rows.length, 1);
+    const W = left + plotW, H = headH + n * rowH;
+    const tickText = (tk) => tk.mon + (tk.day ? ' ' + tk.day : '') + (tk.showYear ? (colW >= 52 ? ' ' + tk.year : " '" + String(tk.year).slice(2)) : '');
+    const kids = [svg('rect', { class: 'gantt-headbg', x: 0, y: 0, width: W, height: headH })];
     g.rows.forEach((r, i) => {
-      const y = headH + i * rowH, mid = y + rowH / 2;
-      kids.push(svg('text', { class: 'gantt-lab', x: 4, y: mid + 4 }, r.label));
-      if (r.tbd) kids.push(svg('text', { class: 'gantt-tbd', x: labelW + 8, y: mid + 4 }, 'TBD'));
-      else if (r.start && r.end) {
-        const x1 = xOf(r.start), x2 = Math.max(xOf(r.end), x1 + 8);
-        kids.push(svg('rect', { class: 'gantt-bar', x: x1, y: mid - 5, width: Math.min(plotW - (x1 - labelW), x2 - x1), height: 10, rx: 1 }));
-      } else if (r.date) {
-        const x = xOf(r.date), s = 5;
-        const cls = r.kind === 'milestone' ? 'gantt-dia' : 'gantt-mark';
-        kids.push(svg('polygon', { class: cls, points: [x, mid - s, x + s, mid, x, mid + s, x - s, mid].map((n) => n.toFixed(1)).join(' ') }));
-        const room = labelW + plotW - (x + 8);
-        kids.push(svg('text', { class: 'gantt-date', x: room > 78 ? x + 8 : x - 8, y: mid + 4, 'text-anchor': room > 78 ? 'start' : 'end' }, r.dateText || r.date));
-      }
+      if (r.col < 0) return;
+      kids.push(svg('rect', { class: 'gantt-shade', x: left + r.col * colW, y: headH + i * rowH, width: colW, height: rowH }));
     });
-    if (g.todayIn) {
-      const x = xOf(g.today);
-      kids.push(svg('line', { class: 'gantt-today', x1: x, x2: x, y1: headH, y2: H - 4 }));
-      kids.push(svg('text', { class: 'gantt-todaylab', x: Math.min(x + 3, labelW + plotW - 28), y: headH + 11 }, 'Today'));
+    const dia = (cx, cy) => { const s = 4.5; return [cx, cy - s, cx + s, cy, cx, cy + s, cx - s, cy].map((n) => n.toFixed(1)).join(' '); };
+    g.rows.forEach((r, i) => {
+      if (r.col < 0) return;
+      const y = headH + i * rowH, cy = y + rowH / 2;
+      const cx = left + r.col * colW + 6 + r.frac * Math.max(0, colW - 12);
+      kids.push(svg('polygon', { class: 'gantt-dia', points: dia(cx, cy) }));
+    });
+    if (g.todayIn && g.todayCol >= 0) {
+      const x = left + (g.todayCol + g.todayFrac) * colW;
+      kids.push(svg('line', { class: 'gantt-today', x1: x.toFixed(1), x2: x.toFixed(1), y1: headH, y2: H }));
     }
-    const aria = g.rows.map((r) => r.label + (r.tbd ? ', TBD' : r.start ? ', ' + r.start + ' to ' + r.end : ', ' + r.date)).join('; ');
-    return h('div', { class: 'ganttwrap' }, svg('svg', { class: 'gantt', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Schedule. ' + aria }, kids));
+    for (let i = 0; i <= n; i++) {
+      const y = i === 0 ? 0 : headH + (i - 1) * rowH;
+      kids.push(svg('line', { class: 'gantt-grid', x1: 0, x2: W, y1: y, y2: y }));
+    }
+    kids.push(svg('line', { class: 'gantt-grid', x1: 0, x2: W, y1: H, y2: H }));
+    [0, labW, labW + dateW, left].concat(g.ticks.map((_, i) => left + (i + 1) * colW)).forEach((x) => {
+      kids.push(svg('line', { class: 'gantt-grid', x1: x, x2: x, y1: 0, y2: H }));
+    });
+    kids.push(svg('text', { class: 'gantt-head', x: 6, y: 21 }, 'Milestone'));
+    kids.push(svg('text', { class: 'gantt-head', x: labW + dateW / 2, y: 21, 'text-anchor': 'middle' }, 'Date'));
+    kids.push(svg('text', { class: 'gantt-head', x: labW + dateW + doneW / 2, y: 21, 'text-anchor': 'middle' }, 'Sheets'));
+    g.ticks.forEach((tk, i) => {
+      const todayHere = g.todayIn && g.todayCol === i;
+      kids.push(svg('text', { class: 'gantt-head', x: left + i * colW + colW / 2, y: todayHere ? 14 : 21, 'text-anchor': 'middle' }, tickText(tk)));
+      if (todayHere) kids.push(svg('text', { class: 'gantt-todaylab', x: left + i * colW + colW / 2, y: 28, 'text-anchor': 'middle' }, 'Today'));
+    });
+    g.rows.forEach((r, i) => {
+      const y = headH + i * rowH + 16;
+      kids.push(svg('text', { class: 'gantt-lab', x: 6, y }, r.label));
+      kids.push(svg('text', { class: r.tbd ? 'gantt-tbd' : 'gantt-date', x: labW + dateW / 2, y, 'text-anchor': 'middle' }, r.dateText));
+      kids.push(svg('text', { class: 'gantt-done', x: labW + dateW + doneW / 2, y, 'text-anchor': 'middle' }, r.done));
+    });
+    const aria = g.rows.map((r) => r.label + ', ' + r.dateText + ', ' + r.done).join('; ');
+    return h('div', { class: 'ganttwrap' }, svg('svg', { class: 'gantt', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Milestones. ' + aria }, kids));
   }
   function engBlocks(blocks, refsEl) {
     return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? (refsEl || h('ol', { class: 'erefs' }, E.refs(st).map((x) => h('li', {}, x)))) :

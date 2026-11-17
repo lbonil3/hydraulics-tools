@@ -386,7 +386,7 @@ Data: no schema change. Optional fields project.report {preparedFor, preparedBy,
 
 ## v3.26 (schedule chart and report colors)
 
-Schedule and Milestones opens with a simple chart. Each package is a row. A bar runs from the earliest sheet due date to the latest. A package with one due date is a mark, and a package with none says TBD and has no bar. Each milestone is a diamond on its date, or TBD when the date is blank. The time axis is weeks when the dates sit inside about twelve weeks, and months otherwise. A light line marks today when it falls in that range. The milestone table stays under the chart.
+Schedule and Milestones is a grid of the milestones only. Each milestone is a row, with its name, its date, and how many of its sheets are done. The columns to the right are months, or weeks when every date sits inside about twelve weeks. A dated milestone shades that cell and puts a diamond on the day. A milestone with no date says TBD and has no mark. Today, when it falls in the grid, is a dashed line with the word in the header. There is no separate milestone table.
 
 The chart, the road-length pie, the table header rules, the subtotal shading, and the section headings use one palette: navy, process blue, light gray, gray, dark gray, and charcoal. The company name and logo are not added.
 
