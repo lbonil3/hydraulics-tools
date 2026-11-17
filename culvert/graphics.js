@@ -1,4 +1,4 @@
-/* Engineering profile, inlet section and isometric view. Elevations and the barrel length use the computed geometry.
+/* Engineering profile and inlet section. Elevations and the barrel length use the computed geometry.
    The embankment side slope is the drawing input fillZ (default 3H:1V) and is not a hydraulic coefficient.
    Wall thickness is drawn at about 8% of the rise so the material reads; it is not a structural design thickness. */
 (function(){
@@ -83,7 +83,6 @@ function drawProfile(p,r,allow,ro,bal){
  <text x="24" y="16" font-size="11" fill="#245">HGL dashed · EGL dotted · flow to the right</text>`;
  if(isFinite(allow)) s+=`<line data-part="allow" x1="20" x2="${x0+30}" y1="${Y(allow)}" y2="${Y(allow)}" stroke="#c0392b" stroke-dasharray="6 4"/><text x="${x0-70}" y="${Y(allow)-4}" fill="#c0392b" font-size="12">Allowable ${fx(allow)}</text>`;
  document.getElementById('profile').innerHTML=s;
- drawIso(p,r,allow,ro,bal,kind,metal);
 }
 function drawX(p,r){
  const W=300,H=320, barrels=r.crossing?r.crossing.parts:(null);
@@ -112,45 +111,6 @@ function drawX(p,r){
   <text x="8" y="${yb-(list?list[0].HW:r.HW)*sc-4}" font-size="12" fill="#0c3f73">HW ${fx(list?list[0].HW:r.HW)}</text>
   <text x="${W/2}" y="${yb+28}" text-anchor="middle" font-size="12">${N} barrel${N>1?'s':''} · ${metal?'corrugated metal':'concrete'} · wall shown schematically</text>`;
  document.getElementById('xsec').innerHTML=s;
-}
-function isoPoint(o,x,y,z){return [o.ox+x*o.sx-y*o.sy, o.oy-z*o.sz+y*o.sy*0.35];}
-function drawIso(p,r,allow,ro,bal,kind,metal){
- let host=document.getElementById('isocard');
- const anchor=document.getElementById('profile')&&document.getElementById('profile').closest('.card');
- if(!anchor)return;
- if(!host){host=document.createElement('div');host.className='card';host.id='isocard';host.innerHTML='<h3>Isometric view <small>(same elevations, vertically exaggerated)</small></h3><svg id="iso" viewBox="0 0 640 380"></svg>';anchor.after(host);}
- const svg=document.getElementById('iso');
- const zc=ro?C.crestMin(ro):p.invIn+r.D*1.4, L=p.length, D=r.D, B=r.B||D;
- const zmin=Math.min(p.invOut,p.invIn)-D*0.4, zmax=Math.max(r.EL,zc)+D*0.3;
- const o={ox:70,oy:250,sx:340/Math.max(L,1),sy:70/Math.max(B,1),sz:150/Math.max(zmax-zmin,1)};
- const P=(x,y,z)=>isoPoint(o,x,y,z-(zmin));
- const poly=pts=>pts.map((q,i)=>`${i?'L':'M'}${q[0].toFixed(1)} ${q[1].toFixed(1)}`).join(' ')+'Z';
- const inv=x=>p.invIn-(p.invIn-p.invOut)*x/L;
- const n=8, rings=[];
- for(let i=0;i<=n;i++){const x=L*i/n, z0=inv(x); rings.push({x,bot:P(x,0,z0),top:P(x,0,z0+D),l:P(x,-B/2,z0),r:P(x,B/2,z0)});}
- const ground=[P(0,-B*2.2,p.invIn),P(L,-B*2.2,p.invOut),P(L,B*2.2,p.invOut),P(0,B*2.2,p.invIn)];
- const crestZ=zc;
- const zSlope=Math.max(0.5,+p.fillZ||3);
- const roadL=Math.max(L*0.08, Math.min(L*0.42, (L-Math.min(L*0.84, zSlope*((crestZ-p.invIn)+(crestZ-p.invOut))))/2));
- const roadR=L-roadL;
- const road=[P(roadL,-B*0.15,crestZ),P(roadR,-B*0.15,crestZ),P(roadR,B*0.85,crestZ),P(roadL,B*0.85,crestZ)];
- const fill=[P(0,-B*1.8,p.invIn),P(roadL,-B*0.15,crestZ),P(roadR,-B*0.15,crestZ),P(L,-B*1.8,p.invOut),P(L,B*1.5,p.invOut),P(roadR,B*0.85,crestZ),P(roadL,B*0.85,crestZ),P(0,B*1.5,p.invIn)];
- let d=`<rect width="640" height="380" fill="#e7f2f8"/>
- <path d="${poly(ground)}" fill="#c4a574" stroke="#8a704c"/>
- <path d="${poly(fill)}" fill="#8fa86a" stroke="#5f7a3a" opacity=".9"/>
- <path d="${poly([rings[0].l,rings[n].l,rings[n].top,rings[0].top])}" fill="${metal?'#b7bcc2':'#d5d8dc'}" stroke="#333"/>
- <path d="${poly([rings[0].bot,rings[n].bot,rings[n].top,rings[0].top])}" fill="${metal?'#9aa1a8':'#c5c8cc'}" stroke="#333"/>`;
- const wpts=[[0,Math.min(r.D,(r.profile&&r.profile[0][1])||r.dc)]];
- (r.profile||[]).forEach(q=>wpts.push(q));
- const water=wpts.map(q=>P(q[0],0,inv(q[0])+Math.min(q[1],D)));
- const bed=wpts.slice().reverse().map(q=>P(q[0],0,inv(q[0])));
- d+=`<path d="${poly(water.concat(bed))}" fill="#2f7fbf" opacity=".75"/>`;
- d+=`<path d="${poly(road)}" fill="#3c4148" stroke="#222"/>`;
- d+=`<path d="${poly([P(0,-B*1.4,r.EL),P(0,B*1.2,r.EL),P(0,B*1.2,p.invIn),P(0,-B*1.4,p.invIn)])}" fill="#4a90d9" opacity=".45"/>`;
- if(p.twMode==='const') d+=`<path d="${poly([P(L,-B,Math.max(p.twElev,p.invOut)),P(L,B*1.6,Math.max(p.twElev,p.invOut)),P(L,B*1.6,p.invOut),P(L,-B,p.invOut)])}" fill="#4a90d9" opacity=".4"/>`;
- d+=`<text x="16" y="22" font-size="13" fill="#16324f">${kind==='miter'?'Mitered end':kind==='project'?'Projecting end':'Headwall'} · ${metal?'corrugated metal':'concrete'} · ${r.control} control</text>
- <text x="16" y="40" font-size="12" fill="#16324f">HW El. ${fx(r.EL)} · profile outlet HW ${fx(r.HWo)} · HDS-5 full-flow HW ${fx(r.HWoHDS)}</text>`;
- svg.innerHTML=d;
 }
 window.drawProfile=drawProfile; window.drawX=drawX;
 })();
