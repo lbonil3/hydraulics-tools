@@ -1,4 +1,4 @@
-/* Project Tracker v3.25: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.26: Engineering Report (drainage design report style), derived from the tracker data.
    A carried sheet counts in every package that has it. Unique plan sheets are labeled separately.
    Sheets carried into a package are listed in the same section and group as the original.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
@@ -54,7 +54,27 @@
   const fmtFt = (n) => Math.round(n).toLocaleString('en-US') + ' ft';
   const fmtMi = (ft) => { const mi = ft / 5280; return (Math.abs(mi) >= 10 ? mi.toFixed(1) : mi.toFixed(2)) + ' mi'; };
   const fmtPct = (ft, total) => { if (!(total > 0)) return '0%'; const p = ft / total * 100; return (Math.abs(p - Math.round(p)) < 0.05 ? String(Math.round(p)) : p.toFixed(1)) + '%'; };
-  const PIE_COLORS = ['#1f4e79', '#c45911', '#548235', '#7030a0', '#c00000', '#833c0c', '#2e75b6', '#bf8f00'];
+  /* One palette for the report graphics. The same hex values are the CSS variables in style.css. */
+  const BRAND = { navy: '#002856', blue: '#0085CA', light: '#E6E6E6', gray: '#999999', dark: '#666666', charcoal: '#333333', black: '#000000', white: '#ffffff' };
+  /* Navy, process blue, dark gray, gray, then charcoal and light gray. White type only on the dark fills. */
+  const PIE_COLORS = [
+    { fill: BRAND.navy, ink: BRAND.white },
+    { fill: BRAND.blue, ink: BRAND.white },
+    { fill: BRAND.dark, ink: BRAND.white },
+    { fill: BRAND.gray, ink: BRAND.charcoal },
+    { fill: BRAND.charcoal, ink: BRAND.white },
+    { fill: BRAND.light, ink: BRAND.charcoal, stroke: BRAND.charcoal },
+  ];
+  const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function isoOf(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function asDay(iso) { return new Date(iso + 'T12:00:00'); }
+  function plusDays(iso, n) { const d = asDay(iso); d.setDate(d.getDate() + n); return isoOf(d); }
+  function dayDiff(a, b) { return Math.round((asDay(b) - asDay(a)) / 86400000); }
+  function mondayOf(iso) { const d = asDay(iso); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoOf(d); }
+  function monthStart(iso) { const d = asDay(iso); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01'; }
+  function plusMonths(iso, n) { const d = asDay(iso); d.setMonth(d.getMonth() + n); return isoOf(d); }
+  function shortDate(iso) { const d = asDay(iso); return MONS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear(); }
+  function isISO(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s); }
   /* Plan and profile roads only. Trunk lines live on the Trunkline section and are not roads. */
   function reportRoadSec(sec) { return M.isPPSec(sec) && !M.isTrunkSec(sec); }
   /* Same station lengths as the roads table: each range is counted once. A range that is
@@ -83,7 +103,8 @@
     const total = [...acc.values()].reduce((a, n) => a + n, 0);
     const rows = subs.map((s, i) => {
       const ft = acc.get(s.id) || 0;
-      return { code: s.code, label: M.subLabel(s), ft, miles: ft / 5280, pct: total > 0 ? ft / total : 0, color: PIE_COLORS[i % PIE_COLORS.length], ftText: fmtFt(ft), miText: fmtMi(ft), pctText: fmtPct(ft, total) };
+      const c = PIE_COLORS[i % PIE_COLORS.length];
+      return { code: s.code, label: M.subLabel(s), ft, miles: ft / 5280, pct: total > 0 ? ft / total : 0, color: c.fill, ink: c.ink, stroke: c.stroke || BRAND.white, ftText: fmtFt(ft), miText: fmtMi(ft), pctText: fmtPct(ft, total) };
     });
     return { rows, total, totalText: fmtFt(total), totalMi: fmtMi(total), totalPct: total > 0 ? '100%' : '0%', split };
   }
@@ -242,6 +263,50 @@
     });
     const built = data.length > 1 ? { rows: data.concat([['Total', String(rows.reduce((a, g) => a + g.n, 0)), '', '']]), kinds: data.map(() => '').concat(['total']) } : { rows: data, kinds: data.map(() => '') };
     return { table: { head: ['Standard', 'Sheets', 'Sub-projects', 'Source'], rows: built.rows, kinds: built.kinds, cls: disc === 'SWP3' ? 'std-sw' : 'std-dr' } };
+  }
+  /* Packages get a bar from the earliest sheet due date to the latest. One date is a mark, not a span.
+     Milestones are a single date. Anything without a date is listed and draws nothing. */
+  function scheduleChart(st, today, milestones) {
+    const clip = (s) => s.length > 28 ? s.slice(0, 27) + '…' : s;
+    const rows = [];
+    for (const x of milestones) {
+      const date = isISO(x.m.date) ? x.m.date : '';
+      rows.push({ kind: 'milestone', label: x.m.name, date: date || null, dateText: date ? shortDate(date) : '', start: null, end: null, tbd: !date });
+    }
+    for (const sub of M.orderedSubs(st)) {
+      const dues = [];
+      let sheets = 0;
+      for (const seg of sub.segments) for (const sh of seg.sheets) { sheets++; if (isISO(sh.due)) dues.push(sh.due); }
+      if (!sheets) continue;
+      dues.sort();
+      const lo = dues[0] || null, hi = dues.length ? dues[dues.length - 1] : null, span = !!(lo && hi && lo !== hi);
+      const name = 'Package ' + sub.code + (M.subCustom(sub) ? ' · ' + M.subName(sub) : '');
+      rows.push({ kind: 'package', label: clip(name), date: !span && lo ? lo : null, dateText: !span && lo ? shortDate(lo) : '', start: span ? lo : null, end: span ? hi : null, tbd: !lo });
+    }
+    const points = [];
+    for (const r of rows) { if (r.start) points.push(r.start, r.end); if (r.date) points.push(r.date); }
+    if (!points.length) return { unit: 'none', start: null, end: null, today, todayIn: false, ticks: [], rows };
+    points.sort();
+    const lo = points[0], hi = points[points.length - 1];
+    let unit, axisStart, axisEnd, ticks;
+    if (dayDiff(lo, hi) <= 84) {
+      unit = 'week';
+      axisStart = mondayOf(lo);
+      axisEnd = plusDays(mondayOf(hi), 7);
+      ticks = [];
+      for (let t = axisStart; t < axisEnd; t = plusDays(t, 7)) ticks.push({ t, label: MONS[asDay(t).getMonth()] + ' ' + asDay(t).getDate() });
+    } else {
+      unit = 'month';
+      axisStart = monthStart(lo);
+      axisEnd = plusMonths(monthStart(hi), 1);
+      const endYear = asDay(plusDays(axisEnd, -1)).getFullYear();
+      ticks = [];
+      for (let t = axisStart; t < axisEnd; t = plusMonths(t, 1)) {
+        const d = asDay(t);
+        ticks.push({ t, label: MONS[d.getMonth()] + (d.getFullYear() !== endYear || d.getMonth() === 0 || t === axisStart ? ' ' + d.getFullYear() : '') });
+      }
+    }
+    return { unit, start: axisStart, end: axisEnd, today, todayIn: today >= axisStart && today < axisEnd, ticks, rows };
   }
   /* ---- the sections: blocks = [{ p } | { ul } | { table:{ head, rows } }]; ph = the placeholder shown when the engineer adds nothing ---- */
   function build(st, today) {
@@ -428,6 +493,8 @@
     /* 9 */
     const sch = [{ p: 'As of ' + today + ', the plan sheets are ' + Math.round(R.overall.pct) + '% complete (weighted by status): ' + R.overall.done + ' of ' + pl(R.overall.total, 'sheet') + ' done.' }];
     const ms = R.milestones.filter((x) => x.m.name);
+    const gantt = scheduleChart(st, today, ms);
+    if (gantt.rows.length) sch.push({ gantt });
     if (ms.length) sch.push({ table: { head: ['Milestone', 'Date', 'Sheets done'], rows: ms.map((x) => [x.m.name, x.m.date || '[date]', x.total ? x.done + ' of ' + x.total : '—']) } });
     sch.push({ p: 'TxDOT lists milestone submittals of Initial (30%), Detailed (60%), Final (90/95%), Sealed (100%) and Ready to Let (PS&E Preparation Manual, Table 6-1).' });
     out.schedule = sch;
@@ -453,6 +520,7 @@
       L.push('Total | ' + b.pie.totalText + ' | ' + b.pie.totalMi + ' | ' + b.pie.totalPct);
       return L.join('\n');
     }
+    if (b.gantt) return b.gantt.rows.map((r) => r.label + ' — ' + (r.tbd ? 'TBD' : r.start ? r.start + ' to ' + r.end : r.date)).join('\n');
     return '';
   }
   function text(st, today) {

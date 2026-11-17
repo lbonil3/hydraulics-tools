@@ -887,13 +887,41 @@ html[data-rptfont] #reportWrap .rtab,html[data-rptfont] .report .rtab{font-famil
 .report.eng .rfoot{margin:2pt 0 8pt;font-size:8.5pt;line-height:1.35;color:#333}
 .pielay{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 18px;break-inside:avoid;page-break-inside:avoid}
 .pie{width:min(100%,460px);height:auto;overflow:visible}
-.pie text{font-family:inherit;fill:#111}
-.pie .piein{fill:#fff;font-size:11px;font-weight:700}
-.pie .pielab{font-size:11px}
-html[data-rptfont] .pie text{font-family:var(--rpt-body)}
+.pie text{font-family:inherit;fill:#333333}
+.pie .piein{font-size:11px;font-weight:700}
+.pie .ink-w{fill:#ffffff}
+.pie .ink-d{fill:#333333}
+.pie .pielab{font-size:11px;fill:#333333}
+html[data-rptfont] .pie text,html[data-rptfont] .gantt text{font-family:var(--rpt-body)}
 .piesw{display:inline-block;vertical-align:middle}
 .piekey{flex:1;min-width:240px;margin:0}
 .report.eng .pie .pielab{font-size:8pt}.report.eng .pie .piein{font-size:8pt}
+/* v3.26 report graphics. Navy, process blue, and the grays are the only chart colors. */
+.engnarr,.report.eng{--mb-navy:#002856;--mb-blue:#0085CA;--mb-light:#E6E6E6;--mb-gray:#999999;--mb-dark:#666666;--mb-char:#333333;--mb-black:#000000}
+.engnarr .ehead b{color:var(--mb-navy);box-shadow:inset 0 -2px 0 var(--mb-navy)}
+.engnarr .egen{border-left-color:var(--mb-blue)}
+.engnarr .egen .esub{color:var(--mb-navy)}
+.report.eng h2{color:var(--mb-navy);border-bottom:1.5pt solid var(--mb-navy)}
+.report.eng .esub{color:var(--mb-navy)}
+.report.eng .eband{background:var(--mb-navy)}
+.engnarr .rtab th,.report.eng .rtab th{color:var(--mb-navy);background:var(--mb-light);border-top:1.5pt solid var(--mb-navy);border-bottom:1pt solid var(--mb-navy)}
+.engnarr .rtab tr.rsub td,.report.eng .rtab tr.rsub td{background:var(--mb-light)}
+.engnarr .rtab tr.rsecsub td,.report.eng .rtab tr.rsecsub td{background:var(--mb-light);border-top:.75pt solid var(--mb-gray)}
+.engnarr .rtab tr.rpkg td,.report.eng .rtab tr.rpkg td{background:#d9d9d9;border-top:.75pt solid var(--mb-dark)}
+.engnarr .rtab tr.rtot td,.report.eng .rtab tr.rtot td{color:var(--mb-navy);background:var(--mb-light);border-top:1.5pt solid var(--mb-navy);border-bottom:1.5pt solid var(--mb-navy)}
+.ganttwrap{margin:4pt 0 8pt;break-inside:avoid;page-break-inside:avoid}
+.gantt{width:100%;height:auto;display:block}
+.gantt text{font-family:inherit;fill:var(--mb-char,#333333)}
+.gantt-lab{font-size:11px}
+.gantt-tick,.gantt-date{font-size:10px;fill:var(--mb-dark,#666666)}
+.gantt-tbd{font-size:11px;fill:var(--mb-dark,#666666);font-style:italic}
+.gantt-plot{fill:#ffffff;stroke:var(--mb-gray,#999999);stroke-width:1}
+.gantt-grid{stroke:var(--mb-gray,#999999);stroke-width:1}
+.gantt-bar{fill:var(--mb-navy,#002856)}
+.gantt-dia{fill:var(--mb-blue,#0085CA)}
+.gantt-mark{fill:var(--mb-navy,#002856)}
+.gantt-today{stroke:var(--mb-char,#333333);stroke-width:1;stroke-dasharray:3 2}
+.gantt-todaylab{font-size:9px;fill:var(--mb-char,#333333)}
 .numline,.numcell{display:inline-flex;align-items:center;gap:2px}
 .numpre{color:var(--muted);font-variant-numeric:tabular-nums}
 .numcell .c-number{width:4.5em}

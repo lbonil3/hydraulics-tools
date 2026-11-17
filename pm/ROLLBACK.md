@@ -384,6 +384,12 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.26 (schedule chart and report colors)
+
+Schedule and Milestones opens with a simple chart. Each package is a row. A bar runs from the earliest sheet due date to the latest. A package with one due date is a mark, and a package with none says TBD and has no bar. Each milestone is a diamond on its date, or TBD when the date is blank. The time axis is weeks when the dates sit inside about twelve weeks, and months otherwise. A light line marks today when it falls in that range. The milestone table stays under the chart.
+
+The chart, the road-length pie, the table header rules, the subtotal shading, and the section headings use one palette: navy, process blue, light gray, gray, dark gray, and charcoal. The company name and logo are not added.
+
 ## v3.25 (trunk lines are not roads in the engineering report)
 
 Trunk lines stay on the Trunkline section. They are not listed in the Project Description and Location roads table, they are not counted in the “tracked on N roads” sentence, and their length is not in the Road Length by Sub-project chart or its total. A plan and profile road is unchanged. Trunk line sheets still appear in the proposed improvements, the sheet counts, and the sheet index.

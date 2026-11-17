@@ -1,4 +1,4 @@
-/* Project Tracker v3.25 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.26 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs, including the report font).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -599,23 +599,61 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   }
   function pieBlock(pie) {
     const wedges = pieWedges(pie.rows);
+    const edge = (w) => w.stroke || '#ffffff';
     const chart = wedges.length ? svg('svg', { class: 'pie', viewBox: '-70 -36 440 372', role: 'img', 'aria-label': 'Road length by sub-project' },
       wedges.map((w) => w.full
-        ? svg('circle', { cx: w.cx, cy: w.cy, r: w.r, fill: w.color, stroke: '#fff', 'stroke-width': '1.5' })
-        : svg('path', { d: w.d, fill: w.color, stroke: '#fff', 'stroke-width': '1.5' })),
-      wedges.filter((w) => w.frac >= 0.12 && !w.full).map((w) => svg('text', { x: (w.cx + (w.r * 0.55) * Math.cos(w.mid)).toFixed(1), y: (w.cy + (w.r * 0.55) * Math.sin(w.mid)).toFixed(1), 'text-anchor': 'middle', class: 'piein' }, w.pctText)),
+        ? svg('circle', { cx: w.cx, cy: w.cy, r: w.r, fill: w.color, stroke: edge(w), 'stroke-width': '1.5' })
+        : svg('path', { d: w.d, fill: w.color, stroke: edge(w), 'stroke-width': '1.5' })),
+      wedges.filter((w) => w.frac >= 0.12 && !w.full).map((w) => svg('text', { x: (w.cx + (w.r * 0.55) * Math.cos(w.mid)).toFixed(1), y: (w.cy + (w.r * 0.55) * Math.sin(w.mid)).toFixed(1), 'text-anchor': 'middle', class: 'piein ' + (w.ink === '#ffffff' ? 'ink-w' : 'ink-d') }, w.pctText)),
       wedges.map((w) => svg('text', { x: w.lx.toFixed(1), y: (w.ly - 6).toFixed(1), 'text-anchor': w.anchor, class: 'pielab' },
         svg('tspan', { x: w.lx.toFixed(1), dy: '0' }, w.label),
         svg('tspan', { x: w.lx.toFixed(1), dy: '1.25em' }, w.ftText + ' (' + w.miText + ') · ' + w.pctText)))) : null;
-    const sw = (color) => svg('svg', { class: 'piesw', width: '12', height: '12', 'aria-hidden': 'true' }, svg('rect', { width: '12', height: '12', fill: color, stroke: '#222', 'stroke-width': '0.5' }));
+    const sw = (r) => svg('svg', { class: 'piesw', width: '12', height: '12', 'aria-hidden': 'true' }, svg('rect', { width: '12', height: '12', fill: r.color, stroke: r.stroke && r.stroke !== '#ffffff' ? r.stroke : '#333333', 'stroke-width': '0.5' }));
     const key = h('table', { class: 'rtab piekey' },
       h('thead', {}, h('tr', {}, h('th', { class: 'cmid' }, ''), h('th', {}, 'Sub-project'), h('th', { class: 'cnum' }, 'Length'), h('th', { class: 'cnum' }, 'Miles'), h('th', { class: 'cnum' }, 'Share'))),
-      h('tbody', {}, pie.rows.map((r) => h('tr', {}, h('td', { class: 'cmid' }, sw(r.color)), h('td', {}, r.label), h('td', { class: 'cnum' }, r.ftText), h('td', { class: 'cnum' }, r.miText), h('td', { class: 'cnum' }, r.pctText))),
+      h('tbody', {}, pie.rows.map((r) => h('tr', {}, h('td', { class: 'cmid' }, sw(r)), h('td', {}, r.label), h('td', { class: 'cnum' }, r.ftText), h('td', { class: 'cnum' }, r.miText), h('td', { class: 'cnum' }, r.pctText))),
         h('tr', { class: 'rtot' }, h('td', {}), h('td', {}, 'Total'), h('td', { class: 'cnum' }, pie.totalText), h('td', { class: 'cnum' }, pie.totalMi), h('td', { class: 'cnum' }, pie.totalPct))));
     return h('div', { class: 'pielay' }, chart, key);
   }
+  function ganttBlock(g) {
+    const labelW = 188, plotW = 520, rowH = 26, headH = 28, padR = 10;
+    const W = labelW + plotW + padR;
+    const n = Math.max(g.rows.length, 1);
+    const H = headH + n * rowH + 6;
+    const span = g.start && g.end ? Math.max(1, (new Date(g.end + 'T12:00:00') - new Date(g.start + 'T12:00:00')) / 86400000) : 1;
+    const xOf = (iso) => labelW + ((new Date(iso + 'T12:00:00') - new Date(g.start + 'T12:00:00')) / 86400000) / span * plotW;
+    const kids = [svg('rect', { class: 'gantt-plot', x: labelW, y: headH, width: plotW, height: n * rowH })];
+    if (g.unit !== 'none') for (const tk of g.ticks) {
+      const x = xOf(tk.t);
+      kids.push(svg('line', { class: 'gantt-grid', x1: x, x2: x, y1: 4, y2: H - 4 }));
+      kids.push(svg('text', { class: 'gantt-tick', x: x + 3, y: 16 }, tk.label));
+    }
+    g.rows.forEach((r, i) => {
+      const y = headH + i * rowH, mid = y + rowH / 2;
+      kids.push(svg('text', { class: 'gantt-lab', x: 4, y: mid + 4 }, r.label));
+      if (r.tbd) kids.push(svg('text', { class: 'gantt-tbd', x: labelW + 8, y: mid + 4 }, 'TBD'));
+      else if (r.start && r.end) {
+        const x1 = xOf(r.start), x2 = Math.max(xOf(r.end), x1 + 8);
+        kids.push(svg('rect', { class: 'gantt-bar', x: x1, y: mid - 5, width: Math.min(plotW - (x1 - labelW), x2 - x1), height: 10, rx: 1 }));
+      } else if (r.date) {
+        const x = xOf(r.date), s = 5;
+        const cls = r.kind === 'milestone' ? 'gantt-dia' : 'gantt-mark';
+        kids.push(svg('polygon', { class: cls, points: [x, mid - s, x + s, mid, x, mid + s, x - s, mid].map((n) => n.toFixed(1)).join(' ') }));
+        const room = labelW + plotW - (x + 8);
+        kids.push(svg('text', { class: 'gantt-date', x: room > 78 ? x + 8 : x - 8, y: mid + 4, 'text-anchor': room > 78 ? 'start' : 'end' }, r.dateText || r.date));
+      }
+    });
+    if (g.todayIn) {
+      const x = xOf(g.today);
+      kids.push(svg('line', { class: 'gantt-today', x1: x, x2: x, y1: headH, y2: H - 4 }));
+      kids.push(svg('text', { class: 'gantt-todaylab', x: Math.min(x + 3, labelW + plotW - 28), y: headH + 11 }, 'Today'));
+    }
+    const aria = g.rows.map((r) => r.label + (r.tbd ? ', TBD' : r.start ? ', ' + r.start + ' to ' + r.end : ', ' + r.date)).join('; ');
+    return h('div', { class: 'ganttwrap' }, svg('svg', { class: 'gantt', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Schedule. ' + aria }, kids));
+  }
   function engBlocks(blocks, refsEl) {
     return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? (refsEl || h('ol', { class: 'erefs' }, E.refs(st).map((x) => h('li', {}, x)))) :
+      b.gantt ? ganttBlock(b.gantt) :
       b.pie ? pieBlock(b.pie) :
       b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab' + (b.table.cls ? ' ' + b.table.cls : '') },
         b.table.cols ? h('colgroup', {}, b.table.cols.map((c, i) => h('col', { class: 'c' + i }))) : null,
