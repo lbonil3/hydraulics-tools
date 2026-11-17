@@ -25,8 +25,6 @@ function build(){const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',forma
   text('Culvert design report',18,'bold',[31,78,121]);
   const sm=R.querySelector('.rhead small');if(sm)text(sm.innerText,9,'normal',[90,90,90]);y+=6;
   if(img){const h=CW*340/900;need(h+8);doc.addImage(img,'JPEG',M,y,CW,h);y+=h+10;}
-  let viewImg=null;try{if(window.View3D&&View3D.snapshot)viewImg=View3D.snapshot();}catch(e){viewImg=null;}
-  if(viewImg){text('3D crossing',12,'bold',[31,78,121]);const ih=CW*780/1400;need(ih+8);doc.addImage(viewImg,'JPEG',M,y,CW,ih);y+=ih+10;}
   for(const el of R.children){if(el.classList.contains('rhead'))continue;
     const tag=el.tagName;
     if(tag==='H4'){y+=6;need(30);text(el.innerText,13,'bold',[31,78,121]);y+=2;}

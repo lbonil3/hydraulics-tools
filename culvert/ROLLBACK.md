@@ -6,7 +6,7 @@ Do not revert other tools unless a commit also touched a shared file (the Ration
 | Tag to cut when this ships | What it is |
 |---|---|
 | `culvert-v1` | Culvert Studio as it was on `main` before v2 (equal barrels, one outlet-control headwater, fixed 1.2 / 15 ft/s checks) |
-| `culvert-v2` | Units preserved across the US/SI toggle, both outlet-control headwaters, one criteria object, dissimilar barrels, CMP n by corrugation, HEC-14 scour note, engineering graphics. The later 3D commit on the same branch replaces the SVG isometric with a lazy-loaded three.js view |
+| `culvert-v2` | Units preserved across the US/SI toggle, both outlet-control headwaters, one criteria object, dissimilar barrels, CMP n by corrugation, HEC-14 scour note, engineering graphics |
 
 ## Undo v2 (files only)
 
