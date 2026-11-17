@@ -557,8 +557,7 @@ textarea.rnote{width:100%;min-height:44px;resize:vertical;font:inherit;font-size
 .rpset .f{display:flex;flex-direction:column;gap:3px}.rpset .f span{font-size:12px;color:var(--muted)}
 .rpchk{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px}
 @page{size:letter;margin:0.55in 0.6in 0.65in;
-  @bottom-left{content:"Project Tracker · Drainage & SWP3 status report";font:8pt Arial,Helvetica,sans-serif;color:#555}
-  @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#555}}
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#666666}}
 @page a4{size:A4;margin:16mm 15mm 18mm}
 @media print{
   html,body{background:#fff!important;color:#000!important;overflow:visible!important;height:auto!important;display:block!important}
@@ -796,13 +795,15 @@ details.menu.active>summary{border-color:var(--brand);background:var(--brand-sof
 @media print{.report.eng{font:10.5pt/1.5 Georgia,'Times New Roman',serif}}
 .report.eng{font-family:Georgia,'Times New Roman',serif}
 .report.eng .rrun{font-family:Arial,Helvetica,sans-serif}
-.report.eng .ecover{min-height:8.8in;display:flex;flex-direction:column;border:1.5pt solid #000;break-after:page;page-break-after:always}
-.report.eng .eband{background:#1f2937;color:#fff;padding:8pt 12pt;font:700 10pt Arial,Helvetica,sans-serif;letter-spacing:.12em}
-.report.eng .ecover h1{font-size:24pt;line-height:1.15;margin:0;padding:36pt 14pt 18pt}
-.report.eng .ecover .rmeta{font-family:Arial,Helvetica,sans-serif;font-size:9pt}
-.report.eng .eseal{margin-top:auto;display:flex;gap:14pt;align-items:flex-start;padding:14pt;border-top:.75pt solid #000;font-size:9pt}
-.report.eng .esealbox{flex:none;width:1.7in;height:1.7in;border:1.5pt dashed #000;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4pt;font-family:Arial,Helvetica,sans-serif}
-.report.eng .esealbox b{font-size:12pt;letter-spacing:.08em}.report.eng .esealbox span{font-size:7.5pt;color:#444;padding:0 10pt}
+.report.eng .ecover{min-height:7.8in;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;border:0;padding:18pt 8pt 12pt;break-after:page;page-break-after:always}
+.report.eng .ekicker{margin:0 0 8pt;color:#0085CA;font:700 11pt Arial,Helvetica,sans-serif;letter-spacing:.16em;text-transform:uppercase}
+.report.eng .erule{width:2.4in;height:0;border:0;border-top:3pt solid #0085CA;margin:0}
+.report.eng .erule.navy{width:1.15in;border-top-color:#002856;margin-top:4pt}
+.report.eng .ecover h1{color:#002856;font-size:32pt;line-height:1.12;font-weight:700;margin:10pt 0 0;padding:0}
+.report.eng .ecover .rmeta{margin-top:22pt;border-top:1.25pt solid #002856;font-family:Arial,Helvetica,sans-serif;font-size:11pt;max-width:6.6in}
+.report.eng .ecover .rmeta dt{color:#666666;background:transparent;font-size:8pt;letter-spacing:.08em}
+.report.eng .ecover .rmeta dd{color:#333333}
+.report.eng .ecover .rmeta dt,.report.eng .ecover .rmeta dd{border-bottom:.5pt solid #E6E6E6;padding:7pt 10pt}
 .report.eng .etoc{break-after:page;page-break-after:always;border:0;padding:0}
 .report.eng .etoc h2{font-size:13pt;border-bottom:1pt solid #000;margin-bottom:8pt}
 .report.eng .etoc ol{columns:1;font-size:11pt;line-height:1.9}
@@ -814,8 +815,15 @@ details.menu.active>summary{border-color:var(--brand);background:var(--brand-sof
 .report.eng .rtab{font-family:Arial,Helvetica,sans-serif;font-size:8.5pt}
 .report.eng .eidx td:nth-child(1){width:8%;white-space:nowrap}.report.eng .eidx td:nth-child(3){width:9%}
 .report.eng .esecp{break-inside:auto}
-@page eng{@bottom-left{content:"Project Tracker · Engineering report — preliminary, not sealed";font:8pt Arial,Helvetica,sans-serif;color:#555}}
-@page enga4{size:A4;margin:16mm 15mm 18mm;@bottom-left{content:"Project Tracker · Engineering report — preliminary, not sealed";font:8pt Arial,Helvetica,sans-serif;color:#555}}
+@page eng{size:letter;margin:0.6in 0.65in 0.75in;@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#666666}}
+@page enga4{size:A4;margin:16mm 15mm 18mm;@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#666666}}
+.report.eng .rpage>tfoot{display:table-footer-group}
+.report.eng .rftr{display:flex;justify-content:space-between;gap:12pt;border-top:.75pt solid #999999;margin-top:8pt;padding-top:3pt;font:8pt Arial,Helvetica,sans-serif;color:#666666}
+html.engprint{page:eng}
+.report.eng .rtab thead,.report.eng .rtab.roads thead,.report.eng .gtab thead{display:table-header-group}
+.report.eng .rtab.roads tbody.rblock{break-inside:avoid;page-break-inside:avoid}
+.report.eng h2,.report.eng .esub{break-after:avoid;page-break-after:avoid}
+.report.eng .pielay,.report.eng .ganttwrap{break-inside:avoid;page-break-inside:avoid}
 .report.eng.pg-letter{page:eng}.report.eng.pg-a4{page:enga4}
 .report.eng .eidx td:nth-child(5){white-space:nowrap}
 /* v3.20 report fonts. Files in pm/fonts are SIL OFL (see the OFL-*.txt files there). No remote font host. */
@@ -845,7 +853,7 @@ html[data-rptfont="plex"]{--rpt-body:"IBM Plex Sans", sans-serif;--rpt-head:"IBM
 html[data-rptfont="calibri"]{--rpt-body:Calibri, Carlito, Arial, sans-serif;--rpt-head:Cambria, Caladea, Georgia, serif;--rpt-num:Calibri, Carlito, Arial, sans-serif}
 html[data-rptfont] #reportWrap .narr,html[data-rptfont] .report{font-family:var(--rpt-body)}
 html[data-rptfont] #reportWrap .narr :is(h1,h2,h3,h4,h5,h6),html[data-rptfont] .report :is(h1,h2,h3,h4,h5,h6),html[data-rptfont] .report .esub,html[data-rptfont] .report .eband,html[data-rptfont] .report .rrun{font-family:var(--rpt-head)}
-html[data-rptfont] .report .rmeta,html[data-rptfont] .report .eseal,html[data-rptfont] .report .esealbox{font-family:var(--rpt-body)}
+html[data-rptfont] .report .rmeta,html[data-rptfont] .report .ekicker{font-family:var(--rpt-body)}
 html[data-rptfont] #reportWrap .rtab,html[data-rptfont] .report .rtab{font-family:var(--rpt-num);font-variant-numeric:tabular-nums}
 .rptfonts{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
 .rptfont{display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;padding:3px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;line-height:1.15}
@@ -910,18 +918,28 @@ html[data-rptfont] .pie text,html[data-rptfont] .gantt text{font-family:var(--rp
 .engnarr .rtab tr.rpkg td,.report.eng .rtab tr.rpkg td{background:#d9d9d9;border-top:.75pt solid var(--mb-dark)}
 .engnarr .rtab tr.rtot td,.report.eng .rtab tr.rtot td{color:var(--mb-navy);background:var(--mb-light);border-top:1.5pt solid var(--mb-navy);border-bottom:1.5pt solid var(--mb-navy)}
 .ganttwrap{margin:4pt 0 8pt;break-inside:avoid;page-break-inside:avoid}
-.gantt{width:100%;height:auto;display:block}
-.gantt text{font-family:inherit;fill:var(--mb-char,#333333)}
-.gantt-headbg{fill:var(--mb-light,#E6E6E6)}
-.gantt-head{font-size:10px;font-weight:700;fill:var(--mb-navy,#002856)}
-.gantt-lab{font-size:11px}
-.gantt-date,.gantt-done{font-size:10px;fill:var(--mb-char,#333333)}
-.gantt-tbd{font-size:10px;fill:var(--mb-dark,#666666);font-style:italic}
-.gantt-shade{fill:var(--mb-light,#E6E6E6)}
-.gantt-grid{stroke:var(--mb-gray,#999999);stroke-width:1}
-.gantt-dia{fill:var(--mb-blue,#0085CA)}
-.gantt-today{stroke:var(--mb-char,#333333);stroke-width:1;stroke-dasharray:3 2}
-.gantt-todaylab{font-size:8px;fill:var(--mb-char,#333333)}
+.gtab{width:100%;border-collapse:collapse;table-layout:fixed}
+.gtab th,.gtab td{border:.6pt solid var(--mb-gray,#999999);padding:3pt 4pt;vertical-align:middle;font-size:8pt;color:var(--mb-char,#333333);background:#fff}
+.gtab thead th{color:var(--mb-navy,#002856);background:var(--mb-light,#E6E6E6);font-weight:700;text-align:center}
+.gtab .glab{text-align:left;width:22%}
+.gtab .gdate{width:18%;text-align:center}
+.gtab .gdone{width:12%;text-align:center}
+.gtab td.gcell{position:relative;height:16pt}
+.gtab td.on{background:var(--mb-light,#E6E6E6)}
+.gtab .gantt-dia{position:absolute;top:50%;width:7pt;height:7pt;margin-top:-3.5pt;background:var(--mb-blue,#0085CA);transform:rotate(45deg)}
+.gtab .gantt-today{position:absolute;top:0;bottom:0;border-left:1px dashed var(--mb-char,#333333);height:auto}
+.gtab .gantt-todaylab{display:block;font-size:7pt;font-weight:400;color:var(--mb-char,#333333)}
+.gtab .gantt-tbd{font-style:italic;color:var(--mb-dark,#666666)}
+.gtab .p5 .gantt-dia,.gtab .t5 .gantt-today{left:5%}.gtab .p10 .gantt-dia,.gtab .t10 .gantt-today{left:10%}.gtab .p15 .gantt-dia,.gtab .t15 .gantt-today{left:15%}.gtab .p20 .gantt-dia,.gtab .t20 .gantt-today{left:20%}.gtab .p25 .gantt-dia,.gtab .t25 .gantt-today{left:25%}.gtab .p30 .gantt-dia,.gtab .t30 .gantt-today{left:30%}.gtab .p35 .gantt-dia,.gtab .t35 .gantt-today{left:35%}.gtab .p40 .gantt-dia,.gtab .t40 .gantt-today{left:40%}.gtab .p45 .gantt-dia,.gtab .t45 .gantt-today{left:45%}.gtab .p50 .gantt-dia,.gtab .t50 .gantt-today{left:50%}.gtab .p55 .gantt-dia,.gtab .t55 .gantt-today{left:55%}.gtab .p60 .gantt-dia,.gtab .t60 .gantt-today{left:60%}.gtab .p65 .gantt-dia,.gtab .t65 .gantt-today{left:65%}.gtab .p70 .gantt-dia,.gtab .t70 .gantt-today{left:70%}.gtab .p75 .gantt-dia,.gtab .t75 .gantt-today{left:75%}.gtab .p80 .gantt-dia,.gtab .t80 .gantt-today{left:80%}.gtab .p85 .gantt-dia,.gtab .t85 .gantt-today{left:85%}.gtab .p90 .gantt-dia,.gtab .t90 .gantt-today{left:90%}.gtab .p95 .gantt-dia,.gtab .t95 .gantt-today{left:95%}
+.ereflink{color:#0085CA;text-decoration:underline}
+.erefurl{display:none}
+.erefrow{display:flex;gap:6px;align-items:center;margin:4px 0}
+.erefrow .ereftitle{flex:1.4;min-width:0}
+.erefrow .erefurl{flex:1;min-width:0;display:block}
+@media print{
+  .erefurl{display:inline;margin-left:6pt;color:#666666;font-size:8pt}
+  .ereflink{color:#0085CA}
+}
 .numline,.numcell{display:inline-flex;align-items:center;gap:2px}
 .numpre{color:var(--muted);font-variant-numeric:tabular-nums}
 .numcell .c-number{width:4.5em}

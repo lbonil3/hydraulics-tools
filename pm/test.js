@@ -900,8 +900,8 @@ t('engineering report: sections, placeholders, no invented values', () => {
   const txt = E.text(st, today);
   assert(/PRELIMINARY — NOT SEALED/.test(txt) && /2\. INTRODUCTION AND PURPOSE/.test(txt) && /11\. CONCLUSIONS AND RECOMMENDATIONS/.test(txt));
   assert(!/\b(cfs|in\/hr|\d+-year|year storm|acres?)\b/i.test(txt), 'no design values invented');
-  const urls = txt.match(/https?:\/\/\S+/g) || [];
-  assert.deepStrictEqual([...new Set(urls)], ['https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html']);
+  const urls = new Set(txt.match(/https?:\/\/\S+/g) || []);
+  for (const u of ['https://www.txdot.gov/manuals/des/hyd/', 'https://www.txdot.gov/manuals/des/rdw/index.html', 'https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html', 'https://www.fhwa.dot.gov/engineering/hydraulics/pubs/hif24006.pdf', 'https://www.tceq.texas.gov/permitting/stormwater/construction']) assert.ok(urls.has(u), u);
   assert(!/CSJ/.test(txt.split('\n').slice(0, 4).join('\n')), 'no CSJ line until one is entered');
 });
 t('v3.23 roads table gives each sub-project its own row', () => {
@@ -1058,7 +1058,7 @@ t('v3.26 schedule chart and the report color palette', () => {
   assert.strictEqual(pie.rows[3].stroke, '#ffffff');
   const css = require('fs').readFileSync(require('path').join(__dirname, 'style.css'), 'utf8');
   assert.ok(/--mb-navy:#002856/.test(css) && /--mb-blue:#0085CA/.test(css) && /--mb-light:#E6E6E6/.test(css));
-  assert.ok(/\.gantt-shade\{fill:var\(--mb-light/.test(css) && /\.gantt-dia\{fill:var\(--mb-blue/.test(css) && /\.gantt-grid\{stroke:var\(--mb-gray/.test(css));
+  assert.ok(/\.gtab \.gantt-dia\{[^}]*var\(--mb-blue/.test(css) && /\.gtab thead th\{[^}]*var\(--mb-navy/.test(css));
   assert.ok(/\.ganttwrap\{[^}]*break-inside:avoid/.test(css));
   assert.ok(/\.report\.eng \.rtab th\{[^}]*var\(--mb-navy\)/.test(css));
   assert.ok(/fill: BRAND\.light, ink: BRAND\.charcoal, stroke: BRAND\.charcoal/.test(require('fs').readFileSync(require('path').join(__dirname, 'engreport.js'), 'utf8')));
@@ -1080,7 +1080,15 @@ t('engineering report: edits, toggles, replace mode, refs, storage', () => {
   assert(/CSJ: 1234-56-789/.test(txt) && /Harris County/.test(txt) && /Existing ditches drain north\./.test(txt) && !/SCOPE OF WORK/.test(txt));
   E.setRefs(st, 'Ref one\n\n Ref two ');
   assert.deepStrictEqual(E.refs(st), ['Ref one', 'Ref two']);
+  E.setRefs(st, 'City drainage criteria | https://www.example.com/criteria\nLocal criteria manual');
+  const saved = E.refItems(st);
+  assert.strictEqual(saved[0].url, 'https://www.example.com/criteria');
+  assert.strictEqual(saved[1].url, '');
+  E.setRefs(st, 'javascript:alert(1)');
+  assert.strictEqual(E.refItems(st)[0].url, '');
   E.resetRefs(st); assert(E.refs(st).length >= 5 && st.engReport.refs === undefined);
+  const hyd = E.refItems(st).find((r) => /Hydraulic Design Manual/.test(r.text));
+  assert.strictEqual(hyd.url, 'https://www.txdot.gov/manuals/des/hyd/');
   // round trip through save/migrate, then clearing everything leaves no trace
   const back = M.migrate(JSON.parse(JSON.stringify(st)));
   assert.strictEqual(E.text(back, today), E.text(st, today));
