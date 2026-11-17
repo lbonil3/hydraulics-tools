@@ -815,11 +815,18 @@ details.menu.active>summary{border-color:var(--brand);background:var(--brand-sof
 .report.eng .rtab{font-family:Arial,Helvetica,sans-serif;font-size:8.5pt}
 .report.eng .eidx td:nth-child(1){width:8%;white-space:nowrap}.report.eng .eidx td:nth-child(3){width:9%}
 .report.eng .esecp{break-inside:auto}
-@page eng{size:letter;margin:0.6in 0.65in 0.75in;@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#666666}}
-@page enga4{size:A4;margin:16mm 15mm 18mm;@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#666666}}
-.report.eng .rpage>tfoot{display:table-footer-group}
-.report.eng .rftr{display:flex;justify-content:space-between;gap:12pt;border-top:.75pt solid #999999;margin-top:8pt;padding-top:3pt;font:8pt Arial,Helvetica,sans-serif;color:#666666}
-html.engprint{page:eng}
+.report.eng.pg-letter .ecover{page:cover}
+.report.eng.pg-a4 .ecover{page:covera4}
+@page cover{size:letter;margin:0.7in 0.7in 0.65in;@top-left{content:none}@top-center{content:none}@top-right{content:none}@bottom-left{content:none}@bottom-center{content:none}@bottom-right{content:none}}
+@page covera4{size:A4;margin:16mm 15mm 16mm;@top-left{content:none}@top-center{content:none}@top-right{content:none}@bottom-left{content:none}@bottom-center{content:none}@bottom-right{content:none}}
+@page eng{size:letter;margin:0.55in 0.6in 0.58in;
+  @bottom-left{content:var(--eng-date);font:8pt Arial,Helvetica,sans-serif;color:#666666;vertical-align:top;padding-top:4pt;border-top:.75pt solid #999999}
+  @bottom-center{content:"";font:8pt Arial,Helvetica,sans-serif;vertical-align:top;padding-top:4pt;border-top:.75pt solid #999999}
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#666666;vertical-align:top;padding-top:4pt;border-top:.75pt solid #999999}}
+@page enga4{size:A4;margin:14mm 15mm 14mm;
+  @bottom-left{content:var(--eng-date);font:8pt Arial,Helvetica,sans-serif;color:#666666;vertical-align:top;padding-top:4pt;border-top:.75pt solid #999999}
+  @bottom-center{content:"";font:8pt Arial,Helvetica,sans-serif;vertical-align:top;padding-top:4pt;border-top:.75pt solid #999999}
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#666666;vertical-align:top;padding-top:4pt;border-top:.75pt solid #999999}}
 .report.eng .rtab thead,.report.eng .rtab.roads thead,.report.eng .gtab thead{display:table-header-group}
 .report.eng .rtab.roads tbody.rblock{break-inside:avoid;page-break-inside:avoid}
 .report.eng h2,.report.eng .esub{break-after:avoid;page-break-after:avoid}

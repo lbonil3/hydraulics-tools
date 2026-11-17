@@ -284,7 +284,7 @@
       if (!g) continue;
       rows.push(g); used.add(g);
     }
-    for (const g of groups.filter((x) => x.disc === disc && !used.has(x)).sort((a, b) => a.name.localeCompare(b.name))) rows.push(g);
+    for (const g of groups.filter((x) => x.disc === disc && !used.has(x)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))) rows.push(g);
     if (!rows.length) return null;
     const data = rows.map((g) => {
       let who = [...g.subs].sort().join(', ');

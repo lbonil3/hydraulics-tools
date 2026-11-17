@@ -1469,6 +1469,12 @@ t('v3.16 engineering report lists ponds, standards, packages, and item counts', 
   assert.ok(dr.rows.some((r) => r[0] === 'HIL-C-25 (HOU)' && r[1] === '1' && r[2] === 'A' && r[3] === 'Pick list'));
   assert.ok(dr.rows.some((r) => r[0] === 'PSL' && r[1] === '3' && /A/.test(r[2]) && /B/.test(r[2]) && r[3] === 'Pick list'), JSON.stringify(dr.rows));
   assert.ok(dr.rows.some((r) => r[0] === 'City inlet detail' && r[1] === '1' && r[3] === 'Custom'));
+  M.addSheet(st, M.secOf(A, 'dr-std').id, { title: 'Drainage detail sheet 2' });
+  M.addSheet(st, M.secOf(A, 'dr-std').id, { title: 'Drainage detail sheet 19' });
+  M.addSheet(st, M.secOf(A, 'dr-std').id, { title: 'Drainage detail sheet 20' });
+  const ordered = E.outline(st, today).find((s) => s.id === 'sheets').auto.find((b) => b.table && b.table.cls === 'std-dr').table.rows.map((r) => r[0]);
+  const nums = ordered.filter((n) => /Drainage detail sheet /.test(n));
+  assert.deepStrictEqual(nums, ['Drainage detail sheet 2', 'Drainage detail sheet 19', 'Drainage detail sheet 20']);
   const sw = sheets[sheets.findIndex((b) => b.h === 'SWP3 standards') + 1].table;
   assert.ok(sw.rows.some((r) => r[0] === 'EC(1)-16' && r[1] === '1' && r[2] === 'B' && r[3] === 'Pick list'));
   const idx = sheets.find((b) => b.table && b.table.cls === 'eidx').table.rows;

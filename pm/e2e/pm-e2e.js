@@ -778,16 +778,19 @@ function v2Fixture() {
     const roads = document.querySelector('#report table.roads thead');
     const grid = document.querySelector('#report table.gantt thead');
     const block = document.querySelector('#report table.roads tbody.rblock');
-    const foot = document.querySelector('#report .rftr');
+    const all = bits.join('\n');
+    const cover = document.querySelector('#report > .ecover');
     return {
-      page: /@page eng/.test(bits.join('\n')) && /counter\(pages\)/.test(bits.join('\n')),
+      page: /@page eng[\s\S]*@bottom-left[\s\S]*var\(--eng-date\)/.test(all) && /@page cover[\s\S]*content:\s*none/.test(all),
       roadsHead: roads ? getComputedStyle(roads).display : '',
       gridHead: grid ? getComputedStyle(grid).display : '',
       avoid: block ? getComputedStyle(block).breakInside : '',
-      date: foot ? foot.querySelector('.rftr-date').textContent : '',
+      coverFirst: !!(cover && cover.nextElementSibling && cover.nextElementSibling.matches('table.rpage')),
+      dateWide: [...document.querySelectorAll('#report .ecover dt.rwide')].some((e) => e.textContent.trim() === 'Date'),
+      date: getComputedStyle(document.documentElement).getPropertyValue('--eng-date'),
     };
   });
-  ok(printCss.page && printCss.roadsHead === 'table-header-group' && printCss.gridHead === 'table-header-group' && printCss.avoid === 'avoid' && /^\d{4}-\d{2}-\d{2}$/.test(printCss.date), 'print: repeating table headers, road groups stay together, footer has the date and page numbers ' + JSON.stringify(printCss));
+  ok(printCss.page && printCss.coverFirst && printCss.dateWide && printCss.roadsHead === 'table-header-group' && printCss.gridHead === 'table-header-group' && printCss.avoid === 'avoid' && /\d{4}-\d{2}-\d{2}/.test(printCss.date), 'print: cover is its own page, table headers repeat, road groups stay together, footer date and page number share the margin ' + JSON.stringify(printCss));
   const refLink = await pg.$eval('#eng-criteria a.ereflink', (e) => ({ href: e.href, color: getComputedStyle(e).color }));
   ok(refLink.href === 'https://www.txdot.gov/manuals/des/hyd/' && refLink.color === 'rgb(0, 133, 202)', 'design criteria references link in process blue to the official manual');
   ok(await has('#report .gantt') && /TBD/.test(ER), 'printed schedule includes the gantt');

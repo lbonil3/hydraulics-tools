@@ -386,7 +386,7 @@ Data: no schema change. Optional fields project.report {preparedFor, preparedBy,
 
 ## v3.27 (print layout and reference links)
 
-The engineering report cover no longer has a seal. The project name is set large, with the report title, CSJ, sub-projects, county, district, and date under it. Printed tables repeat their header row. A road’s sub-rows stay together, and the pie chart and milestone grid stay together. Each page has a small gray footer with the report date and “Page X of Y”.
+The engineering report cover no longer has a seal, and it does not carry the running header or the page footer. The project name is set large, with the report title, CSJ, sub-projects, county, district, and date under it. The date row runs the full width of that table. Later pages repeat the table header, keep a road’s sub-rows together, and keep the pie chart and milestone grid together. Their footer puts the report date on the left and “Page X of Y” on the right, on one line. Custom standards are ordered so a numbered name sorts by the number.
 
 Design Criteria references that have a known official page are links. Each reference also has an optional URL field. A reference with no known page and no URL stays plain text.
 
