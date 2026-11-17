@@ -859,3 +859,8 @@ html[data-rptfont] #reportWrap .rtab,html[data-rptfont] .report .rtab{font-famil
 .rptfont[data-font="plex"] .rptprev{font-family:"IBM Plex Figures", "IBM Plex Sans", sans-serif}
 .rptfont[data-font="calibri"]{font-family:Calibri, Carlito, Arial, sans-serif}
 .rptfont[data-font="calibri"] b{font-family:Cambria, Caladea, Georgia, serif}
+.numline,.numcell{display:inline-flex;align-items:center;gap:2px}
+.numpre{color:var(--muted);font-variant-numeric:tabular-nums}
+.numcell .c-number{width:4.5em}
+.renum td,.renum th{white-space:nowrap}
+.renum tr.ov td{color:var(--bad)}

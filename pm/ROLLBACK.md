@@ -384,6 +384,14 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.21 (sheet number prefixes and stable renumbering)
+
+Each package can have a sheet-number prefix, set under Settings → Sheet number ranges or on the package itself. The number stays a plain integer. The prefix is only how it is shown, in the tree, the list, the status report, the engineering report index, and CSV export. CSV import accepts the prefixed form and stores the integer again. The prefix starts empty, so a saved project looks the same until someone sets one. A carry-on shows the original package’s prefixed number.
+
+Numbering can stay project-wide, or each package can use the same ranges on its own. A duplicate is then only a duplicate inside that package. When a range has no free number, the sheet is left blank and the numbering issues list says so. The old PP-n stand-in is no longer written.
+
+A number you type is locked. Adding, renaming, moving, or deleting a sheet does not shift the others. A new sheet takes the next free number, after the highest one in its range, unless Fill gaps is on. Renumber… opens a preview of the old number and the new one. Checked rows stay as they are. Apply is what writes the change.
+
 ## v3.20 (report font)
 
 The Report view has a Report font control beside Report type. The same choice is used by the status report, the engineering report, and the work description, on screen and in the printed PDF. It is saved in pm.ui.v3 on this browser. It is not stored in the project.

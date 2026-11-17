@@ -1,4 +1,4 @@
-/* Project Tracker v3.20 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.21 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs, including the report font).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -220,7 +220,7 @@
     const sh = r.sh, today = M.todayISO();
     return h('button', Object.assign({ type: 'button', class: 'scard st-' + slug(sh.status) + (sel && sel.type === 'sheet' && sel.id === sh.id ? ' sel' : '') + (msel.has(sh.id) ? ' msel' : ''), 'data-id': sh.id, 'aria-pressed': msel.size ? String(msel.has(sh.id)) : null,
       onclick: (e) => { if (e.shiftKey || e.ctrlKey || e.metaKey || (msel.size && ui.view === 'board')) { pickSheet(sh.id, e.shiftKey ? 'range' : 'toggle', [...document.querySelectorAll('.scard[data-id]')].map((x) => x.dataset.id)); return; } select_('sheet', sh.id); } }, attrs || {}),
-      h('span', { class: 'sc-top' }, h('span', { class: 'code', title: M.subName(r.sub) }, r.sub.code), h('span', { class: 'chip ' + DINFO[sh.discipline].cls }, DINFO[sh.discipline].short), sh.number ? h('span', { class: 'muted' }, '#' + sh.number) : null),
+      h('span', { class: 'sc-top' }, h('span', { class: 'code', title: M.subName(r.sub) }, r.sub.code), h('span', { class: 'chip ' + DINFO[sh.discipline].cls }, DINFO[sh.discipline].short), M.sheetNumberText(st, sh) ? h('span', { class: 'muted' }, '#' + M.sheetNumberText(st, sh)) : null),
       h('span', { class: 'sc-title' }, sh.title),
       h('span', { class: 'sc-meta muted' }, r.seg.title + (rowRoad(r) ? ' · ' + rowRoad(r) : '') + (M.sheetRange(sh) ? ' · Sta ' + staTxt(M.sheetRange(sh)) : '')),
       h('span', { class: 'sc-meta' }, h('span', { class: 'dot st-' + slug(sh.status) }), sh.status,
@@ -319,7 +319,7 @@
     const more = (n, cols) => n > MAX ? h('tr', { class: 'rmore' }, h('td', { colspan: cols }, '+ ' + (n - MAX) + ' more (see the app)')) : null;
     const nt = (t) => t ? h('p', { class: 'rnotep' }, h('b', {}, 'Notes: '), t) : null;
     const sheetLine = (x) => (x.sh.gen ? 'PP ' + x.sh.gen.idx + ' of ' + x.sh.gen.of : x.sh.title);
-    const sheetRow = (x) => h('tr', {}, h('td', {}, sheetLine(x)), h('td', { class: 'rnumc' }, x.sh.number ? String(x.sh.number) : '—'),
+    const sheetRow = (x) => h('tr', {}, h('td', {}, sheetLine(x)), h('td', { class: 'rnumc' }, M.sheetNumberText(st, x.sh) || '—'),
       h('td', { class: 'rnw' }, x.range ? M.formatStation(x.range.start) + ' – ' + M.formatStation(x.range.end) + (x.sh.sta ? ' *' : '') : '—'),
       h('td', {}, rchip(x.sh.status)), h('td', {}, x.sh.owner || '—'), h('td', { class: 'rnw' }, x.sh.due || '—'));
     const SHEAD = ['Sheet', 'No.', 'Station range', 'Status', 'Owner', 'Due'];
@@ -398,7 +398,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
             empty.length ? h('p', { class: 'rm' }, 'Not started: ' + empty.map((x) => x.sec.title).join(', ') + '.') : null); })))));
 
     /* 6 schedule */
-    const dueRow = (r) => h('tr', {}, h('td', {}, M.subTag(r.sub) + ' · ' + DINFO[r.sh.discipline].short), h('td', {}, (r.sh.number ? '#' + r.sh.number + ' ' : '') + r.sh.title), h('td', { class: 'rnw' }, r.sh.due), h('td', {}, r.sh.owner || '—'), h('td', {}, rchip(r.sh.status)));
+    const dueRow = (r) => h('tr', {}, h('td', {}, M.subTag(r.sub) + ' · ' + DINFO[r.sh.discipline].short), h('td', {}, (M.sheetNumberText(st, r.sh) ? '#' + M.sheetNumberText(st, r.sh) + ' ' : '') + r.sh.title), h('td', { class: 'rnw' }, r.sh.due), h('td', {}, r.sh.owner || '—'), h('td', {}, rchip(r.sh.status)));
     const DH = ['Part', 'Sheet', 'Due', 'Owner', 'Status'];
     body.push(h('section', { class: 'rsec' }, H2('Schedule', 'sched'),
       h('h3', {}, 'Milestones'), R.milestones.length ? tbl('', ['Milestone', 'Date', 'Sheets done', 'Progress'], R.milestones.map((m) => h('tr', { class: m.late ? 'rbad' : '' }, h('td', {}, m.m.name + (m.late ? ' (late)' : '')), h('td', { class: 'rnw' }, m.m.date || '—'), h('td', { class: 'rnumc' }, m.done + ' / ' + m.total), h('td', { class: 'rnw' }, rbar(m.pct), pct(m.pct))))) : none('No milestones set.'),
@@ -457,7 +457,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
           A.push({ label: M.subTag(sub) + ' · ' + seg.title, hint: d + ' section · ' + plural(seg.sheets.length, 'sheet') + (pp ? ' · ' + M.segPP(st, sub, seg).total + ' PP' : ''), kind: 'Section', rank: 1, run: toTree(sub.id, d, seg.id, () => { select_('seg', seg.id); focusNode('seg:' + seg.id); }) });
           if (pp) A.push({ label: 'Add road to ' + M.subTag(sub) + ' · ' + seg.title, kind: 'Action', kw: 'new road entry', run: toTree(sub.id, d, seg.id, () => { select_('seg', seg.id); focusAdd('addRoadName'); }) });
           for (const road of pp ? M.roadsOf(sub, seg) : []) A.push({ label: road.name, hint: M.subTag(sub) + ' · ' + seg.title + (M.hasSta(road) ? ' · ' + fmtFt(M.segLength(road)) + ' · ' + M.segPP(st, sub, road).total + ' PP' : ' · no stations yet'), kind: 'Road', rank: 1, kw: M.hasSta(road) ? 'sta ' + M.formatStation(road.start) + ' ' + M.formatStation(road.end) : '', run: toTree(sub.id, d, seg.id, () => { select_('road', road.id); focusNode(M.rgKey(seg, road.road)); }) });
-          for (const sh of seg.sheets) { const rd = M.sheetRoad(st, sub, sh); A.push({ label: sh.title, hint: M.subTag(sub) + ' · ' + seg.title + (rd ? ' · ' + rd : '') + (M.sheetRange(sh) ? ' · ' + staTxt(M.sheetRange(sh)) : '') + (sh.number ? ' · #' + sh.number : '') + ' · ' + sh.status, kw: sh.owner + ' ' + rd + (M.sheetRange(sh) ? ' sta ' + M.formatStation(M.sheetRange(sh).start) + ' ' + M.formatStation(M.sheetRange(sh).end) + ' ' + M.rangeText(M.sheetRange(sh)) : ''), kind: 'Sheet', run: () => { select_('sheet', sh.id); if (ui.view === 'tree') revealSheet({ sub, seg, sh }); } }); }
+          for (const sh of seg.sheets) { const rd = M.sheetRoad(st, sub, sh); A.push({ label: sh.title, hint: M.subTag(sub) + ' · ' + seg.title + (rd ? ' · ' + rd : '') + (M.sheetRange(sh) ? ' · ' + staTxt(M.sheetRange(sh)) : '') + (M.sheetNumberText(st, sh) ? ' · #' + M.sheetNumberText(st, sh) : '') + ' · ' + sh.status, kw: sh.owner + ' ' + rd + (M.sheetRange(sh) ? ' sta ' + M.formatStation(M.sheetRange(sh).start) + ' ' + M.formatStation(M.sheetRange(sh).end) + ' ' + M.rangeText(M.sheetRange(sh)) : '') + ' ' + M.sheetNumberText(st, sh), kind: 'Sheet', run: () => { select_('sheet', sh.id); if (ui.view === 'tree') revealSheet({ sub, seg, sh }); } }); }
         }
       }
     }
@@ -1195,7 +1195,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       body = [h('span', { class: 'chip ' + DINFO[n.disc].cls, title: n.disc }, DINFO[n.disc].short),
         n.depth === 5 ? (() => { const rg = M.sheetRange(sh), sc = M.sheetScale(st, n.sub, sh);
           return h('div', { class: 'nb' }, h('div', { class: 'nt sm' + (rg ? ' sta' : ''), title: sh.title }, sh.gen || (sh.dam && n.br) ? (sh.gen ? 'PP ' + sh.gen.idx : 'DAM ' + sh.dam.idx) + ': ' + (rg ? 'STA ' + staTxt(rg) : 'no range') + (rg && rg.manual ? ' ✎' : '') : sh.title),
-            h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (sh.number ? ' · #' + sh.number : '') + (sh.gen || (sh.dam && n.br) || sh.unit ? '' : ' · ' + (rg ? 'STA ' + staTxt(rg) : 'no range')) + (sc ? ' · ' + sc + ' scale' : '') + (sh.due ? ' · ' + sh.due : '')),
+            h('div', { class: 'ns' }, h('span', { class: 'dot' }), sh.status + (M.sheetNumberText(st, sh) ? ' · #' + M.sheetNumberText(st, sh) : '') + (sh.gen || (sh.dam && n.br) || sh.unit ? '' : ' · ' + (rg ? 'STA ' + staTxt(rg) : 'no range')) + (sc ? ' · ' + sc + ' scale' : '') + (sh.due ? ' · ' + sh.due : '')),
             blocked || upd ? h('div', { class: 'nflags' }, blocked ? h('span', { class: 'fl fl-blk', title: 'Blocked by ' + blocked + ' unfinished prerequisite(s)' }, '⛓ Blocked by ' + blocked) : null,
               upd ? h('span', { class: 'fl fl-upd', title: 'An upstream item changed' }, '⟳ Update needed') : null) : null); })() :
         h('div', { class: 'nb' }, h('div', { class: 'nt sm' }, sh.title),
@@ -1328,7 +1328,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     { k: 'discipline', l: 'Disc.', get: (r) => r.sh.discipline, edit: 'disc' },
     { k: 'section', l: 'Section', get: (r) => DISCS.indexOf(r.seg.discipline) * 1000 + secIndex(r), show: (r) => r.seg.title, edit: 'sec' },
     { k: 'road', l: 'Road', get: (r) => rowRoad(r), edit: 'road' },
-    { k: 'number', l: 'No.', get: (r) => r.sh.number, edit: 'text' },
+    { k: 'number', l: 'No.', get: (r) => { const v = M.numVal(r.sh.number); return v == null ? (r.sh.number || '') : v; }, edit: 'text' },
     { k: 'title', l: 'Sheet', get: (r) => r.sh.title, edit: 'text', wide: true },
     { k: 'series', l: 'Series', get: (r) => r.sh.series },
     { k: 'range', l: 'Station range', get: (r) => { const g = M.sheetRange(r.sh); return g ? g.start : -1; }, show: (r) => { const g = M.sheetRange(r.sh); return g ? M.formatStation(g.start) + '–' + M.formatStation(g.end) + (g.manual ? ' ✎' : '') : ''; } },
@@ -1364,7 +1364,15 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     const sh = r.sh;
     const lab = c.l + ' for ' + sh.title;
     const upd = (f) => { commit(() => M.updateSheet(st, sh.id, f), { render: false }); refresh(); };
-    if (c.edit === 'text') { const iss = c.k === 'number' ? M.numberIssues(st, sh) : []; const i = h('input', { value: sh[c.k] || '', 'aria-label': lab, class: 'c-' + c.k + (iss.length ? ' numbad' : ''), title: iss.join(' · ') || null, placeholder: c.k === 'number' ? M.suggestNumber(st, sh) || '' : null }); i.addEventListener('change', () => upd({ [c.k]: i.value })); return i; }
+    if (c.k === 'number') {
+      if (M.isCarryOn(sh)) return h('span', { class: 'numcell', title: 'Follows the original sheet' }, M.sheetNumberText(st, sh) || '—');
+      const iss = M.numberIssues(st, sh);
+      const pre = M.sheetPrefix(st, sh);
+      const i = h('input', { value: sh.number || '', 'aria-label': lab, class: 'c-number' + (iss.length ? ' numbad' : ''), title: iss.join(' · ') || null, placeholder: M.suggestNumber(st, sh) || '' });
+      i.addEventListener('change', () => upd({ number: i.value }));
+      return h('span', { class: 'numcell' }, pre ? h('span', { class: 'numpre' }, pre) : null, i);
+    }
+    if (c.edit === 'text') { const i = h('input', { value: sh[c.k] || '', 'aria-label': lab, class: 'c-' + c.k }); i.addEventListener('change', () => upd({ [c.k]: i.value })); return i; }
     if (c.edit === 'num') { const i = h('input', { type: 'number', min: 0, max: c.k === 'pct' ? 100 : null, step: c.k === 'pct' ? 5 : 0.5, value: sh[c.k] || 0, 'aria-label': lab, class: 'num' }); i.addEventListener('change', () => upd({ [c.k]: i.value || 0 })); return i; }
     if (c.edit === 'date') { const i = h('input', { type: 'date', value: sh.due, 'aria-label': lab }); i.addEventListener('change', () => upd({ due: i.value })); return i; }
     if (c.edit === 'status') { const i = select(M.STATUSES, sh.status, { 'aria-label': lab, class: 'stsel st-' + slug(sh.status) }); i.addEventListener('change', () => upd({ status: i.value })); return i; }
@@ -1664,6 +1672,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('h2', {}, h('span', { class: 'code' }, sub.code), ' ', M.subName(sub)),
       h('div', { class: 'statrow' }, ring(p.pct, 54), h('div', {}, h('div', {}, plural(sub.roads.length, 'road entry') + ' · ' + fmtFt(pp.length)), h('div', {}, h('b', {}, pp.total + ' PP sheets'), ' at current scales'))),
       field('Name', name, 'Shown everywhere instead of “Sub-project ' + sub.code + '”. The letter ' + sub.code + ' and the build order stay the same. Enter saves, Esc cancels.'), field('Default plan scale for road entries', sp, 'Road entries use this unless they set their own scale.'),
+      field('Sheet number prefix', h('input', { id: 'pkgPrefix', value: sub.numPrefix || '', maxlength: 12, placeholder: 'e.g. ' + sub.code + '-', 'aria-label': 'Sheet number prefix for ' + sub.code, onchange: (e) => commit(() => M.setPackagePrefix(st, sub.id, e.target.value)) }), 'Shown in front of this package’s sheet numbers. Leave blank for a plain number. A carry-on keeps the original package’s prefix.'),
       h('h3', {}, 'Branches'),
       h('ul', { class: 'dlist' }, DISCS.map((d) => { const b = M.branchStats(st, sub, d); return h('li', {}, h('button', { type: 'button', class: 'rowbtn', onclick: toDisc(sub, d) }, h('span', { class: 'chip ' + DINFO[d].cls }, DINFO[d].short), h('span', { class: 'grow' }, ' ' + M.subTag(sub) + ' · ' + d + ' · ' + b.total + ' sh · ' + Math.round(b.pct) + '%'), h('b', {}, b.pp + ' PP'))); })),
       h('details', { class: 'tpls' }, h('summary', {}, 'Standard (non-PP) sheet set for ' + M.subTag(sub) + ' (' + sub.templates.length + ')'),
@@ -2079,7 +2088,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('button', { type: 'button', class: 'btn danger sm', id: 'delRoad', onclick: () => { if (confirm('Delete road entry “' + road.name + '”' + (gen.length ? ' and its ' + plural(gen.length, 'generated PP sheet') : '') + '? Other sheets are kept.')) { commit(() => M.deleteRoad(st, road.id)); select_('seg', sec.id); } } }, 'Delete road entry'));
   }
   let pickState = { key: null, q: '', open: false, kind: 'dep', dir: 'in' };
-  function refText(x) { return x.t === 'sheet' ? x.sh.title + ' ' + x.sh.number + ' ' + M.sheetRoad(st, x.sub, x.sh) : x.t === 'road' ? x.name + ' road' : 'section'; }
+  function refText(x) { return x.t === 'sheet' ? x.sh.title + ' ' + M.sheetNumberText(st, x.sh) + ' ' + M.sheetRoad(st, x.sub, x.sh) : x.t === 'road' ? x.name + ' road' : 'section'; }
   function connectorsBox(ref) {
     const lo = M.linksOf(st, ref);
     const key = M.rk(ref);
@@ -2136,11 +2145,13 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       } }, impactKey === key ? 'Hide impact' : 'Show impact'), h('span', { class: 'muted', id: 'impactCounts' }, I.up.size + ' upstream · ' + I.down.size + ' downstream')));
   }
   function numberField(sh, input) {
-    const r = M.rangeFor(st, sh), sug = M.suggestNumber(st, sh), iss = M.numberIssues(st, sh);
+    const r = M.rangeFor(st, sh), sug = M.suggestNumber(st, sh), iss = M.numberIssues(st, sh), pre = M.sheetPrefix(st, sh);
     if (iss.length) input.classList.add('numbad');
-    return h('div', { class: 'f' }, h('label', { for: input.id }, 'Sheet number'), input,
+    const shown = (n) => (pre && n ? pre + n : n);
+    return h('div', { class: 'f' }, h('label', { for: input.id }, 'Sheet number'),
+      h('div', { class: 'numline' }, pre ? h('span', { class: 'numpre', id: 'numPre' }, pre) : null, input),
       h('small', { class: 'muted', id: 'numHint' }, r ? r.label + ': ' + r.from + '–' + r.to : 'No range set',
-        sug && String(sh.number).trim() !== sug ? [' · next free ', h('b', {}, sug), ' ', h('button', { type: 'button', class: 'link', id: 'useNum', onclick: () => commit(() => M.updateSheet(st, sh.id, { number: sug })) }, 'Use')] : null),
+        sug && String(sh.number).trim() !== sug ? [' · next free ', h('b', {}, shown(sug)), ' ', h('button', { type: 'button', class: 'link', id: 'useNum', onclick: () => commit(() => M.updateSheet(st, sh.id, { number: sug })) }, 'Use')] : null),
       iss.length ? h('small', { class: 'err', id: 'numWarn', role: 'alert' }, '⚠ ' + iss.join(' · ')) : null);
   }
   function carryBox(sub, seg) {
@@ -2188,7 +2199,7 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
     const carried = M.isCarryOn(sh), origin = carried ? M.carryOrigin(st, sh) : null;
     const titleIn = h('input', { id: 'shTitle', value: origin ? origin.sh.title : sh.title, readonly: carried });
     if (!carried) titleIn.addEventListener('change', () => up({ title: titleIn.value }));
-    const numIn = h('input', { id: 'shNum', placeholder: 'e.g. 12', value: origin ? (origin.sh.number || '') : (sh.number || ''), readonly: carried });
+    const numIn = h('input', { id: 'shNum', placeholder: 'e.g. 12', value: carried ? (M.sheetNumberText(st, sh) || '') : (sh.number || ''), readonly: carried });
     if (!carried) numIn.addEventListener('change', () => up({ number: numIn.value }));
     return h('div', { class: 'dbody' },
       crumb([[seg.discipline, () => select_('dtop', seg.discipline)], [M.subTag(sub), toDisc(sub, seg.discipline)], [seg.title, toSeg(seg)]].concat(groad ? [[groad.road.name, () => select_('road', groad.road.id)]] : [])),
@@ -2515,14 +2526,49 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); commit(() => M.addMilestone(st, nn.value, nd.value)); openMilestones(); } }, nn, nd, h('button', { class: 'btn', type: 'submit' }, 'Add milestone')));
     openModal('Milestones', body);
   }
+  function openRenumber() {
+    let fill = M.fillGaps(st);
+    let keep = null;
+    const body = h('div', { id: 'renumBox' });
+    function draw() {
+      const plan = M.renumberPreview(st, { fillGaps: fill, keepIds: keep });
+      body.replaceChildren(
+        h('p', { class: 'muted' }, 'Checked rows keep the number they have. New sheets and unlocked rows take the next free number. Nothing is written until you apply.'),
+        h('label', { class: 'chk', id: 'renumGapLabel' }, h('input', { type: 'checkbox', id: 'renumGaps', checked: fill, onchange: (e) => { fill = e.target.checked; draw(); } }), 'Fill gaps'),
+        h('div', { class: 'tablewrap' }, h('table', { class: 'grid compact renum', id: 'renumPreview' },
+          h('thead', {}, h('tr', {}, ['Keep', 'Package', 'Sheet', 'Now', 'New'].map((x) => h('th', { scope: 'col' }, x)))),
+          h('tbody', {}, plan.map((p) => h('tr', { class: p.overflow ? 'ov' : '' },
+            h('td', {}, h('input', { type: 'checkbox', class: 'renumKeep', 'data-id': p.id, checked: !!p.keep, disabled: !!p.carry, 'aria-label': (p.carry ? 'Follows the original' : 'Keep number') + ' for ' + p.title, onchange: () => {
+              keep = [...body.querySelectorAll('.renumKeep:checked')].map((el) => el.getAttribute('data-id'));
+              draw();
+            } })),
+            h('td', {}, p.sub),
+            h('td', {}, p.title + (p.carry ? ' (follows original)' : '')),
+            h('td', {}, p.oldText || '—'),
+            h('td', {}, p.carry || p.keep ? (p.oldText || '—') : (p.nextText || 'no free number'))))))),
+        h('div', { class: 'row' },
+          h('button', { type: 'button', class: 'btn', id: 'renumApply', onclick: () => { const n = commit(() => M.applyRenumber(st, plan)); closeModal(); toast('Updated ' + plural(n || 0, 'sheet') + '. Kept numbers stay as they were.'); } }, 'Apply'),
+          h('button', { type: 'button', class: 'btn sec', id: 'renumCancel', onclick: () => closeModal() }, 'Cancel')));
+    }
+    draw();
+    openModal('Renumber sheets', body);
+  }
   function numberingSection() {
     const ov = M.rangeOverlaps(st), iss = M.allNumberIssues(st);
     const nt = h('input', { placeholder: 'Sheet title (e.g. Culvert Layout)', 'aria-label': 'Sheet title for new range', list: 'tplList2' });
     const nf = h('input', { type: 'number', min: 0, placeholder: 'From', 'aria-label': 'Range from', class: 'num' });
     const nto = h('input', { type: 'number', min: 0, placeholder: 'To', 'aria-label': 'Range to', class: 'num' });
     const set = (r, k) => (e) => { try { M.setRange(st, r.key, { [k]: e.target.value }); save(); openSettings('nums'); } catch (ex) { toast(ex.message); e.target.value = r[k]; } };
+    const mode = h('select', { id: 'numMode', 'aria-label': 'How sheet numbers are shared', onchange: (e) => { commit(() => M.setNumbering(st, { mode: e.target.value })); openSettings('nums'); } },
+      h('option', { value: 'project', selected: M.numberingMode(st) !== 'package' }, 'Project-wide — one sequence'),
+      h('option', { value: 'package', selected: M.numberingMode(st) === 'package' }, 'Each package numbers on its own'));
     return h('section', { id: 'numSec' }, h('h3', {}, 'Sheet number ranges'),
-      h('p', { class: 'muted' }, 'Per section (key sec:…), P&P series or sheet title, with a fallback per discipline. The sheet drawer suggests the next free number; duplicates and numbers outside the range are flagged.'),
+      h('p', { class: 'muted' }, 'Each package can show a short prefix in front of its sheet numbers. The number itself stays a plain integer, so ranges and sorting do not change. A full range is flagged instead of inventing a stand-in number. Numbers you type are kept when sheets are added, renamed, moved, or deleted.'),
+      h('div', { class: 'row' }, h('label', { class: 'f' }, h('span', {}, 'Numbering'), mode),
+        h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'numFillGaps', checked: M.fillGaps(st), onchange: (e) => { commit(() => M.setNumbering(st, { fillGaps: e.target.checked })); openSettings('nums'); } }), 'Fill gaps when assigning new numbers')),
+      h('table', { class: 'grid compact', id: 'numPrefixes' }, h('thead', {}, h('tr', {}, ['Package', 'Name', 'Prefix'].map((x) => h('th', { scope: 'col' }, x)))),
+        h('tbody', {}, M.orderedSubs(st).map((sub) => h('tr', {}, h('th', { scope: 'row' }, sub.code), h('td', {}, M.subName(sub)),
+          h('td', {}, h('input', { id: 'numPrefix-' + sub.code, value: sub.numPrefix || '', maxlength: 12, placeholder: 'e.g. ' + sub.code + '-', 'aria-label': 'Sheet number prefix for package ' + sub.code, onchange: (e) => { commit(() => M.setPackagePrefix(st, sub.id, e.target.value)); openSettings('nums'); } })))))),
       h('table', { class: 'grid compact' }, h('thead', {}, h('tr', {}, ['Sheets', 'From', 'To', ''].map((x) => h('th', { scope: 'col' }, x)))),
         h('tbody', {}, st.settings.numbering.map((r) => h('tr', {}, h('th', { scope: 'row' }, r.label),
           h('td', {}, h('input', { type: 'number', min: 0, value: r.from, class: 'num', 'aria-label': r.label + ' from', onchange: set(r, 'from') })),
@@ -2531,10 +2577,10 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('form', { class: 'addrow', onsubmit: (e) => { e.preventDefault(); try { M.addRange(st, nt.value, nf.value, nto.value); save(); openSettings('nums'); } catch (ex) { toast(ex.message); } } }, nt, nf, nto, h('button', { class: 'btn sec', type: 'submit' }, 'Add range')),
       h('datalist', { id: 'tplList2' }, (st.index || []).map((t) => h('option', { value: t.title }))),
       ov.length ? h('p', { class: 'warnbox' }, 'Overlapping ranges: ' + ov.join('; ')) : null,
-      h('p', { class: iss.length ? 'err' : 'muted', id: 'numIssues' }, iss.length ? '⚠ ' + plural(iss.length, 'sheet') + ' with number issues: ' + iss.slice(0, 5).map((x) => M.subTag(x.r.sub) + ' ' + x.r.sh.title + ' (' + x.r.sh.number + ')').join(', ') + (iss.length > 5 ? '…' : '') : 'No duplicate or out-of-range numbers.'),
+      h('p', { class: iss.length ? 'err' : 'muted', id: 'numIssues' }, iss.length ? '⚠ ' + plural(iss.length, 'sheet') + ' with number issues: ' + iss.slice(0, 5).map((x) => M.subTag(x.r.sub) + ' ' + x.r.sh.title + ' (' + (M.sheetNumberText(st, x.r.sh) || 'no number') + ')').join(', ') + (iss.length > 5 ? '…' : '') : 'No duplicate or out-of-range numbers.'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn sec', id: 'fillNums', onclick: () => { const n = commit(() => M.autoNumber(st)); toast('Numbered ' + plural(n || 0, 'sheet') + '.'); openSettings('nums'); } }, 'Fill empty numbers'),
-        h('button', { type: 'button', class: 'btn sec', id: 'renumAll', onclick: () => { if (confirm('Renumber ALL sheets from the ranges (in build order and station order)? This replaces existing sheet numbers.')) { const n = commit(() => M.autoNumber(st, { all: true })); toast('Renumbered ' + plural(n || 0, 'sheet') + '.'); openSettings('nums'); } } }, 'Renumber all')));
+        h('button', { type: 'button', class: 'btn sec', id: 'renumAll', onclick: () => openRenumber() }, 'Renumber…')));
   }
   function openSettings(focus) {
     const sc = h('input', { type: 'number', min: 1, step: 'any', placeholder: 'Scale (e.g. 30)', 'aria-label': 'New scale' });
