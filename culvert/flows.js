@@ -2,11 +2,12 @@
 (function(){const prev=window.drawProfile,f=(x,d=2)=>isFinite(x)?(+x).toFixed(d):'—';
 const q=new URLSearchParams(location.search);let src=null;
 try{if(q.get('from')==='rational'){src=JSON.parse(localStorage.getItem('hydro.handoff')||'null');
-  if(src&&!q.has('Q')){const set=(id,v)=>{const e=document.getElementById(id);if(e&&v>0)e.value=(+v).toFixed(2);};set('Q',src.Q);set('Qcheck',src.Qcheck);}}}catch(e){}
+  if(src&&!q.has('Q')){const si=document.getElementById('units')&&document.getElementById('units').value==='SI',k=si?Math.pow(0.3048,3):1;
+   const set=(id,v)=>{const e=document.getElementById(id);if(e&&v>0)e.value=(+v*k).toFixed(si?4:2);};set('Q',src.Q);set('Qcheck',src.Qcheck);}}}catch(e){}
 if(!src&&q.get('from')==='rational')src={Q:+q.get('Q'),Qcheck:+q.get('Qcheck'),rp:+q.get('rp'),county:q.get('county')||'',zone:q.get('zone')||'',tc:+q.get('tc'),C:+q.get('C'),A:+q.get('A'),i:+q.get('i'),i100:+q.get('i100'),ser:q.get('ser')||''};
 // keep rating-curve range covering the check flood
 (()=>{const k=document.getElementById('Qcheck'),mx=document.getElementById('Qmax');if(k&&mx&&+k.value>+mx.value)mx.value=(1.1*k.value).toFixed(1);})();
-function srcLine(US){if(!src)return '';return `Flows sent from the Rational Method tool: design ${f(src.Q,1)} cfs (${src.rp}-yr) and check ${f(src.Qcheck,1)} cfs (100-yr, 1% AEP), ${src.county} County${src.zone?' · '+src.zone:''} ${src.ser||''} IDF, Tc ${f(src.tc,1)} min, C ${f(src.C,3)}, A ${f(src.A,2)} ac, i ${f(src.i,2)} / ${f(src.i100,2)} in/hr.${US?'':' (Converted to SI in the culvert tool only if you switch units — re-enter flows.)'}`;}
+function srcLine(US){if(!src)return '';const k=US?1:Math.pow(0.3048,3),qu=US?'cfs':'m³/s';return `Flows sent from the Rational Method tool (stored in cfs): design ${f(src.Q*k,US?1:3)} ${qu} (${src.rp}-yr) and check ${f(src.Qcheck*k,US?1:3)} ${qu} (100-yr, 1% AEP), ${src.county} County${src.zone?' · '+src.zone:''} ${src.ser||''} IDF, Tc ${f(src.tc,1)} min, C ${f(src.C,3)}, A ${f(src.A,2)} ac, i ${f(src.i,2)} / ${f(src.i100,2)} in/hr.${US?'':' Values were converted from cfs with 0.3048³ when they were written into the form.'}`;}
 function render(p,r){const K=window.CHECK,US=r.US,L=US?'ft':'m',Qu=US?'cfs':'m³/s',V=US?'ft/s':'m/s';
  const sm=document.getElementById('summary');
  if(sm&&K&&!sm.querySelector('.kchk'))sm.insertAdjacentHTML('beforeend',`<div class="kpi kchk">Check flood (1% AEP) HW<b>${f(K.HW)} ${L}</b>El. ${f(K.EL)} ${L} · Q ${f(K.Qt,1)} ${Qu}${K.over?' · road overtops '+f(K.Qr,1)+' '+Qu:''}</div>`);

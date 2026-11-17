@@ -59,12 +59,15 @@ function drawPhone(g){const W=340,H=230,svg=document.getElementById('mprofile');
  let s=`<rect width="${W}" height="${H}" fill="#eaf4fb"/>
  <path d="M0 ${yi} L${xi} ${yi} L${xi} ${ti} L${c0} ${road} L${c1} ${road} L${xo} ${to} L${xo} ${yo} L${W} ${yo} L${W} ${H} L0 ${H}Z" fill="#cdb98f" stroke="#8a7550" stroke-width="1.5"/>
  <path d="M0 ${yi} L${xi} ${yi} L${xo} ${yo} L${W} ${yo} L${W} ${H} L0 ${H}Z" fill="#b39c6e"/>
+ <path d="M${xi} ${yi+3} L${xo} ${yo+3} L${xo} ${to-3} L${xi} ${ti-3} Z" fill="#c5c8cc" stroke="#333" stroke-width="1"/>
  <path d="M${xi} ${yi} L${xo} ${yo} L${xo} ${to} L${xi} ${ti}Z" fill="#fff"/>
  <path d="${wsP} L${xo} ${yo} L${xi} ${yi}Z" fill="#3d8fdc" opacity=".8"/>${jm}
  <line class="flow" x1="${xi+4}" y1="${(yi+ws1)/2}" x2="${xo-4}" y2="${(yo+ws2)/2}" style="animation-duration:${flowDur(g.V)}"/>
- <path d="M${xi} ${yi} L${xo} ${yo} M${xi} ${ti} L${xo} ${to}" stroke="#4a4f57" stroke-width="3" fill="none"/>
+ <path d="M${xi} ${yi} L${xo} ${yo} M${xi} ${ti} L${xo} ${to}" stroke="#2c3136" stroke-width="3.5" fill="none"/>
  <line x1="${xi}" y1="${yi+2}" x2="${xi}" y2="${ti-6}" stroke="#2b2f36" stroke-width="5"/><line x1="${xo}" y1="${yo+2}" x2="${xo}" y2="${to-6}" stroke="#2b2f36" stroke-width="5"/>
- <line x1="${c0}" x2="${c1}" y1="${road}" y2="${road}" stroke="#333" stroke-width="4"/>`;
+ <rect x="${c0}" y="${road-6}" width="${c1-c0}" height="6" fill="#3c4148"/>
+ <line x1="${c0+3}" x2="${c1-3}" y1="${road-3}" y2="${road-3}" stroke="#e6c84a" stroke-width="1.1" stroke-dasharray="5 4"/>
+ <line x1="${c0}" x2="${c1}" y1="${road}" y2="${road}" stroke="#eee" stroke-width="1"/>`;
  if(yE<yi-0.5)s+=`<path d="M0 ${yE} L${xs} ${yE} L${xi} ${ti} L${xi} ${yi} L0 ${yi}Z" fill="#3d8fdc" opacity=".75"/><line x1="0" x2="${xs}" y1="${yE}" y2="${yE}" stroke="#1659a3" stroke-width="2"/><line class="ripple" x1="2" x2="${xs-4}" y1="${yE+3}" y2="${yE+3}"/>`;
  if(g.h>0.001){const yw=Math.min(Y(g.zc+g.h),road-5);s+=`<path d="M${c0-(road-yw)*(c0-xi)/(road-ti)} ${yw} L${c1} ${Y(g.zc+g.h*0.6)} L${xo} ${Math.min(yT,to)-2} L${xo} ${to} L${c1} ${road} L${c0} ${road}Z" fill="#3d8fdc" opacity=".7"/><path class="spill" d="M${c0} ${(yw+road)/2} L${c1} ${(Y(g.zc+g.h*0.6)+road)/2} L${xo} ${to-3}" style="animation-duration:${flowDur(Math.sqrt(g.h)*3)}"/>`;}
  if(g.hasTw&&yT<yo-0.5)s+=`<path d="M${xo} ${yT} L${W} ${yT} L${W} ${yo} L${xo} ${yo}Z" fill="#3d8fdc" opacity=".65"/><line x1="${xo}" x2="${W}" y1="${yT}" y2="${yT}" stroke="#1659a3" stroke-width="2"/><line class="ripple" x1="${xo+4}" x2="${W-2}" y1="${yT+3}" y2="${yT+3}"/>`;
