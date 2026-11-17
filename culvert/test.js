@@ -207,5 +207,14 @@ chk('Fig 3.11C kt free flow at 0.6',ktFactor(0.6,'gravel'),1.0,0.1);
  const z=axes.crossingAxes(0);
  must('Road centerline is perpendicular to the barrel axis at zero skew', Math.abs(axes.axesDot(0))<1e-9 && z.barrel.x>0.99 && Math.abs(z.barrel.y)<1e-9 && Math.abs(z.road.x)<1e-9 && z.road.y>0.99);
  chk('30° skew offsets the barrel from perpendicular by sin(skew)', axes.axesDot(30), Math.sin(30*Math.PI/180), 0.1);
+ const lay=axes.crossingLayout({L:80,crest:112,fp:104,bedIn:100,bedOut:99.2,crestLen:140,paveW:28,halfBot:8,halfBank:18});
+ const ck=axes.layoutCheck(lay);
+ must('Embankment crest centroid is within 10% of the barrel midpoint', ck.midErr<=0.10&&Math.abs(lay.crestCentroidS-40)<1e-6);
+ must('Embankment base spans the barrel from inlet face to outlet face', ck.base&&lay.toeIn===0&&lay.toeOut===80);
+ must('Both headwalls sit on the embankment toes', ck.toes&&lay.headwalls[0].s===lay.toeIn&&lay.headwalls[1].s===lay.toeOut);
+ must('Crest is over the barrel midpoint and both faces slope down to the channel', ck.over&&ck.down&&ck.slopes&&ck.ok);
+ const layShort=axes.crossingLayout({L:36,crest:108,fp:103,bedIn:100,bedOut:99,crestLen:90,paveW:40,halfBot:6,halfBank:14});
+ const ckShort=axes.layoutCheck(layShort);
+ must('A short barrel still keeps the crest centered with slopes at both toes', ckShort.ok&&layShort.paveW<layShort.L&&layShort.sCrest0>0&&layShort.sCrest1<layShort.L);
 }
 console.log(ok?'\nALL CHECKS PASSED':'\nSOME CHECKS FAILED'); process.exit(ok?0:1);
