@@ -664,6 +664,9 @@ function v2Fixture() {
   ok(await has('#eng-length .pie') && await has('#eng-length .piekey'), 'road length section opens the report with a pie chart and legend');
   ok(/Total/.test(await txt('#eng-length .piekey')) && /ft/.test(await txt('#eng-length .piekey')), 'road length legend lists feet and a total');
   ok(await has('#eng-desc table.roads'), 'location section has the roads table');
+  ok(await has('#eng-schedule .gantt') && /TBD/.test(await txt('#eng-schedule')) && /30% submittal/.test(await txt('#eng-schedule')) && !/Package /.test(await txt('#eng-schedule')), 'schedule chart lists milestones only, with TBD for a blank date');
+  ok((await pg.$eval('#eng-length .piesw rect', (e) => e.getAttribute('fill'))) === '#002856', 'road length chart starts with navy');
+  ok((await pg.$eval('#eng-desc table.roads th', (e) => getComputedStyle(e).borderTopColor)) === 'rgb(0, 40, 86)', 'engineering table headers use the navy rule');
   const roadCells = await pg.$eval('#eng-desc table.roads', (t) => {
     const td = t.querySelector('tbody td');
     const num = t.querySelector('td.cnum');
@@ -768,6 +771,7 @@ function v2Fixture() {
   await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
   const ER = await pg.$eval('#report', (e) => e.textContent);
   ok(await has('#report.eng .ecover .eseal') && /NOT SEALED/.test(ER) && /0912-34-567/.test(ER), 'printed engineering report: cover with NOT SEALED seal block and CSJ');
+  ok(await has('#report .gantt') && /TBD/.test(ER), 'printed schedule includes the gantt');
   ok(/Road Length by Sub-project/.test(ER) && await has('#report .pie') && await has('#report .piekey tr.rtot'), 'printed report opens with the road length chart and its total');
   ok(await has('#report .etoc') && /roadside ditches drain to the north/.test(ER) && !/Scope of Work/.test(ER) && /\[Engineer to state the design criteria/.test(ER), 'printed: TOC, engineer text, toggled-off section left out, placeholders kept');
   await click('#engCopy'); await sleep(250);
