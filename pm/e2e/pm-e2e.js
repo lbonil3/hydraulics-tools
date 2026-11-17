@@ -714,8 +714,27 @@ function v2Fixture() {
     return { cont: cont.length, bad, head };
   });
   await pg.emulateMediaType('screen');
-  ok(roadCont.cont > 0 && roadCont.bad.length === 0, 'print: continuation sub-rows match the first row and use a dashed top border' + (roadCont.bad || []).join('; '));
+  ok(roadCont.bad.length === 0, 'print: roads cells match the first row of their column, and a continuation row is dashed' + (roadCont.bad || []).join('; '));
   ok(roadCont.head['c-len'] === 'right' && roadCont.head['c-sp'] === 'center' && roadCont.head['c-align'] === 'left' && roadCont.head['c-sta'] === 'left' && roadCont.head['c-road'] === 'left', 'print: roads headers line up with their columns');
+  const trunkRoads = await pg.evaluate(() => {
+    const M = window.PMModel, E = window.PMEng;
+    const st = JSON.parse(localStorage.getItem('pm.data.v3'));
+    const built = E.build(st);
+    const desc = built.find((s) => s.id === 'desc');
+    const tab = desc.blocks.find((b) => b.table && b.table.cls === 'roads').table;
+    const cells = (r) => Array.isArray(r) ? r : r.cells;
+    const blob = tab.rows.map((r) => cells(r).join(' ')).join('\n');
+    const shown = tab.rows.reduce((a, r) => a + Number(String(cells(r)[3]).replace(/[^0-9.]/g, '') || 0), 0);
+    const count = desc.blocks.find((b) => b.p && /tracked on/.test(b.p)).p;
+    const pie = built.find((s) => s.id === 'length').blocks.find((b) => b.pie).pie.total;
+    let trunkFt = 0;
+    for (const sub of st.subs) for (const sec of sub.segments) if (M.isTrunkSec(sec)) trunkFt += M.roadsOf(sub, sec).reduce((a, r) => a + (M.hasSta(r) ? M.segLength(r) : 0), 0);
+    const proposed = built.find((s) => s.id === 'proposed').blocks.filter((b) => b.ul).flatMap((b) => b.ul).join('\n');
+    const sheets = built.find((s) => s.id === 'sheets').blocks.find((b) => b.table && b.table.cls === 'eidx').table.rows.map((r) => r[1]).join('\n');
+    return { blobHas: /Trunk A-3|Trunk copy/.test(blob), count, bodies: tab.bodies.length, shown, pie, trunkFt, proposed: /Trunkline Plan & Profile/.test(proposed) && /Trunk A-3/.test(proposed), sheets: /Trunk A-3/.test(sheets) };
+  });
+  ok(!trunkRoads.blobHas && trunkRoads.count === 'Roadway drainage work is tracked on ' + trunkRoads.bodies + ' road' + (trunkRoads.bodies === 1 ? '' : 's') + ':' && trunkRoads.trunkFt > 0 && Math.round(trunkRoads.pie) === trunkRoads.shown && trunkRoads.pie < trunkRoads.shown + trunkRoads.trunkFt, 'engineering roads table, road count, and length chart leave out trunk lines');
+  ok(trunkRoads.proposed && trunkRoads.sheets, 'trunk lines stay in the proposed improvements and the sheet index');
   ok(/right/.test(roadCells.num) && /nowrap/.test(roadCells.num) && /center/.test(roadCells.mid) && /nowrap/.test(roadCells.mid), 'length is right-aligned and sub-projects are centered, both on one line');
   const proposed = await txt('#eng-proposed');
   ok(/North Pond/.test(proposed) && /Layout/.test(proposed) && /Cross Sections/.test(proposed) && /Geometric Layout \(1 of 2\)/.test(proposed) && /Geometric Layout \(2 of 2\)/.test(proposed), 'proposed section lists each pond by name and its sheets');

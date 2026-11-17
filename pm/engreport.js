@@ -1,4 +1,4 @@
-/* Project Tracker v3.24: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.25: Engineering Report (drainage design report style), derived from the tracker data.
    A carried sheet counts in every package that has it. Unique plan sheets are labeled separately.
    Sheets carried into a package are listed in the same section and group as the original.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
@@ -55,6 +55,8 @@
   const fmtMi = (ft) => { const mi = ft / 5280; return (Math.abs(mi) >= 10 ? mi.toFixed(1) : mi.toFixed(2)) + ' mi'; };
   const fmtPct = (ft, total) => { if (!(total > 0)) return '0%'; const p = ft / total * 100; return (Math.abs(p - Math.round(p)) < 0.05 ? String(Math.round(p)) : p.toFixed(1)) + '%'; };
   const PIE_COLORS = ['#1f4e79', '#c45911', '#548235', '#7030a0', '#c00000', '#833c0c', '#2e75b6', '#bf8f00'];
+  /* Plan and profile roads only. Trunk lines live on the Trunkline section and are not roads. */
+  function reportRoadSec(sec) { return M.isPPSec(sec) && !M.isTrunkSec(sec); }
   /* Same station lengths as the roads table: each range is counted once. A range that is
      tracked in more than one sub-project is split evenly across those sub-projects. */
   function lengthSplit(st) {
@@ -63,7 +65,7 @@
     const seen = new Map();
     let split = false;
     for (const sub of subs) for (const d of M.DISCIPLINES) for (const sec of M.sectionsOf(sub, d)) {
-      if (!M.isPPSec(sec)) continue;
+      if (!reportRoadSec(sec)) continue;
       for (const g of M.roadGroups(sub, sec)) for (const e of g.entries) {
         const ft = M.segLength(e);
         if (!(ft > 0) || !M.hasSta(e)) continue;
@@ -94,7 +96,7 @@
     const order = new Map(subs.map((s, i) => [s.id, i]));
     const byRoad = new Map();
     for (const sub of subs) for (const d of M.DISCIPLINES) for (const sec of M.sectionsOf(sub, d)) {
-      if (!M.isPPSec(sec)) continue;
+      if (!reportRoadSec(sec)) continue;
       for (const g of M.roadGroups(sub, sec)) {
         if (!byRoad.has(g.slug)) byRoad.set(g.slug, { name: g.name, ranges: new Map(), subs: new Map() });
         const road = byRoad.get(g.slug);
@@ -254,7 +256,7 @@
     const split = lengthSplit(st);
     const lengthNote = split.split ? 'Where the same station range is tracked in more than one sub-project, that length is counted once, as in the roads table, and split evenly across those sub-projects.' : '';
     out.length = split.total > 0
-      ? [{ p: 'Road length is the station length tracked on plan and profile roads, the same lengths listed in the roads table in Project Description and Location.' }, { pie: split }, lengthNote ? { p: lengthNote } : null].filter(Boolean)
+      ? [{ p: 'Road length is the station length tracked on plan and profile roads, not trunk lines. It matches the roads table in Project Description and Location.' }, { pie: split }, lengthNote ? { p: lengthNote } : null].filter(Boolean)
       : [{ p: 'No roadway length is tracked yet. Add stations to a plan and profile road and the chart will split that length by sub-project.' }, { pie: split }];
     /* 2 */
     out.intro = [{ p: 'This report documents the drainage design for ' + pname + (m.csj ? ' (CSJ ' + m.csj + ')' : '') + (m.highway ? ' on ' + m.highway : '') + (m.county ? ' in ' + m.county + ' County' : '') + (m.district ? ', TxDOT ' + m.district + ' District' : '') + '.' +
