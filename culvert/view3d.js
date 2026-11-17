@@ -79,7 +79,9 @@ function rebuild(data){
  let crest=Math.max(p.invIn,p.invOut)+rise*1.8+2;
  if(ro&&window.Culvert&&Culvert.crestMin) crest=Culvert.crestMin(ro);
  const bedIn=p.invIn, bedOut=p.invOut;
- const fp=Math.min(crest-3, Math.max(bedIn,bedOut)+Math.max(4, rise*0.85));
+ let fp=Math.min(crest-3.5, Math.max(bedIn,bedOut)+Math.max(rise+2, 6));
+ if(!(fp>Math.max(bedIn,bedOut)+1)) fp=Math.max(bedIn,bedOut)+1.5;
+ if(!(crest>fp+2)) fp=crest-2.5;
  let roadLen=150;
  try{const cl=+document.getElementById('crestLen').value;if(cl>48)roadLen=cl;}catch(e){}
  roadLen=Math.max(88, Math.min(roadLen, Math.max(112, Math.min(190, L*1.15))));
@@ -89,7 +91,7 @@ function rebuild(data){
  try{const z=+document.getElementById('fillZ').value;if(z>=1.5&&z<=8)fillZ=z;}catch(e){}
  const lay=CrossingFrame.crossingLayout({
   L:L, crest:crest, fp:fp, bedIn:bedIn, bedOut:bedOut, crestLen:roadLen, paveW:pave,
-  halfBot:Math.max(8, total*0.55+2), halfBank:Math.max(16, total*0.55+rise*1.4),
+  halfBot:Math.max(14, total*0.65+4), halfBank:Math.max(26, total*0.65+rise+12),
   sideRun:Math.max(14, (crest-fp)*fillZ)
  });
  const approach=Math.max(36, lay.halfBank+6);
@@ -284,57 +286,53 @@ function drawTree(g,x,y,k){
 function worldPoly(g,origin,pts,fill){
  poly(g,pts.map(p=>{const q=project(p[0],p[1],p[2]);q.x+=origin.x;q.y+=origin.y;return q;}),fill);
 }
-function drawPortal(g,origin,s,b,inlet){
+function drawBlock(g,origin,s0,s1,t0,t1,z0,z1){
+ const top=[[s0,t0,z1],[s1,t0,z1],[s1,t1,z1],[s0,t1,z1]];
+ worldPoly(g,origin,[[s0,t0,z0],[s0,t1,z0],[s0,t1,z1],[s0,t0,z1]],'#f3eadc');
+ worldPoly(g,origin,[[s1,t0,z0],[s1,t1,z0],[s1,t1,z1],[s1,t0,z1]],'#cbbba2');
+ worldPoly(g,origin,[[s0,t0,z0],[s1,t0,z0],[s1,t0,z1],[s0,t0,z1]],'#e6dcc8');
+ worldPoly(g,origin,[[s0,t1,z0],[s1,t1,z0],[s1,t1,z1],[s0,t1,z1]],'#b7a890');
+ worldPoly(g,origin,top,'#f7f1e4');
+}
+function drawPortal(g,origin,sFace,b,inlet){
  const into=inlet?1:-1;
- const z0=inlet?b.invIn:b.invOut;
- const crown=z0+b.D, top=crown+1.15;
+ const zBed=inlet?b.invIn:b.invOut;
+ const crown=zBed+b.D;
+ const sWall=inlet?-0.6:model.L+0.6;
  const half=b.circ?b.D/2:b.B/2;
- const face=half+2.4;
- const courses=5;
- for(let i=0;i<courses;i++){
-  const za=z0-0.25+(top-(z0-0.25))*i/courses;
-  const zb=z0-0.25+(top-(z0-0.25))*(i+1)/courses;
-  const lit=i%2?'#e7dcc8':'#f4ecdf';
-  const sh=i%2?'#b7a890':'#cfc3aa';
-  worldPoly(g,origin,[[s,b.t-face,za],[s,b.t,za],[s,b.t,zb],[s,b.t-face,zb]],inlet?lit:sh);
-  worldPoly(g,origin,[[s,b.t,za],[s,b.t+face,za],[s,b.t+face,zb],[s,b.t,zb]],inlet?sh:lit);
- }
- worldPoly(g,origin,[
-  [s-0.35*into,b.t-face-0.7,top],
-  [s-0.35*into,b.t+face+0.7,top],
-  [s+0.85*into,b.t+face+0.7,top+0.55],
-  [s+0.85*into,b.t-face-0.7,top+0.55]
- ],'#f7f1e4');
+ const face=half+1.15;
+ const surf=visibleZ(sWall,b.t);
+ const base=Math.min(surf+0.05, crown);
+ const top=Math.max(base+1.05, Math.min(model.lay.fp+0.35, crown+1.05));
  if(model.kind==='headwall'){
-  const wLen=Math.min(14, Math.max(7, model.L*0.12));
-  const reach=Math.min(face+7, face+Math.max(3, model.gap*0.45));
+  const flare=Math.min(3.2, Math.max(2.3, model.gap*0.28));
   [-1,1].forEach(side=>{
-   const t0=b.t+side*face, t1=b.t+side*reach;
-   const tipS=s+into*wLen;
-   const gz=groundRaw(tipS,t1);
-   const tipTop=Math.max(z0+1.1, Math.min(top-0.4, gz+1.3));
-   worldPoly(g,origin,[
-    [s,t0,z0-0.1],[tipS,t1,z0-0.1],[tipS,t1,tipTop],[s,t0,top-0.15]
-   ],side<0?'#efe4d2':'#cbbba2');
+   for(let i=0;i<2;i++){
+    const tA=b.t+side*(face+i*flare), tB=tA+side*flare;
+    const sA=sWall+into*(i*3.0), sB=sA+into*2.6;
+    const gz=groundRaw((sA+sB)/2,(tA+tB)/2);
+    const z1=Math.min(top, gz+2.0);
+    if(z1<gz+0.55) continue;
+    drawBlock(g,origin,Math.min(sA,sB),Math.max(sA,sB),Math.min(tA,tB),Math.max(tA,tB),gz,z1);
+   }
   });
  }
- const rim=openingPts(s,b.t,z0,b,1.16);
- const hole=openingPts(s,b.t,z0,b,1);
- worldPoly(g,origin,rim,model.metal?'#d5dee6':'#f3efe6');
- worldPoly(g,origin,hole,'#101418');
+ const s1=sWall+into*1.5;
+ drawBlock(g,origin,Math.min(sWall,s1),Math.max(sWall,s1),b.t-face,b.t+face,base,top);
+ const faceS=inlet?Math.min(sWall,s1)-0.04:Math.max(sWall,s1)+0.04;
+ const zMouth0=base+0.08, zMouth1=Math.max(zMouth0+0.7, Math.min(crown, top-0.25));
+ worldPoly(g,origin,mouthPts(faceS,b.t,zMouth0,zMouth1,b,1.12),model.metal?'#d5dee6':'#f7f3ea');
+ worldPoly(g,origin,mouthPts(faceS,b.t,zMouth0,zMouth1,b,0.86),'#101418');
  if(model.metal&&b.circ){
-  g.strokeStyle='#9aa7b2';g.lineWidth=1;
-  trace(g,origin,openingPts(s,b.t,z0,b,0.72),false);
-  trace(g,origin,openingPts(s,b.t,z0,b,0.46),false);
+  g.strokeStyle='#b7c4ce';g.lineWidth=1;
+  trace(g,origin,mouthPts(faceS,b.t,zMouth0,zMouth1,b,0.62),false);
  }
 }
-function openingPts(s,t,z0,b,k){
- if(!b.circ){
-  const hw=b.B/2*k, h=b.D*k, zc=z0+b.D/2;
-  return [[s,t-hw,zc-h/2],[s,t+hw,zc-h/2],[s,t+hw,zc+h/2],[s,t-hw,zc+h/2]];
- }
- const pts=[], n=16, rad=b.D/2*k, zc=z0+b.D/2;
- for(let i=0;i<n;i++){const a=i/n*Math.PI*2;pts.push([s, t+Math.cos(a)*rad, zc+Math.sin(a)*rad]);}
+function mouthPts(s,t,z0,z1,b,k){
+ const zc=(z0+z1)/2, hh=Math.max(0.3,(z1-z0)/2)*k, hw=(b.circ?b.D/2:b.B/2)*k;
+ if(!b.circ) return [[s,t-hw,zc-hh],[s,t+hw,zc-hh],[s,t+hw,zc+hh],[s,t-hw,zc+hh]];
+ const pts=[], n=16, rx=Math.min(hw,(b.D/2)*k), ry=Math.min(hh,(b.D/2)*k);
+ for(let i=0;i<n;i++){const a=i/n*Math.PI*2;pts.push([s, t+Math.cos(a)*rx, zc+Math.sin(a)*ry]);}
  return pts;
 }
 function trace(g,origin,pts,close){
@@ -372,7 +370,7 @@ function drawHGL(g,origin){
 }
 function sceneBox(){
  const b=bounds();
- const zs=[model.plot.foundation, model.lay.fp, model.lay.crest, model.hw, model.tw];
+ const zs=focus?[model.lay.bedIn, model.lay.fp, model.lay.crest, model.hw]:[model.plot.foundation, model.lay.fp, model.lay.crest, model.hw, model.tw];
  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
  [[b.s0,b.t0],[b.s1,b.t0],[b.s0,b.t1],[b.s1,b.t1]].forEach(([s,t])=>{
   zs.forEach(z=>{const p=project(s,t,z);
@@ -473,7 +471,7 @@ function placeLabels(){
 function snapshot(){
  if(!model)return null;
  const saved={zoom,panX,panY,focus,rot,preset:presetName};
- if(presetName==='inlet'){const b0=model.bars[0];focus={s:2,t:b0?b0.t:0,span:Math.max(26,(b0?b0.D:5)*5)};}
+ if(presetName==='inlet'){const b0=model.bars[0];focus={s:-2,t:b0?b0.t:0,span:Math.max(28,(b0?b0.D:5)*3.6)};}
  else focus=null;
  model.zScale=4*vex;
  model.wave=1;
@@ -512,7 +510,7 @@ function snapshot(){
 function frameInlet(){
  presetName='inlet';
  const b0=model&&model.bars[0];
- focus={s:2,t:b0?b0.t:0,span:Math.max(26,(b0?b0.D:5)*5)};
+ focus={s:-2,t:b0?b0.t:0,span:Math.max(28,(b0?b0.D:5)*3.6)};
  zoom=3;panX=panY=0;
 }
 
