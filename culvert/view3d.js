@@ -10,7 +10,7 @@ let THREE=null, renderer, scene, camera, world, sun, raf=0;
 let vex=2, showLines=true, presetName='iso', span=80;
 let latest=null, booting=false, failed=false, built=false, lastBox=null;
 let zOfW=e=>e, live=null, labelPts=[], inletAim=null;
-let drag=null, rt=null, composeScene=null, composeCam=null, composeMat=null, waterMap=null;
+let drag=null, rt=null, composeScene=null, composeCam=null, composeMat=null, waterMap=null, sparkles=[];
 
 function el(html){const d=document.createElement('div');d.innerHTML=html;return d.firstElementChild;}
 function card(anchor){
@@ -81,47 +81,80 @@ function shade(color,map){
 let gradTex=null;
 function liveGrad(){
  if(gradTex)return gradTex;
- const c=document.createElement('canvas');c.width=4;c.height=1;
+ const c=document.createElement('canvas');c.width=3;c.height=1;
  const g=c.getContext('2d');
- ['#8d8d8d','#b5b5b5','#e2e2e2','#ffffff'].forEach((col,i)=>{g.fillStyle=col;g.fillRect(i,0,1,1);});
+ ['#a3a3a3','#d4d4d4','#ffffff'].forEach((col,i)=>{g.fillStyle=col;g.fillRect(i,0,1,1);});
  gradTex=new THREE.CanvasTexture(c);
  gradTex.magFilter=THREE.NearestFilter;gradTex.minFilter=THREE.NearestFilter;gradTex.generateMipmaps=false;
  return gradTex;
 }
 function materials(){
+ const grass=pixelTex(32,32,(g,w,h)=>{
+  const cols=['#6fbf52','#5aaa42','#7dcc5c','#4b9836','#8ed468','#c6a56e'];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){g.fillStyle=cols[(x*3+y*5)%5];g.fillRect(x,y,1,1);}
+  g.fillStyle='#9adf72';
+  [[2,5],[9,14],[16,4],[23,20],[28,9],[6,24],[19,27],[12,8]].forEach(([x,y])=>{g.fillRect(x,y,1,3);g.fillRect(x+1,y+1,1,2);});
+  g.fillStyle='#c6a56e';g.fillRect(14,11,3,2);g.fillRect(4,18,2,2);
+ });
+ const peb=pixelTex(24,24,(g,w,h)=>{
+  g.fillStyle='#c4a06a';g.fillRect(0,0,w,h);
+  const stones=[[1,2,4,3,'#8d7352'],[7,1,5,3,'#e6d2a4'],[14,3,4,3,'#6e5538'],[3,8,5,4,'#dfc48a'],[11,9,6,4,'#a48458'],[18,8,4,3,'#f0ddb4'],[2,16,4,3,'#7a6244'],[9,16,5,4,'#d2b48a'],[16,15,5,4,'#5c4630']];
+  stones.forEach(([x,y,w0,h0,col])=>{g.fillStyle='#3a2c1c';g.fillRect(x,y,w0,h0);g.fillStyle=col;g.fillRect(x,y,w0-1,Math.max(1,h0-1));});
+ });
+ const bank=pixelTex(24,24,(g,w,h)=>{
+  g.fillStyle='#b88848';g.fillRect(0,0,w,h);
+  g.fillStyle='#6fbf52';
+  for(let x=0;x<w;x+=3)g.fillRect(x,0,1,4);
+  g.fillStyle='#dfc48a';g.fillRect(2,10,3,2);g.fillRect(12,16,4,2);g.fillRect(8,6,2,2);
+ });
+ const blocks=pixelTex(32,32,(g,w,h)=>{
+  g.fillStyle='#e4dcc8';g.fillRect(0,0,w,h);
+  g.fillStyle='#b7ad98';
+  for(let y=0;y<h;y+=8)g.fillRect(0,y,w,1);
+  for(let row=0;row<4;row++){const off=row%2?8:0;for(let x=off;x<w;x+=16)g.fillRect(x,row*8,1,8);}
+  g.fillStyle='#f4efe4';
+  for(let y=1;y<h;y+=8)g.fillRect(0,y,w,1);
+  g.fillStyle='#8f8674';g.fillRect(3,3,2,2);g.fillRect(19,12,2,2);g.fillRect(10,20,3,1);
+ });
  const metal=pixelTex(8,8,(g,w,h)=>{
-  for(let y=0;y<h;y++){
-   g.fillStyle=y%2?'#d5e2ea':'#4d5d6c';
-   g.fillRect(0,y,w,1);
-  }
- },2,10);
- const rock=pixelTex(16,16,(g,w,h)=>{
+  for(let y=0;y<h;y++)g.fillStyle=y%2?'#e7eef2':'#5d6e7c',g.fillRect(0,y,w,1);
+ },2,8);
+ const rock=pixelTex(24,24,(g,w,h)=>{
   g.fillStyle='#6a5e52';g.fillRect(0,0,w,h);
-  [[1,1,6,4,'#8d8072'],[8,2,6,5,'#3e3832'],[2,8,7,5,'#b3a28e'],[9,9,6,5,'#5c5348']].forEach(([x,y,w0,h0,col])=>{
-   g.fillStyle='#241f1b';g.fillRect(x,y,w0,h0);g.fillStyle=col;g.fillRect(x,y,w0-1,h0-1);
+  [[1,1,7,5,'#a89884'],[10,2,6,4,'#4a4038'],[3,9,8,5,'#d2c2ac'],[14,8,7,6,'#7c6e60'],[2,16,6,5,'#3e342c'],[12,16,8,5,'#b5a48e']].forEach(([x,y,w0,h0,col])=>{
+   g.fillStyle='#241c16';g.fillRect(x,y,w0,h0);g.fillStyle=col;g.fillRect(x,y,w0-1,h0-1);
   });
  });
- const water=pixelTex(32,8,(g,w,h)=>{
-  for(let x=0;x<w;x++){g.fillStyle=(Math.floor(x/4)%2)?'#1768a0':'#2a94c4';g.fillRect(x,0,1,h);}
- },0.07,0.07);
+ const asphalt=pixelTex(16,16,(g,w,h)=>{
+  g.fillStyle='#3a4148';g.fillRect(0,0,w,h);
+  g.fillStyle='#525a64';[[1,2],[6,5],[11,1],[4,9],[13,8],[8,13],[2,14]].forEach(([x,y])=>g.fillRect(x,y,1,1));
+  g.fillStyle='#2a3036';[[3,4],[9,7],[12,12]].forEach(([x,y])=>g.fillRect(x,y,2,1));
+ });
+ const water=pixelTex(32,16,(g,w,h)=>{
+  g.fillStyle='#2f8fbe';g.fillRect(0,0,w,h);
+  g.fillStyle='#49aed4';g.fillRect(0,0,6,h);g.fillRect(14,0,5,h);g.fillRect(26,0,4,h);
+  g.fillStyle='#e9f8ff';g.fillRect(2,3,2,2);g.fillRect(17,9,2,2);g.fillRect(28,5,1,1);
+ },0.12,0.12);
  waterMap=water;
  const T=shade;
  const mats={
-  grass:T(0x4ea33c),
-  slope:T(0x2d7328),
-  dirt:T(0xd09a58),
-  conc:T(0xd7d2c6),
-  head:T(0xe4dfd4),
+  grass:T(0xffffff,grass),
+  slope:T(0xb7d98a,grass),
+  dirt:T(0xffffff,bank),
+  peb:T(0xffffff,peb),
+  conc:T(0xffffff,blocks),
+  head:T(0xffffff,blocks),
   metal:T(0xffffff,metal),
   rock:T(0xffffff,rock),
-  asphalt:T(0x2c3138),
-  water:new THREE.MeshToonMaterial({color:0xffffff,map:water,gradientMap:liveGrad(),transparent:true,opacity:.88,depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),
-  inner:new THREE.MeshToonMaterial({color:0x1a2228,gradientMap:liveGrad(),side:THREE.BackSide}),
-  paint:T(0xf4f4f0),
+  asphalt:T(0xffffff,asphalt),
+  water:new THREE.MeshToonMaterial({color:0xffffff,map:water,gradientMap:liveGrad(),transparent:true,opacity:.5,depthWrite:false,side:THREE.DoubleSide}),
+  foam:T(0xe7f6ea),
+  inner:new THREE.MeshToonMaterial({color:0x141c22,gradientMap:liveGrad(),side:THREE.BackSide}),
+  ao:T(0x2a6a28),
+  paint:T(0xf7f4ee),
   yellow:T(0xe6c84a),
   grad:liveGrad()
  };
- mats.grass.polygonOffset=true;mats.grass.polygonOffsetFactor=1;mats.grass.polygonOffsetUnits=1;
  return mats;
 }
 
@@ -167,9 +200,8 @@ function setupCompose(){
     vec3 c=texture2D(tDiffuse,vUv).rgb;
     float gx=-L(vec2(-1.0,-1.0))-2.0*L(vec2(-1.0,0.0))-L(vec2(-1.0,1.0))+L(vec2(1.0,-1.0))+2.0*L(vec2(1.0,0.0))+L(vec2(1.0,1.0));
     float gy=-L(vec2(-1.0,-1.0))-2.0*L(vec2(0.0,-1.0))-L(vec2(1.0,-1.0))+L(vec2(-1.0,1.0))+2.0*L(vec2(0.0,1.0))+L(vec2(1.0,1.0));
-    float e=step(0.85,length(vec2(gx,gy)));
-    vec3 pick=floor(c*5.0+0.5)/5.0;
-    pick=mix(pick,vec3(0.08,0.07,0.06),e);
+    float e=step(1.15,length(vec2(gx,gy)));
+    vec3 pick=mix(c,vec3(0.10,0.08,0.07),e);
     gl_FragColor=vec4(pick,1.0);
    }`
  });
@@ -182,9 +214,10 @@ function renderFrame(w,h){
  const wrap=document.getElementById('v3wrap');
  w=w||(wrap&&wrap.clientWidth)||640; h=h||(wrap&&wrap.clientHeight)||380;
  if(!renderer||!camera||!composeMat)return;
- const iw=Math.max(200,Math.round(w/2)), ih=Math.max(120,Math.round(h/2));
+ const iw=Math.max(320,Math.min(480,Math.round(w*0.4))), ih=Math.max(180,Math.round(iw*h/Math.max(w,1)));
  renderer.setPixelRatio(1);renderer.setSize(w,h,false);
- camera.aspect=w/Math.max(h,1);camera.updateProjectionMatrix();
+ camera.aspect=w/Math.max(h,1);
+ look();
  if(!rt||rt.width!==iw||rt.height!==ih){
   if(rt)rt.dispose();
   rt=new THREE.WebGLRenderTarget(iw,ih,{depthBuffer:true});
@@ -244,7 +277,8 @@ function boot(){
   wrap.querySelector('#v3fallback')?.remove();
   wrap.appendChild(renderer.domElement);
   scene=new THREE.Scene(); scene.background=new THREE.Color(0x8ec8ea);
-  camera=new THREE.PerspectiveCamera(38,1,0.15,8000);
+  camera=new THREE.OrthographicCamera(-60,60,40,-40,0.1,4000);
+  camera.aspect=1.7;
   scene.add(new THREE.HemisphereLight(0xd7ecff,0x8aaa62,1.35));
   scene.add(new THREE.AmbientLight(0xffffff,0.42));
   sun=new THREE.DirectionalLight(0xfff6e4,1.25);sun.position.set(-80,90,60);sun.castShadow=true;
@@ -255,7 +289,9 @@ function boot(){
   bindInput(renderer.domElement);
   try{if(latest)rebuild(latest);}catch(err){console.error(err);showFallback(err.message);}
   (function loop(){raf=requestAnimationFrame(loop);if(!built)return;
-   if(waterMap)waterMap.offset.x=(performance.now()*0.00045)%1;
+   if(waterMap)waterMap.offset.x=(performance.now()*0.00035)%1;
+   const tt=performance.now()*0.00025;
+   sparkles.forEach((s,i)=>{const u=(tt+s.p)%1;s.m.position.x=s.x0+(s.x1-s.x0)*u;s.m.position.y=Math.sin(u*8+i)*s.y*0.55;s.m.visible=u>0.04&&u<0.96;});
    placeLabels();renderFrame();})();
  }).catch(e=>{booting=false;showFallback(e&&e.message);});
 }
@@ -283,9 +319,15 @@ function pan(dx,dy){
 function look(){
  if(!camera||!target)return;
  camera.up.set(0,0,1);
- const horiz=radius*Math.sin(phi);
- camera.position.set(target.x+horiz*Math.sin(theta), target.y+horiz*Math.cos(theta), target.z+radius*Math.cos(phi));
+ const dist=640;
+ const horiz=dist*Math.sin(phi);
+ camera.position.set(target.x+horiz*Math.sin(theta), target.y+horiz*Math.cos(theta), target.z+dist*Math.cos(phi));
  camera.lookAt(target);
+ if(camera.isOrthographicCamera){
+  const aspect=Math.max(0.6,camera.aspect||1.7), half=Math.max(10,radius);
+  camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;
+  camera.near=0.5;camera.far=4000;camera.updateProjectionMatrix();
+ }
  if(sun){sun.position.copy(target).add(new THREE.Vector3(-span*0.35, span*0.72, span*0.85));sun.target.position.copy(target);
   const sc=sun.shadow.camera;sc.left=sc.bottom=-span;sc.right=sc.top=span;sc.near=0.5;sc.far=Math.max(400,span*8);sc.updateProjectionMatrix();}
 }
@@ -350,7 +392,9 @@ function rebuild(data){
  const run=Math.min(wantRun, Math.max(5,(L-roadWcap)/2));
  const roadL=run, roadR=Math.max(roadL+6, L-run);
  const yL=bars[0].yc-halfOuter(bars[0])-1.25, yR=bars[bars.length-1].yc+halfOuter(bars[bars.length-1])+1.25;
- const roadHalf=Math.max(22, Math.max(Math.abs(yL),Math.abs(yR))+14);
+ const paveHalf=Math.max(11, Math.min(16, (yR-yL)*0.35+8));
+ const slopeRun=Math.max(18, fillZ*Math.max(3, crest-fp));
+ const roadHalf=paveHalf, embHalf=paveHalf+slopeRun;
  const halfBot=Math.max(3.5, total*0.42);
  const halfTop=halfBot+Math.max(5, 2*(fp-Math.min(p.invIn,p.invOut)+0.4));
  const apron=C.riprapApron({US:r.US!==false,Q:r.Q,D:r.D,TW:p.twMode==='none'?0:Math.max(0,r.TW),yn:r.yn,supercritical:isFinite(r.dc)&&r.yout<r.dc*0.999});
@@ -360,8 +404,8 @@ function rebuild(data){
  const stick=Math.max(2.6, r.D*0.42);
  bars.forEach(b=>{b.stick=stick;});
  zOfW=Z;
- addGround(Z,fp,halfTop,L,roadHalf,mats.grass);
- addChannel(Z,fp,halfBot,halfTop,p,L,mats.dirt);
+ addGround(Z,fp,halfTop,L,embHalf,mats.grass);
+ addChannel(Z,fp,halfBot,halfTop,p,L,mats.peb,mats.dirt);
  bars.forEach(b=>{
   const g=new THREE.Group();
   if(b.section&&b.section.poly&&b.section.poly.length>3) addPoly(g,b,shellMat,mats.inner);
@@ -377,10 +421,26 @@ function rebuild(data){
  if(kind!=='project') addHeadwall(0,-1,bars,zTopIn,kind,mats.head,zRef);
  else addProjecting(0,-1,bars,mats.head,zRef);
  addHeadwall(L,1,bars,zTopOut,kind==='project'?'headwall':kind,mats.head,zRef);
- addFill(Z,fp,crest,L,roadL,roadR,yL,yR,roadHalf,zTopIn,zTopOut,Math.max(crownIn,crownOut)+0.2,bars,mats.grass,mats.grass);
+ addFill(Z,fp,crest,L,roadL,roadR,yL,yR,roadHalf,embHalf,zTopIn,zTopOut,Math.max(crownIn,crownOut)+0.2,bars,mats.slope,mats.ao);
+ if(mats.asphalt.map) mats.asphalt.map.repeat.set(Math.max(4,(roadR-roadL)/5), 3);
  solid(world, Math.max(4,roadR-roadL), roadHalf*2, 0.22*vex, (roadL+roadR)/2, 0, Z(crest)+0.18*vex, mats.asphalt);
- addPool(Z,-28,-stick+0.2, halfBot, halfTop, p.invIn, fp, r.EL, mats.water, 'hi');
- if(p.twMode==='const') addPool(Z, L+stick-0.2, L+apL+12, halfBot, halfTop, p.invOut, fp, Math.max(p.twElev,p.invOut), mats.water, 'lo');
+ const pondY=Math.min(halfTop*0.72, halfBot+6);
+ addPool(Z,-22,-0.35, pondY, p.invIn, r.EL, mats.water);
+ addFoam(Z,-1.1,-0.35,-Math.min(pondY, (yR-yL)*0.55), Math.min(pondY,(yR-yL)*0.55), r.EL, mats.foam);
+ if(p.twMode==='const'){
+  const tw=Math.max(p.twElev,p.invOut);
+  addPool(Z, L+0.4, L+apL+6, pondY, p.invOut, tw, mats.water);
+  addFoam(Z, L+0.4, L+2.2, -pondY*0.7, pondY*0.7, tw, mats.foam);
+ }
+ sparkles=[];
+ [[-20,-1.2,pondY,r.EL], ...(p.twMode==='const'?[[L+1,L+apL+4,pondY,Math.max(p.twElev,p.invOut)]]:[[]])].forEach(seg=>{
+  if(seg.length<4)return;
+  for(let i=0;i<6;i++){
+   const m=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.35,0.06*vex), mats.paint);
+   m.position.set(seg[0],0,Z(seg[3])+0.12);world.add(m);
+   sparkles.push({m,x0:seg[0],x1:seg[1],y:seg[2]*0.7,p:i/6});
+  }
+ });
  addApron(L,apL,halfBot*2.1,p.invOut,Z,mats.rock);
  if(showLines&&r.hgl) addLines(p,r,Z);
  addArrow(r.EL, halfBot);
@@ -399,9 +459,8 @@ function rebuild(data){
  const tags=[['HW '+fmt(r.EL)+' '+unit,-22,halfTop*0.55,r.EL+0.8],['Road '+fmt(crest)+' '+unit,(roadL+roadR)/2,0,crest+1.6]];
  if(p.twMode==='const') tags.push(['TW '+fmt(Math.max(p.twElev,p.invOut))+' '+unit,L+Math.min(apL,16),-halfBot*0.35,Math.max(p.twElev,p.invOut)+0.7]);
  labelPts=tags.map(([t,x,y,z])=>({text:t,pos:new THREE.Vector3(x,y,Z(z))}));
- inletAim=new THREE.Vector3(-0.5,0,Z(Math.min(crest-0.4, Math.max(r.EL+0.4, crownIn))));
- const pad=Math.max(26, apL);
- const bb=new THREE.Box3(new THREE.Vector3(-pad,-(roadHalf+8),Z(Math.min(p.invIn,p.invOut)-0.6)), new THREE.Vector3(L+pad,roadHalf+8,Z(crest+1.2)));
+ inletAim=new THREE.Vector3(1.5,0,Z((p.invIn+crownIn)*0.5));
+ const bb=new THREE.Box3(new THREE.Vector3(-16,-(embHalf+4),Z(Math.min(p.invIn,p.invOut)-0.4)), new THREE.Vector3(L+apL+6,embHalf+4,Z(crest+1.4)));
  lastBox=bb;
  if(!target) target=new THREE.Vector3();
  span=fitBox(bb,presetName,!built||!userMoved);
@@ -411,8 +470,8 @@ function rebuild(data){
  if(note){note.hidden=false;note.textContent=(kind==='miter'?'Mitered end':kind==='project'?'Projecting inlet':'Headwall and wingwalls')+' · '+(metal?'corrugated metal':'concrete')+' · '+slopeNote+' · vertical exaggeration '+vex+'×'+(vex===1?' (true scale)':'');}
 }
 function fmt(x){return isFinite(x)?(+x).toFixed(2):'—';}
-function addGround(Z,fp,halfTop,L,roadHalf,mat){
- const y=700, x0=-500, x1=L+500;
+function addGround(Z,fp,halfTop,L,embHalf,mat){
+ const y=embHalf+28, x0=-36, x1=L+36;
  const shape=new THREE.Shape();
  shape.moveTo(x0,-y);shape.lineTo(x1,-y);shape.lineTo(x1,y);shape.lineTo(x0,y);shape.closePath();
  const hole=new THREE.Path();
@@ -424,68 +483,47 @@ function addGround(Z,fp,halfTop,L,roadHalf,mat){
  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
  const m=new THREE.Mesh(geo,mat);m.position.z=Z(fp)+0.02*vex;m.receiveShadow=true;world.add(m);
 }
-function addChannel(Z,fp,halfBot,halfTop,p,L,mat){
+function addChannel(Z,fp,halfBot,halfTop,p,L,bedMat,bankMat){
  const bed=x=>x<0?p.invIn:p.invOut;
- const spans=[[-500,-0.08],[L+0.08,L+500]];
- const pos=[],uv=[];
- const push=(x,y,z)=>{pos.push(x,y,Z(z));uv.push(x*0.22,y*0.22);};
- spans.forEach(([x0,x1])=>{
-  const n=8;
-  for(let i=0;i<n;i++){
-   const a=x0+(x1-x0)*i/n, b=x0+(x1-x0)*(i+1)/n, za=bed(a), zb=bed(b);
-   const top=fp;
-   const strip=(y1a,z1a,y2a,z2a,y1b,z1b,y2b,z2b)=>{
-    push(a,y1a,z1a);push(b,y1b,z1b);push(b,y2b,z2b);
-    push(a,y1a,z1a);push(b,y2b,z2b);push(a,y2a,z2a);
-   };
-   strip(-halfTop,top,-halfBot,za,-halfTop,top,-halfBot,zb);
-   strip(-halfBot,za,halfBot,za,-halfBot,zb,halfBot,zb);
-   strip(halfBot,za,halfTop,top,halfBot,zb,halfTop,top);
-  }
- });
- const g=new THREE.BufferGeometry();
- g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
- g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
- g.computeVertexNormals();
- const m=new THREE.Mesh(g,mat);m.receiveShadow=true;m.castShadow=true;world.add(m);
+ const spans=[[-34,-0.05],[L+0.05,L+34]];
+ function mesh(which){
+  const pos=[],uv=[];
+  const push=(x,y,z)=>{pos.push(x,y,Z(z));uv.push(x*0.35,y*0.35);};
+  spans.forEach(([x0,x1])=>{
+   const n=6;
+   for(let i=0;i<n;i++){
+    const a=x0+(x1-x0)*i/n, b=x0+(x1-x0)*(i+1)/n, za=bed(a), zb=bed(b), top=fp;
+    const strip=(y1a,z1a,y2a,z2a,y1b,z1b,y2b,z2b)=>{
+     push(a,y1a,z1a);push(b,y1b,z1b);push(b,y2b,z2b);
+     push(a,y1a,z1a);push(b,y2b,z2b);push(a,y2a,z2a);
+    };
+    if(which==='bed') strip(-halfBot,za,halfBot,za,-halfBot,zb,halfBot,zb);
+    else {strip(-halfTop,top,-halfBot,za,-halfTop,top,-halfBot,zb);strip(halfBot,za,halfTop,top,halfBot,zb,halfTop,top);}
+   }
+  });
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  g.computeVertexNormals();
+  const m=new THREE.Mesh(g,which==='bed'?bedMat:bankMat);m.receiveShadow=true;world.add(m);
+ }
+ mesh('bed');mesh('bank');
 }
-function addFill(Z,fp,crest,L,roadL,roadR,yL,yR,roadHalf,zIn,zOut,crown,bars,grass,dirt){
- const side=roadHalf+Math.max(7,(crest-fp)*0.4);
- // Solid wedge from the headwall edge out to the floodplain, so the slope has thickness and no sky shows under it.
- function wedge(xFace,zFace,xCrest,yH,yO){
-  tri(world,Z,[xFace,yH,zFace],[xCrest,yH,crest],[xCrest,yO,crest],grass);
-  tri(world,Z,[xFace,yH,zFace],[xCrest,yO,crest],[xFace,yO,fp],grass);
-  tri(world,Z,[xFace,yO,fp],[xCrest,yO,fp],[xCrest,yO,crest],grass);
-  quad(world,Z,[xFace,yH,fp],[xFace,yH,zFace],[xCrest,yH,crest],[xCrest,yH,fp],dirt);
-  tri(world,Z,[xFace,yO,fp],[xFace,yH,zFace],[xFace,yH,fp],dirt);
-  quad(world,Z,[xCrest,yH,fp],[xCrest,yO,fp],[xCrest,yO,crest],[xCrest,yH,crest],dirt);
- }
- wedge(0.05,zIn,roadL,yL,-roadHalf);
- wedge(0.05,zIn,roadL,yR,roadHalf);
- wedge(L-0.05,zOut,roadR,yL,-roadHalf);
- wedge(L-0.05,zOut,roadR,yR,roadHalf);
- function cap(xFace,zFace,xCrest){
-  quad(world,Z,[xFace,yL,zFace],[xCrest,yL,crest],[xCrest,yR,crest],[xFace,yR,zFace],grass);
-  quad(world,Z,[xFace,yR,crown],[xCrest,yR,crown],[xCrest,yL,crown],[xFace,yL,crown],dirt);
-  quad(world,Z,[xFace,yL,crown],[xCrest,yL,crown],[xCrest,yL,crest],[xFace,yL,zFace],dirt);
-  quad(world,Z,[xCrest,yR,crown],[xFace,yR,crown],[xFace,yR,zFace],[xCrest,yR,crest],dirt);
-  if(zFace>crown+0.05) quad(world,Z,[xFace,yL,crown],[xFace,yL,zFace],[xFace,yR,zFace],[xFace,yR,crown],dirt);
- }
- if(zIn>crown) cap(0.05,zIn,roadL);
- if(zOut>crown) cap(L-0.05,zOut,roadR);
- const x0=Math.min(roadL,roadR)+0.08, x1=Math.max(roadL,roadR)-0.08, xm=(x0+x1)/2, xl=x1-x0;
- if(xl>1 && crest>crown+0.3){
-  solid(world, xl, (yR-yL), (crest-crown)*vex, xm, (yL+yR)/2, Z((crown+crest)/2), dirt);
-  const wL=yL+roadHalf; if(wL>0.4) solid(world, xl, wL, (crest-fp)*vex, xm, (-roadHalf+yL)/2, Z((fp+crest)/2), dirt);
-  const wR=roadHalf-yR; if(wR>0.4) solid(world, xl, wR, (crest-fp)*vex, xm, (roadHalf+yR)/2, Z((fp+crest)/2), dirt);
- }
+function addFill(Z,fp,crest,L,roadL,roadR,yL,yR,roadHalf,embHalf,zIn,zOut,crown,bars,slope,ao){
+ quad(world,Z,[0.15,yL,zIn],[roadL,yL,crest],[roadL,yR,crest],[0.15,yR,zIn],slope);
+ quad(world,Z,[L-0.15,yR,zOut],[roadR,yR,crest],[roadR,yL,crest],[L-0.15,yL,zOut],slope);
+ quad(world,Z,[0.15,-embHalf,fp],[0.15,yL,zIn],[roadL,roadHalf,crest],[roadL,-embHalf,fp],slope);
+ quad(world,Z,[0.15,yR,zIn],[0.15,embHalf,fp],[roadL,embHalf,fp],[roadL,roadHalf,crest],slope);
+ quad(world,Z,[L-0.15,-embHalf,fp],[roadR,-embHalf,fp],[roadR,roadHalf,crest],[L-0.15,yL,zOut],slope);
+ quad(world,Z,[L-0.15,embHalf,fp],[L-0.15,yR,zOut],[roadR,roadHalf,crest],[roadR,embHalf,fp],slope);
+ quad(world,Z,[roadL,roadHalf,crest],[roadR,roadHalf,crest],[roadR,embHalf,fp],[roadL,embHalf,fp],slope);
+ quad(world,Z,[roadR,-roadHalf,crest],[roadL,-roadHalf,crest],[roadL,-embHalf,fp],[roadR,-embHalf,fp],slope);
+ quad(world,Z,[roadL,embHalf-0.2,fp+0.12],[roadR,embHalf-0.2,fp+0.12],[roadR,embHalf+1.2,fp+0.02],[roadL,embHalf+1.2,fp+0.02],ao);
+ quad(world,Z,[roadR,-embHalf-1.2,fp+0.02],[roadL,-embHalf-1.2,fp+0.02],[roadL,-embHalf+0.2,fp+0.12],[roadR,-embHalf+0.2,fp+0.12],ao);
  for(let i=0;i<bars.length-1;i++){
   const a=bars[i].yc+halfOuter(bars[i]), b=bars[i+1].yc-halfOuter(bars[i+1]);
-  if(b-a>0.12 && crown>fp) solid(world, Math.max(1,L-0.5), b-a, (crown-fp)*vex, L/2, (a+b)/2, Z((fp+crown)/2), dirt);
+  if(b-a>0.15) solid(world, Math.max(1,L-0.8), b-a, Math.max(0.4,(crown-fp)*vex), L/2, (a+b)/2, Z((fp+crown)/2), ao);
  }
- quad(world,Z,[roadL,-roadHalf,crest],[roadR,-roadHalf,crest],[roadR,roadHalf,crest],[roadL,roadHalf,crest],grass);
- quad(world,Z,[roadL,roadHalf,crest],[roadR,roadHalf,crest],[roadR,side,fp],[roadL,side,fp],grass);
- quad(world,Z,[roadR,-roadHalf,crest],[roadL,-roadHalf,crest],[roadL,-side,fp],[roadR,-side,fp],grass);
 }
 function addHeadwall(xFace,sign,bars,zTop,kind,mat,zRef){
  if(kind==='miter'){addMiter(xFace,sign,bars,mat,zRef);return;}
@@ -512,6 +550,8 @@ function addHeadwall(xFace,sign,bars,zTop,kind,mat,zRef){
   pos.setXYZ(i, xFace+sign*sz, sx, (sy-zRef)*vex);
  }
  geo.computeVertexNormals();
+ const uv=geo.attributes.uv;
+ if(uv){for(let i=0;i<pos.count;i++)uv.setXY(i,pos.getY(i)*0.32,pos.getZ(i)*0.32);}
  const mesh=new THREE.Mesh(geo,mat);mesh.castShadow=true;mesh.receiveShadow=true;world.add(mesh);
  if(kind==='headwall'){addWing(xFace,sign,y0,zBot,zTop,-1,mat,zRef);addWing(xFace,sign,y1,zBot,zTop,1,mat,zRef);}
 }
@@ -572,36 +612,25 @@ function addBarrelWater(g,b){
  geo.computeVertexNormals();
  const m=new THREE.Mesh(geo,live.water);m.renderOrder=2;g.add(m);
 }
-function addPool(Z,x0,x1,halfBot,halfTop,bed,fp,elev,mat,openEdge){
- if(!(elev>bed+0.05)||!(x1>x0+0.4)) return;
- let y;
- if(elev<fp-0.08) y=Math.min(halfTop-0.25, halfBot+2*Math.max(0.25,elev-bed));
- else y=halfTop-0.2;
- y=Math.max(y, halfBot+0.3);
+function addPool(Z,x0,x1,y,bed,elev,mat){
+ if(!(elev>bed+0.05)||!(x1>x0+0.3)) return;
  quad(world,Z,[x0,-y,elev],[x1,-y,elev],[x1,y,elev],[x0,y,elev],mat);
- const skirt=(a,b,z0)=>{
-  tri(world,Z,a,b,[b[0],b[1],z0],mat);
-  tri(world,Z,a,[b[0],b[1],z0],[a[0],a[1],z0],mat);
- };
- const floor=Math.min(elev-0.05, elev<fp?bed:fp);
- skirt([x0,-y,elev],[x1,-y,elev],floor);
- skirt([x1,y,elev],[x0,y,elev],floor);
- if(openEdge!=='lo') skirt([x0,y,elev],[x0,-y,elev],floor);
- if(openEdge!=='hi') skirt([x1,-y,elev],[x1,y,elev],floor);
+}
+function addFoam(Z,x0,x1,y0,y1,elev,mat){
+ if(!(x1>x0)) return;
+ quad(world,Z,[x0,y0,elev+0.05],[x1,y0,elev+0.05],[x1,y1,elev+0.05],[x0,y1,elev+0.05],mat);
 }
 function fitBox(bb,mode,apply){
  const c=bb.getCenter(new THREE.Vector3()), s=bb.getSize(new THREE.Vector3());
- const fov=(camera.fov||38)*Math.PI/180, aspect=Math.max(0.8,camera.aspect||1.7);
- const distV=(s.z*0.62)/Math.tan(fov/2);
- const distH=(Math.max(s.x,s.y)*0.58)/(Math.tan(fov/2)*aspect);
- const dist=Math.max(distV,distH,24)*1.16;
+ const aspect=Math.max(0.75,camera.aspect||1.7);
+ const dist=Math.max(s.x/(2*aspect), s.y/2, s.z*1.2)*1.05;
  if(apply){
   target.copy(c);
-  if(mode==='plan'){theta=0.22;phi=0.22;radius=dist*1.05;}
-  else if(mode==='profile'){theta=Math.PI/2;phi=1.2;radius=dist*1.02;}
-  else if(mode==='upstream'){theta=Math.PI;phi=1.12;radius=dist*0.98;}
-  else if(mode==='inlet'&&inletAim){target.copy(inletAim);theta=-1.25;phi=1.02;radius=Math.max(42,dist*0.2);}
-  else {theta=-0.88;phi=1.15;radius=dist*0.98;}
+  if(mode==='plan'){theta=0.15;phi=0.18;radius=dist*1.02;}
+  else if(mode==='profile'){theta=Math.PI/2;phi=1.12;radius=dist;}
+  else if(mode==='upstream'){theta=Math.PI;phi=1.02;radius=dist*0.92;}
+  else if(mode==='inlet'&&inletAim){target.copy(inletAim);theta=-1.42;phi=1.06;radius=Math.max(11,Math.min(20,dist*0.16));}
+  else {theta=-0.7;phi=0.92;radius=dist;}
   document.querySelectorAll('#v3bar button').forEach(b=>b.classList.toggle('on',b.dataset.v3===(mode||'iso')));
  } else target.copy(c);
  camera.near=Math.max(0.15, dist/180); camera.far=dist*24; camera.updateProjectionMatrix();
