@@ -672,6 +672,11 @@ function v2Fixture() {
     return { top: cs(td).verticalAlign, pad: cs(td).padding, num: cs(num).textAlign + ' ' + cs(num).whiteSpace, mid: cs(mid).textAlign + ' ' + cs(mid).whiteSpace, cols: t.querySelectorAll('colgroup col').length, layout: cs(t).tableLayout };
   });
   ok(roadCells.top === 'top' && roadCells.layout === 'fixed' && roadCells.cols === 5, 'roads table uses fixed columns and top alignment');
+  const roadType = await pg.$eval('#eng-desc table.roads', (t) => {
+    const pick = (s) => { const e = t.querySelector(s); if (!e) return ''; const c = getComputedStyle(e); return c.fontSize + '|' + c.lineHeight + '|' + c.verticalAlign; };
+    return ['th', 'tbody td', 'td.rname', 'td.cnum', 'td.cmid', '.eline'].map(pick).filter(Boolean);
+  });
+  ok(roadType.length >= 4 && roadType.every((v) => v === roadType[0]), 'roads table cells share one size, line spacing, and top alignment');
   ok(/right/.test(roadCells.num) && /nowrap/.test(roadCells.num) && /center/.test(roadCells.mid) && /nowrap/.test(roadCells.mid), 'length is right-aligned and sub-projects are centered, both on one line');
   const proposed = await txt('#eng-proposed');
   ok(/North Pond/.test(proposed) && /Layout/.test(proposed) && /Cross Sections/.test(proposed) && /Geometric Layout \(1 of 2\)/.test(proposed) && /Geometric Layout \(2 of 2\)/.test(proposed), 'proposed section lists each pond by name and its sheets');

@@ -384,6 +384,10 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.24 (roads table letters and one type size)
+
+The sub-project column in the Project Description roads table shows only the package letter. The name is not repeated there. Every cell in that table, including the header, the road name, the stacked lines, and the † mark, uses the same size and line spacing as the other report tables. Sub-rows are separated by a light dashed line. The solid line between different roads stays.
+
 ## v3.23 (roads table, one row per sub-project)
 
 In Project Description and Location, a road that is in more than one sub-project is drawn as one sub-row per sub-project. The road name spans those rows. Each sub-row shows that sub-project’s letter, and its name when it fits, with only that sub-project’s alignments, station ranges, and length. A light dotted line separates the sub-rows. The heavier line stays between different roads. A road in one sub-project stays a single row.
