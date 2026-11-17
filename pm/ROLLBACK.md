@@ -384,6 +384,10 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.25 (trunk lines are not roads in the engineering report)
+
+Trunk lines stay on the Trunkline section. They are not listed in the Project Description and Location roads table, they are not counted in the “tracked on N roads” sentence, and their length is not in the Road Length by Sub-project chart or its total. A plan and profile road is unchanged. Trunk line sheets still appear in the proposed improvements, the sheet counts, and the sheet index.
+
 ## v3.24 (roads table letters and one type size)
 
 The sub-project column in the Project Description roads table shows only the package letter. The name is not repeated there. Every cell in that table, including the header, the road name, the stacked lines, and the † mark, uses the same size, line spacing, and padding. Columns are styled by name, so a continuation row lines up with the row above it. Sub-rows are separated by a light dashed line on the continuation row. The solid line between different roads stays.
