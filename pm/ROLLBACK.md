@@ -384,6 +384,12 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.23 (roads table, one row per sub-project)
+
+In Project Description and Location, a road that is in more than one sub-project is drawn as one sub-row per sub-project. The road name spans those rows. Each sub-row shows that sub-project’s letter, and its name when it fits, with only that sub-project’s alignments, station ranges, and length. A light dotted line separates the sub-rows. The heavier line stays between different roads. A road in one sub-project stays a single row.
+
+A station range that is the same in more than one sub-project is listed under each of them with a †. The length on the row is that sub-project’s share, and a note under the table says the range is counted once. Those lengths still add up to the road-length chart.
+
 ## v3.22 (engineering report roads table and length chart)
 
 The engineering report opens with Road Length by Sub-project. It is a pie chart of the same station lengths as the roads table, one slice per sub-project, drawn as part of the page so it prints with the report font. A range that belongs to one sub-project is counted there. A range tracked in more than one sub-project is counted once and split evenly, and a note under the chart says so. The legend lists each sub-project’s length in feet and miles, its share, and a total. The following sections are renumbered, including the table of contents.

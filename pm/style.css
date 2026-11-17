@@ -870,6 +870,11 @@ html[data-rptfont] #reportWrap .rtab,html[data-rptfont] .report .rtab{font-famil
 .rtab .clines .eline{display:block}
 .rtab.roads{table-layout:fixed;width:100%}
 .rtab.roads col.c0{width:20%}.rtab.roads col.c1{width:24%}.rtab.roads col.c2{width:26%}.rtab.roads col.c3{width:14%}.rtab.roads col.c4{width:16%}
+.rtab.roads td{border-bottom:.75pt solid #666}
+.rtab.roads tr.rmid>td{border-bottom:.5pt dotted #c5c5c5}
+.rtab.roads tr.rmid>td.rname,.rtab.roads td.rname{border-bottom:.75pt solid #666;vertical-align:top}
+.rtab.roads tbody.rblock{break-inside:avoid;page-break-inside:avoid}
+.rfoot{margin:2pt 0 8pt;font-size:8pt;color:#333}
 .pielay{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 18px;break-inside:avoid;page-break-inside:avoid}
 .pie{width:min(100%,460px);height:auto;overflow:visible}
 .pie text{font-family:inherit;fill:#111}
