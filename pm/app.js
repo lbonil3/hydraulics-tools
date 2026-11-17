@@ -1,4 +1,4 @@
-/* Project Tracker v3.22 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.23 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs, including the report font).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -620,7 +620,20 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab' + (b.table.cls ? ' ' + b.table.cls : '') },
         b.table.cols ? h('colgroup', {}, b.table.cols.map((c, i) => h('col', { class: 'c' + i }))) : null,
         h('thead', {}, h('tr', {}, b.table.head.map((x, i) => h('th', { class: colClass(b.table.cols && b.table.cols[i]), scope: 'col' }, x)))),
-        h('tbody', {}, b.table.rows.map((r, i) => { const k = (b.table.kinds && b.table.kinds[i]) || ''; const cls = k === 'sub' ? 'rsub' : k === 'pkg' ? 'rpkg' : k === 'sec' ? 'rsecsub' : k === 'total' ? 'rtot' : ''; return h('tr', { class: cls || null }, r.map((c, j) => h('td', { class: colClass(b.table.cols && b.table.cols[j]) }, cellBody(c, b.table.cols && b.table.cols[j])))); })))) : null);
+        (b.table.bodies || [b.table.rows]).map((rows) => h('tbody', { class: b.table.bodies ? 'rblock' : null }, rows.map((r, i) => {
+          const cells = Array.isArray(r) ? r : r.cells;
+          const skip = new Set((r && r.skip) || []);
+          const span = (r && r.span) || {};
+          const k = (b.table.kinds && b.table.kinds[i]) || '';
+          const cls = Array.isArray(r) ? (k === 'sub' ? 'rsub' : k === 'pkg' ? 'rpkg' : k === 'sec' ? 'rsecsub' : k === 'total' ? 'rtot' : '') : (r.cls || '');
+          return h('tr', { class: cls || null }, cells.map((c, j) => {
+            if (skip.has(j)) return null;
+            const extra = span[j] > 1 && j === 0 ? 'rname' : '';
+            const tdCls = [colClass(b.table.cols && b.table.cols[j]), extra].filter(Boolean).join(' ') || null;
+            return h('td', { class: tdCls, rowspan: span[j] > 1 ? String(span[j]) : null }, cellBody(c, b.table.cols && b.table.cols[j]));
+          }));
+        })))),
+        b.table.note ? h('p', { class: 'rfoot' }, b.table.note) : null) : null);
   }
   function renderEngView() {
     const m = E.meta(st), rm = M.reportMeta(st), secs = E.build(st), O = rptOpts();

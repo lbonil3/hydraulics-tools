@@ -1,4 +1,4 @@
-/* Project Tracker v3.22: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.23: Engineering Report (drainage design report style), derived from the tracker data.
    A carried sheet counts in every package that has it. Unique plan sheets are labeled separately.
    Sheets carried into a package are listed in the same section and group as the original.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
@@ -86,6 +86,64 @@
     return { rows, total, totalText: fmtFt(total), totalMi: fmtMi(total), totalPct: total > 0 ? '100%' : '0%', split };
   }
   const sta = (r) => M.hasSta(r) ? 'Sta ' + M.formatStation(r.start) + ' to ' + M.formatStation(r.end) : 'stations not yet set';
+  function subFit(sub) {
+    if (!M.subCustom(sub)) return sub.code;
+    const both = sub.code + ' · ' + M.subName(sub);
+    return both.length <= 18 ? both : sub.code;
+  }
+  /* One row per sub-project. A station range that is identical in more than one sub-project
+     is listed under each, marked, and the length on the row is that sub-project's share. */
+  function roadSheet(st) {
+    const subs = M.orderedSubs(st);
+    const order = new Map(subs.map((s, i) => [s.id, i]));
+    const byRoad = new Map();
+    for (const sub of subs) for (const d of M.DISCIPLINES) for (const sec of M.sectionsOf(sub, d)) {
+      if (!M.isPPSec(sec)) continue;
+      for (const g of M.roadGroups(sub, sec)) {
+        if (!byRoad.has(g.slug)) byRoad.set(g.slug, { name: g.name, ranges: new Map(), subs: new Map() });
+        const road = byRoad.get(g.slug);
+        if (!road.subs.has(sub.id)) road.subs.set(sub.id, { sub, aligns: [] });
+        const bucket = road.subs.get(sub.id);
+        for (const e of g.entries) {
+          const align = M.roadAlign(e);
+          if (align && !bucket.aligns.includes(align)) bucket.aligns.push(align);
+          const key = M.hasSta(e) ? M.parseStation(e.start) + '|' + M.parseStation(e.end) : 'open:' + (e.id || sec.id);
+          if (!road.ranges.has(key)) road.ranges.set(key, { text: M.hasSta(e) ? M.formatStation(e.start) + ' to ' + M.formatStation(e.end) : 'stations not yet set', ft: M.segLength(e), subs: [] });
+          const rec = road.ranges.get(key);
+          if (!rec.subs.some((s) => s.id === sub.id)) rec.subs.push(sub);
+        }
+      }
+    }
+    let shared = false;
+    const rows = [], bodies = [];
+    for (const road of byRoad.values()) {
+      const ids = [...road.subs.keys()].sort((a, b) => order.get(a) - order.get(b));
+      const lines = ids.map((id) => {
+        const bucket = road.subs.get(id);
+        const ranges = [...road.ranges.values()].filter((rec) => rec.subs.some((s) => s.id === id));
+        let ft = 0;
+        const staLines = ranges.map((rec) => {
+          const many = rec.subs.length > 1 && rec.ft > 0;
+          if (many) shared = true;
+          ft += many ? rec.ft / rec.subs.length : rec.ft;
+          return rec.text + (many ? ' †' : '');
+        });
+        return { aligns: bucket.aligns.join('\n') || '—', sta: staLines.join('\n') || '—', ft, label: subFit(bucket.sub) };
+      });
+      const n = lines.length;
+      const body = lines.map((line, i) => {
+        const cells = [i === 0 ? road.name : '', line.aligns, line.sta, line.ft ? fmtFt(line.ft) : '—', line.label];
+        if (n === 1) return cells;
+        const row = { cells, cls: i === n - 1 ? 'rend' : 'rmid' };
+        if (i === 0) row.span = { 0: n };
+        else row.skip = [0];
+        return row;
+      });
+      bodies.push(body);
+      rows.push(...body);
+    }
+    return { rows, bodies, note: shared ? '† This station range is tracked in more than one sub-project, so it is listed under each. The length on the row is that sub-project’s share. The range is counted once, the same way as the road-length chart.' : '' };
+  }
   /* ---- stored edits (tolerant reads; writes keep the data small) ---- */
   function data(st) { const e = st.engReport; return e && typeof e === 'object' && !Array.isArray(e) ? e : {}; }
   function meta(st) { const m = data(st).meta || {}; return Object.fromEntries(META.map(([k]) => [k, typeof m[k] === 'string' ? m[k] : ''])); }
@@ -210,15 +268,16 @@
     const desc = [];
     if (m.limits) desc.push({ p: 'Project limits: ' + m.limits + '.' });
     desc.push({ p: 'The project is organized into ' + pl(F.subs.length, 'sub-project') + ': ' + list(subNames) + '.' });
-    if (F.roads.length) {
-      desc.push({ p: 'Roadway drainage work is tracked on ' + pl(F.roads.length, 'road') + ':' });
+    const sheet = roadSheet(st);
+    if (sheet.rows.length) {
+      desc.push({ p: 'Roadway drainage work is tracked on ' + pl(sheet.bodies.length, 'road') + ':' });
       desc.push({ table: { cls: 'roads', cols: [
         { w: '20%' },
         { w: '24%', stack: true },
         { w: '26%', stack: true },
         { w: '14%', align: 'right' },
         { w: '16%', align: 'center' },
-      ], head: ['Road', 'Alignment', 'Stations', 'Length', 'Sub-projects'], rows: F.roads.map((r) => [r.name, r.aligns.join('\n') || '—', r.entries.map((x) => sta(x.e).replace(/^Sta /, '')).join('\n') || '—', r.length ? fmtFt(r.length) : '—', r.subs.join(', ') || '—']) } });
+      ], head: ['Road', 'Alignment', 'Stations', 'Length', 'Sub-project'], rows: sheet.rows, bodies: sheet.bodies, note: sheet.note } });
     } else desc.push({ p: 'No road entries are tracked yet.' });
     out.desc = desc;
     /* 3 */
@@ -390,7 +449,7 @@
     if (b.h) return b.h.toUpperCase();
     if (b.ul) return b.ul.map((x) => '  • ' + x).join('\n');
     if (b.refs) return refs(st).map((x, i) => '  ' + (i + 1) + '. ' + x).join('\n');
-    if (b.table) return [b.table.head.join(' | ')].concat(b.table.rows.map((r) => r.join(' | '))).join('\n');
+    if (b.table) return [b.table.head.join(' | ')].concat(b.table.rows.map((r) => { const cells = Array.isArray(r) ? r : r.cells; const skip = new Set((r && r.skip) || []); return cells.filter((c, i) => !skip.has(i)).join(' | '); })).join('\n') + (b.table.note ? '\n' + b.table.note : '');
     if (b.pie) {
       const L = b.pie.rows.map((r) => r.label + ' | ' + r.ftText + ' | ' + r.miText + ' | ' + r.pctText);
       L.push('Total | ' + b.pie.totalText + ' | ' + b.pie.totalMi + ' | ' + b.pie.totalPct);

@@ -904,19 +904,37 @@ t('engineering report: sections, placeholders, no invented values', () => {
   assert.deepStrictEqual([...new Set(urls)], ['https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html']);
   assert(!/CSJ/.test(txt.split('\n').slice(0, 4).join('\n')), 'no CSJ line until one is entered');
 });
-t('v3.22 location roads table stacks alignments and station ranges', () => {
+t('v3.23 roads table gives each sub-project its own row', () => {
   const st = engState();
-  const [A, B] = st.subs;
+  const [A, B, C, D] = st.subs;
+  M.renameSub(st, A.id, 'CSJ-1');
   M.addRoad(st, M.secOf(A, 'dr-trunk').id, { road: 'FM 1960', start: '4+71', end: '32+70', alignment: 'FR045SB300_A' });
   M.addRoad(st, M.secOf(B, 'dr-trunk').id, { road: 'FM 1960', start: '10+96', end: '25+74', alignment: 'RP045SB301_A' });
+  M.addRoad(st, M.secOf(C, 'dr-pp').id, { road: 'Shared Rd', start: '0+00', end: '5+00', alignment: 'BL Shared' });
+  M.addRoad(st, M.secOf(D, 'dr-pp').id, { road: 'Shared Rd', start: '0+00', end: '5+00', alignment: 'CL Shared' });
   const tab = E.outline(st, today).find((s) => s.id === 'desc').auto.find((b) => b.table && b.table.cls === 'roads').table;
-  const fm = tab.rows.find((r) => r[0] === 'FM 1960');
-  assert.deepStrictEqual(fm[1].split('\n').sort(), ['BL FM 1960', 'FR045SB300_A', 'RP045SB301_A']);
-  assert.ok(fm[2].split('\n').some((s) => /4\+71 to 32\+70/.test(s)) && fm[2].split('\n').some((s) => /10\+96 to 25\+74/.test(s)) && fm[2].split('\n').some((s) => /10\+00 to 58\+00/.test(s)));
-  assert.ok(!/\n/.test(fm[3]) && /ft$/.test(fm[3]), fm[3]);
-  assert.strictEqual(fm[4], 'A, B');
-  const scope = E.outline(st, today).find((s) => s.id === 'scope').auto.find((b) => b.table && b.table.cls !== 'roads' && b.table.kinds);
-  assert.ok(scope && scope.table.kinds.includes('total') && scope.table.rows.some((r) => r[0] === 'Total'));
+  const cells = (r) => Array.isArray(r) ? r : r.cells;
+  const fm = tab.bodies.find((b) => cells(b[0])[0] === 'FM 1960');
+  assert.strictEqual(fm.length, 2);
+  assert.strictEqual(fm[0].span[0], 2);
+  assert.deepStrictEqual(fm[0].skip, undefined);
+  assert.deepStrictEqual(fm[1].skip, [0]);
+  assert.ok(fm[0].cells[1].split('\n').includes('BL FM 1960') && fm[0].cells[1].split('\n').includes('FR045SB300_A') && !/RP045SB301_A/.test(fm[0].cells[1]));
+  assert.strictEqual(fm[1].cells[1], 'RP045SB301_A');
+  assert.ok(/10\+00 to 58\+00/.test(fm[0].cells[2]) && /4\+71 to 32\+70/.test(fm[0].cells[2]) && !/10\+96 to 25\+74/.test(fm[0].cells[2]));
+  assert.ok(/10\+96 to 25\+74/.test(fm[1].cells[2]));
+  assert.strictEqual(fm[0].cells[4], 'A · CSJ-1');
+  assert.strictEqual(fm[1].cells[4], 'B');
+  const spring = tab.rows.find((r) => Array.isArray(r) && r[0] === 'Spring Cypress Rd');
+  assert.ok(spring && spring[4] === 'B' && !spring.span);
+  const shared = tab.bodies.find((b) => cells(b[0])[0] === 'Shared Rd');
+  assert.ok(/†/.test(shared[0].cells[2]) && /†/.test(shared[1].cells[2]));
+  assert.strictEqual(shared[0].cells[3], '250 ft');
+  assert.strictEqual(shared[1].cells[3], '250 ft');
+  assert.ok(/counted once/.test(tab.note));
+  const shown = tab.rows.reduce((a, r) => a + Number(String(cells(r)[3]).replace(/[^0-9.]/g, '') || 0), 0);
+  const pie = E.build(st, today).find((s) => s.id === 'length').blocks.find((b) => b.pie).pie.total;
+  assert.strictEqual(shown, Math.round(pie));
 });
 t('v3.22 road length chart matches the roads table and splits a shared range', () => {
   const st = M.newState('Pie');
@@ -930,7 +948,7 @@ t('v3.22 road length chart matches the roads table and splits a shared range', (
   const length = E.build(st, today).find((s) => s.id === 'length');
   const pie = length.blocks.find((b) => b.pie).pie;
   const roads = E.build(st, today).find((s) => s.id === 'desc').blocks.find((b) => b.table && b.table.cls === 'roads').table;
-  const roadFt = roads.rows.reduce((a, r) => a + Number(String(r[3]).replace(/[^0-9.]/g, '')), 0);
+  const roadFt = roads.rows.reduce((a, r) => a + Number(String((Array.isArray(r) ? r : r.cells)[3]).replace(/[^0-9.]/g, '') || 0), 0);
   assert.strictEqual(Math.round(pie.total), roadFt);
   const by = Object.fromEntries(pie.rows.map((r) => [r.code, r.ft]));
   assert.strictEqual(by.A, 2000);
