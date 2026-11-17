@@ -859,6 +859,26 @@ html[data-rptfont] #reportWrap .rtab,html[data-rptfont] .report .rtab{font-famil
 .rptfont[data-font="plex"] .rptprev{font-family:"IBM Plex Figures", "IBM Plex Sans", sans-serif}
 .rptfont[data-font="calibri"]{font-family:Calibri, Carlito, Arial, sans-serif}
 .rptfont[data-font="calibri"] b{font-family:Cambria, Caladea, Georgia, serif}
+/* v3.22 engineering tables: one baseline per row, fixed columns on the location roads table */
+.engnarr .rtab th,.engnarr .rtab td,.report.eng .rtab th,.report.eng .rtab td{vertical-align:top;padding:4pt 6pt;line-height:1.35}
+.engnarr .rtab thead,.report.eng .rtab thead{display:table-header-group}
+.engnarr .rtab tr,.report.eng .rtab tr,.engnarr .rtab th,.report.eng .rtab th,.engnarr .rtab td,.report.eng .rtab td{break-inside:avoid;page-break-inside:avoid}
+.rtab th.cnum,.rtab td.cnum{text-align:right;font-variant-numeric:tabular-nums}
+.rtab td.cnum{white-space:nowrap}
+.rtab th.cmid,.rtab td.cmid{text-align:center}
+.rtab td.cmid{white-space:nowrap}
+.rtab .clines .eline{display:block}
+.rtab.roads{table-layout:fixed;width:100%}
+.rtab.roads col.c0{width:20%}.rtab.roads col.c1{width:24%}.rtab.roads col.c2{width:26%}.rtab.roads col.c3{width:14%}.rtab.roads col.c4{width:16%}
+.pielay{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 18px;break-inside:avoid;page-break-inside:avoid}
+.pie{width:min(100%,460px);height:auto;overflow:visible}
+.pie text{font-family:inherit;fill:#111}
+.pie .piein{fill:#fff;font-size:11px;font-weight:700}
+.pie .pielab{font-size:11px}
+html[data-rptfont] .pie text{font-family:var(--rpt-body)}
+.piesw{display:inline-block;vertical-align:middle}
+.piekey{flex:1;min-width:240px;margin:0}
+.report.eng .pie .pielab{font-size:8pt}.report.eng .pie .piein{font-size:8pt}
 .numline,.numcell{display:inline-flex;align-items:center;gap:2px}
 .numpre{color:var(--muted);font-variant-numeric:tabular-nums}
 .numcell .c-number{width:4.5em}

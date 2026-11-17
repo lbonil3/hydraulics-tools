@@ -1,4 +1,4 @@
-/* Project Tracker v3.21 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.22 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs, including the report font).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -563,9 +563,64 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         onclick: () => { ui.rptFont = f.id; saveUI(); applyReportFont(); renderReportView(); } },
         h('b', {}, f.name), h('span', { class: 'rptprev' }, 'Sta 10+00'))));
   }
+  function colClass(c) {
+    if (!c) return null;
+    return [c.align === 'right' ? 'cnum' : c.align === 'center' ? 'cmid' : '', c.stack ? 'clines' : ''].filter(Boolean).join(' ') || null;
+  }
+  function stackParts(s) { return String(s == null ? '' : s).split(/\n|;\s+|,\s+/).map((x) => x.trim()).filter(Boolean); }
+  function cellBody(text, col) {
+    if (!(col && col.stack)) return text == null ? '' : String(text);
+    const parts = stackParts(text);
+    return parts.length ? parts.map((p) => h('span', { class: 'eline' }, p)) : '—';
+  }
+  function svg(tag, attrs, ...kids) {
+    const el = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v != null && v !== false) el.setAttribute(k, v === true ? '' : v);
+    for (const c of kids.flat(Infinity)) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
+    return el;
+  }
+  function pieWedges(rows) {
+    const live = rows.filter((r) => r.ft > 0);
+    const total = live.reduce((a, r) => a + r.ft, 0);
+    if (!(total > 0)) return [];
+    const cx = 150, cy = 150, r = 92;
+    if (live.length === 1) return [{ ...live[0], full: true, cx, cy, r, lx: cx + r + 16, ly: cy, anchor: 'start', frac: 1 }];
+    let a = -Math.PI / 2;
+    return live.map((row) => {
+      const sweep = row.ft / total * Math.PI * 2;
+      const a0 = a, a1 = a + sweep; a = a1;
+      const large = sweep > Math.PI ? 1 : 0;
+      const at = (ang) => [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
+      const [x0, y0] = at(a0), [x1, y1] = at(a1);
+      const d = 'M ' + cx + ' ' + cy + ' L ' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + ' Z';
+      const mid = (a0 + a1) / 2;
+      return { ...row, d, lx: cx + (r + 14) * Math.cos(mid), ly: cy + (r + 14) * Math.sin(mid), anchor: Math.cos(mid) >= 0 ? 'start' : 'end', frac: row.ft / total, mid, cx, cy, r };
+    });
+  }
+  function pieBlock(pie) {
+    const wedges = pieWedges(pie.rows);
+    const chart = wedges.length ? svg('svg', { class: 'pie', viewBox: '-70 -36 440 372', role: 'img', 'aria-label': 'Road length by sub-project' },
+      wedges.map((w) => w.full
+        ? svg('circle', { cx: w.cx, cy: w.cy, r: w.r, fill: w.color, stroke: '#fff', 'stroke-width': '1.5' })
+        : svg('path', { d: w.d, fill: w.color, stroke: '#fff', 'stroke-width': '1.5' })),
+      wedges.filter((w) => w.frac >= 0.12 && !w.full).map((w) => svg('text', { x: (w.cx + (w.r * 0.55) * Math.cos(w.mid)).toFixed(1), y: (w.cy + (w.r * 0.55) * Math.sin(w.mid)).toFixed(1), 'text-anchor': 'middle', class: 'piein' }, w.pctText)),
+      wedges.map((w) => svg('text', { x: w.lx.toFixed(1), y: (w.ly - 6).toFixed(1), 'text-anchor': w.anchor, class: 'pielab' },
+        svg('tspan', { x: w.lx.toFixed(1), dy: '0' }, w.label),
+        svg('tspan', { x: w.lx.toFixed(1), dy: '1.25em' }, w.ftText + ' (' + w.miText + ') · ' + w.pctText)))) : null;
+    const sw = (color) => svg('svg', { class: 'piesw', width: '12', height: '12', 'aria-hidden': 'true' }, svg('rect', { width: '12', height: '12', fill: color, stroke: '#222', 'stroke-width': '0.5' }));
+    const key = h('table', { class: 'rtab piekey' },
+      h('thead', {}, h('tr', {}, h('th', { class: 'cmid' }, ''), h('th', {}, 'Sub-project'), h('th', { class: 'cnum' }, 'Length'), h('th', { class: 'cnum' }, 'Miles'), h('th', { class: 'cnum' }, 'Share'))),
+      h('tbody', {}, pie.rows.map((r) => h('tr', {}, h('td', { class: 'cmid' }, sw(r.color)), h('td', {}, r.label), h('td', { class: 'cnum' }, r.ftText), h('td', { class: 'cnum' }, r.miText), h('td', { class: 'cnum' }, r.pctText))),
+        h('tr', { class: 'rtot' }, h('td', {}), h('td', {}, 'Total'), h('td', { class: 'cnum' }, pie.totalText), h('td', { class: 'cnum' }, pie.totalMi), h('td', { class: 'cnum' }, pie.totalPct))));
+    return h('div', { class: 'pielay' }, chart, key);
+  }
   function engBlocks(blocks, refsEl) {
     return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? (refsEl || h('ol', { class: 'erefs' }, E.refs(st).map((x) => h('li', {}, x)))) :
-      b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab ' + (b.table.cls || '') }, h('thead', {}, h('tr', {}, b.table.head.map((x) => h('th', {}, x)))), h('tbody', {}, b.table.rows.map((r, i) => { const k = (b.table.kinds && b.table.kinds[i]) || ''; const cls = k === 'sub' ? 'rsub' : k === 'pkg' ? 'rpkg' : k === 'sec' ? 'rsecsub' : k === 'total' ? 'rtot' : ''; return h('tr', { class: cls || null }, r.map((c) => h('td', {}, c))); })))) : null);
+      b.pie ? pieBlock(b.pie) :
+      b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab' + (b.table.cls ? ' ' + b.table.cls : '') },
+        b.table.cols ? h('colgroup', {}, b.table.cols.map((c, i) => h('col', { class: 'c' + i }))) : null,
+        h('thead', {}, h('tr', {}, b.table.head.map((x, i) => h('th', { class: colClass(b.table.cols && b.table.cols[i]), scope: 'col' }, x)))),
+        h('tbody', {}, b.table.rows.map((r, i) => { const k = (b.table.kinds && b.table.kinds[i]) || ''; const cls = k === 'sub' ? 'rsub' : k === 'pkg' ? 'rpkg' : k === 'sec' ? 'rsecsub' : k === 'total' ? 'rtot' : ''; return h('tr', { class: cls || null }, r.map((c, j) => h('td', { class: colClass(b.table.cols && b.table.cols[j]) }, cellBody(c, b.table.cols && b.table.cols[j])))); })))) : null);
   }
   function renderEngView() {
     const m = E.meta(st), rm = M.reportMeta(st), secs = E.build(st), O = rptOpts();
