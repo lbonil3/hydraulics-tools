@@ -717,6 +717,28 @@ function v2Fixture() {
   await click('#vTree'); await sleep(200);
   D = await data();
 
+  /* v3.21 sheet-number prefix and renumber preview */
+  await click('#setBtn'); await sleep(300);
+  await pg.$eval('#numSec', (e) => e.scrollIntoView({ block: 'start' })); await sleep(100);
+  ok(await has('#numMode') && await has('#numPrefix-A') && await has('#renumAll'), 'settings has numbering mode, package prefixes, and renumber');
+  await setVal('#numPrefix-A', 'A-'); await sleep(350);
+  ok((await data()).subs[0].numPrefix === 'A-', 'package prefix is stored on the package');
+  await pg.$eval('#numSec', (e) => e.scrollIntoView({ block: 'start' }));
+  await shot('29-number-settings');
+  const beforeNums = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v3')).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets.map((sh) => sh.id + '=' + (sh.number || '')))).join('|'));
+  await click('#renumAll'); await sleep(300);
+  ok(await pg.evaluate(() => { const t = (document.querySelector('#renumPreview') || {}).innerText || ''; return /now/i.test(t) && /new/i.test(t) && /A-/.test(t); }), 'renumber preview lists the current number and the new one');
+  await pg.$eval('#renumBox', (e) => e.scrollIntoView({ block: 'start' }));
+  await shot('30-renumber-preview');
+  await click('#renumCancel'); await sleep(200);
+  const afterNums = await pg.evaluate(() => JSON.parse(localStorage.getItem('pm.data.v3')).subs.flatMap((s) => s.segments.flatMap((g) => g.sheets.map((sh) => sh.id + '=' + (sh.number || '')))).join('|'));
+  ok(beforeNums === afterNums, 'closing the renumber preview does not change numbers');
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  ok((await data()).subs[0].numPrefix === 'A-', 'package prefix is still there after reload');
+  await click('#setBtn'); await sleep(250);
+  await setVal('#numPrefix-A', ''); await sleep(300);
+  if (await has('#modalClose')) { await click('#modalClose'); await sleep(150); }
+
   /* v3.17 find carry-ons */
   {
     const bStd = D.subs[1].segments.find((g) => g.key === 'dr-std');

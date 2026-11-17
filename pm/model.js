@@ -1,4 +1,5 @@
-/* PM data model v3.19: pure functions, no DOM, no storage.
+/* PM data model v3.21: pure functions, no DOM, no storage.
+   Sheet numbers stay plain integers. A package may show its own prefix in front of them.
    v3 structure: Project → discipline (Drainage | SWP3) → sub-project (A–D) → section → sheets.
    In code a section lives in sub.segments (kind 'section', it holds the sheets). Roads are data: sub.roads[]
    entries (road name + stations + scale) that belong to a Plan & Profile section and drive its PP sheet count. */
@@ -158,10 +159,10 @@
     return {
       schema: SCHEMA, v32: { at: null, fresh: true },
       project: { name: projectName || 'PSE Drainage & SWP3 Project' },
-      subs: ['A', 'B', 'C', 'D'].map((code, i) => ({ id: uid(), code, name: 'Sub-project ' + code, order: i + 1, scale: 100, templates: defaultTemplates(defs), segments: defs.map(newSection), roads: [] })),
+      subs: ['A', 'B', 'C', 'D'].map((code, i) => ({ id: uid(), code, name: 'Sub-project ' + code, order: i + 1, scale: 100, numPrefix: '', templates: defaultTemplates(defs), segments: defs.map(newSection), roads: [] })),
       staff: [],
       index: defaultTemplates(defs),
-      reportNotes: {}, settings: { scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), sections: defs, numbering: clone(DEFAULT_NUMBERING) },
+      reportNotes: {}, settings: { scales: clone(DEFAULT_SCALES), overlapFt: 0, qcSteps: DEFAULT_QC.slice(), sections: defs, numbering: clone(DEFAULT_NUMBERING), numberMode: 'project', numberFillGaps: false },
       milestones: DEFAULT_MILESTONES.map((name) => ({ id: uid(), name, date: '' })),
       links: [],
       views: [],
@@ -440,7 +441,7 @@
       const sh = newSheet({ title: c.title, discipline: sec.discipline, series: sec.title, road: road.road });
       sh.gen = { series: sec.series, road: road.id, idx: c.range.idx, of: c.range.of, start: c.range.start, end: c.range.end };
       sec.sheets.push(sh);
-      sh.number = suggestNumber(st, sh) || String(sec.series || 'PP').replace('pp-', '').toUpperCase() + '-' + c.range.idx; /* v2.6: next free number in the series range */
+      assignNumber(st, sh); /* next free number in the range; never a PP-n stand-in */
     }
     for (const u of plan.update) {
       Object.assign(u.sheet.gen, { series: sec.series, road: road.id, idx: u.range.idx, of: u.range.of, start: u.range.start, end: u.range.end });
@@ -686,7 +687,7 @@
   function newSheet(f) {
     return { id: uid(), title: String(f.title || '').trim() || 'Untitled sheet',
       discipline: DISCIPLINES.includes(f.discipline) ? f.discipline : guessDiscipline(f.title, f.series),
-      number: f.number || '', series: f.series || '', road: String(f.road || '').trim(),
+      number: f.number || '', numLock: false, series: f.series || '', road: String(f.road || '').trim(),
       status: STATUSES.includes(f.status) ? f.status : 'Not started',
       owner: String(f.owner || '').trim(), due: f.due || '', pct: 0, hoursBudget: Number(f.hoursBudget) || 0, hoursActual: 0,
       milestone: f.milestone || '', notes: f.notes || '', qc: {}, revs: [], gen: null };
@@ -695,7 +696,10 @@
     const hit = findSeg(st, secId);
     if (!hit) throw new Error('No such section');
     const sh = newSheet(Object.assign({}, f, { discipline: hit.seg.discipline }));
+    if (String(f && f.number || '').trim()) { sh.number = storeNumber(f.number, cleanPrefix(hit.sub.numPrefix)); sh.numLock = !!sh.number; }
+    else { sh.number = ''; sh.numLock = false; }
     hit.seg.sheets.push(sh);
+    if (!sh.number) assignNumber(st, sh);
     log(st, 'Added sheet ' + sh.title + ' to ' + subTag(hit.sub) + ' · ' + hit.seg.title, { t: 'sheet', id: sh.id });
     return sh;
   }
@@ -740,7 +744,8 @@
       delete g.deps;
     }
     if ('road' in g) g.road = String(g.road || '').trim();
-    if (isCarryOn(sh)) { delete g.title; delete g.number; }
+    if ('number' in g && !isCarryOn(sh)) { g.number = storeNumber(g.number, cleanPrefix(hit.sub.numPrefix)); g.numLock = !!String(g.number || '').trim(); }
+    if (isCarryOn(sh)) { delete g.title; delete g.number; delete g.numLock; }
     const reopened = sh.status === 'Done' && 'status' in g && g.status !== 'Done';
     if ('title' in g && sh.gen && g.title !== sh.title) sh.gen.titleEdited = true;
     if (g.status === 'Done' && !('pct' in g)) g.pct = 100;
@@ -773,7 +778,9 @@
     const copy = { ...clone(hit.sh), id: uid(), title: hit.sh.title + ' (copy)', status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], gen: null };
     delete copy.dam; /* a duplicate is a plain sheet, not a linked DAM copy */
     delete copy.hyd; delete copy.cnt; delete copy.unit; delete copy.carry;
+    copy.number = ''; copy.numLock = false;
     hit.seg.sheets.splice(hit.seg.sheets.indexOf(hit.sh) + 1, 0, copy);
+    assignNumber(st, copy);
     log(st, 'Duplicated sheet ' + hit.sh.title, { t: 'sheet', id: copy.id });
     return copy;
   }
@@ -928,7 +935,8 @@
       }
       if (q) {
         const roadName = r.sh.gen && r.sh.gen.road ? (r.sub.roads.find((x) => x.id === r.sh.gen.road) || {}).road : '';
-        const hay = [r.sh.title, r.sh.number, r.sh.series, r.sh.owner, r.sh.notes, r.sh.status, r.sh.discipline, r.seg.title, r.sh.road, roadName, subTag(r.sub), r.sub.name, sheetRange(r.sh) ? rangeText(sheetRange(r.sh)) + ' ' + formatStation(sheetRange(r.sh).start) + '-' + formatStation(sheetRange(r.sh).end) : ''].join(' ').toLowerCase();
+        const shownNo = f.st ? sheetNumberText(f.st, r.sh) : (cleanPrefix(r.sub && r.sub.numPrefix) + String(r.sh.number || ''));
+        const hay = [r.sh.title, r.sh.number, shownNo, r.sh.series, r.sh.owner, r.sh.notes, r.sh.status, r.sh.discipline, r.seg.title, r.sh.road, roadName, subTag(r.sub), r.sub.name, sheetRange(r.sh) ? rangeText(sheetRange(r.sh)) + ' ' + formatStation(sheetRange(r.sh).start) + '-' + formatStation(sheetRange(r.sh).end) : ''].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -965,7 +973,7 @@
       const sh = r.sh;
       const qcDone = st.settings.qcSteps.filter((q) => sh.qc && sh.qc[q]).length + '/' + st.settings.qcSteps.length;
       const deps = linksOf(st, { t: 'sheet', id: sh.id }).in.filter((l) => l.kind === 'dep').map((l) => refLabel(st, l.src)).join('; ');
-      lines.push([subTag(r.sub), r.seg.discipline, r.seg.title, sheetRoad(st, r.sub, sh), sheetAlign(st, r.sub, r.seg, sh), sh.number, sh.title, sh.series,
+      lines.push([subTag(r.sub), r.seg.discipline, r.seg.title, sheetRoad(st, r.sub, sh), sheetAlign(st, r.sub, r.seg, sh), sheetNumberText(st, sh), sh.title, sh.series,
         sh.gen ? formatStation(sh.gen.start) : '', sh.gen ? formatStation(sh.gen.end) : '', sh.status, sh.pct, sh.owner, sh.due, ms[sh.milestone] || '',
         sh.hoursBudget, sh.hoursActual, qcDone, deps, sh.gen ? 'yes' : '', sh.notes].map(csvCell).join(','));
     }
@@ -1167,6 +1175,8 @@
     for (const d of DISCIPLINES) if (!secDefs(st, d).length) st.settings.sections.push(...defaultSectionDefs().filter((x) => x.discipline === d));
     st.milestones = Array.isArray(st.milestones) ? st.milestones : [];
     if (!Array.isArray(st.settings.numbering)) st.settings.numbering = clone(DEFAULT_NUMBERING);
+    st.settings.numberMode = st.settings.numberMode === 'package' ? 'package' : 'project';
+    st.settings.numberFillGaps = !!st.settings.numberFillGaps;
     st.views = Array.isArray(st.views) ? st.views : [];
     st.reportNotes = st.reportNotes && typeof st.reportNotes === 'object' && !Array.isArray(st.reportNotes) ? st.reportNotes : {};
     st.links = Array.isArray(st.links) ? st.links : [];
@@ -1178,6 +1188,7 @@
       sub.templates = Array.isArray(sub.templates) ? sub.templates : defaultTemplates(st.settings.sections);
       sub.segments = Array.isArray(sub.segments) ? sub.segments : [];
       sub.roads = Array.isArray(sub.roads) ? sub.roads : [];
+      sub.numPrefix = cleanPrefix(sub.numPrefix);
     }
     upgradeCounts(st);
     syncSections(st);
@@ -1185,7 +1196,7 @@
       for (const sec of sub.segments) {
         sec.sheets = Array.isArray(sec.sheets) ? sec.sheets : [];
         sec.revs = Array.isArray(sec.revs) ? sec.revs : [];
-        for (const sh of sec.sheets) { const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; sh.discipline = sec.discipline;
+        for (const sh of sec.sheets) { const hadLock = Object.prototype.hasOwnProperty.call(sh, 'numLock'); const d = newSheet({}); for (const k of Object.keys(d)) if (sh[k] === undefined) sh[k] = k === 'id' ? uid() : d[k]; if (!hadLock) sh.numLock = !!String(sh.number || '').trim(); sh.discipline = sec.discipline;
           if ('dam' in sh && !(sh.dam && typeof sh.dam === 'object' && Number.isFinite(sh.dam.start) && Number.isFinite(sh.dam.end))) delete sh.dam;
           if ('hyd' in sh && !(sh.hyd && typeof sh.hyd === 'object' && Number.isFinite(sh.hyd.idx) && sh.hyd.idx > 0)) delete sh.hyd;
           if ('cnt' in sh && !(sh.cnt && typeof sh.cnt === 'object' && Number.isFinite(sh.cnt.idx) && sh.cnt.idx > 0)) delete sh.cnt;
@@ -1425,47 +1436,187 @@
     return plan.count;
   }
   function indexToTemplates(st) { for (const sub of st.subs) sub.templates = st.index.map((t) => ({ id: uid(), title: t.title, discipline: t.discipline, sec: t.sec })); log(st, 'Sheet index copied to every sub-project’s standard set'); }
-  /* ---- v2.6 sheet numbers ---- */
-  function numVal(n) { const m = /^\s*(\d+)\s*$/.exec(String(n == null ? '' : n)); return m ? Number(m[1]) : null; }
+  /* ---- v3.21 sheet numbers: the stored number is an integer. The package prefix is separate. ---- */
+  function cleanPrefix(p) { return String(p == null ? '' : p).replace(/[\r\n,]/g, '').trim().replace(/\s+/g, '').slice(0, 12); }
+  function numberingMode(st) { return st.settings && st.settings.numberMode === 'package' ? 'package' : 'project'; }
+  function fillGaps(st) { return !!(st.settings && st.settings.numberFillGaps); }
+  function numVal(n) {
+    const s = String(n == null ? '' : n).trim();
+    if (!s) return null;
+    if (/^\d+$/.test(s)) return Number(s);
+    const m = /^(\D+)(\d+)$/.exec(s);
+    return m ? Number(m[2]) : null;
+  }
+  function storeNumber(raw, prefix) {
+    let s = String(raw == null ? '' : raw).trim();
+    if (!s) return '';
+    if (prefix && s.toLowerCase().startsWith(String(prefix).toLowerCase())) s = s.slice(prefix.length).trim();
+    if (/^\d+$/.test(s)) return String(Number(s));
+    const m = /^(\D+)(\d+)$/.exec(s);
+    if (m) return String(Number(m[2]));
+    return String(raw == null ? '' : raw).trim();
+  }
+  function setPackagePrefix(st, subId, prefix) {
+    const sub = findSub(st, subId);
+    if (!sub) throw new Error('No such sub-project');
+    sub.numPrefix = cleanPrefix(prefix);
+    log(st, subTag(sub) + ' sheet-number prefix → ' + (sub.numPrefix || '(none)'));
+    return sub.numPrefix;
+  }
+  function setNumbering(st, f) {
+    f = f || {};
+    if (f.mode != null) st.settings.numberMode = f.mode === 'package' ? 'package' : 'project';
+    if (f.fillGaps != null) st.settings.numberFillGaps = !!f.fillGaps;
+    return { mode: numberingMode(st), fillGaps: fillGaps(st) };
+  }
+  function sheetPrefix(st, sh) {
+    const owner = sh && isCarryOn(sh) ? carryOrigin(st, sh) : findSheet(st, sh && sh.id);
+    return owner && owner.sub ? cleanPrefix(owner.sub.numPrefix) : '';
+  }
+  function sheetNumberText(st, sh) {
+    const n = String(sh && sh.number || '').trim();
+    if (!n) return '';
+    const p = sheetPrefix(st, sh);
+    if (!p) return n;
+    if (n.toLowerCase().startsWith(p.toLowerCase())) return n;
+    return p + n;
+  }
   function rangeFor(st, sh) {
     const R = st.settings.numbering || [];
     const hit = findSheet(st, sh.id), sk = hit && hit.seg && hit.seg.key;
     return (sk && R.find((r) => r.key === 'sec:' + sk)) || (sh.gen && R.find((r) => r.key === 'series:' + sh.gen.series)) || (sh.dam && R.find((r) => r.key === 'tpl:drainage area map')) || R.find((r) => r.key === 'tpl:' + String(sh.title).trim().toLowerCase()) || R.find((r) => r.key === 'disc:' + sh.discipline) || null;
   }
-  function suggestNumber(st, sh, taken) {
+  function takenNumbers(st, sh) {
+    const used = new Set();
+    const hit = findSheet(st, sh.id);
+    for (const x of allSheets(st)) {
+      if (x.sh === sh || isCarryOn(x.sh)) continue;
+      if (numberingMode(st) === 'package' && hit && x.sub.id !== hit.sub.id) continue;
+      const v = numVal(x.sh.number);
+      if (v != null) used.add(String(v));
+    }
+    return used;
+  }
+  function suggestNumber(st, sh, taken, opts) {
     const r = rangeFor(st, sh); if (!r) return null;
-    const used = taken || new Set(allSheets(st).filter((x) => x.sh !== sh).map((x) => String(x.sh.number).trim().toLowerCase()).filter(Boolean));
-    for (let n = Number(r.from); n <= Number(r.to); n++) if (!used.has(String(n))) return String(n);
+    const used = taken || takenNumbers(st, sh);
+    const gaps = opts && Object.prototype.hasOwnProperty.call(opts, 'fillGaps') ? !!opts.fillGaps : fillGaps(st);
+    const from = Number(r.from), to = Number(r.to);
+    if (gaps) {
+      for (let n = from; n <= to; n++) if (!used.has(String(n))) return String(n);
+      return null;
+    }
+    let max = null;
+    used.forEach((s) => { const v = Number(s); if (Number.isInteger(v) && v >= from && v <= to && (max == null || v > max)) max = v; });
+    const next = max == null ? from : max + 1;
+    if (next >= from && next <= to && !used.has(String(next))) return String(next);
     return null;
+  }
+  function assignNumber(st, sh) {
+    const v = suggestNumber(st, sh) || '';
+    sh.number = v;
+    sh.numLock = false;
+    return v;
   }
   function numberIssues(st, sh) {
     const out = [];
+    if (!sh || isCarryOn(sh)) return out;
     const num = String(sh.number || '').trim();
-    if (!num) return out;
-    const dup = allSheets(st).filter((x) => x.sh !== sh && !samePlanSheet(x.sh, sh) && String(x.sh.number || '').trim().toLowerCase() === num.toLowerCase());
+    const r = rangeFor(st, sh);
+    if (!num) {
+      if (r && suggestNumber(st, sh) == null) out.push('No free number in ' + r.label + ' (' + r.from + '–' + r.to + ') for ' + (numberingMode(st) === 'package' ? 'this package' : 'the project') + '.');
+      return out;
+    }
+    const v = numVal(num);
+    if (!/^\d+$/.test(num)) out.push('Sheet number should be a plain number. The package prefix is set on the package, not in the number.');
+    const hit = findSheet(st, sh.id);
+    const mine = v != null ? v : num.toLowerCase();
+    const dup = allSheets(st).filter((x) => {
+      if (x.sh === sh || samePlanSheet(x.sh, sh) || isCarryOn(x.sh)) return false;
+      if (numberingMode(st) === 'package' && hit && x.sub.id !== hit.sub.id) return false;
+      const xv = numVal(x.sh.number);
+      const other = xv != null ? xv : String(x.sh.number || '').trim().toLowerCase();
+      return other !== '' && other === mine;
+    });
     if (dup.length) out.push('Duplicate sheet number — also on ' + dup.map((x) => subTag(x.sub) + ' · ' + x.sh.title).join(', '));
-    const v = numVal(num), r = rangeFor(st, sh);
-    if (r && v != null && (v < r.from || v > r.to)) out.push('Out of range: ' + r.label + ' uses ' + r.from + '–' + r.to);
+    if (r && v != null && (v < Number(r.from) || v > Number(r.to))) out.push('Out of range: ' + r.label + ' uses ' + r.from + '–' + r.to);
     return out;
   }
   function allNumberIssues(st) { return allSheets(st).map((r) => ({ r, issues: numberIssues(st, r.sh) })).filter((x) => x.issues.length); }
-  /* fill numbers in project order (build order, discipline, section order, road/station, generated index); opts.all also replaces existing numbers */
   function orderedRows(st) {
     return orderedSubs(st).flatMap((sub) => DISCIPLINES.flatMap((d) => sectionsOf(sub, d).flatMap((seg) => seg.sheets.map((sh) => ({ sub, seg, sh })))));
   }
+  function numberBucket(st, x) { return numberingMode(st) === 'package' ? x.sub.id : '*'; }
   function autoNumber(st, opts) {
     const rows = orderedRows(st);
     const all = !!(opts && opts.all);
-    const used = new Set(all ? [] : rows.map((x) => String(x.sh.number).trim().toLowerCase()).filter(Boolean));
+    const gaps = opts && Object.prototype.hasOwnProperty.call(opts, 'fillGaps') ? !!opts.fillGaps : fillGaps(st);
+    const buckets = new Map();
+    const bucket = (x) => { const k = numberBucket(st, x); if (!buckets.has(k)) buckets.set(k, new Set()); return buckets.get(k); };
+    if (!all) for (const x of rows) { if (isCarryOn(x.sh)) continue; const v = numVal(x.sh.number); if (v != null) bucket(x).add(String(v)); }
     let n = 0;
     for (const x of rows) {
       if (isCarryOn(x.sh)) continue;
       if (!all && String(x.sh.number || '').trim()) continue;
-      const v = suggestNumber(st, x.sh, used);
-      if (v) { x.sh.number = v; used.add(v); n++; }
+      const v = suggestNumber(st, x.sh, bucket(x), { fillGaps: gaps });
+      if (v) { x.sh.number = v; x.sh.numLock = false; bucket(x).add(v); n++; }
+      else if (all) { x.sh.number = ''; x.sh.numLock = false; }
     }
+    tidyCarry(st);
     log(st, (all ? 'Renumbered ' : 'Numbered ') + n + ' sheet(s) from the number ranges');
     return n;
+  }
+  function renumberPreview(st, opts) {
+    opts = opts || {};
+    const gaps = Object.prototype.hasOwnProperty.call(opts, 'fillGaps') ? !!opts.fillGaps : fillGaps(st);
+    const explicit = opts.keepIds instanceof Set || Array.isArray(opts.keepIds);
+    const keepIds = explicit ? new Set(opts.keepIds) : null;
+    const rows = orderedRows(st);
+    const buckets = new Map();
+    const bucket = (x) => { const k = numberBucket(st, x); if (!buckets.has(k)) buckets.set(k, new Set()); return buckets.get(k); };
+    const hold = (x) => {
+      if (isCarryOn(x.sh)) return true;
+      if (explicit) return keepIds.has(x.sh.id) && !!String(x.sh.number || '').trim();
+      return !!x.sh.numLock && !!String(x.sh.number || '').trim();
+    };
+    for (const x of rows) {
+      if (!hold(x) || isCarryOn(x.sh)) continue;
+      const v = numVal(x.sh.number);
+      if (v != null) bucket(x).add(String(v));
+    }
+    return rows.map((x) => {
+      const old = String(x.sh.number || '').trim();
+      const oldText = sheetNumberText(st, x.sh);
+      const base = { id: x.sh.id, title: x.sh.title, sub: x.sub.code, subId: x.sub.id, section: x.seg.title, old, oldText, locked: !!x.sh.numLock, carry: isCarryOn(x.sh) };
+      if (base.carry || hold(x)) return Object.assign(base, { next: old, nextText: oldText, keep: true, overflow: false });
+      const next = suggestNumber(st, x.sh, bucket(x), { fillGaps: gaps }) || '';
+      if (next) bucket(x).add(next);
+      const prefix = cleanPrefix(x.sub.numPrefix);
+      return Object.assign(base, { next, nextText: next ? prefix + next : '', keep: false, overflow: !next });
+    });
+  }
+  function applyRenumber(st, plan) {
+    const byId = new Map((plan || []).map((p) => [p.id, p]));
+    let n = 0;
+    for (const x of orderedRows(st)) {
+      if (isCarryOn(x.sh)) continue;
+      const p = byId.get(x.sh.id);
+      if (!p || p.keep || p.carry) { if (p && p.keep) x.sh.numLock = true; continue; }
+      const next = p.next ? String(p.next) : '';
+      if (next !== String(x.sh.number || '')) n++;
+      x.sh.number = next;
+      x.sh.numLock = false;
+    }
+    tidyCarry(st);
+    log(st, 'Renumbered ' + n + ' sheet(s); kept the ones marked to stay');
+    return n;
+  }
+  function numberKey(st, sub, raw) {
+    const stored = storeNumber(raw, sub ? cleanPrefix(sub.numPrefix) : '');
+    const v = numVal(stored);
+    const core = v != null ? String(v) : String(stored || '').trim().toLowerCase();
+    if (!core) return '';
+    return (numberingMode(st) === 'package' && sub ? sub.id + '\t' : '') + core;
   }
   function setRange(st, key, f) {
     const r = st.settings.numbering.find((x) => x.key === key); if (!r) throw new Error('No such range');
@@ -1663,7 +1814,7 @@
     if (opts && opts.sheets) for (const sh of src) {
       const c = { ...clone(sh), id: uid(), status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], number: '' };
       c.gen = { ...c.gen, road: r.road.id, titleEdited: !!sh.gen.titleEdited };
-      tsec.sheets.push(c); c.number = suggestNumber(st, c) || '';
+      tsec.sheets.push(c); assignNumber(st, c);
     }
     sortSecSheets(to, tsec);
     log(st, 'Copied ' + hit.road.name + ' (' + hit.sec.title + ') from ' + subTag(hit.sub) + ' to ' + subTag(to) + (opts && opts.sheets ? ' with ' + src.length + ' PP sheets' : ''), { t: 'road', id: r.road.id });
@@ -1707,7 +1858,7 @@
       const c = Object.assign(clone(sh), { id: uid(), status: 'Not started', pct: 0, hoursActual: 0, qc: {}, revs: [], number: '' });
       c.gen = Object.assign({}, c.gen, { road: roadMap.get(sh.gen.road) });
       delete c.dam; delete c.hyd; delete c.cnt; delete c.unit;
-      toHit.seg.sheets.push(c); c.number = suggestNumber(st, c) || ''; ids.push(c.id);
+      toHit.seg.sheets.push(c); assignNumber(st, c); ids.push(c.id);
     }
     sortSecSheets(toHit.sub, toHit.seg);
     log(st, (P.appended ? 'Appended' : 'Copied') + ' trunk lines from ' + P.from + ' to ' + subTag(toHit.sub) + ': ' + roadMap.size + ' road' + (roadMap.size === 1 ? '' : 's') + ', ' + ids.length + ' sheet' + (ids.length === 1 ? '' : 's'), { t: 'seg', id: toHit.seg.id });
@@ -1883,8 +2034,8 @@
     today = today || todayISO();
     const P = printReport(st, today), R = P.R, all = allSheets(st), F = flags(st);
     const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
-    const pairLab = (ref) => { const r = resolve(st, ref); if (!r) return '(missing)'; return subTag(r.sub) + ' / ' + (r.t === 'sheet' ? (r.sh.number ? '#' + r.sh.number + ' ' : '') + r.sh.title : r.t === 'road' ? r.seg.title + ' · ' + r.name : r.seg.title); };
-    const shLab = (x) => subTag(x.sub) + ' / ' + (x.sh.number ? '#' + x.sh.number + ' ' : '') + x.sh.title;
+    const pairLab = (ref) => { const r = resolve(st, ref); if (!r) return '(missing)'; const no = r.t === 'sheet' ? sheetNumberText(st, r.sh) : ''; return subTag(r.sub) + ' / ' + (r.t === 'sheet' ? (no ? '#' + no + ' ' : '') + r.sh.title : r.t === 'road' ? r.seg.title + ' · ' + r.name : r.seg.title); };
+    const shLab = (x) => { const no = sheetNumberText(st, x.sh); return subTag(x.sub) + ' / ' + (no ? '#' + no + ' ' : '') + x.sh.title; };
     const updSet = new Set(F.update.map((x) => rk(x.ref)));
     const secState = (sec) => { const p = progress(sec.sheets); return !sec.sheets.length || !p.done && !sec.sheets.some((x) => x.status !== 'Not started') ? 'Not started' : p.done === sec.sheets.length ? 'Done' : 'In progress'; };
     const secNeedsUpd = (sec) => updSet.has(rk({ t: 'seg', id: sec.id })) || sec.sheets.some((x) => updSet.has(rk({ t: 'sheet', id: x.id })));
@@ -1902,7 +2053,7 @@
           return { sub: S.sub, lead: String(n2 ? n2.text.replace(/^[^—]*— \w+: /, '') : '').split(/(?<=\.)\s/)[0], facts: facts(S.stats, r2, S.stats.pp || 0), groups: groupSecs(S.secs), note: n2 && n2.note,
             roads: S.secs.filter((x) => x.pp).flatMap((x) => x.roads.map((g) => ({ sec: x.sec.title, name: g.name, aligns: g.aligns || [], spans: g.spans, pp: g.pp,
               scale: [...new Set(g.sheets.map((y) => sheetScale(st, S.sub, y.sh)).filter(Boolean))].map((v) => '1" = ' + v + "'").join(', '),
-              sheets: g.sheets.map((y) => ({ label: y.sh.gen ? 'PP ' + y.sh.gen.idx : y.sh.title, number: y.sh.number || '', range: y.range ? formatStation(y.range.start) + ' – ' + formatStation(y.range.end) + (y.range.manual ? ' *' : '') : 'stations not set', status: y.sh.status })) }))) }; }) }; });
+              sheets: g.sheets.map((y) => ({ label: y.sh.gen ? 'PP ' + y.sh.gen.idx : y.sh.title, number: sheetNumberText(st, y.sh) || '', range: y.range ? formatStation(y.range.start) + ' – ' + formatStation(y.range.end) + (y.range.manual ? ' *' : '') : 'stations not set', status: y.sh.status })) }))) }; }) }; });
     /* attention */
     const unassigned = all.filter((x) => !x.sh.owner && x.sh.status !== 'Done');
     const attention = [], c8 = (a, f) => a.slice(0, 8).map(f).concat(a.length > 8 ? ['+ ' + (a.length - 8) + ' more (see the app)'] : []);
@@ -2025,7 +2176,7 @@
     opts = opts || {}; const mode = opts.mode === 'new' ? 'new' : 'merge';
     const get = (r, k) => (k in map && map[k] != null && map[k] !== '' ? String(r[map[k]] == null ? '' : r[map[k]]).trim() : '');
     const items = [], groups = new Map(), nums = new Map(), sheetKeys = new Set();
-    for (const sh of allSheets(st)) if (sh.sh.number) nums.set(String(sh.sh.number), 'existing ' + subTag(sh.sub) + ' · ' + sh.sh.title);
+    for (const sh of allSheets(st)) { if (!sh.sh.number || isCarryOn(sh.sh)) continue; const k = numberKey(st, sh.sub, sh.sh.number); if (k) nums.set(k, 'existing ' + subTag(sh.sub) + ' · ' + sh.sh.title); }
     const ppDefault = (disc) => (secDefs(st, disc).find((d) => d.key === (disc === 'SWP3' ? 'sw-layout' : 'dr-pp')) || secDefs(st, disc).find((d) => d.series) || null);
     rows.forEach((r, i) => {
       const it = { line: i + 1, errors: [], warns: [], raw: r };
@@ -2069,7 +2220,7 @@
         targets = [sdef];
       }
       it.f = { alignment: cleanAlign(get(r, 'alignment')).slice(0, 60), sub, road, start: a, end: b, scale, disc, status, due, title, series, ppidx, number: get(r, 'number'), owner: get(r, 'owner'), notes: get(r, 'notes'), depends: get(r, 'depends'), sheetStart: Number.isFinite(sa2) ? sa2 : null, sheetEnd: Number.isFinite(sb2) ? sb2 : null, sec: targets[0] || null };
-      if (it.f.number && it.kind !== 'road') { if (nums.has(it.f.number)) it.warns.push('Duplicate sheet number ' + it.f.number + ' (also ' + nums.get(it.f.number) + ').'); else nums.set(it.f.number, 'row ' + it.line); }
+      if (it.f.number && it.kind !== 'road') { const k = numberKey(st, sub, it.f.number); if (k && nums.has(k)) it.warns.push('Duplicate sheet number ' + it.f.number + ' (also ' + nums.get(k) + ').'); else if (k) nums.set(k, 'row ' + it.line); }
       if (!it.errors.length && it.kind === 'sheet') {
         const sk = sub.id + '|' + sdef.key + '|' + title.toLowerCase();
         const exSec = secOf(sub, sdef.key);
@@ -2159,8 +2310,8 @@
       for (const g of rs) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', '', '', '', '', '', '', g.notes || '', '', '', '', roadAlign(g)]));
       for (const sh of sec.sheets) {
         const g = sh.gen && byId.get(sh.gen.road), rg = sheetRange(sh), rs2 = rg ? [formatStation(rg.start), formatStation(rg.end)] : ['', ''];
-        if (g) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', sh.gen.series, sh.gen.idx, sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2, [roadAlign(g)])));
-        else L.push(csvLine([subTag(sub), sec.discipline, sec.title, sh.road || '', '', '', '', sh.title, sh.gen ? '' : sh.series || '', '', sh.number || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2, [sh.road ? sheetAlign(st, sub, sec, sh) : ''])));
+        if (g) L.push(csvLine([subTag(sub), sec.discipline, sec.title, g.road, formatStation(g.start), formatStation(g.end), g.scale == null ? '' : g.scale, '', sh.gen.series, sh.gen.idx, sheetNumberText(st, sh) || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2, [roadAlign(g)])));
+        else L.push(csvLine([subTag(sub), sec.discipline, sec.title, sh.road || '', '', '', '', sh.title, sh.gen ? '' : sh.series || '', '', sheetNumberText(st, sh) || '', sh.status, sh.owner || '', sh.due || '', sh.notes || '', deps(sh)].concat(rs2, [sh.road ? sheetAlign(st, sub, sec, sh) : ''])));
       }
     }
     return '\uFEFF' + L.join('\r\n') + '\r\n';
@@ -2248,7 +2399,7 @@
       for (const c of it.create) {
         const sh = newSheet({ title: c.title, discipline: target.discipline, series: target.title, road: road.road });
         sh.dam = { road: road.id, idx: c.range.idx, of: c.range.of, start: c.range.start, end: c.range.end, scale: it.scale || null, linked: link, title: c.title, branch: br.id };
-        target.sheets.push(sh); sh.number = suggestNumber(st, sh) || '';
+        target.sheets.push(sh); assignNumber(st, sh);
         out.created++; out.ids.push(sh.id);
       }
       for (const u of it.update) {
@@ -2313,7 +2464,7 @@
     }
     if (P.remove.length) { const kill = new Set(P.remove.map((q) => q.id)); sec.sheets = sec.sheets.filter((q) => !kill.has(q.id)); pruneLinks(st); }
     syncHyd(sec);
-    for (const sh of made.concat(P.adopt && !P.adopt.number ? [P.adopt] : [])) sh.number = suggestNumber(st, sh) || '';
+    for (const sh of made.concat(P.adopt && !P.adopt.number ? [P.adopt] : [])) assignNumber(st, sh);
     log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' sheet' + (P.n === 1 ? '' : 's') + ' (' + (made.length ? '+' + made.length : '') + (P.remove.length ? (made.length ? ', ' : '') + '−' + P.remove.length : '') + (!made.length && !P.remove.length ? 'no change' : '') + ')', { t: 'seg', id: sec.id });
     return { created: made.length, removed: P.remove.length, adopted: P.adopt ? 1 : 0, n: P.n, ids: made.map((q) => q.id) };
   }
@@ -2384,7 +2535,7 @@
     }
     if (P.remove.length) { const kill = new Set(P.remove.map((q) => q.id)); sec.sheets = sec.sheets.filter((q) => !kill.has(q.id)); pruneLinks(st); }
     syncCounted(sec, field);
-    for (const sh of made.concat(P.adopt && !P.adopt.number ? [P.adopt] : [])) sh.number = suggestNumber(st, sh) || '';
+    for (const sh of made.concat(P.adopt && !P.adopt.number ? [P.adopt] : [])) assignNumber(st, sh);
     log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' sheet' + (P.n === 1 ? '' : 's') + ' (' + (made.length ? '+' + made.length : '') + (P.remove.length ? (made.length ? ', ' : '') + '−' + P.remove.length : '') + (!made.length && !P.remove.length ? 'no change' : '') + ')', { t: 'seg', id: sec.id });
     return { created: made.length, removed: P.remove.length, adopted: P.adopt ? 1 : 0, n: P.n, ids: made.map((q) => q.id) };
   }
@@ -2607,7 +2758,7 @@
     }
     if (P.remove.length) { const kill = new Set(P.remove.map((q) => q.id)); sec.sheets = sec.sheets.filter((q) => !kill.has(q.id)); pruneLinks(st); }
     syncUnits(sec); sortUnits(sec);
-    for (const sh of made.concat(P.adopt.map((a) => a.sh).filter((sh) => !sh.number))) sh.number = suggestNumber(st, sh) || '';
+    for (const sh of made.concat(P.adopt.map((a) => a.sh).filter((sh) => !sh.number))) assignNumber(st, sh);
     const word = P.n === 1 ? unitNoun(sec) : unitNouns(sec);
     log(st, subTag(hit.sub) + ' · ' + sec.title + ': ' + P.n + ' ' + word + ' (' + unitSheets(sec).length + ' sheets)', { t: 'seg', id: sec.id });
     return { created: made.length, removed: P.remove.length, adopted: P.adopt.length, n: P.n, ids: made.map((q) => q.id) };
@@ -3053,7 +3204,7 @@
   }
   return { isTrunkSec, trunkSources, planCopyTrunk, copyTrunkLines, isStdSec, standardsForSection, addStandardSheets, STANDARD_SHEETS, isLatSec, isPondSec, isBoxSec, isOptCountSec, isPlainCountSec, isSheetCountSec, countManaged, unitKind, unitSlots, unitSheets, unitGroups, unitLoose, viewUnitGroups, viewRoadGroups, viewDamGroups, sheetsInOrder, packageBuckets, carryDisplayGroup, bySheetNumber, unitTitle, unitNoun, planUnitCount, setUnitCount, setPondCount, setBoxCount, setPondName, syncUnits, isCarryOn, carryOrigin, carriersOf, carryChain, carryCandidates, addCarryOn, removeCarryOn, findCarryOns, linkAsCarryOn, linkExactCarryOns, ignoreCarryPair, resetCarryIgnore, normSheetTitle, planSheetCount, setSheetCount, sheetCountSheets, isHydSec, hydTitle, hydSheets, planHydCount, setHydCount, syncHyd, damBranches, damBranchOf, damBranchSheets, damLoose, findDamBranch, damBranchLinked, ensureDamBranch, syncDamBranches, unlinkDamBranch, deleteDamBranch, damSection, damTitle, damRanges, damCopiesOf, damSources, planDam, applyDam, damOutOfSync, resyncDam, unlinkDam, roadAlign, roadWithAlign, groupAligns, sheetAlign, PROP_FIELDS, propTarget, getProps, setProps, rollup, pruneProps, reportOutline, setReportMeta, reportMeta, printReport, rgSlug, rgKey, roadGroups, sheetRange, rangeText, sheetGroupSlug, sheetsOfGroup, otherSheets, sheetScale, computedRange, setSheetRange, resetSheetRange, rangeWarnings, syncPP, upgrade32, subName, subTag, subLabel, subCustom, checkSubName, renameSub, SCHEMA, CSV_FIELDS, CSV_HEAD, parseCSV, detectMapping, parseDate, normStatus, normDisc, normScale, findSecDef, planCSV, applyCSV, exportImportCSV, csvTemplate, narrative, narrativeText, setReportNote, recentChanges, bulkUpdate, bulkDelete, paletteSearch,
     linkCheck, copySegment, copyRoad: copySegment, splitSegment, splitRoad: splitSegment, touching, mergeSegments, mergeRoads: mergeSegments, allSegs, allRoads: allSegs, previewStations, setStations, shiftStations, applyStationRows, parseTSV,
-    TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps,
+    TREE_LEVELS, collapseLevel, focusBranch, report, history, weekView, DEFAULT_NUMBERING, rangeFor, suggestNumber, numberIssues, allNumberIssues, autoNumber, renumberPreview, applyRenumber, orderedRows, setRange, addRange, removeRange, rangeOverlaps, setPackagePrefix, setNumbering, numberingMode, fillGaps, sheetPrefix, sheetNumberText, numVal, storeNumber, cleanPrefix,
     addIndexItem, updateIndexItem, removeIndexItem, moveIndexItem, planIndex, applyIndex, indexToTemplates, segLabel, roads, guessDiscipline, branchStats, discStats,
     LINK_KINDS, rk, resolve, refLabel, isDone, revCount, subOrder, orderedSubs, setOrder, wrongWay, isCross, linksOf, depPath, addLink, removeLink, pruneLinks, blockers, needsUpdate, markRevised, markUpdated, impact, allRefs, flags, depsCSV,
     STATUSES, DISCIPLINES, WEIGHT, DEFAULT_SECTIONS, DEFAULT_SCALES, DEFAULT_SERIES, DEFAULT_QC, SERIES_SEC, uid, newState, defaultSectionDefs, defaultTemplates,

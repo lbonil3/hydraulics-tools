@@ -318,7 +318,7 @@
       const from = carryOn(x.sh) && M.carryOrigin(st, x.sh);
       const by = !from && typeof M.carriersOf === 'function' ? M.carriersOf(st, x.sh.id) : [];
       const title = x.sh.title + (from ? ' (carried from ' + from.sub.code + ')' : '') + (by.length ? ' (carried on by ' + by.map((c) => c.sub.code).join(', ') + ')' : '');
-      return [String(x.sh.number || '—'), title, x.sub.code, x.seg.title, x.sh.status];
+      return [M.sheetNumberText(st, x.sh) || '—', title, x.sub.code, x.seg.title, x.sh.status];
     }), cls: 'eidx' } });
     out.sheets = sheetBlocks.length ? sheetBlocks : [{ p: 'No plan sheets are tracked yet.' }];
     /* 9 */
