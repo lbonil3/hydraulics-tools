@@ -3,10 +3,12 @@
 const all=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return{}}},put=o=>localStorage.setItem(KEY,JSON.stringify(o));
 const ids=()=>F.map(r=>r[0]).filter(id=>document.getElementById(id));
 function snap(name){const v={};ids().forEach(id=>v[id]=document.getElementById(id).value);let opts=[];try{opts=JSON.parse(localStorage.getItem('culvert.options')||'[]')}catch(e){}
- return{app:'Culvert Studio',version:1,name,saved:new Date().toISOString(),units:state.units,values:v,options:opts};}
+ return{app:'Culvert Studio',version:2,name,saved:new Date().toISOString(),units:state.units,values:v,options:opts,criteria:state.criteria?{hwDMax:state.criteria.hwDMax,vExcessFt:state.criteria.vExcessFt,vMinFt:state.criteria.vMinFt}:null,extras:state.extras||[]};}
 function apply(pr){const u=document.getElementById('units');if(u&&pr.units&&u.value!==pr.units){u.value=pr.units;u.dispatchEvent(new Event('change',{bubbles:true}));}
  const v=pr.values||{};const order=['shape','material','size','inlet','twMode','roadOn'];
  for(const pass of [order,Object.keys(v)])for(const id of pass){const e=document.getElementById(id);if(e&&id in v){e.value=v[id];e.dispatchEvent(new Event('input',{bubbles:true}));}}
+ if(pr.criteria&&pr.criteria.hwDMax){state.criteria=Object.assign({},Culvert.CRITERIA,pr.criteria);try{localStorage.setItem('culvert.criteria',JSON.stringify(state.criteria));}catch(e){}}
+ if(Array.isArray(pr.extras)){state.extras=pr.extras;try{localStorage.setItem('culvert.extras',JSON.stringify(state.extras));}catch(e){}if(window.Barrels)Barrels.draw();}
  const last=document.getElementById('Q');
  Object.keys(v).forEach(id=>{const e=document.getElementById(id);if(e)e.value=v[id];});
  if(Array.isArray(pr.options))localStorage.setItem('culvert.options',JSON.stringify(pr.options));if(window.CMP)CMP.draw();

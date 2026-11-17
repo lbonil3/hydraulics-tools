@@ -33,7 +33,7 @@ chk('Fig 3.11C kt free flow at 0.6',ktFactor(0.6,'gravel'),1.0,0.1);
  const b=balance(450,el,road);console.log(`  balance @450 cfs: culvert ${b.Qc.toFixed(2)} + road ${b.Qr.toFixed(2)} = ${(b.Qc+b.Qr).toFixed(2)}, HW El ${b.EL.toFixed(3)}, ${b.iter} iterations`);
  chk('Balance continuity (cfs)',b.Qc+b.Qr,450,0.02);
  chk('Balance: culvert HW at Qc equals weir HW',el(b.Qc),b.EL,0.001);}
-// 9) HY-8 8.0.1.2 comparison (/workspace/hy8-video/comparison.md): 6x5 box, road crest 108, length 100, Lr 30, paved
+// 9) HY-8 8.0.1.2 comparison (values copied into this file; the external comparison note is not part of the repo): 6x5 box, road crest 108, length 100, Lr 30, paved
 {const base={units:'US',shape:'box',span:6,rise:5,barrels:1,length:200,invIn:100,invOut:98,n:0.012,inlet:pick('box','b_90'),twMode:'const',twElev:101.5};
  const el=q=>analyze({...base,Q:q}).EL, road={segs:[[0,108],[100,108]],Lr:30,surface:'paved',twElev:101.5,US:true};
  let a=analyze({...base,Q:300}); chk('HY-8 OC HW @300',a.HWo,5.82,2); chk('HY-8 outlet depth @300',a.yout,3.24,2); chk('HY-8 outlet V @300',a.Vout,15.43,2);
@@ -121,4 +121,87 @@ chk('Fig 3.11C kt free flow at 0.6',ktFactor(0.6,'gravel'),1.0,0.1);
   const r=C.analyze({units:'US',shape:'box',span:5,rise:5,barrels:1,length:200,invIn:100,invOut:98,n:0.012,inlet:inl,Q,twMode:'const',twElev:tw.el});
   const tl=ic/5>3?2:1;chk(`HY-8 HW El @${Q} cfs${tl>1?" (HW/D>3, beyond polynomial range)":""}`,r.EL-100,el-100,tl);chk(`HY-8 inlet-control depth @${Q}`,r.HWi,ic,tl);}
  chk('Circular gets 3 HY-8 inlets (bevel 1:1, 1.5:1, mitered)',C.INLETS.circular.filter(i=>/^hyc_/.test(i.id)).length,3,0);}
+
+{console.log('\n-- HDS-5 outlet-control methods, SI, slope, units, barrels, inlets --');
+ const C=require('./calc.js').Culvert;
+ const sq=pick('circular','c_sq_hw'), box=pick('box','b_90');
+ function must(name, cond){ok=ok&&!!cond; console.log(`${cond?'PASS':'FAIL'}  ${name}`);}
+ // 48 in concrete pipe, S = 0.1%, L = 100 ft, free outfall, 10 cfs. Profile HW is the HY-8 trace; HWoHDS is ho + H − S·L with ho = (dc+D)/2.
+ const pipe={units:'US',shape:'circular',span:4,rise:4,barrels:1,length:100,invIn:100,invOut:99.9,n:0.012,inlet:sq,Q:10,twMode:'none'};
+ let r=analyze(pipe);
+ chk('48 in free outfall, HY-8 profile outlet-control HW (ft)', r.HWo, 1.41, 2);
+ chk('48 in free outfall, HDS-5 full-flow outlet-control HW (ft)', r.HWoHDS, 2.38, 1);
+ must('Profile HW and HDS-5 HW are both reported and differ', r.HWoHDS-r.HWo>0.5);
+ // Hand inlet-control check, Form 1 unsubmerged: HW/D = Hc/D + K·X^M + Ks·S. X = 10/(A·√4) = 0.3979, Hc = 1.246 ft, K = 0.0098, M = 2, Ks = −0.5, S = 0.001 → HWi = 1.250 ft.
+ chk('48 in square-edge headwall inlet-control HW vs hand calc (ft)', r.HWi, 1.250, 0.5);
+ const bv=pick('circular','c_bv45');
+ r=analyze(Object.assign({},pipe,{inlet:bv}));
+ chk('Chart 3 45° beveled ring Ke', r.inlet.Ke, 0.2, 0);
+ must('Beveled ring inlet HW is below the square-edge inlet at the same flow', r.HWi<1.250);
+ // Full analyze in SI of the 6×5 box example. Inlet HW/D uses Ku so it matches the US ratio; elevations scale by 0.3048.
+ const us=analyze({units:'US',shape:'box',span:6,rise:5,barrels:1,length:200,invIn:100,invOut:98,n:0.012,inlet:box,Q:300,twMode:'const',twElev:101.5});
+ const FT=0.3048, CFS=FT*FT*FT;
+ const si=analyze({units:'SI',shape:'box',span:6*FT,rise:5*FT,barrels:1,length:200*FT,invIn:100*FT,invOut:98*FT,n:0.012,inlet:box,Q:300*CFS,twMode:'const',twElev:101.5*FT});
+ chk('SI analyze inlet HW/D matches US', si.ratio, us.ratio, 0.2);
+ chk('SI analyze headwater elevation (m)', si.EL, us.EL*FT, 0.2);
+ chk('SI analyze outlet velocity (m/s)', si.Vout, us.Vout*FT, 0.5);
+ must('SI result is finite', isFinite(si.HW)&&isFinite(si.HWoHDS)&&si.control==='Inlet');
+ // Zero and adverse slope: normal depth undefined, profile method (not a blanket full-flow assumption).
+ r=analyze(Object.assign({},pipe,{invOut:100}));
+ must('Zero slope: normal depth undefined', !isFinite(r.yn));
+ must('Zero slope: outlet control uses the profile method', r.ocMethod==='profile'||r.ocMethod==='profile+full');
+ must('Zero-slope warning names the profile method', /water-surface profile/.test(C.slopeWarning(r.S,r.ocMethod))&&!/assume full-flow outlet control/.test(C.slopeWarning(r.S,r.ocMethod)));
+ r=analyze(Object.assign({},pipe,{invOut:100.5,twMode:'const',twElev:101}));
+ must('Adverse slope: normal depth undefined and profile method runs', r.S<0&&!isFinite(r.yn)&&(r.ocMethod==='profile'||r.ocMethod==='profile+full'));
+ // Unit-toggle preservation (pure conversion used by the form).
+ const spec={invIn:'L',length:'L',Q:'Q',n:'num',chRating:'txt:Q,L',udPoly:'txt:L,L'};
+ const snap={invIn:'100',length:'200',Q:'300',n:'0.012',chRating:'0, 98\n300, 101.8',udPoly:'0, 0\n8, 0\n8, 5'};
+ const conv=C.convertSnapshot(snap,spec,'US','SI');
+ chk('100 ft converts to metres', +conv.invIn, 30.48, 0.01);
+ chk('300 cfs converts to m3/s', +conv.Q, 300*CFS, 0.05);
+ must('Manning n is not converted', conv.n==='0.012');
+ const back=C.convertSnapshot(conv,spec,'SI','US');
+ chk('Length round-trips through SI', +back.length, 200, 0.02);
+ chk('Flow round-trips through SI', +back.Q, 300, 0.05);
+ must('Rating-curve elevation converts and flow converts', Math.abs(+conv.chRating.split('\n')[1].split(',')[0]-300*CFS)<0.01);
+ // Tailwater resolver must not revive a hidden elevation when the channel calc fails.
+ const badTW=C.resolveTW('trap', null, 101.5);
+ must('Failed channel tailwater does not use the hidden elevation', badTW.error&&badTW.twElev==null);
+ const goodTW=C.resolveTW('trap', {el:102.2,y:1.2}, 101.5);
+ chk('Successful channel tailwater uses the computed elevation', goodTW.twElev, 102.2, 0.01);
+ must('Constant tailwater still uses the entered elevation', C.resolveTW('const', null, 101.5).twElev===101.5);
+ // Dissimilar barrels: flow split by a shared upstream elevation.
+ const b1={units:'US',shape:'circular',span:4,rise:4,length:100,invIn:100,invOut:99,n:0.012,inlet:sq};
+ const b2={units:'US',shape:'circular',span:2,rise:2,length:100,invIn:100,invOut:99,n:0.024,inlet:sq};
+ const sp=C.splitFlow([b1,b2], 80, {twMode:'none'});
+ chk('Split flows sum to the crossing discharge', sp.Q, 80, 0.5);
+ must('Larger barrel carries more than the smaller barrel', sp.parts[0].Q>sp.parts[1].Q&&sp.parts[1].Q>1);
+ const spH=C.splitFlow([b1, Object.assign({},b2,{invIn:120,invOut:119})], 40, {twMode:'none'});
+ must('Barrel with invert above the headwater pool is idle', spH.parts[1].idle&&spH.parts[1].Q===0&&spH.parts[0].Q>39);
+ // CMP n by corrugation and size; circular improved inlet; bend loss.
+ chk('Helical 2-2/3 x 1/2, 48 in, HEC-RAS Table 6-2', C.manningN({material:'cmp',corrugation:'hel_2_5',Din:48}).n, 0.020, 0.1);
+ chk('Same pipe, partial flow, HDS-5 §B.4.2 (+11%)', C.manningN({material:'cmp',corrugation:'hel_2_5',Din:48,partial:true}).n, 0.0222, 0.5);
+ chk('Annular 2-2/3 x 1/2 stays at the Chart 6 value 0.024', C.manningN({material:'cmp',corrugation:'ann_2_5',Din:48}).n, 0.024, 0.1);
+ const tp=C.taperIC({pipe:true,type:'side',rough:true,edge:'more',Bf:6,taper:4},150,0.042,1,4,4);
+ chk('HDS-5 CMP side-tapered throat HW vs DG 3.5 example 6.45 ft', tp.HWt, 6.45, 2);
+ must('That example is throat control', tp.ctrl==='throat'&&tp.HWt>tp.HWfT);
+ const sl=C.taperIC({pipe:true,type:'slope',rough:false,edge:'more',Bf:8,taper:4,St:2,T:2.8},150,0.042,1,4,4);
+ chk('HDS-5 CMP slope-tapered face HW vs DG 3.5 example ~6.53 ft', sl.HW, 6.53, 5);
+ chk('90° bend, R/D = 1, Table 5.1', C.bendKb(1,90).k, 0.50, 0);
+ const withBend=analyze(Object.assign({},pipe,{Q:200,twMode:'const',twElev:104,bendDeg:90,bendRD:1}));
+ const noBend=analyze(Object.assign({},pipe,{Q:200,twMode:'const',twElev:104}));
+ must('Bend loss raises HDS-5 outlet-control headwater and is zero when no bend is set', withBend.Hb>0&&withBend.HWoHDS>noBend.HWoHDS&&noBend.Hb===0);
+ chk('Table 5.2a 45° skew at HW/D = 1 keeps 222/240 of the capacity', C.skewRatio(1,45).factor, 222/240, 0.1);
+ // HEC-14 Eq. 5.1 SI example: D = 457 mm, Q = 0.764 m³/s, S = 2%, Hd = 2, σ = 1.87, t = 30 min → Ws 8.82 m, Ls 7.06 m, Vs 27.8 m³, Lm 2.82 m.
+ const sc=C.scourHole({US:false,Q:0.764,D:0.457,S:0.02,Hd:2,sigma:1.87,tMin:30});
+ chk('HEC-14 scour width (m)', sc.ws, 8.82, 1);
+ chk('HEC-14 scour length (m)', sc.ls, 7.06, 1);
+ chk('HEC-14 scour volume (m3)', sc.vs, 27.8, 1);
+ chk('HEC-14 max-depth station 0.4 Ls (m)', sc.Lm, 2.82, 1);
+ const tx=C.txdotRiprap(0.43, 2.65);
+ chk('D50 0.43 ft screens to Item 432 12 in protection riprap', tx.thicknessIn, 12, 0);
+ must('Flotation note does not invent a cover depth', C.flotationCheck({material:'cmp',inletId:'m_pr',HW:6,D:4,cover:0.4}).some(n=>/does not compute buoyant force|no numeric/i.test(n.text)));
+ const rows=C.performanceRows(pipe, 5, 15, 2);
+ must('Performance-curve rows carry both outlet-control headwaters', rows.length===3&&rows.every(x=>isFinite(x.HWo)&&isFinite(x.HWoHDS)&&x.HWoHDS>x.HWo));
+}
 console.log(ok?'\nALL CHECKS PASSED':'\nSOME CHECKS FAILED'); process.exit(ok?0:1);

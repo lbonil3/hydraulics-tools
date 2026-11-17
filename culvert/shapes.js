@@ -1,11 +1,11 @@
 /* Barrel shapes from HY-8 8.0 (ShapeDB): catalog lookups, sections for calc.js, outline paths for drawings. */
-(function(){const C=window.Culvert,DB=window.HY8DB||{};
+(function(){const C=window.Culvert,db=()=>window.HY8DB||{};
 const LIST=[['circular','Circular pipe'],['box','Concrete box (rectangular)'],['ellip','Elliptical (horizontal ellipse)'],['parch','Pipe arch'],
  ['arch','Arch, open bottom (corrugated metal)'],['lparch','Low-profile arch (open bottom)'],['hparch','High-profile arch (open bottom)'],
  ['mbox','Metal box (open bottom)'],['coba','Concrete open-bottom arch (precast 3-sided)'],['sdbox','South Dakota concrete box'],['user','User-defined shape (x, y points)']];
-const isHY=k=>k!=='circular'&&k!=='box'&&!!DB[k];
+const isHY=k=>k!=='circular'&&k!=='box'&&!!db()[k];
 const catalog=k=>k!=='sdbox'&&k!=='user'; // shapes whose sizes come from the HY-8 catalog
-const mats=k=>isHY(k)?DB[k].mats:[];
+const mats=k=>isHY(k)?db()[k].mats:[];
 function mat(k,mv){const m=mats(k);return m[+String(mv||'m0').slice(1)]||m[0];}
 function sizes(k,mv){const m=mat(k,mv);return m?m.sizes:[];}
 function size(k,mv,sv){const s=sizes(k,mv);return s[+String(sv||'s0').slice(1)]||s[0];}
@@ -20,12 +20,16 @@ function section(k,o){// o:{mat,size,units,n,nb,span,rise,poly}
  const key=JSON.stringify([k,o]);if(cache.has(key))return cache.get(key);let s=null;const sc=o.units==='SI'?0.3048:1;
  if(k==='sdbox'){if(o.span>0&&o.rise>0)s=C.rectSection(o.span,o.rise,o.n);}
  else if(k==='user'){const P=parsePoly(o.poly);if(P.length>=3){s=C.polySection(P,{nWall:o.n});if(!(s.Afull>0))s=null;}}
- else{const z=size(k,o.mat,o.size);if(z){s=C.sectionFromHY8(z.g,{scale:sc,nWall:o.n,nBed:o.nb,open:DB[k].open,rise:z.r*sc});s.spanNom=z.s*sc;s.riseNom=z.r*sc;}}
+ else{const z=size(k,o.mat,o.size);if(z){s=C.sectionFromHY8(z.g,{scale:sc,nWall:o.n,nBed:o.nb,open:db()[k].open,rise:z.r*sc});s.spanNom=z.s*sc;s.riseNom=z.r*sc;}}
  if(s){s.kind=k;}
  if(cache.size>60)cache.clear();cache.set(key,s);return s;}
 // outline path of a section scaled to px (y up -> svg down); x0,yb = left, bottom in px
 function path(s,sc,x0,yb){return 'M'+s.poly.map(p=>`${(x0+p[0]*sc-Math.min(...s.poly.map(q=>q[0]))*sc).toFixed(1)},${(yb-p[1]*sc).toFixed(1)}`).join('L')+'Z';}
 function label(k){const e=LIST.find(x=>x[0]===k);return e?e[1]:k;}
-if(window.Culvert&&Culvert.extendInlets)Culvert.extendInlets(DB);
-window.Shapes={LIST,isHY,catalog,mats,mat,sizes,size,inlets,inletFor,section,path,label,parsePoly,DB};
+if(window.Culvert&&Culvert.extendInlets)Culvert.extendInlets(db());
+function loadHY8(){if(window.HY8DB)return Promise.resolve(window.HY8DB);
+ if(window._hy8)return window._hy8;
+ window._hy8=new Promise((res,rej)=>{const s=document.createElement('script');s.src='hy8shapes.js';s.onload=()=>{try{Culvert.extendInlets(window.HY8DB);}catch(e){}res(window.HY8DB);};s.onerror=()=>rej(new Error('Could not load hy8shapes.js'));document.body.appendChild(s);});
+ return window._hy8;}
+window.Shapes={LIST,isHY,catalog,mats,mat,sizes,size,inlets,inletFor,section,path,label,parsePoly,get DB(){return db();},loadHY8};
 })();
