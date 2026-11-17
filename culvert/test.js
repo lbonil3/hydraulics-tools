@@ -203,5 +203,9 @@ chk('Fig 3.11C kt free flow at 0.6',ktFactor(0.6,'gravel'),1.0,0.1);
  must('Flotation note does not invent a cover depth', C.flotationCheck({material:'cmp',inletId:'m_pr',HW:6,D:4,cover:0.4}).some(n=>/does not compute buoyant force|no numeric/i.test(n.text)));
  const rows=C.performanceRows(pipe, 5, 15, 2);
  must('Performance-curve rows carry both outlet-control headwaters', rows.length===3&&rows.every(x=>isFinite(x.HWo)&&isFinite(x.HWoHDS)&&x.HWoHDS>x.HWo));
+ const axes=require('./crossingframe.js');
+ const z=axes.crossingAxes(0);
+ must('Road centerline is perpendicular to the barrel axis at zero skew', Math.abs(axes.axesDot(0))<1e-9 && z.barrel.x>0.99 && Math.abs(z.barrel.y)<1e-9 && Math.abs(z.road.x)<1e-9 && z.road.y>0.99);
+ chk('30° skew offsets the barrel from perpendicular by sin(skew)', axes.axesDot(30), Math.sin(30*Math.PI/180), 0.1);
 }
 console.log(ok?'\nALL CHECKS PASSED':'\nSOME CHECKS FAILED'); process.exit(ok?0:1);
