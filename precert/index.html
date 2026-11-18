@@ -15,12 +15,13 @@
 <body>
 <header class="top">
   <a class="home" href="../" aria-label="Back to Hydraulics Tools home">&#8592;</a>
-  <div class="brand"><h1>TxDOT Precertification</h1><span id="saved" class="saved" aria-live="polite">Data stays on this device</span></div>
-  <button type="button" class="ibtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="menu" aria-label="Menu: example data, theme, tour">&#8943;</button>
+  <div class="brand"><div class="brandrow"><h1>TxDOT Precertification</h1><span class="ver" title="Version 1.5">v1.5</span></div><span id="saved" class="saved" aria-live="polite">Data stays on this device</span></div>
+  <button type="button" class="ibtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="menu" aria-label="Menu: example data, theme, tour, keyboard shortcuts">&#8943;</button>
   <div id="menu" class="menu" role="menu" hidden>
     <button type="button" class="mi" role="menuitem" id="exBtn">Load example</button>
     <button type="button" class="mi" role="menuitem" id="themeBtn" aria-label="Switch light / dark theme">Dark theme</button>
     <button type="button" class="mi" role="menuitem" id="tourBtn">Show the quick tour</button>
+    <button type="button" class="mi" role="menuitem" id="keysBtn">Keyboard shortcuts</button>
   </div>
 </header>
 <div class="notice">
@@ -28,16 +29,18 @@
 <div id="exBanner" class="exbanner" role="status" hidden><b>Example data — not real, replace with your own.</b> <span class="muted">Fictional engineer, firm and projects for demonstration only.</span> <span class="exbtns"><button type="button" class="btn sm" id="exClear">Clear example</button><button type="button" class="btn ghost sm" id="exRestore" hidden>Restore my data</button></span></div>
 </div>
 <nav class="tabs" role="tablist" aria-label="Sections">
-  <button type="button" role="tab" data-tab="profile" class="pri"><span class="ti" aria-hidden="true">&#9787;</span>My profile</button>
-  <button type="button" role="tab" data-tab="projects" class="pri"><span class="ti" aria-hidden="true">&#9635;</span>Projects</button>
-  <button type="button" role="tab" data-tab="cats">Work categories</button>
-  <button type="button" role="tab" data-tab="ready" class="pri"><span class="ti" aria-hidden="true">&#10003;</span>Readiness</button>
-  <button type="button" role="tab" data-tab="ccis">CCIS steps</button>
-  <button type="button" role="tab" data-tab="form" class="pri"><span class="ti" aria-hidden="true">&#9998;</span>TxDOT form</button>
-  <button type="button" role="tab" data-tab="export">Export</button>
-  <button type="button" role="tab" data-tab="sources">Sources</button>
+  <button type="button" role="tab" data-tab="profile" class="pri"><span class="ti" aria-hidden="true">&#9787;</span><span class="tn" aria-hidden="true">1</span>My profile<span class="tdot" aria-hidden="true"></span></button>
+  <button type="button" role="tab" data-tab="cats"><span class="ti" aria-hidden="true">&#9776;</span><span class="tn" aria-hidden="true">2</span>Work categories<span class="tdot" aria-hidden="true"></span></button>
+  <button type="button" role="tab" data-tab="projects" class="pri"><span class="ti" aria-hidden="true">&#9635;</span><span class="tn" aria-hidden="true">3</span>Projects<span class="tdot" aria-hidden="true"></span></button>
+  <button type="button" role="tab" data-tab="ready" class="pri"><span class="ti" aria-hidden="true">&#10003;</span><span class="tn" aria-hidden="true">4</span>Readiness<span class="tdot" aria-hidden="true"></span></button>
+  <button type="button" role="tab" data-tab="form" class="pri"><span class="ti" aria-hidden="true">&#9998;</span><span class="tn" aria-hidden="true">5</span>TxDOT form<span class="tdot" aria-hidden="true"></span></button>
+  <button type="button" role="tab" data-tab="export"><span class="ti" aria-hidden="true">&#8681;</span><span class="tn" aria-hidden="true">6</span>Export</button>
+  <button type="button" role="tab" data-tab="ccis"><span class="ti" aria-hidden="true">&#9745;</span>CCIS steps<span class="tdot" aria-hidden="true"></span></button>
+  <button type="button" role="tab" data-tab="sources"><span class="ti" aria-hidden="true">&#128279;</span>Sources</button>
   <button type="button" class="morebtn" id="moreBtn" aria-expanded="false" aria-label="More sections"><span class="ti" aria-hidden="true">&#8943;</span>More</button>
 </nav>
+<datalist id="empList"><option value="Employed"></option></datalist>
+<datalist id="expertiseList"><option value="Engineer"></option><option value="Surveyor"></option><option value="Technician"></option><option value="Architect"></option></datalist>
 <main id="main" tabindex="-1"></main>
 <section id="printOut" class="printout" aria-label="Printable summary"></section>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

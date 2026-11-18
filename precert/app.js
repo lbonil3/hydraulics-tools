@@ -19,7 +19,7 @@
     return el;
   }
   function load() { try { var r = localStorage.getItem(M.KEY); if (r) return M.normalize(JSON.parse(r)); } catch (e) { /* fall through */ } return M.newState(); }
-  function loadUI() { var u = {}; try { u = JSON.parse(localStorage.getItem(UIKEY) || '{}') || {}; } catch (e) { u = {}; } return Object.assign({ tab: 'profile', theme: 'light', hydroOnly: true, q: '', cat: '' }, u); }
+  function loadUI() { var u = {}; try { u = JSON.parse(localStorage.getItem(UIKEY) || '{}') || {}; } catch (e) { u = {}; } return Object.assign({ tab: 'profile', theme: 'light', hydroOnly: true, q: '', cat: '', keys: false }, u); }
   function saveUI() { try { localStorage.setItem(UIKEY, JSON.stringify(ui)); } catch (e) { /* private mode */ } }
   var saveT = null;
   function save() { clearTimeout(saveT); var sv = $('#saved'); sv.textContent = 'Saving…'; sv.className = 'saved busy'; saveT = setTimeout(function () { try { localStorage.setItem(M.KEY, JSON.stringify(st)); sv.textContent = '✓ Saved on this device ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); sv.className = 'saved done'; } catch (e) { toast('Could not save on this device (storage full or private mode).'); } }, 150); }
@@ -30,10 +30,17 @@
   function field(label, obj, key, opts) {
     opts = opts || {};
     var id = 'f-' + (opts.id || key) + '-' + (obj.id || 'p');
-    var inp = opts.area ? h('textarea', { id: id, rows: opts.rows || 3, placeholder: opts.ph || '' }) : h('input', { id: id, type: opts.type || 'text', placeholder: opts.ph || '', inputmode: opts.mode || null, autocomplete: 'off' });
+    var attrs = { id: id, placeholder: opts.ph || '', title: opts.title || null };
+    var inp = opts.area ? h('textarea', Object.assign({ rows: opts.rows || 3 }, attrs)) : h('input', Object.assign({ type: opts.type || 'text', inputmode: opts.mode || null, autocomplete: opts.list ? 'on' : 'off', list: opts.list || null }, attrs));
     inp.value = obj[key] || '';
-    inp.addEventListener('input', function () { obj[key] = inp.value; save(); if (opts.onInput) opts.onInput(inp.value, inp); });
+    var markNeed = function () { if (opts.req) inp.classList.toggle('need', !String(inp.value).trim() && profileTouched()); };
+    inp.addEventListener('input', function () { obj[key] = inp.value; save(); markNeed(); if (opts.onInput) opts.onInput(inp.value, inp); paintStatus(); });
+    markNeed();
     return h('label', { class: 'f' + (opts.wide ? ' wide' : '') }, h('span', {}, label), inp, opts.hint ? h('small', { class: 'muted' }, opts.hint) : null);
+  }
+  function profileTouched() {
+    var P = st.profile;
+    return ['first', 'last', 'firm', 'firmSeq'].some(function (k) { return String(P[k] || '').trim(); });
   }
   function bar(pct, label) { return h('span', { class: 'meter', role: 'img', 'aria-label': label || (pct + '%') }, h('i', { class: 'w' + Math.round(pct / 10) * 10 })); }
   function copy(text, what) {
@@ -51,7 +58,14 @@
     C.groups.forEach(function (g) { var cs = C.categories.filter(function (c) { return c.group === g.group; }); s.append(h('optgroup', { label: 'Group ' + g.group + ' ' + g.name }, cs.map(function (c) { return h('option', { value: c.code }, c.code + ' ' + c.name); }))); });
     void codes;
     s.addEventListener('change', function () { if (s.value) onPick(s.value); });
-    return s;
+    var filter = h('input', { type: 'search', class: 'catfilter', placeholder: 'Filter by name or code', 'aria-label': 'Filter work categories', autocomplete: 'off' });
+    filter.addEventListener('input', function () {
+      var q = filter.value.toLowerCase();
+      [].forEach.call(s.options, function (o) { if (!o.value) { o.hidden = false; return; } o.hidden = !!(q && o.textContent.toLowerCase().indexOf(q) < 0); });
+      [].forEach.call(s.querySelectorAll('optgroup'), function (g) { g.hidden = ![].some.call(g.querySelectorAll('option'), function (o) { return !o.hidden; }); });
+    });
+    filter.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); s.focus(); } });
+    return h('div', { class: 'catpick' }, h('span', { class: 'muted' }, 'Add a work category'), filter, s);
   }
 
 
@@ -92,27 +106,54 @@
   }
   function exampleCard() {
     if (M.isExampleState(st) || M.hasRealData(st)) return null;
-    return h('section', { class: 'card excard', id: 'exStart' }, h('h2', {}, 'New here? See a filled-in example'), h('p', { class: 'muted' }, 'Loads a fictional engineer (Alex Example, P.E.), a fictional firm and three fictional drainage projects with sample write-ups for 10.1.1, 10.2.1, 4.2.1 and 10.8.1, so you can see how coverage, readiness and export work. Nothing in it is real experience.'),
+    return h('section', { class: 'card excard', id: 'exStart' }, h('div', {}, h('h2', {}, 'New here? Start from a filled-in example'), h('p', { class: 'muted' }, 'Loads a fictional engineer, firm, and three drainage projects so you can click through coverage, readiness, and the form. Nothing in it is real experience. Clear it before you enter your own.')),
       h('button', { type: 'button', class: 'btn', id: 'exLoad2', onclick: loadExample }, 'Load example'));
+  }
+  function useTbpe() {
+    var P = st.profile;
+    if (String(P.peAgency || '').trim() && P.peAgency !== 'TBPELS' && !confirm('Replace the issuing agency with TBPELS?')) return;
+    P.peAgency = 'TBPELS';
+    if (!String(P.peState || '').trim()) P.peState = 'TX';
+    save(); render(); toast('Issuing agency set to TBPELS. Add your license number yourself.');
+  }
+  function reqItems() {
+    var P = st.profile, rows = [['first', 'First name', 'f-first-p'], ['last', 'Last name', 'f-last-p'], ['firm', 'Firm name', 'f-firm-p'], ['firmSeq', 'Firm sequence number', 'f-firmSeq-p'], ['employment', 'Employment status', 'f-employment-p']];
+    var list = rows.map(function (r) {
+      var ok = !!String(P[r[0]] || '').trim();
+      return h('li', { class: ok ? 'ok' : 'gap', 'data-req': r[0], 'data-label': r[1] }, h('button', { type: 'button', class: 'linkish', onclick: function () { var el = document.getElementById(r[2]); if (!el) return; el.scrollIntoView({ block: 'center' }); try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); } el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1600); } }, h('b', { class: 'rk' }, (ok ? '✓ ' : '○ ') + r[1])));
+    });
+    var n = st.targets.length;
+    list.push(h('li', { class: n ? 'ok' : 'gap' }, h('button', { type: 'button', class: 'linkish', onclick: function () { goTo('cats', { focus: 'catQ' }); } }, h('b', { class: 'rk' }, (n ? '✓ ' : '○ ') + 'At least one work category' + (n ? ' (' + n + ')' : '')))));
+    return list;
   }
 
   /* ---------- 1. profile ---------- */
   function renderProfile() {
     var P = st.profile, ssnW = h('p', { class: 'warn', id: 'ssnWarn', hidden: !M.looksLikeSSN(P.personnelNo) }, '⚠ This looks like a Social Security number. Use the employee number your firm assigns, never an SSN.');
-    return [exampleCard(),
-      h('section', { class: 'card' }, h('h2', {}, 'Employee'),
-        h('div', { class: 'grid' }, field('First name *', P, 'first'), field('Middle name', P, 'middle'), field('Last name *', P, 'last'), field('Firm name *', P, 'firm'), field('Firm sequence number *', P, 'firmSeq', { mode: 'numeric' }), field('Branch number', P, 'branch'),
-          field('Field of expertise', P, 'expertise', { ph: 'e.g. engineer' }), field('Employment status *', P, 'employment'), field('Employee sequence number (if unknown, leave blank)', P, 'employeeSeq', { id: 'empSeq' }),
-          field('Employee personnel number (assigned by your firm)', P, 'personnelNo', { id: 'pno', hint: 'Do NOT enter a Social Security number.', onInput: function (v) { ssnW.hidden = !M.looksLikeSSN(v); } }),
-          h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'formerTx', checked: P.formerTxdot, onchange: function (e) { P.formerTxdot = e.target.checked; save(); } }), 'Former TxDOT employee')),
-        h('p', { class: 'warn soft' }, '⚠ Never enter your SSN anywhere in this tool. TxDOT asks for a personnel number assigned within your firm.'), ssnW),
-      h('section', { class: 'card' }, h('h2', {}, 'Licensure'),
-        h('div', { class: 'grid' }, field('P.E. license number', P, 'peNumber'), field('State', P, 'peState'), field('Issue date', P, 'peDate', { type: 'date' }), field('Issuing agency', P, 'peAgency', { id: 'peAgency', ph: 'TBPELS (default for TX)' })),
-        h('p', { class: 'muted' }, 'In CCIS a license is entered as a certification (type Professional Engineer, code 100000, issuing agency e.g. TBPELS).')),
-      listCard('Degrees', st.degrees, function () { return { id: M.uid(), type: '', field: '', school: '', date: '' }; }, function (d) { return [field('Degree type', d, 'type', { ph: 'B.S., M.S.' }), field('Field', d, 'field', { ph: 'Civil engineering' }), field('School', d, 'school'), field('Date', d, 'date', { type: 'date' })]; }, 'addDegree'),
-      listCard('Certifications and training', st.certs, function () { return { id: M.uid(), kind: 'cert', type: '', code: '', number: '', agency: '', issue: '', exp: '', completion: '', category: '', note: '', degreeType: '', trainingType: '', trainingDate: '' }; }, certFields, 'addCert',
-        h('p', { class: 'muted' }, 'Training certificates must be uploaded in CCIS for work categories ' + M.TRAINING_UPLOAD.join(', ') + ' — each as a separate PDF named Last.First.category.YYYY-MM-DD.PDF. This tool does not store files; keep the PDFs on your device.'))
-    ];
+    return h('div', { class: 'split' },
+      h('div', { class: 'splitmain' },
+        h('section', { class: 'card' }, h('h2', {}, 'Employee'),
+          h('p', { class: 'lead muted' }, 'These match the TxDOT form. A star (*) is required on that form. Nothing you type is sent to TxDOT.'),
+          h('div', { class: 'grid' }, field('First name *', P, 'first', { req: true }), field('Middle name', P, 'middle'), field('Last name *', P, 'last', { req: true }), field('Firm name *', P, 'firm', { req: true }),
+            field('Firm sequence number *', P, 'firmSeq', { mode: 'numeric', req: true, hint: 'The number TxDOT assigned your firm in CCIS. Not a tax ID.' }),
+            field('Branch number', P, 'branch', { hint: 'Only if your firm has more than one office in CCIS.' }),
+            field('Field of expertise', P, 'expertise', { ph: 'e.g. engineer', list: 'expertiseList' }),
+            field('Employment status *', P, 'employment', { req: true, list: 'empList', hint: 'CCIS records current staff as Employed. You can type another status.' }),
+            field('Employee sequence number (if unknown, leave blank)', P, 'employeeSeq', { id: 'empSeq', hint: 'On the employee record in CCIS. Leave blank until you have it.' }),
+            field('Employee personnel number (assigned by your firm)', P, 'personnelNo', { id: 'pno', hint: 'Do NOT enter a Social Security number.', onInput: function (v) { ssnW.hidden = !M.looksLikeSSN(v); } }),
+            h('label', { class: 'chk full' }, h('input', { type: 'checkbox', id: 'formerTx', checked: P.formerTxdot, onchange: function (e) { P.formerTxdot = e.target.checked; save(); } }), 'Former TxDOT employee')),
+          h('p', { class: 'warn soft' }, '⚠ Never enter your SSN anywhere in this tool. TxDOT asks for a personnel number assigned within your firm.'), ssnW),
+        h('section', { class: 'card' }, h('h2', {}, 'Licensure'),
+          h('div', { class: 'grid' }, field('P.E. license number', P, 'peNumber'), field('State', P, 'peState'), field('Issue date', P, 'peDate', { type: 'date' }), field('Issuing agency', P, 'peAgency', { id: 'peAgency', ph: 'TBPELS for a Texas license' })),
+          h('p', { class: 'muted' }, 'In CCIS a license is entered as a certification (type Professional Engineer, code 100000, issuing agency e.g. TBPELS).'),
+          h('button', { type: 'button', class: 'btn ghost sm', id: 'useTbpe', onclick: useTbpe }, 'Use TBPELS for the issuing agency')),
+        listCard('Degrees', st.degrees, function () { return { id: M.uid(), type: '', field: '', school: '', date: '' }; }, function (d) { return [field('Degree type', d, 'type', { ph: 'B.S., M.S.' }), field('Field', d, 'field', { ph: 'Civil engineering' }), field('School', d, 'school'), field('Date', d, 'date', { type: 'date' })]; }, 'addDegree'),
+        listCard('Certifications and training', st.certs, function () { return { id: M.uid(), kind: 'cert', type: '', code: '', number: '', agency: '', issue: '', exp: '', completion: '', category: '', note: '', degreeType: '', trainingType: '', trainingDate: '' }; }, certFields, 'addCert',
+          h('p', { class: 'muted' }, 'Training certificates must be uploaded in CCIS for work categories ' + M.TRAINING_UPLOAD.join(', ') + ' — each as a separate PDF named Last.First.category.YYYY-MM-DD.PDF. This tool does not store files; keep the PDFs on your device.'))),
+      h('aside', { class: 'card stick side', id: 'profileSide' }, exampleCard(),
+        h('h2', {}, 'Required on the form'),
+        h('p', { class: 'muted' }, 'The TxDOT form stays incomplete until these are filled. Choose one to jump to the field.'),
+        h('ul', { class: 'reqlist', id: 'reqList' }, reqItems())));
   }
   function certFields(c) {
     var fn = h('p', { class: 'muted fname' });
@@ -157,7 +198,7 @@
         h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { copy(e.text, 'Description of work'); } }, 'Copy'),
         h('button', { type: 'button', class: 'btn ghost sm fsbtn', onclick: function () { fs(true); } }, 'Full screen'),
         h('button', { type: 'button', class: 'btn ghost sm', onclick: function () { if (!confirm('Remove ' + e.code + ' from this project?')) return; p.cats.splice(p.cats.indexOf(e), 1); save(); render(); } }, 'Remove')),
-      h('div', { class: 'ebody' }, h('div', { class: 'ewrite' }, h('div', { class: 'fsbar' }, h('b', {}, catLabel(e.code)), h('span', { class: 'sp' }), h('button', { type: 'button', class: 'btn sm', onclick: function () { fs(false); } }, 'Done')), ta, stat, qd),
+      h('div', { class: 'ebody' }, h('div', { class: 'ewrite' }, h('div', { class: 'fsbar' }, h('b', {}, catLabel(e.code)), h('span', { class: 'sp' }), h('button', { type: 'button', class: 'btn sm', onclick: function () { fs(false); } }, 'Done')), h('p', { class: 'muted wead' }, 'Write what you personally did, in the first person. Tick a requirement on the right when this write-up covers it.'), ta, stat, qd),
       h('fieldset', { class: 'covers' }, h('legend', {}, 'This write-up addresses:'), items.map(function (it) {
         return h('label', { class: 'chk ' + it.kind }, h('input', { type: 'checkbox', 'data-item': it.id, checked: e.covers.indexOf(it.id) >= 0, onchange: function (ev) { M.toggleCover(st, p.id, e.id, it.id, ev.target.checked); save(); qual(); } }), h('span', {}, it.kind === 'scope' ? h('i', {}, 'Scope: ') : h('b', {}, 'Requirement: '), it.text, h('span', { class: 'auto', 'data-auto': it.id }))); }))));
     upd();
@@ -175,7 +216,8 @@
   /* suggested categories from this project's own text (keyword scoring in suggest.js; hints only) */
   function suggPanel(p) {
     var S = PCS.suggest(p, C);
-    return h('details', { class: 'panel sugg', id: 'sugg-' + p.id, open: ui.suggOpen && ui.suggOpen[p.id] ? true : null, ontoggle: function (ev) { ui.suggOpen = ui.suggOpen || {}; ui.suggOpen[p.id] = ev.target.open; saveUI(); } },
+    var suggKnown = ui.suggOpen && Object.prototype.hasOwnProperty.call(ui.suggOpen, p.id);
+    return h('details', { class: 'panel sugg', id: 'sugg-' + p.id, open: (suggKnown ? ui.suggOpen[p.id] : S.length > 0) ? true : null, ontoggle: function (ev) { ui.suggOpen = ui.suggOpen || {}; ui.suggOpen[p.id] = ev.target.open; saveUI(); } },
       h('summary', {}, 'Suggested categories', h('span', { class: 'tag' + (S.length ? ' okt' : '') }, String(S.length))),
       h('p', { class: 'muted' }, PCS.NOTE),
       S.length ? h('ul', { class: 'slist' }, S.map(function (x) {
@@ -199,8 +241,8 @@
         p.cats.length ? p.cats.map(function (e) { return entryEditor(p, e); }) : h('p', { class: 'muted' }, 'No work categories yet.'),
         catSelect('addCat-' + p.id, function (code) { M.addEntry(st, p.id, code, C); save(); render(); }, true));
     });
-    return [h('div', { class: 'bar' }, h('p', { class: 'muted' }, 'Mirrors CCIS "Add Project": project details, then each work category with a description of the work you performed. Overlapping project periods are not counted twice.'),
-      h('button', { type: 'button', class: 'btn', id: 'addProject', onclick: function () { ui.openProj = M.addProject(st).id; saveUI(); save(); render(); } }, '+ Add project')), list.length ? list : h('p', { class: 'empty' }, 'No projects yet. Add the projects that show your experience in the categories you want.')];
+    return [h('div', { class: 'bar' }, h('p', { class: 'muted' }, 'Add each project you will enter in CCIS, then the work categories and a description of what you did. Overlapping project periods are not counted twice.'),
+      h('button', { type: 'button', class: 'btn', id: 'addProject', onclick: function () { ui.openProj = M.addProject(st).id; saveUI(); save(); render(); } }, '+ Add project')), list.length ? list : h('div', { class: 'card' }, h('p', { class: 'empty' }, 'No projects yet. Add the projects that show your experience in the categories you want.'), !M.isExampleState(st) && !M.hasRealData(st) ? h('p', { class: 'muted' }, 'Or load the filled-in example on My profile to see a finished set first.') : null)];
   }
 
   /* ---------- 3. categories + write-up helper ---------- */
@@ -208,21 +250,33 @@
     var q = h('input', { type: 'search', id: 'catQ', placeholder: 'Search categories (e.g. hydraulic, 10.2.1)', value: ui.q, autocomplete: 'off' });
     var only = h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'hydroOnly', checked: ui.hydroOnly }), 'Drainage / hydraulics related only');
     var tree = h('div', { class: 'ctree', id: 'catTree' });
+    var count = h('p', { class: 'muted', id: 'catCount' });
     var draw = function () {
-      var s = ui.q.toLowerCase();
+      var s = ui.q.toLowerCase(), shown = 0;
       tree.replaceChildren.apply(tree, C.groups.map(function (g) {
         var cs = C.categories.filter(function (c) { return c.group === g.group && (!ui.hydroOnly || M.isHydro(c)) && (!s || (c.code + ' ' + c.name + ' ' + c.description).toLowerCase().indexOf(s) >= 0); });
         if (!cs.length) return null;
+        shown += cs.length;
         return h('details', { class: 'grp', open: !!(s || ui.hydroOnly) }, h('summary', {}, h('b', {}, 'Group ' + g.group), ' ' + g.name, h('span', { class: 'cnt' }, String(cs.length))),
           h('ul', {}, cs.map(function (c) { var on = st.targets.indexOf(c.code) >= 0; return h('li', { class: on ? 'on' : '' }, h('button', { type: 'button', class: 'cbtn', 'data-code': c.code, onclick: function () { ui.cat = c.code; saveUI(); render(); } }, h('code', {}, c.code), ' ' + c.name, M.needsTraining(c.code) ? h('span', { class: 'tag warnt' }, '⚑ training') : null, on ? h('span', { class: 'tag okt' }, '✓ mine') : null)); })));
       }).filter(Boolean));
       if (!tree.children.length) tree.append(h('p', { class: 'muted' }, 'No category matches.'));
+      count.textContent = 'Showing ' + shown + ' of ' + C.categories.length + (ui.hydroOnly ? '. Drainage and hydraulics only — uncheck to see every category.' : '.');
     };
     q.addEventListener('input', function () { ui.q = q.value; saveUI(); draw(); });
     only.querySelector('input').addEventListener('change', function (e) { ui.hydroOnly = e.target.checked; saveUI(); draw(); });
     draw();
-    return [h('div', { class: 'two' }, h('section', { class: 'card' }, h('h2', {}, 'Work categories'), h('p', { class: 'muted' }, C.categories.length + ' categories from TxDOT\'s list dated ' + C.docDate + ' (verified ' + C.verified + ').'), q, only, tree),
-      h('section', { class: 'card helper', id: 'helper' }, ui.cat && IX[ui.cat] ? helper(IX[ui.cat]) : h('p', { class: 'muted' }, 'Pick a category to see its requirements, a write-up guide and your coverage.')))];
+    return [h('div', { class: 'two' }, h('section', { class: 'card' }, h('h2', {}, 'Work categories'), h('p', { class: 'muted' }, C.categories.length + ' categories from TxDOT\'s list dated ' + C.docDate + ' (verified ' + C.verified + ').'), q, only, count, tree),
+      h('section', { class: 'card helper', id: 'helper' }, ui.cat && IX[ui.cat] ? helper(IX[ui.cat]) : catHome()))];
+  }
+  function catHome() {
+    var mine = st.targets.filter(function (k) { return IX[k]; });
+    return [h('h2', {}, mine.length ? 'Your categories' : 'Pick a category'),
+      h('p', { class: 'muted' }, mine.length ? 'These are the categories you are applying for. Select one on the left for the TxDOT requirements and your coverage.' : 'Select a category on the left. The list starts on drainage and hydraulics. Uncheck that filter to browse the full TxDOT list, then use “+ Apply for this category”.'),
+      mine.length ? h('ul', { class: 'covl', id: 'myCats' }, mine.map(function (k) {
+        var c = IX[k], cv = M.coverage(st, c);
+        return h('li', { class: cv.ready ? 'ok' : 'gap' }, h('button', { type: 'button', class: 'linkish', onclick: function () { ui.cat = k; saveUI(); render(); } }, (cv.ready ? '✓ ' : '○ ') + k + ' ' + c.name + '  ' + cv.reqDone + '/' + cv.reqTotal));
+      })) : null];
   }
   function helper(c) {
     var on = st.targets.indexOf(c.code) >= 0, cv = M.coverage(st, c);
@@ -244,10 +298,22 @@
   }
 
   /* ---------- 4. readiness tree ---------- */
+  function jumpGap(g) {
+    if (/P\.E\./.test(g.text)) return goTo('profile', { focus: 'f-peNumber-p' });
+    if (/CFM|Training certificate/.test(g.text)) return goTo('profile', { focus: 'addCert' });
+    var named = st.projects.filter(function (x) { return x.name && g.text.indexOf(x.name) >= 0; })[0];
+    if (named) return goTo('projects', { project: named.id });
+    var ent = M.entries(st, g.code)[0];
+    if (ent) return goTo('projects', { project: ent.p.id, entry: ent.e.id });
+    goTo('projects');
+  }
   function renderReady() {
     var R = M.readiness(st, C);
-    if (!R.length) return h('p', { class: 'empty' }, 'Choose the work categories you want (Work categories tab, "+ Apply for this category") to see your readiness.');
-    return [h('p', { class: 'muted' }, 'Category → requirements → projects that support them. Red items are gaps to close before you submit in CCIS.'),
+    if (!R.length) return h('div', { class: 'card' }, h('h2', {}, 'Nothing to check yet'), h('p', { class: 'empty' }, 'Choose the work categories you want (Work categories tab, "+ Apply for this category") to see your readiness.'), h('button', { type: 'button', class: 'btn', onclick: function () { goTo('cats', { focus: 'catQ' }); } }, 'Choose work categories'));
+    var gaps = [];
+    R.forEach(function (r) { r.gaps.forEach(function (g) { gaps.push({ code: r.cat.code, text: g }); }); });
+    return h('div', { class: 'split' },
+      h('div', {}, h('p', { class: 'muted' }, 'Category → requirements → projects that support them. Red items are gaps to close before you submit in CCIS.'),
       h('ul', { class: 'tree', id: 'readyTree' }, R.map(function (r) {
         return h('li', { class: 'tcat ' + (r.ready ? 'ok' : 'gap') }, h('div', { class: 'node' }, h('b', {}, r.cat.code + ' ' + r.cat.name), h('span', { class: 'sp' }), bar(r.pct), h('span', { class: 'tag ' + (r.ready ? 'okt' : 'badt') }, r.ready ? 'Ready' : r.gaps.length + ' gap' + (r.gaps.length === 1 ? '' : 's'))),
           h('ul', {}, r.rows.filter(function (x) { return x.item.kind === 'req'; }).map(function (x) {
@@ -255,7 +321,11 @@
               x.by.length ? h('ul', {}, x.by.map(function (y) { return h('li', { class: 'proj' }, h('div', { class: 'node pnode' }, '▣ ' + (y.p.name || 'Untitled project') + (y.p.begin ? ' (' + y.p.begin.slice(0, 4) + '–' + (y.p.end || 'now').slice(0, 4) + ')' : ''))); })) : null);
           }), yearsNode(r.yearsCheck)),
           r.gaps.length ? h('ul', { class: 'gaps' }, r.gaps.map(function (g) { return h('li', {}, g); })) : null);
-      }))];
+      }))),
+      h('aside', { class: 'card stick side', id: 'gapSide' },
+        h('h2', {}, gaps.length ? gaps.length + (gaps.length === 1 ? ' thing to fix' : ' things to fix') : 'Checks passed'),
+        gaps.length ? h('ul', { class: 'gaplist', id: 'gapList' }, gaps.map(function (g) { return h('li', {}, h('button', { type: 'button', class: 'linkish', onclick: function () { jumpGap(g); } }, h('b', {}, g.code), ' ', g.text)); })) : h('p', {}, 'Every selected category passes the checks in this tool. Confirm the wording on TxDOT’s page, then download the form and enter it in CCIS.'),
+        h('button', { type: 'button', class: 'btn', onclick: function () { goTo('form'); } }, gaps.length ? 'Review the form' : 'Open the TxDOT form')));
   }
 
   function yearsNode(y) {
@@ -281,8 +351,10 @@
   function fillPrint() {
     $('#printOut').classList.remove('form');
     var R = M.readiness(st, C), P = st.profile;
-    $('#printOut').replaceChildren(M.isExampleState(st) ? h('p', { class: 'pwm' }, M.EXAMPLE_HEAD) : null, h('h1', {}, 'TxDOT precertification worksheet'), h('p', { class: 'pm' }, [P.first, P.middle, P.last].filter(Boolean).join(' ') + (P.firm ? ' · ' + P.firm : '') + ' · generated ' + M.today() + ' · personal helper, not an official TxDOT form'),
+    $('#printOut').replaceChildren(M.isExampleState(st) ? h('p', { class: 'pwm' }, M.EXAMPLE_HEAD) : null, h('h1', {}, 'TxDOT precertification worksheet'), h('p', { class: 'pm' }, [P.first, P.middle, P.last].filter(Boolean).join(' ') + (P.firm ? ' · ' + P.firm : '') + ' · generated ' + M.today() + ' · v1.5 · personal helper, not an official TxDOT form. Copy each project into CCIS. This page is not submitted.'),
+      R.length ? h('h2', {}, 'Readiness') : null,
       R.length ? h('table', {}, h('thead', {}, h('tr', {}, ['Category', 'Requirements', 'Projects', 'Status'].map(function (x) { return h('th', {}, x); }))), h('tbody', {}, R.map(function (r) { return h('tr', {}, h('td', {}, r.cat.code + ' ' + r.cat.name), h('td', {}, r.reqDone + ' / ' + r.reqTotal), h('td', {}, String(r.entries.length)), h('td', {}, r.ready ? 'Ready' : r.gaps.length + ' gap(s)')); }))) : null,
+      h('h2', {}, 'Text to copy into CCIS'),
       h('pre', {}, M.summaryText(st, C)));
   }
   function renderExport() {
@@ -290,18 +362,21 @@
     var file = h('input', { type: 'file', id: 'importFile', accept: 'application/json,.json', class: 'offscreen' });
     file.addEventListener('change', function () { var f = file.files[0]; if (!f) return; f.text().then(function (t) { var n; try { n = M.importJSON(t); } catch (e) { toast('Not a valid backup: ' + e.message); return; } if (!confirm('Replace the data on this device with this backup (' + n.projects.length + ' projects)?')) return; st = n; localStorage.setItem(M.KEY, JSON.stringify(st)); toast('Backup restored.'); render(); }); });
     var canShare = !!navigator.share;
-    return [h('section', { class: 'card' }, h('h2', {}, 'Summary for CCIS'),
-      h('div', { class: 'btns' },
-        h('button', { type: 'button', class: 'btn', id: 'copyAll', onclick: function () { copy(txt, 'Summary'); } }, 'Copy all text'),
-        canShare ? h('button', { type: 'button', class: 'btn', id: 'shareBtn', onclick: function () { navigator.share({ title: 'Precertification worksheet', text: txt }).catch(function () {}); } }, 'Share…') : null,
-        h('button', { type: 'button', class: 'btn', id: 'dlTxt', onclick: function () { download('precert-worksheet-' + (M.isExampleState(st) ? 'EXAMPLE-' : '') + M.today() + '.txt', txt, 'text/plain'); toast('Text file downloaded.'); } }, 'Download .txt'),
-        h('button', { type: 'button', class: 'btn', id: 'dlHtml', onclick: function () { download('precert-worksheet-' + M.today() + '.html', printableHTML(), 'text/html'); toast('Printable page downloaded — open it and use Share › Print / Save to PDF.'); } }, 'Download printable page'),
-        h('button', { type: 'button', class: 'btn', id: 'printBtn', onclick: function () { fillPrint(); if (typeof window.print === 'function') { try { window.print(); } catch (e) { toast('Printing is not available here — use Download printable page.'); } } else toast('Printing is not available here — use Download printable page.'); } }, 'Print / Save PDF')),
-      h('p', { class: 'muted' }, 'On a phone, if Print does nothing (for example in a home-screen app), use Share or Download printable page and print from there.'),
-      h('pre', { class: 'preview', id: 'summaryPre' }, txt)),
-      h('section', { class: 'card' }, h('h2', {}, 'Backup'), h('p', { class: 'muted' }, 'Your data lives only in this browser (' + M.KEY + '). Export a backup regularly.'),
-        h('div', { class: 'btns' }, h('button', { type: 'button', class: 'btn', id: 'exportJson', onclick: function () { download('precert-backup-' + (M.isExampleState(st) ? 'EXAMPLE-' : '') + M.today() + '.json', M.exportJSON(st), 'application/json'); toast('Backup downloaded.'); } }, 'Export JSON backup'),
-          h('button', { type: 'button', class: 'btn ghost', id: 'importBtn', onclick: function () { file.click(); } }, 'Import backup…'), file))];
+    return h('div', { class: 'split preview' },
+      h('div', {},
+        h('section', { class: 'card' }, h('h2', {}, 'Summary for CCIS'),
+          h('p', { class: 'muted' }, 'Copy this into CCIS, or print it. The preview on the right is the same text.'),
+          h('div', { class: 'btns' },
+            h('button', { type: 'button', class: 'btn', id: 'copyAll', onclick: function () { copy(txt, 'Summary'); } }, 'Copy all text'),
+            canShare ? h('button', { type: 'button', class: 'btn', id: 'shareBtn', onclick: function () { navigator.share({ title: 'Precertification worksheet', text: txt }).catch(function () {}); } }, 'Share…') : null,
+            h('button', { type: 'button', class: 'btn', id: 'dlTxt', onclick: function () { download('precert-worksheet-' + (M.isExampleState(st) ? 'EXAMPLE-' : '') + M.today() + '.txt', txt, 'text/plain'); toast('Text file downloaded.'); } }, 'Download .txt'),
+            h('button', { type: 'button', class: 'btn', id: 'dlHtml', onclick: function () { download('precert-worksheet-' + M.today() + '.html', printableHTML(), 'text/html'); toast('Printable page downloaded — open it and use Share › Print / Save to PDF.'); } }, 'Download printable page'),
+            h('button', { type: 'button', class: 'btn', id: 'printBtn', onclick: function () { fillPrint(); if (typeof window.print === 'function') { try { window.print(); } catch (e) { toast('Printing is not available here — use Download printable page.'); } } else toast('Printing is not available here — use Download printable page.'); } }, 'Print / Save PDF')),
+          h('p', { class: 'muted phonehint' }, 'On a phone, if Print does nothing (for example in a home-screen app), use Share or Download printable page and print from there.')),
+        h('section', { class: 'card' }, h('h2', {}, 'Backup'), h('p', { class: 'muted' }, 'Your data lives only in this browser (' + M.KEY + '). Export a backup before you clear the browser.'),
+          h('div', { class: 'btns' }, h('button', { type: 'button', class: 'btn', id: 'exportJson', onclick: function () { download('precert-backup-' + (M.isExampleState(st) ? 'EXAMPLE-' : '') + M.today() + '.json', M.exportJSON(st), 'application/json'); toast('Backup downloaded.'); } }, 'Export JSON backup'),
+            h('button', { type: 'button', class: 'btn ghost', id: 'importBtn', onclick: function () { file.click(); } }, 'Import backup…'), file))),
+      h('section', { class: 'card' }, h('h2', {}, 'Preview'), h('pre', { class: 'preview', id: 'summaryPre' }, txt)));
   }
 
 
@@ -350,18 +425,20 @@
   function renderForm() {
     var F = M.formData(st, C), ck = M.formCheck(st, C), txt = M.formText(st, C), canShare = !!navigator.share;
     var doPrint = function () { fillFormPrint(); if (typeof window.print === 'function') { try { window.print(); } catch (e) { toast('Printing is not available here — use Download printable form.'); } } else toast('Printing is not available here — use Download printable form.'); };
-    return [h('section', { class: 'card' }, h('h2', {}, 'TxDOT Precertification Application Form'),
-      h('p', { class: 'muted' }, 'Fills the official TxDOT form (dated 09/18/2026, bundled with this tool) from what you entered. It is a helper output to prepare your CCIS entry — nothing is submitted anywhere.'), refBar(),
-      h('div', { class: 'fcheck ' + (ck.ok ? 'ok' : 'bad'), id: 'formCheck' }, h('b', {}, ck.ok ? '✓ All mandatory (*) fields are filled.' : '✗ Missing mandatory (*) fields:'), ck.missing.length ? h('ul', { id: 'formMissing' }, ck.missing.map(function (m) { var j = jumpFor(m); return h('li', {}, j ? h('button', { type: 'button', class: 'linkbtn', 'data-jump': j.focus, onclick: function () { goTo(j.tab, j); } }, m + ' — fix ›') : m); })) : null,
-        ck.warnings.length ? h('div', {}, h('b', {}, 'Check before exporting:'), h('ul', { id: 'formWarn' }, ck.warnings.map(function (m) { return h('li', {}, m); }))) : null),
-      h('div', { class: 'btns' },
-        h('button', { type: 'button', class: 'btn', id: 'dlDocx', onclick: function () { if (!ck.ok && !confirm('Some mandatory (*) fields are missing (' + ck.missing.length + '). Download anyway?')) return; dlDocx(); } }, 'Download filled form (.docx)'),
-        h('button', { type: 'button', class: 'btn', id: 'printForm', onclick: doPrint }, 'Print / Save PDF'),
-        canShare ? h('button', { type: 'button', class: 'btn', id: 'shareForm', onclick: function () { navigator.share({ title: 'Precertification Application Form', text: txt }).catch(function () {}); } }, 'Share…') : null,
-        h('button', { type: 'button', class: 'btn', id: 'dlFormHtml', onclick: function () { download(formName('html'), formHTML(), 'text/html'); toast('Printable form downloaded — open it and use Share › Print / Save to PDF.'); } }, 'Download printable form'),
-        h('button', { type: 'button', class: 'btn', id: 'copyForm', onclick: function () { copy(txt, 'Form text'); } }, 'Copy as text')),
-      h('p', { class: 'muted' }, 'On a phone, if Print does nothing (for example in a home-screen app), use Share or Download printable form and print from there. The .docx opens in Word, Google Docs or Pages.')),
-      h('section', { class: 'card formview', id: 'formView' }, formNodes(F, true))];
+    return h('div', { class: 'split preview' },
+      h('section', { class: 'card stick side' }, h('h2', {}, 'TxDOT Precertification Application Form'),
+        h('p', { class: 'muted' }, 'Filled from what you entered (official form dated 09/18/2026). Prepare your CCIS entry from the preview — nothing is submitted anywhere.'),
+        h('div', { class: 'fcheck ' + (ck.ok ? 'ok' : 'bad'), id: 'formCheck' }, h('b', {}, ck.ok ? '✓ All mandatory (*) fields are filled.' : '✗ Missing mandatory (*) fields:'), ck.missing.length ? h('ul', { id: 'formMissing' }, ck.missing.map(function (m) { var j = jumpFor(m); return h('li', {}, j ? h('button', { type: 'button', class: 'linkbtn', 'data-jump': j.focus, onclick: function () { goTo(j.tab, j); } }, m + ' — fix ›') : m); })) : null,
+          ck.warnings.length ? h('div', {}, h('b', {}, 'Check before exporting:'), h('ul', { id: 'formWarn' }, ck.warnings.map(function (m) { return h('li', {}, m); }))) : null),
+        h('div', { class: 'btns' },
+          h('button', { type: 'button', class: 'btn', id: 'dlDocx', onclick: function () { if (!ck.ok && !confirm('Some mandatory (*) fields are missing (' + ck.missing.length + '). Download anyway?')) return; dlDocx(); } }, 'Download filled form (.docx)'),
+          h('button', { type: 'button', class: 'btn', id: 'printForm', onclick: doPrint }, 'Print / Save PDF'),
+          canShare ? h('button', { type: 'button', class: 'btn', id: 'shareForm', onclick: function () { navigator.share({ title: 'Precertification Application Form', text: txt }).catch(function () {}); } }, 'Share…') : null,
+          h('button', { type: 'button', class: 'btn', id: 'dlFormHtml', onclick: function () { download(formName('html'), formHTML(), 'text/html'); toast('Printable form downloaded — open it and use Share › Print / Save to PDF.'); } }, 'Download printable form'),
+          h('button', { type: 'button', class: 'btn', id: 'copyForm', onclick: function () { copy(txt, 'Form text'); } }, 'Copy as text')),
+        refBar(),
+        h('p', { class: 'muted phonehint' }, 'On a phone, if Print does nothing (for example in a home-screen app), use Share or Download printable form and print from there. The .docx opens in Word, Google Docs or Pages. A red row in the preview jumps to the field.')),
+      h('section', { class: 'card formview', id: 'formView' }, formNodes(F, true)));
   }
 
   function refBar() {
@@ -384,7 +461,8 @@
       ['43 TAC Chapter 9, Subchapter C, Rule 9.33 (precertification rule; text via Cornell LII)', 'https://www.law.cornell.edu/regulations/texas/43-Tex-Admin-Code-SS-9-33']];
     return h('section', { class: 'card' }, h('h2', {}, 'Sources'), refBar(), h('p', {}, C.note), h('ul', { class: 'src' }, S.map(function (s) { return h('li', {}, h('a', { href: s[1], target: '_blank', rel: 'noopener noreferrer' }, s[0])); })),
       h('h2', {}, 'Disclaimer'), h('p', {}, 'This is an informational helper, not an official TxDOT system, and not affiliated with TxDOT. Requirements can change; verify everything against TxDOT\'s current pages before you submit in CCIS. The tool handles no sign-in or credentials. Your data stays in this browser\'s local storage; nothing is sent anywhere.'),
-      h('p', { class: 'muted' }, 'If a requirement is unclear or missing here, confirm on TxDOT\'s page. Contact: peps_ccis_precert@txdot.gov · 512-960-5271.'));
+      h('p', { class: 'muted' }, 'If a requirement is unclear or missing here, confirm on TxDOT\'s page. Contact: peps_ccis_precert@txdot.gov · 512-960-5271.'),
+      h('p', { class: 'muted' }, 'Helper version 1.5. The desktop layout, checklist, and keyboard shortcuts are new; the calculations and the saved data are the same as v1.4.'));
   }
 
   /* "Next step" guide line + jump to where it is fixed */
@@ -410,13 +488,43 @@
         h('button', { type: 'button', class: 'btn sm', id: 'tourNext', onclick: function () { ui.tour = last ? 'done' : i + 1; saveUI(); render(); } }, last ? 'Got it' : 'Next ›')));
   }
   /* ---------- shell ---------- */
+  var ORDER = [['profile', 'My profile'], ['cats', 'Work categories'], ['projects', 'Projects'], ['ready', 'Readiness'], ['form', 'TxDOT form'], ['export', 'Export'], ['ccis', 'CCIS steps'], ['sources', 'Sources']];
   var R = { profile: renderProfile, projects: renderProjects, cats: renderCats, ready: renderReady, ccis: renderCCIS, form: renderForm, export: renderExport, sources: renderSources };
+  function tabMarks() {
+    if (!C) return {};
+    var P = st.profile, prof = ['first', 'last', 'firm', 'firmSeq', 'employment'].every(function (k) { return String(P[k] || '').trim(); });
+    var proj = st.projects.some(function (p) { return p.cats.some(function (e) { return String(e.text || '').trim(); }); });
+    var ready = st.targets.length ? M.readiness(st, C) : [], readyDone = ready.length && ready.every(function (r) { return r.ready; });
+    var cc = M.ccisProgress(st);
+    return { profile: prof ? 'done' : (profileTouched() ? 'mid' : ''), cats: st.targets.length ? 'done' : '', projects: proj ? 'done' : (st.projects.length ? 'mid' : ''), ready: readyDone ? 'done' : (ready.length ? 'mid' : ''), form: M.formCheck(st, C).ok ? 'done' : '', ccis: cc.total && cc.done === cc.total ? 'done' : (cc.done ? 'mid' : '') };
+  }
+  function paintStatus() {
+    var marks = tabMarks();
+    document.querySelectorAll('.tabs .tdot').forEach(function (d) { var m = marks[d.parentNode.dataset.tab] || ''; d.className = 'tdot' + (m ? ' ' + m : ''); });
+    document.querySelectorAll('#reqList [data-req]').forEach(function (li) {
+      var ok = !!String(st.profile[li.dataset.req] || '').trim();
+      li.className = ok ? 'ok' : 'gap';
+      var b = li.querySelector('.rk'); if (b) b.textContent = (ok ? '✓ ' : '○ ') + li.dataset.label;
+    });
+  }
+  function keysCard() {
+    if (!ui.keys) return null;
+    return h('section', { class: 'card keys', id: 'keysHelp' }, h('div', { class: 'ehead' }, h('h2', {}, 'Keyboard'), h('span', { class: 'sp' }), h('button', { type: 'button', class: 'btn ghost sm', id: 'keysClose', onclick: function () { ui.keys = false; saveUI(); render(); } }, 'Close')),
+      h('ul', { class: 'keylist' }, ORDER.map(function (t, i) { return h('li', {}, h('kbd', {}, 'Alt+' + (i + 1)), ' ' + t[1]); }).concat([
+        h('li', {}, h('kbd', {}, '←'), h('kbd', {}, '→'), ' move between sections while the section bar is focused'),
+        h('li', {}, h('kbd', {}, 'Esc'), ' close this list, the menu, or the full-screen editor'),
+        h('li', {}, h('kbd', {}, '?'), ' show or hide this list')])));
+  }
   function render() {
     if (!R[ui.tab]) ui.tab = 'profile';
-    document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { var on = b.dataset.tab === ui.tab; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.classList.toggle('on', on); });
+    document.querySelectorAll('.tabs [data-tab]').forEach(function (b) {
+      var on = b.dataset.tab === ui.tab, n = ORDER.findIndex(function (t) { return t[0] === b.dataset.tab; });
+      b.setAttribute('aria-selected', on ? 'true' : 'false'); b.classList.toggle('on', on); b.tabIndex = on ? 0 : -1;
+      if (n >= 0) b.title = 'Alt+' + (n + 1);
+    });
     $('#moreBtn').classList.toggle('on', !document.querySelector('.tabs [data-tab="' + ui.tab + '"]').classList.contains('pri'));
-    var main = $('#main'), y = window.scrollY; main.replaceChildren.apply(main, [tourCard(), nextBar(), R[ui.tab]()].flat(4).filter(Boolean)); main.dataset.tab = ui.tab;
-    window.scrollTo(0, y); if (ui.tab === 'form') fillFormPrint(); else fillPrint(); exampleChrome();
+    var main = $('#main'), y = window.scrollY; main.replaceChildren.apply(main, [keysCard(), tourCard(), nextBar(), R[ui.tab]()].flat(4).filter(Boolean)); main.dataset.tab = ui.tab;
+    window.scrollTo(0, y); if (ui.tab === 'form') fillFormPrint(); else fillPrint(); exampleChrome(); paintStatus();
   }
   document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { b.addEventListener('click', function () { ui.tab = b.dataset.tab; saveUI(); more(false); render(); window.scrollTo(0, 0); }); });
   function more(open) { var n = $('.tabs'); if (open == null) open = !n.classList.contains('moreopen'); n.classList.toggle('moreopen', open); $('#moreBtn').setAttribute('aria-expanded', open ? 'true' : 'false'); }
@@ -424,10 +532,35 @@
   $('#themeBtn').addEventListener('click', function () { ui.theme = ui.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); });
   function menu(open) { var m = $('#menu'), b = $('#menuBtn'); if (open == null) open = m.hidden; m.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) { var f = m.querySelector('.mi'); if (f) f.focus(); } }
   $('#tourBtn').addEventListener('click', function () { ui.tour = 0; saveUI(); render(); window.scrollTo(0, 0); });
+  $('#keysBtn').addEventListener('click', function () { ui.keys = true; saveUI(); render(); window.scrollTo(0, 0); });
   $('#menuBtn').addEventListener('click', function (e) { e.stopPropagation(); menu(); });
   $('#menu').addEventListener('click', function () { setTimeout(function () { menu(false); }, 0); });
   document.addEventListener('click', function (e) { if (!$('#menu').hidden && !e.target.closest('#menu')) menu(false); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#menu').hidden) { menu(false); $('#menuBtn').focus(); } });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (!$('#menu').hidden) { menu(false); $('#menuBtn').focus(); return; }
+      var done = document.querySelector('.entry.fs .fsbar .btn');
+      if (done) { done.click(); return; }
+      if (ui.keys) { ui.keys = false; saveUI(); render(); }
+      return;
+    }
+    var typing = e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+    if (typing) return;
+    if (e.key === '?') { e.preventDefault(); ui.keys = !ui.keys; saveUI(); render(); return; }
+    if (e.altKey && /^[1-8]$/.test(e.key)) {
+      var t = ORDER[Number(e.key) - 1]; if (!t) return;
+      e.preventDefault(); ui.tab = t[0]; saveUI(); more(false); render(); window.scrollTo(0, 0);
+      var btn = document.querySelector('.tabs [data-tab="' + t[0] + '"]'); if (btn) btn.focus();
+    }
+  });
+  $('.tabs').addEventListener('keydown', function (e) {
+    if (['ArrowRight', 'ArrowLeft', 'Home', 'End'].indexOf(e.key) < 0) return;
+    if (!e.target.closest || !e.target.closest('[data-tab]')) return;
+    var tabs = [].slice.call(document.querySelectorAll('.tabs [role="tab"]')), i = tabs.findIndex(function (b) { return b.dataset.tab === ui.tab; });
+    if (i < 0) i = 0;
+    if (e.key === 'Home') i = 0; else if (e.key === 'End') i = tabs.length - 1; else if (e.key === 'ArrowRight') i = (i + 1) % tabs.length; else i = (i - 1 + tabs.length) % tabs.length;
+    e.preventDefault(); ui.tab = tabs[i].dataset.tab; saveUI(); more(false); render(); tabs[i].focus();
+  });
   window.addEventListener('beforeprint', function () { if (ui.tab === 'form') fillFormPrint(); else fillPrint(); });
   $('#exBtn').addEventListener('click', function () { if (M.isExampleState(st)) clearEx(); else loadExample(); });
   $('#exClear').addEventListener('click', clearEx); $('#exRestore').addEventListener('click', restoreMine);

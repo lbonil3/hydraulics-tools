@@ -154,5 +154,70 @@ body.fsopen{overflow:hidden}body.fsopen .tabs{display:none}
 .fr.jump,tr.jump{cursor:pointer}.fr.jump:hover,.fr.jump:focus-visible{outline:2px solid var(--bad);outline-offset:1px}.jl{margin-left:auto;font-size:12px;font-weight:700;color:var(--bad)}.linkbtn{background:none;border:0;padding:6px 0;min-height:36px;color:var(--bad);font:600 14px var(--font);text-align:left;cursor:pointer;text-decoration:underline}
 
 .tour{border:2px solid var(--acc);background:var(--accs)}.tour p{margin:6px 0 10px}
+/* v1.5 desktop: numbered path, inputs beside results, inline help */
+.brandrow{display:flex;align-items:center;gap:8px;min-width:0}
+.ver{font-size:11px;font-weight:700;color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:1px 7px;line-height:1.4}
+.tn,.tdot{display:none}
+.lead{margin:0 0 10px}
+.grid .full{grid-column:1/-1}
+.f small{line-height:1.35}
+input.need,textarea.need,select.need{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+.split{display:block}
+.side h2{margin-bottom:4px}
+.side h3{margin-top:16px}
+.reqlist,.gaplist,.keylist{list-style:none;margin:8px 0;padding:0}
+.reqlist li,.gaplist li{border-bottom:1px solid var(--line)}
+.linkish{display:block;width:100%;text-align:left;background:transparent;border:0;border-radius:8px;color:inherit;font:inherit;padding:7px 4px;cursor:pointer;line-height:1.35}
+.linkish:hover,.linkish:focus-visible{background:var(--accs)}
+.reqlist .ok .rk{color:var(--ok)}.reqlist .gap .rk{color:var(--ink)}
+.gaplist .linkish{padding:8px 4px}
+.keylist li{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px 0}
+kbd{font:600 12px ui-monospace,Menlo,monospace;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:1px 6px;background:var(--bg);color:var(--ink)}
+.catpick{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.wead{margin:8px 0 0;font-size:13px}
+.phonehint{margin:8px 0 0}
+.excard{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.excard>div{flex:1 1 220px}
+.excard h2{margin:0 0 4px}
+.excard p{margin:0}
+.excard .btn{flex:none}
+.grp summary{flex-wrap:wrap}
+.grp summary b{white-space:nowrap}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+@media (min-width:900px){
+  .tn{display:inline;font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
+  .tdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:6px;background:transparent;border:2px solid var(--line2);box-sizing:border-box;flex:none}
+  .tdot.done{background:var(--ok);border-color:var(--ok)}.tdot.mid{background:var(--acc);border-color:var(--acc)}
+  .tabs button:not(.morebtn){flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:0;border:0;border-bottom:3px solid transparent;background:transparent;white-space:nowrap;padding:8px 6px}
+  .tabs button.on{background:var(--accs);color:var(--ink);border-bottom-color:var(--acc)}
+  .tabs button.on .tn{color:inherit}
+  [data-theme=dark] .tabs button.on{color:var(--ink)}
+  main{max-width:1320px;padding:16px 20px}
+  .split{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.78fr);gap:16px;align-items:start}
+  .split.preview{grid-template-columns:minmax(300px,.72fr) minmax(0,1.4fr)}
+  .stick{position:sticky;top:118px;max-height:calc(100vh - 136px);overflow:auto}
+  .side .excard{flex-direction:column;align-items:stretch}
+  .side .excard>div{flex:none}
+  .side .excard .btn{align-self:flex-start}
+  .split .preview{max-height:calc(100vh - 200px)}
+  .tour{display:grid;grid-template-columns:1fr auto;column-gap:16px;align-items:center}
+  .tour .ehead{grid-column:1;grid-row:1;margin:0}
+  .tour p{grid-column:1;grid-row:2;margin:0}
+  .tour .btns{grid-column:2;grid-row:1 / span 2;margin:0}
+  ol.steps{columns:2;column-gap:28px}
+  ol.steps li{break-inside:avoid}
+  .toast{top:auto;bottom:24px;right:24px;left:auto;transform:none;max-width:380px}
+}
+@media (max-width:899px){.phonehint{display:block}}
+@media (min-width:900px){.phonehint{display:none}}
+@media (max-width:899px){
+  .split{display:flex;flex-direction:column}
+  .side{order:-1;margin-bottom:12px}
+}
+@media print{
+  .printout h2{font-size:12pt;margin:12pt 0 4pt;border-bottom:.75pt solid #000;color:#000}
+  .printout pre{font:11pt/1.45 Arial,Helvetica,sans-serif}
+  .printout.form .fblk{break-inside:avoid}
+}
 /* larger tap targets on touch screens */
 @media (pointer:coarse){.btn.sm{min-height:44px;padding:6px 12px}.covers .chk{min-height:44px}.cbtn{min-height:48px}details.panel>summary{min-height:44px}}

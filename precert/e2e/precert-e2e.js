@@ -217,6 +217,34 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await pg.$eval('#formView [data-jump="f-firm-p"]', (e) => e.click()); await sleep(200);
   ok(await pg.evaluate(() => document.activeElement && document.activeElement.id === 'f-firm-p') && /profile/.test(await pg.evaluate(() => document.querySelector('#main').dataset.tab)), 'tap a missing red field jumps to its input');
   await tab('form'); await v14('06-form-jump');
+  /* 11. v1.5 desktop usability: path, side-by-side output, checklist, keyboard */
+  const V15 = SHOTS + 'v15/'; fs.mkdirSync(V15, { recursive: true });
+  await tab('profile');
+  ok(await pg.$('#profileSide') && await pg.$('#reqList') && await pg.$('#useTbpe'), 'profile checklist sits beside the form');
+  ok(/number TxDOT assigned your firm/.test(await pg.evaluate(() => document.body.innerText)), 'firm sequence has an inline explanation');
+  await pg.click('#useTbpe'); await sleep(200);
+  ok((await data()).profile.peAgency === 'TBPELS', 'Use TBPELS fills the issuing agency');
+  if (!MOBILE) ok(await pg.$eval('#main .split', (e) => getComputedStyle(e).display === 'grid' && getComputedStyle(e).gridTemplateColumns.split(' ').filter(Boolean).length >= 2), 'desktop profile is two columns');
+  await pg.focus('.tabs [data-tab="profile"]'); await pg.keyboard.press('ArrowRight'); await sleep(150);
+  ok(await pg.evaluate(() => document.querySelector('#main').dataset.tab === 'cats'), 'arrow key moves to the next section');
+  ok(/Showing \d+ of \d+/.test(await txt('#catCount')), 'category list says how many are showing');
+  await pg.keyboard.down('Alt'); await pg.keyboard.press('Digit5'); await pg.keyboard.up('Alt'); await sleep(200);
+  ok(await pg.evaluate(() => document.querySelector('#main').dataset.tab === 'form'), 'Alt+5 opens the TxDOT form');
+  if (!MOBILE) {
+    ok(await pg.$eval('#main .split.preview', (e) => getComputedStyle(e).display === 'grid'), 'desktop form: actions beside the preview');
+    ok(await pg.evaluate(() => { const a = document.querySelector('#formCheck').getBoundingClientRect(), b = document.querySelector('#formView').getBoundingClientRect(); return a.right <= b.left + 8 && b.top < a.bottom; }), 'form preview is to the right of the checklist');
+    await pg.screenshot({ path: V15 + '01-form-beside-' + tag + '.png', fullPage: false });
+  }
+  await pg.keyboard.press('?'); await sleep(100);
+  ok(await pg.$('#keysHelp') && /Alt\+1/.test(await txt('#keysHelp')), 'question mark opens keyboard help');
+  await pg.keyboard.press('Escape'); await sleep(80);
+  ok(!(await pg.$('#keysHelp')), 'Escape closes keyboard help');
+  await pg.$eval('#exBtn', (e) => e.click()); await sleep(300);
+  await tab('ready'); ok(await pg.$('#gapSide') && /to fix|Checks passed/.test(await txt('#gapSide')), 'readiness lists what to fix beside the tree');
+  if (!MOBILE) await pg.screenshot({ path: V15 + '02-readiness-beside-' + tag + '.png', fullPage: false });
+  await pg.$eval('#exBtn', (e) => e.click()); await sleep(250);
+  await tab('export');
+  if (!MOBILE) ok(await pg.evaluate(() => { const a = document.querySelector('#printBtn').getBoundingClientRect(), b = document.querySelector('#summaryPre').getBoundingClientRect(); return b.left >= a.right - 8; }), 'export preview sits beside the actions');
   /* dark-mode contrast (WCAG AA 4.5:1 for text) */
   await pg.evaluate(() => { if (document.documentElement.dataset.theme !== 'dark') document.querySelector('#themeBtn').click(); }); await sleep(100);
   const bad = await pg.evaluate(() => {
