@@ -36,5 +36,13 @@ select,button{min-height:44px;font-size:16px}button.add,button.del{min-height:44
 textarea{width:170px;font:13px monospace}table.split{border-collapse:collapse;width:100%;font-size:13px}table.split td,table.split th{border-bottom:1px solid #e2e7ee;padding:3px 6px;text-align:right}
 table.split tr.ov td{background:#fff1f0}table.split tr.des td{font-weight:700}
 @media (max-width:700px){textarea{width:100%;font-size:16px}}
+header .undobox{display:flex;gap:6px}header .undobox button{background:#fff;color:#1f4e79;border:0;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer}header .undobox button:disabled{opacity:.4;cursor:default}
+table.size{border-collapse:collapse;width:100%;font-size:13px}table.size td,table.size th{border-bottom:1px solid #e2e7ee;padding:4px 6px;text-align:right;vertical-align:top}table.size td:first-child,table.size th:first-child{text-align:left}table.size tr.fail td{background:#fff6f4}table.size small{color:#8a3b2c}
+#txbody .rf,#sizecard .muted,#txcard .muted{line-height:1.4}#txbody .rf{padding:5px 0;border-bottom:1px solid #eee}
+#txbody .rb{display:inline-block;min-width:52px;text-align:center;font-size:11px;font-weight:700;color:#fff;border-radius:4px;padding:2px 6px;margin-right:8px}
+#txbody .pass .rb{background:#2e7d32}#txbody .fail .rb{background:#c0392b}#txbody .warn .rb{background:#d68a00}#txbody .info .rb{background:#607d8b}
+.flowcv{position:absolute;pointer-events:none;z-index:2}
+.muted{color:#526070;font-size:12.5px;margin:4px 0 8px}
+#sizebtn{margin-left:8px}
 /* desktop: keep profile + charts within the viewport (aspect preserved by viewBox) */
 @media (min-width:701px){#profile{max-height:40vh}#rating,#splitchart{max-height:38vh}}

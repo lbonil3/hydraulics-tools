@@ -42,47 +42,65 @@ function drawProfile(p,r,allow,ro,bal){
   <pattern id="cmp" width="8" height="6" patternUnits="userSpaceOnUse"><rect width="8" height="6" fill="#b7bcc2"/><path d="M0 4 Q2 1 4 4 T8 4" fill="none" stroke="#6d737a" stroke-width="1"/></pattern>
   <pattern id="grass" width="10" height="6" patternUnits="userSpaceOnUse"><rect width="10" height="6" fill="#8fa86a"/><path d="M2 6 L3 2 M6 6 L6 1 M8 6 L9 3" stroke="#5f7a3a" stroke-width="0.7"/></pattern>
   <pattern id="rock" width="14" height="10" patternUnits="userSpaceOnUse"><rect width="14" height="10" fill="#b9a48a"/><ellipse cx="4" cy="6" rx="3" ry="2" fill="#8d7760"/><ellipse cx="11" cy="4" rx="2.4" ry="1.6" fill="#6f5b48"/></pattern>
+  <pattern id="soil" width="14" height="14" patternUnits="userSpaceOnUse"><rect width="14" height="14" fill="#a67c52"/><path d="M0 14 L14 0 M-2 4 L4 -2 M10 16 L16 10" stroke="#7a5a38" stroke-width="1.1"/></pattern>
+  <pattern id="fillp" width="11" height="11" patternUnits="userSpaceOnUse"><rect width="11" height="11" fill="#c4a574"/><circle cx="2" cy="3" r="0.8" fill="#9a7848"/><circle cx="8" cy="8" r="0.7" fill="#ddc79a"/></pattern>
+  <linearGradient id="wsurf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d7f0ff"/><stop offset="0.18" stop-color="#7eb6e6"/><stop offset="1" stop-color="#1a4f86"/></linearGradient>
   <marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z"/></marker>
   <marker id="flow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 L9 5 L0 9 Z" fill="#0c3f73"/></marker>
  </defs>
  <rect width="${S.W}" height="${S.H}" fill="url(#sky)"/>
- <path d="M0 ${Y(p.invIn)} L${toeU} ${yi} L${roadL} ${road} L${roadR} ${road} L${toeD} ${yo} L${S.W} ${yo} L${S.W} ${S.H} L0 ${S.H} Z" fill="#c4a574"/>
- <path d="M0 ${yi+8} L${x0} ${yi} L${x1} ${yo} L${S.W} ${yo+6} L${S.W} ${S.H} L0 ${S.H} Z" fill="#a48458"/>
+ <path d="M0 ${Y(p.invIn)} L${toeU} ${yi} L${roadL} ${road} L${roadR} ${road} L${toeD} ${yo} L${S.W} ${yo} L${S.W} ${S.H} L0 ${S.H} Z" fill="url(#fillp)"/>
+ <path d="M0 ${yi+8} L${x0} ${yi} L${x1} ${yo} L${S.W} ${yo+6} L${S.W} ${S.H} L0 ${S.H} Z" fill="url(#soil)"/>
  <path d="M${toeU} ${yi} L${roadL} ${road} L${roadR} ${road} L${toeD} ${yo} L${x1} ${yo} L${x0} ${yi} Z" fill="url(#grass)" opacity=".55"/>
- <rect x="${roadL}" y="${road-7}" width="${roadR-roadL}" height="7" fill="#3c4148"/>
- <line x1="${roadL+4}" x2="${roadR-4}" y1="${road-4}" y2="${road-4}" stroke="#e6c84a" stroke-width="1.4" stroke-dasharray="10 7"/>
- <line x1="${roadL}" x2="${roadR}" y1="${road-1}" y2="${road-1}" stroke="#f2f2f2" stroke-width="1"/>
+ <rect x="${roadL-10}" y="${road-5}" width="10" height="7" fill="#b7b3aa"/>
+ <rect x="${roadR}" y="${road-5}" width="10" height="7" fill="#b7b3aa"/>
+ <rect x="${roadL}" y="${road-11}" width="${Math.max(8,roadR-roadL)}" height="11" fill="#2a2e34"/>
+ <line x1="${roadL+6}" x2="${roadR-6}" y1="${road-6}" y2="${road-6}" stroke="#e6c84a" stroke-width="1.6" stroke-dasharray="12 8"/>
+ <line x1="${roadL+2}" x2="${roadR-2}" y1="${road-9}" y2="${road-9}" stroke="#f4f4f4" stroke-width="1"/>
+ <line x1="${roadL+2}" x2="${roadR-2}" y1="${road-2}" y2="${road-2}" stroke="#f4f4f4" stroke-width="1"/>
  <text x="${(roadL+roadR)/2}" y="${road-12}" text-anchor="middle" fill="#243" font-size="12">${ro?'Road crest El. '+fx(zc):'Roadway (overtopping off)'} · ${fx(fillZ,1)}H:1V side slopes</text>`;
  if(bal&&bal.over){const yE=Y(r.EL);s+=`<path d="M${roadL} ${yE} L${roadR} ${Math.min(road-1,(yE+road)/2)} L${roadR} ${road} L${roadL} ${road} Z" fill="url(#wpool)" opacity=".55"/>
   <text x="${(roadL+roadR)/2}" y="${yE-6}" text-anchor="middle" font-weight="700" fill="#0c3f73">Overtopping ${fx(bal.Qr)} ${r.US?'cfs':'m³/s'}</text>`;}
  const wall=metal?'url(#cmp)':'url(#conc)';
  s+=`<path d="M${x0} ${yi+t} L${x1} ${yo+t} L${x1} ${to-t} L${x0} ${ti-t} Z" fill="${wall}" stroke="${metal?'#5c636a':'#8b9096'}" stroke-width="1"/>
  <path d="M${x0} ${yi} L${x1} ${yo} L${x1} ${to} L${x0} ${ti} Z" fill="#f7f8f9"/>
- <path data-part="hw" d="M18 ${Y(r.EL)} L${x0} ${Y(r.EL)} L${x0} ${yi} L18 ${yi} Z" fill="url(#wpool)" opacity=".72"/>
- <path data-part="ws" d="${ws} L${x1} ${yo} L${x0} ${yi} Z" fill="url(#wpool)" opacity=".78"/>
+ <path data-part="hw" d="M18 ${Y(r.EL)} L${x0} ${Y(r.EL)} L${x0} ${yi} L18 ${yi} Z" fill="url(#wsurf)" opacity=".82"/>
+ <path data-part="ws" d="${ws} L${x1} ${yo} L${x0} ${yi} Z" fill="url(#wsurf)" opacity=".88"/>
  <path d="${ws}" fill="none" stroke="#0c3f73" stroke-width="1.6" marker-end="url(#flow)"/>
  <path d="${hgl}" fill="none" stroke="#083" stroke-width="1.2" stroke-dasharray="5 3"/>
  <path d="${egl}" fill="none" stroke="#a15c00" stroke-width="1" stroke-dasharray="2 3"/>
  <path data-part="barrel" d="M${x0} ${yi} L${x1} ${yo} M${x0} ${ti} L${x1} ${to}" fill="none" stroke="#2c3136" stroke-width="${t.toFixed(1)}"/>`;
- if(kind==='headwall') s+=`<rect data-part="inlet" x="${x0-7}" y="${ti-10}" width="10" height="${yi-ti+16}" fill="#d9d4cc" stroke="#4a463f"/>
-  <path d="M${x0-7} ${ti-10} L${x0-28} ${ti+8} L${x0-7} ${ti+18} Z" fill="#d9d4cc" stroke="#4a463f"/>
-  <path d="M${x0+3} ${ti-10} L${x0+26} ${ti+8} L${x0+3} ${ti+18} Z" fill="#e4dfd6" stroke="#4a463f"/>`;
+ if(kind==='headwall') s+=`<rect data-part="inlet" x="${x0-8}" y="${ti-14}" width="12" height="${yi-ti+22}" fill="#e7e2da" stroke="#4a463f"/>
+  <rect x="${x0-10}" y="${ti-18}" width="16" height="5" fill="#f4f1ec" stroke="#4a463f"/>
+  <path d="M${x0-8} ${ti-8} L${x0-34} ${ti+16} L${x0-8} ${ti+22} Z" fill="#d9d4cc" stroke="#4a463f"/>
+  <path d="M${x0+4} ${ti-8} L${x0+30} ${ti+16} L${x0+4} ${ti+22} Z" fill="#efeae3" stroke="#4a463f"/>
+  <rect x="${x1-4}" y="${to-14}" width="12" height="${yo-to+22}" fill="#e7e2da" stroke="#4a463f"/>
+  <rect x="${x1-6}" y="${to-18}" width="16" height="5" fill="#f4f1ec" stroke="#4a463f"/>
+  <path d="M${x1-4} ${to-8} L${x1-30} ${to+16} L${x1-4} ${to+22} Z" fill="#efeae3" stroke="#4a463f"/>
+  <path d="M${x1+8} ${to-8} L${x1+34} ${to+16} L${x1+8} ${to+22} Z" fill="#d9d4cc" stroke="#4a463f"/>`;
  else if(kind==='miter') s+=`<path data-part="inlet" d="M${x0} ${ti} L${x0-18} ${yi} L${x0} ${yi} Z" fill="${wall}" stroke="#333"/>`;
  else s+=`<path data-part="inlet" d="M${x0} ${ti} L${x0-16} ${ti} L${x0-16} ${yi} L${x0} ${yi}" fill="none" stroke="#333" stroke-width="${Math.max(2,t*0.6)}"/>`;
- s+=`<path data-part="tw" d="M${x1} ${Y(twEl)} L${S.W-16} ${Y(twEl)} L${S.W-16} ${yo} L${x1} ${yo} Z" fill="url(#wpool)" opacity=".62"/>
+ s+=`<path data-part="tw" d="M${x1} ${Y(twEl)} L${S.W-16} ${Y(twEl)} L${S.W-16} ${yo} L${x1} ${yo} Z" fill="url(#wsurf)" opacity=".72"/>
  <path d="M${x1} ${yo} L${x1+apx} ${yo} L${x1+apx} ${yo+11} L${x1} ${yo+11} Z" fill="url(#rock)" stroke="#6b5344"/>
  <text x="${x1+apx/2}" y="${yo+24}" text-anchor="middle" font-size="11" fill="#4a3728">Riprap apron ~${fx(apron.L,0)} ${L}</text>`;
- if(r.jump) s+=`<line x1="${PX(r.jump.x)}" x2="${PX(r.jump.x)}" y1="${PZ(r.jump.x,r.jump.y1)}" y2="${PZ(r.jump.x,r.jump.y2)}" stroke="#c0392b" stroke-width="2.5"/>
-  <text x="${PX(r.jump.x)}" y="${PZ(r.jump.x,r.D)-8}" text-anchor="middle" font-size="12" fill="#c0392b" font-weight="700">Jump @ ${fx(r.jump.x)} ${L}</text>`;
+ if(isFinite(r.dc)) s+=`<line x1="${x0}" x2="${x0+42}" y1="${PZ(0,r.dc)}" y2="${PZ(0,r.dc)}" stroke="#2e7d32" stroke-dasharray="4 3" stroke-width="1.4"/><text x="${x0+46}" y="${PZ(0,r.dc)+4}" font-size="11" fill="#1b5e20">dc ${fx(r.dc)} ${L}</text>`;
+ if(isFinite(r.yn)){const y1=PZ(0,Math.min(r.yn,r.D)), y2=PZ(p.length,Math.min(r.yn,r.D));
+  s+=`<line x1="${x0}" x2="${x1}" y1="${y1}" y2="${y2}" stroke="#6a1b9a" stroke-dasharray="2 3" stroke-width="1.2"/><text x="${(x0+x1)/2}" y="${Math.min(y1,y2)-5}" text-anchor="middle" font-size="11" fill="#6a1b9a">dn ${fx(r.yn)} ${L}</text>`;}
+ if(r.jump) s+=`<line x1="${PX(r.jump.x)}" x2="${PX(r.jump.x)}" y1="${PZ(r.jump.x,r.jump.y1)}" y2="${PZ(r.jump.x,r.jump.y2)}" stroke="#c0392b" stroke-width="3"/>
+  <rect x="${PX(r.jump.x)-8}" y="${Math.min(PZ(r.jump.x,r.jump.y2),PZ(r.jump.x,r.jump.y1))}" width="16" height="${Math.abs(PZ(r.jump.x,r.jump.y2)-PZ(r.jump.x,r.jump.y1))}" fill="#c0392b" opacity=".18"/>
+  <text x="${(x0+x1)/2}" y="${Math.min(PZ(0,r.D), PZ(p.length,r.D))-8}" text-anchor="middle" font-size="12" fill="#c0392b" font-weight="700">Hydraulic jump @ ${fx(r.jump.x)} ${L}</text>`;
+ else if(r.steep&&r.yout+0.05<r.dc) s+=`<text x="${x1-8}" y="${PZ(p.length,r.yout)-8}" text-anchor="end" font-size="12" fill="#0c3f73" font-weight="700">Drawdown to ${fx(r.yout)} ${L}</text>`;
  s+=`<line data-part="length" x1="${x0}" y1="${yo+36}" x2="${x1}" y2="${yo+36}" stroke="#333" marker-end="url(#a)" marker-start="url(#a)"/>
  <text x="${(x0+x1)/2}" y="${yo+50}" text-anchor="middle">L = ${fx(p.length,1)} ${L} · S = ${fx(r.S*100)}% · vertical scale ×${fx(S.vex,1)}</text>
  <text x="56" y="${(Y(r.EL)+yi)/2}" font-weight="700">HW ${fx(r.HW)} ${L}</text>
- <text x="24" y="${Y(r.EL)-6}" font-size="12">El. ${fx(r.EL)} (${r.control})</text>
- <text x="${x0+8}" y="${ti+14}" font-size="12">D = ${fx(r.D)} ${L}${metal?' · corrugated wall':' · concrete wall'}</text>
- <text x="${x1+8}" y="${Y(twEl)-6}" font-size="12">${p.twMode==='const'?'TW El. '+fx(twEl):'Free outfall'}</text>
- <text x="24" y="16" font-size="11" fill="#245">HGL dashed · EGL dotted · flow to the right</text>`;
- if(isFinite(allow)) s+=`<line data-part="allow" x1="20" x2="${x0+30}" y1="${Y(allow)}" y2="${Y(allow)}" stroke="#c0392b" stroke-dasharray="6 4"/><text x="${x0-70}" y="${Y(allow)-4}" fill="#c0392b" font-size="12">Allowable ${fx(allow)}</text>`;
- document.getElementById('profile').innerHTML=s;
+ <text x="24" y="${Y(r.EL)-6}" font-size="12">HW El. ${fx(r.EL)} (${r.control})</text>
+ <text x="${S.W-16}" y="28" text-anchor="end" font-size="11" fill="#245">D = ${fx(r.D)} ${L}${metal?' · corrugated wall':' · concrete wall'}</text>
+ <text x="${x1+8}" y="${Y(twEl)-6}" font-size="12">${p.twMode==='const'?'TW El. '+fx(twEl):'TW free outfall'}</text>
+ <text x="24" y="16" font-size="11" fill="#245">HGL dashed · EGL dotted · dc green · dn purple · flow to the right</text>`;
+ if(isFinite(allow)) s+=`<line data-part="allow" x1="20" x2="${x0+80}" y1="${Y(allow)}" y2="${Y(allow)}" stroke="#c0392b" stroke-dasharray="6 4"/><text x="${S.W-16}" y="42" text-anchor="end" fill="#c0392b" font-size="11">Allowable El. ${fx(allow)}</text>`;
+ const svg=document.getElementById('profile');
+ svg.innerHTML=s;
+ svg._flow={vbW:S.W,vbH:S.H,pts:prof.map(q=>[PX(q[0]),PZ(q[0],q[1])]),V:+r.V||0,Vout:+r.Vout||0,jumpX:r.jump?PX(r.jump.x):null};
 }
 function drawX(p,r){
  const W=300,H=320, barrels=r.crossing?r.crossing.parts:(null);

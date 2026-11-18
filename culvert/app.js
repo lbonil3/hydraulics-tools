@@ -14,6 +14,7 @@ const F=[
  ['material','Culvert','Material (sets Manning n)','sel',['concrete'],'Roughness of the barrel wall. Concrete and the Chart 6 CMP value stay 0.012 and 0.024. CMP can also follow corrugation and diameter. For HY-8 shapes the list and n come from the HY-8 database.','HDS-5 Appendix B Table B.1 and Chart 6; HEC-RAS Table 6-2 for helical CMP by diameter.',null,'barrel'],
  ['corrugation','Culvert','CMP corrugation','sel',['ann_2_5'],'Corrugation used to pick Manning n for circular CMP. Annular 2⅔×½ in stays at the Chart 6 value 0.024. Helical 2⅔×½ in varies with diameter.','HDS-5 Appendix B and §B.4.2; diameter rows from USACE HEC-RAS Table 6-2.',null,'barrel'],
  ['n','Culvert','Manning n','num',[0.012,0.012],'Friction coefficient used in outlet-control losses. Edit for a custom value.','HDS-5 Table 3.1. Range 0.009–0.033.',[0.009,0.035,0.009,0.035],'barrel'],
+ ['blockage','Culvert','Debris blockage (0 = off)','num',[0,0],'Percent of the opening treated as blocked (HEC-9 screening). Hydraulics use the design flow through the open fraction, Q/(1 − blockage/100). Leave 0 unless you are screening debris.','FHWA HEC-9 (3rd ed., 2005).',[0,50,0,50],'xs'],
  ['nBed','Culvert','Manning n of open bottom (streambed)','num',[0.035,0.035],'Open-bottom shapes have a natural streambed floor. HY-8 asks for its own n; a composite n (Horton: equal velocity in each part) is used for the wet perimeter.','Streambed material: gravel 0.025–0.035, cobbles 0.035–0.05.',[0.015,0.07,0.015,0.07],'barrel'],
  ['udPoly','Culvert','User-defined shape: x, y per line (closed outline)','txt',['0, 0\n8, 0\n8, 3\n6.5, 4.5\n1.5, 4.5\n0, 3','0, 0\n2.44, 0\n2.44, 0.91\n1.98, 1.37\n0.46, 1.37\n0, 0.91'],'Inside outline of the barrel, points in order around the shape (x across, y up from the invert). The polygon closes itself. Rise and span are taken from the outline.','Shop drawings or field measurements. 6–40 points is typical.',null,'xs'],
  ['inlet','Inlet','Inlet configuration','sel',[''],'How the upstream end is built. Sets the HDS-5 inlet-control coefficients (K, M, c, Y) and the entrance loss coefficient Ke.','Plans / standard drawings, or field inspection of the inlet.',null,'inlet'],
@@ -28,11 +29,17 @@ const F=[
  ['Kj','Inlet','Junction loss Kj (0 = none)','num',[0,0],'Extra loss Hj = Kj·V²/2g added with the bend loss in outlet control. HDS-5 §5.2.4 does not publish a Kj; it points to HEC-22. Enter a coefficient you computed, or leave 0.','HDS-5 §5.2.4; FHWA HEC-22 for the junction itself.',[0,2,0,2],'inlet'],
  ['skewDeg','Inlet','Inlet skew (deg from normal)','num',[0,0],'Angle from the culvert face to a line normal to the barrel. HDS-5 says the effect is small and is already in Charts 11 and 12. This angle is reported either way.','HDS-5 §5.4.2.',[0,45,0,45],'inlet'],
  ['skewApply','Inlet','Apply Table 5.2a skew screening?','sel',['off'],'Optional. Scales the inlet-control discharge by the 6×6 ft box, Chart 11 capacity ratio in HDS-5 Table 5.2a. Off by default because that table is not a general coefficient.','HDS-5 Table 5.2a.',null,'inlet'],
- ['cover','Site','Cover over crown (0 = unknown)','L',[0,0],'Fill from the outside crown to the finished grade. Used only for the flotation note. 0 means you have not entered it. No numeric minimum is applied.','Roadway typical section. HDS-5 §5.5.2 names the concern and does not give one cover depth.',null,'embank'],
+ ['cover','Site','Cover over crown (0 = unknown)','L',[0,0],'Fill from the outside crown to the finished grade. Negative cover means the crown sticks out of the fill. 0 means you have not entered it.','Roadway typical section. HDS-5 §5.5.2 names the concern and does not give one cover depth.',[-2,30,-0.6,9],'embank'],
+ ['freeboard','Site','Freeboard below road crest (0 = not applied)','L',[0,0],'Extra depth required between the design headwater and the road crest when auto-sizing. 0 does not apply a freeboard test. TxDOT publishes no culvert freeboard number.','Project drainage criteria.',[0,3,0,1],'road'],
+ ['minCover','Site','Minimum cover required (0 = not applied)','L',[0,0],'Project minimum fill over the crown, used by auto-size and the TxDOT panel. 0 does not apply a numeric cover test. The TxDOT HDM culvert chapter gives no single cover depth.','District or project criteria.',[0,10,0,3],'embank'],
  ['Q','Flows','Design discharge','Q',[300,8.5],'Peak flow the culvert must pass (e.g., 25-yr or 50-yr storm).','Hydrology report (Rational method, USGS regression, TR-55, HEC-HMS).',[1,5000,0.03,140],'hw'],
  ['Qcheck','Flows','Check flood discharge (1% AEP, 100-yr)','Q',[0,0],'TxDOT HDM Ch. 4 §6: "All facilities must be evaluated to the 1% AEP flood event." Enter the 100-yr peak flow to see headwater, overtopping and outlet velocity at that flow. 0 = skip.','Hydrology report, or send it from the Rational Method tool (same county IDF, Tc and C at the 1% AEP intensity).',null,'hw'],
  ['Qmin','Flows','Rating curve minimum flow','Q',[30,0.85],'Lowest flow plotted on the performance curve.','Your choice; often 10% of design.',null,'hw'],
  ['Qmax','Flows','Rating curve maximum flow','Q',[450,12.7],'Highest flow plotted (often 1.5× design, to check the 100-yr / check flood).','Hydrology report or your choice.',null,'hw'],
+ ['sedOn','Flows','Low-flow sediment check','sel',['off'],'Off by default. When on, the outlet velocity at the sediment-check discharge is compared with the TxDOT 3 ft/s minimum.','TxDOT HDM Ch. 8 §2. Not a sediment-transport model.',null,'hw'],
+ ['Qsed','Flows','Sediment-check discharge (0 = 10% of design)','Q',[0,0],'Low flow used for the self-cleansing check. 0 uses 10% of the design discharge.','A frequent flow, or about 10% of the design peak.',null,'hw'],
+ ['fishOn','Flows','Fish / aquatic-organism passage check','sel',['off'],'Off by default. When on, barrel velocity and depth at the fish-passage flow are compared with the screening limits (2 ft/s and 0.5 ft). Those limits are not a species design.','FHWA HEC-26 (2010) hydraulic option. USFS stream simulation is not computed.',null,'hw'],
+ ['Qfish','Flows','Fish-passage discharge','Q',[0,0],'Discharge at which passage is judged. Required when the fish check is on.','Agency high or low passage flow (HEC-26). Often well below the design flood.',null,'hw'],
  ['twMode','Tailwater','Tailwater condition','sel',['const'],'Water level downstream that can back up into the culvert. "None" = free outfall.','Hydraulic model of the downstream channel, normal-depth calc, or a known pond/river level.',null,'tw'],
  ['twElev','Tailwater','Tailwater elevation','L',[101.5,30.94],'Water surface elevation just downstream of the outlet at the design flow.','Downstream channel normal-depth calc (Manning) or a HEC-RAS model.',null,'tw'],
  ['chB','Tailwater','Channel bottom width','L',[10,3.05],'Bottom width of the downstream channel (rectangular or trapezoidal).','Survey / plans typical section of the outfall channel.',null,'tw'],
@@ -53,14 +60,14 @@ const F=[
  ['roadCd','Roadway','Custom weir coefficient Cd','num',[3.0,1.66],'Only used when surface = custom. Discharge coefficient in Q = Cd·L·HWr^1.5. HY-8 allows 2.5–3.095 (US).','Agency manual; 3.0 US (1.66 SI) is a common value.',[2.5,3.1,1.38,1.71],'road'],
  ['fillZ','Roadway','Embankment side slope (H:V, drawing)','num',[3,3],'Horizontal run per 1 vertical, used to draw the embankment. It does not change the hydraulics. 3 is a drawing default, not a TxDOT requirement.','Roadway typical section.',[2,6,2,6],'embank']
 ];
-const state={units:'US',criteria:Object.assign({},C.CRITERIA),extras:[]};
+const state={units:'US',criteria:Object.assign({},C.CRITERIA),extras:[]};window.state=state;
 try{const cu=localStorage.getItem('culvert.units');if(cu==='US'||cu==='SI')state.units=cu;
  const cc=JSON.parse(localStorage.getItem('culvert.criteria')||'null');if(cc&&isFinite(+cc.hwDMax))state.criteria=Object.assign({},C.CRITERIA,cc);
  const ex=JSON.parse(localStorage.getItem('culvert.extras')||'null');if(Array.isArray(ex))state.extras=ex;}catch(e){}
 function savePrefs(){try{localStorage.setItem('culvert.units',state.units);localStorage.setItem('culvert.criteria',JSON.stringify({hwDMax:state.criteria.hwDMax,vExcessFt:state.criteria.vExcessFt,vMinFt:state.criteria.vMinFt}));localStorage.setItem('culvert.extras',JSON.stringify(state.extras));}catch(e){}}
 function fieldSpec(){const s={};F.forEach(f=>{if(f[3]==='L')s[f[0]]='L';else if(f[3]==='Q')s[f[0]]='Q';else if(f[3]==='txt')s[f[0]]=f[0]==='chRating'?'txt:Q,L':'txt:L,L';else s[f[0]]='num';});return s;}
 function readForm(){const o={};F.forEach(f=>{const e=document.getElementById(f[0]);if(e)o[f[0]]=e.value;});return o;}
-function applyValues(v){['shape','material','corrugation','size','inlet','twMode','roadOn','roadMode','surface','taperType','taperEdge','skewApply'].forEach(id=>{const e=document.getElementById(id);if(e&&id in v){e.value=v[id];e.dispatchEvent(new Event('input',{bubbles:true}));}});
+function applyValues(v){['shape','material','corrugation','size','inlet','twMode','roadOn','roadMode','surface','taperType','taperEdge','skewApply','sedOn','fishOn'].forEach(id=>{const e=document.getElementById(id);if(e&&id in v){e.value=v[id];e.dispatchEvent(new Event('input',{bubbles:true}));}});
  F.forEach(f=>{const e=document.getElementById(f[0]);if(e&&f[0] in v)e.value=v[f[0]];});}
 function opts(id){
  if(id==='shape')return Shapes.LIST;
@@ -70,6 +77,7 @@ function opts(id){
  if(id==='material')return[['concrete','Concrete (n=0.012, chart value)'],['cmp','Corrugated metal'],['spiral','Spiral rib metal (n=0.013)'],['hdpe','HDPE / PE smooth interior (n=0.012)'],['cpe','Corrugated PE (n=0.025)'],['pvc','PVC (n=0.011)'],['custom','Custom n']];
  if(id==='corrugation')return[['ann_2_5','Annular 2⅔×½ in (n=0.024, Chart 6)'],['hel_2_5','Helical 2⅔×½ in (n by diameter)'],['hel_3_1','Helical 3×1 in (n by diameter)'],['hel_6_1','Helical 6×1 in (n=0.025)'],['ann_5_1','Annular 5×1 in (n=0.026)'],['ann_3_1','Annular 3×1 in (n=0.028)'],['sp_6_2','Structural plate 6×2 in (n by diameter)'],['sp_9','Structural plate 9×2½ in (n=0.037)']];
  if(id==='skewApply')return[['off','No — report the angle only'],['on','Yes — apply the 6×6 box Table 5.2a ratio']];
+ if(id==='sedOn'||id==='fishOn')return [['off','Off'],['on','On']];
  if(id==='taperType')return[['none','None (straight inlet)'],['side','Side-tapered'],['slope','Slope-tapered (vertical face)']];
  if(id==='taperEdge')return val('shape')==='circular'?[['more','Beveled face (Chart 56 scale 1 / slope-taper more favorable)'],['less','Square-edged face (Chart 56 scale 2 / slope-taper less favorable)'],['thin','Thin-edge projecting face (Chart 56 scale 3)']]:[['less','Less favorable edges (square, 26°–90° wingwalls)'],['more','More favorable edges (bevels or 15°–26° wingwalls)']];
  if(id==='roadOn')return[['on','Yes – include flow over the road'],['off','No – culvert only']];
@@ -101,7 +109,7 @@ function build(){
   h+=`<div class="f" data-hl="${f[8]}" id="f_${f[0]}"><label><span>${f[2]} ${u?'('+u+')':''}</span><span style="display:flex;gap:4px">${inp}<button class="i" type="button" title="What is this?">i</button></span></label>
   <div class="help"><b>What it is:</b> ${f[5]}<br><b>Where to get it:</b> ${f[6]}${rg}</div><div class="warn" id="w_${f[0]}"></div></div>`;});
  $('#form').innerHTML=h+'</fieldset>';
- ['shape','material','corrugation','twMode','roadOn','roadMode','surface','taperType','taperEdge','skewApply'].forEach(id=>fill(id));fill('inlet');
+ ['shape','material','corrugation','twMode','roadOn','roadMode','surface','taperType','taperEdge','skewApply','sedOn','fishOn'].forEach(id=>fill(id));fill('inlet');
  $('#shape').value='box';fill('inlet');fill('size');$('#inlet').value='b_90';
  document.querySelectorAll('.i').forEach(b=>b.onclick=()=>b.closest('.f').classList.toggle('open'));
  document.querySelectorAll('.f').forEach(d=>{const on=()=>hl(d.dataset.hl),off=()=>hl(null);d.onmouseenter=on;d.onmouseleave=off;d.addEventListener('focusin',on);d.addEventListener('focusout',off);});
@@ -142,7 +150,8 @@ function params(Q){const k=val('shape'),sec=secFor();
  const inl=Shapes.isHY(k)?Shapes.inletFor(k,val('material'),val('inlet'),sec?(sec.spanNom||sec.B):1,sec?(sec.riseNom||sec.D):1):C.INLETS[k].find(i=>i.id===val('inlet'));
  const mode=val('twMode'), raw=twFor(state.Qtot??(Q??val('Q'))), tw=C.resolveTW(mode, raw, val('twElev'));
  const taperOn=(k==='box'||k==='circular')&&val('taperType')&&val('taperType')!=='none';
- return{units:state.units,shape:k,section:sec,spanNom:sec&&sec.spanNom,riseNom:sec&&sec.riseNom,span:sec?(sec.spanNom||sec.B):val('span'),rise:sec?(sec.riseNom||sec.D):val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:inl,Q:Q??val('Q'),twMode:tw.twMode,twElev:tw.twElev,twError:tw.error||null,twCh:tw.twCh||null,cover:val('cover'),fillZ:val('fillZ')||3,bendDeg:val('bendDeg')||0,bendRD:val('bendRD')||1,Kj:val('Kj')||0,skewDeg:val('skewDeg')||0,skewApply:val('skewApply')==='on',material:val('material'),corrugation:val('corrugation'),taper:taperOn?{type:val('taperType'),edge:val('taperEdge'),Bf:val('taperBf'),taper:val('taperRatio'),St:val('taperSt'),T:val('taperT'),pipe:k==='circular',rough:val('material')==='cmp'}:null};}
+ const blk=Math.max(0,Math.min(85,+val('blockage')||0))/100;
+ return{units:state.units,shape:k,section:sec,spanNom:sec&&sec.spanNom,riseNom:sec&&sec.riseNom,span:sec?(sec.spanNom||sec.B):val('span'),rise:sec?(sec.riseNom||sec.D):val('rise'),barrels:Math.max(1,Math.round(val('barrels')||1)),length:val('length'),invIn:val('invIn'),invOut:val('invOut'),n:val('n'),inlet:inl,Q:Q??val('Q'),twMode:tw.twMode,twElev:tw.twElev,twError:tw.error||null,twCh:tw.twCh||null,cover:val('cover'),fillZ:val('fillZ')||3,bendDeg:val('bendDeg')||0,bendRD:val('bendRD')||1,Kj:val('Kj')||0,skewDeg:val('skewDeg')||0,skewApply:val('skewApply')==='on',blockage:blk,material:val('material'),corrugation:val('corrugation'),taper:taperOn?{type:val('taperType'),edge:val('taperEdge'),Bf:val('taperBf'),taper:val('taperRatio'),St:val('taperSt'),T:val('taperT'),pipe:k==='circular',rough:val('material')==='cmp'}:null};}
 function validate(p){const w={},us=state.units==='US';
  F.forEach(f=>{const v=val(f[0]);if(f[7]&&isFinite(v)){const lo=us?f[7][0]:f[7][2],hi=us?f[7][1]:f[7][3];if(v<lo||v>hi)w[f[0]]=`⚠ ${v} is outside the usual ${lo}–${hi}. Double-check the value and units.`;}
   if(f[3]!=='sel'&&f[3]!=='txt'&&!isFinite(v)&&!(f[1]==='Roadway'&&val('roadOn')!=='on'))w[f[0]]='⚠ Please enter a number.';});
@@ -152,7 +161,7 @@ function validate(p){const w={},us=state.units==='US';
  if(p.twMode==='const'&&p.twElev<p.invOut)w.twElev='ℹ Tailwater is below the outlet invert — it will have no effect.';
  {const m=val('twMode'),sh=(id,on)=>{const d=document.getElementById('f_'+id);if(d)d.style.display=on?'':'none';};
   {const pipe=val('shape')==='circular',box=val('shape')==='box',tt=(pipe||box)?val('taperType'):'none';sh('taperType',pipe||box);['taperEdge','taperBf','taperRatio'].forEach(x=>sh(x,tt&&tt!=='none'));['taperSt','taperT'].forEach(x=>sh(x,tt==='slope'));
-   sh('corrugation',pipe&&val('material')==='cmp');sh('bendRD',val('bendDeg')>0);
+   sh('corrugation',pipe&&val('material')==='cmp');sh('bendRD',val('bendDeg')>0);sh('Qsed',val('sedOn')==='on');sh('Qfish',val('fishOn')==='on');
    const bRef=pipe?val('rise'):val('span');
    if(tt&&tt!=='none'&&!(val('taperBf')>bRef))w.taperBf='⚠ Face width should be larger than the barrel '+(pipe?'diameter':'span')+'.';}
   if(p.twError)w[m==='rating'?'chRating':m==='irreg'?'chPts':'chS']='⚠ '+p.twError;
@@ -169,6 +178,8 @@ function validate(p){const w={},us=state.units==='US';
   if(val('surface')!=='custom')w.roadCd='ℹ Ignored (Cr comes from HDS-5 Fig. 3.11 curves).';
   if(!ro.bad){const zc=C.crestMin(ro);if(zc<=p.invIn+p.rise)w[val('roadMode')==='const'?'crestEl':'roadProfile']='⚠ Road crest is at or below the top of the barrel inlet — check elevations.';
    if(p.twMode==='const'&&p.twElev>zc)w.twElev='⚠ Tailwater is above the road crest — submergence is severe; results uncertain.';}}
+ if(window.Studio){let crest=NaN;if(val('roadOn')==='on'){const ro=roadObj(p);if(ro&&!ro.bad)crest=C.crestMin(ro);}
+  Studio.inputWarnings({Q:p.Q,Qcheck:val('Qcheck'),cover:p.cover,crest,twMode:p.twMode,twElev:p.twElev,invIn:p.invIn,invOut:p.invOut,length:p.length,allowHW:val('allowHW'),barrels:p.barrels}).forEach(x=>{if(!w[x.id])w[x.id]=(x.level==='bad'?'⚠ ':'ℹ ')+x.text;});}
  F.forEach(f=>$('#w_'+f[0]).textContent=w[f[0]]||'');return Object.keys(w).filter(k=>w[k].startsWith('⚠')).length;}
 const fx=(x,d=2)=>isFinite(x)?x.toFixed(d):'—';
 function checkFlood(ro){const Qk=val('Qcheck');if(!(Qk>0))return null;const keep=state.Qtot;state.Qtot=Qk;const p=params(Qk);p.S=(p.invIn-p.invOut)/p.length;if(!p.inlet)return null;
@@ -192,6 +203,7 @@ function run(){
  C.flotationCheck({material:p.material,inletId:p.inlet&&p.inlet.id,HW:r.HW,D:r.D,cover:p.cover}).filter(n=>n.level==='warn').forEach(n=>flags.push(n.text));
  if(r.bend&&r.bend.interpolated)flags.push('Bend loss coefficient was interpolated between HDS-5 Table 5.1 nodes.');
  if(p.skewApply&&r.skew)flags.push(r.skew.note+` Factor ${fx(r.skew.factor,3)} at the unskewed HW/D.`);
+ if(r.blockage>0)flags.push(`Debris blockage ${(r.blockage*100).toFixed(0)}% is on. Hydraulics use the design flow through the open fraction (HEC-9 screening).`);
  if(bal&&bal.over){flags.push(`Roadway overtops: ${fx(bal.Qr)} ${u.Q} (${fx(bal.Qr/Qt*100,0)}% of the total) flows over the road, ${fx(bal.road.hmax)} ${L} deep at the low point. Most agencies do not allow overtopping at the design flood — check criteria, traffic safety and embankment erosion (HDS-5 §5.4.5).`);
   if(bal.road.ktMin<1)flags.push(`Tailwater submerges the road weir (k<sub>t</sub> down to ${fx(bal.road.ktMin,3)}).`);}
  if(ro&&ro.bad)flags.push('Roadway profile is incomplete — overtopping skipped.');
@@ -201,7 +213,7 @@ function run(){
   <div class="kpi">Outlet velocity<b>${fx(r.Vout)} ${u.V}</b></div><div class="kpi">Slope<b>${fx(r.S*100,2)} %</b></div>${bal?`<div class="kpi ${bal.over?'gov':''}">Roadway overtopping Q<b>${fx(bal.Qr)} ${u.Q}</b>Culvert ${fx(bal.Qc)} of ${fx(Qt)} ${u.Q}</div>`:''}`;
  const i=r.inlet,ku=r.US?'1.0':'1.811';
  $('#explain').innerHTML=`<ol>
- <li><b>Geometry.</b> Barrel ${p.section?Shapes.label(p.shape)+' '+fx(p.span)+' × '+fx(p.rise):p.shape==='box'?fx(r.B)+' × '+fx(r.D):fx(r.D)+' diameter'} ${L}, full area A = ${fx(r.A)} ${L}², hydraulic radius R = ${fx(r.R,3)} ${L}. Slope S = (${p.invIn} − ${p.invOut}) / ${p.length} = ${fx(r.S,4)}. Flow per barrel Q = ${fx(r.Q)} ${u.Q} (${r.N} barrel${r.N>1?'s':''}).</li>
+ <li><b>Geometry.</b> Barrel ${p.section?Shapes.label(p.shape)+' '+fx(p.span)+' × '+fx(p.rise):p.shape==='box'?fx(r.B)+' × '+fx(r.D):fx(r.D)+' diameter'} ${L}, full area A = ${fx(r.A)} ${L}², hydraulic radius R = ${fx(r.R,3)} ${L}. Slope S = (${p.invIn} − ${p.invOut}) / ${p.length} = ${fx(r.S,4)}. Flow per barrel Q = ${fx(r.Q)} ${u.Q} (${r.N} barrel${r.N>1?'s':''}).${r.blockage>0?` Debris blockage ${(r.blockage*100).toFixed(0)}% (HEC-9 screening): losses and the water-surface profile use Q/(1−blockage) = ${fx(r.Qhyd)} ${u.Q} per barrel.`:''}</li>
  <li><b>Critical depth</b> d<sub>c</sub> = ${fx(r.dc)} ${L} (solves Q²/g = A³/T). Specific head at critical H<sub>c</sub> = d<sub>c</sub> + V<sub>c</sub>²/2g = ${fx(r.dc)} + ${fx(r.Vc)}²/(2·${fx(r.g,2)}) = ${fx(r.Hc)} ${L}.</li>
  <li><b>Normal depth</b> y<sub>n</sub> = ${isFinite(r.yn)?fx(r.yn)+' '+L+' (Manning, n = '+p.n+')':'— (barrel would flow full or slope ≤ 0)'}. ${isFinite(r.yn)?(r.yn<r.dc?'y<sub>n</sub> &lt; d<sub>c</sub>: steep (supercritical) barrel.':'y<sub>n</sub> &gt; d<sub>c</sub>: mild (subcritical) barrel.'):''}</li>
  <li><b>Inlet control</b> (HDS-5 ${i.chart}: K=${i.K}, M=${i.M}, c=${i.c}, Y=${i.Y}, K<sub>s</sub>=${i.Ks}). Discharge factor K<sub>u</sub>Q/(A·D<sup>0.5</sup>) = ${ku}·${fx(r.Q)}/(${fx(r.A)}·${fx(Math.sqrt(r.D),3)}) = ${fx(r.X,3)} → <b>${r.regime}</b> (unsubmerged ≤ 3.5, submerged ≥ 4.0).
@@ -212,6 +224,7 @@ function run(){
  <li><b>Which governs?</b> The larger headwater controls: <b>${r.control} control</b> (${fx(Math.max(r.HWi,r.HWo))} vs ${fx(Math.min(r.HWi,r.HWo))} ${L}). ${r.control==='Inlet'?'The entrance is the bottleneck — improving the inlet edge (bevels, wingwalls) helps; barrel roughness does not.':'The barrel/tailwater is the bottleneck — a smoother, shorter, larger barrel or lower tailwater helps; inlet improvements only reduce the small entrance loss.'}</li>
  ${r.jump?`<li><b>Hydraulic jump</b> forms ${fx(r.jump.x)} ${L} into the barrel: supercritical depth y<sub>1</sub> = ${fx(r.jump.y1)} ${L} jumps to sequent depth y<sub>2</sub> = ${fx(r.jump.y2)} ${L}${r.jump.y2>=r.D-1e-6?' (barrel full downstream)':''}, located as in HY-8: where the sequent depth of the S2 profile from the inlet reaches the subcritical profile traced upstream from the outlet (or the crown, where that profile is pressurised). Jump length is not modelled (HY-8 adds one).</li>`:r.jumpType==='drowned'?`<li><b>Hydraulic jump</b> would sit upstream of the inlet — tailwater drowns the inlet, so the barrel runs in the outlet-control (subcritical) regime.</li>`:''}<li><b>Outlet velocity</b> ≈ ${fx(r.Vout)} ${u.V} at depth ${fx(r.yout)} ${L} (${r.outMethod}).</li>${bal?roadExplain(bal,ro,Qt,u):''}</ol>
  ${flags.length?flags.map(f=>`<div class="flag">⚠ ${f}</div>`).join(''):'<div class="flag ok">✓ No warnings.</div>'}`;
+ window.LAST={p,r,allow,ro:ro&&!ro.bad?ro:null,bal,check:window.CHECK};
  drawProfile(p,r,allow,ro&&!ro.bad?ro:null,bal);drawRating(p,r);drawSplit(p,ro&&!ro.bad?ro:null);drawX(p,r);hl(hlTarget);
 }
 function drawProfile(p,r,allow,ro,bal){
@@ -316,7 +329,7 @@ document.addEventListener('click',e=>{if(e.target&&e.target.id==='csvbtn')export
 $('#units').value=state.units;
 $('#units').onchange=e=>{const next=e.target.value,prev=state.units;if(next===prev)return;const conv=C.convertSnapshot(readForm(),fieldSpec(),prev,next);
  const lf=next==='SI'?C.FT:1/C.FT;state.extras=(state.extras||[]).map(ex=>Object.assign({},ex,{span:+ex.span*lf,rise:+ex.rise*lf,length:+ex.length*lf,invIn:+ex.invIn*lf,invOut:+ex.invOut*lf}));
- state.units=next;savePrefs();build();applyValues(conv);run();};
+ state.units=next;savePrefs();if(window.StudioUI)StudioUI.lock(true);build();applyValues(conv);run();if(window.StudioUI){StudioUI.reset();StudioUI.lock(false);}};
 build();(()=>{const q=new URLSearchParams(location.search),set=k=>{const e=document.getElementById(k);if(e&&q.has(k))e.value=q.get(k);};
  set('shape');if(q.has('shape')){fill('material');set('material');fill('size');if(q.has('size'))set('size');else pickSize();fill('inlet');shapeDefaults();}
  q.forEach((v,k)=>{if(!['shape','material','size'].includes(k))set(k);});})();run();
