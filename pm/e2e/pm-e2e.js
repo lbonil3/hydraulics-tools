@@ -687,6 +687,40 @@ function v2Fixture() {
     return { bad, hit, n: cells.length, wrap: name ? getComputedStyle(name).whiteSpace : '', date: date ? getComputedStyle(date).whiteSpace : '', unit: (document.querySelector('#eng-schedule .gtab') || {}).rows ? document.querySelectorAll('#eng-schedule .gtab thead tr').length : 0 };
   });
   ok(gridFit.bad.length === 0 && !gridFit.hit && gridFit.wrap === 'normal' && gridFit.date === 'nowrap' && gridFit.n > 20, 'a long milestone list fits its cells and the headers do not overlap ' + JSON.stringify(gridFit));
+  await pg.evaluate(() => {
+    const st = JSON.parse(localStorage.getItem('pm.data.v3'));
+    const names = st.milestones.map((m) => m.name);
+    const a = Date.UTC(2025, 0, 15), b = Date.UTC(2028, 11, 15);
+    st.milestones = names.map((name, i) => ({ id: 'y' + i, name, date: new Date(a + ((b - a) * i) / (names.length - 1)).toISOString().slice(0, 10) }));
+    localStorage.setItem('pm.data.v3', JSON.stringify(st));
+  });
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  await pg.emulateMediaType('print');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  const yearFit = await pg.evaluate(() => {
+    const table = document.querySelector('#report .gtab');
+    const report = document.querySelector('#report');
+    const cells = [...table.querySelectorAll('th, td')];
+    const bad = cells.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className + ':' + e.textContent.trim().slice(0, 24));
+    const heads = [...table.querySelectorAll('thead tr')].map((r) => [...r.children].map((c) => c.textContent.trim()));
+    const lab = table.querySelector('.gantt-todaylab');
+    const th = lab && lab.closest('th');
+    const lr = lab ? lab.getBoundingClientRect() : null;
+    const tr = th ? th.getBoundingClientRect() : null;
+    const rows = [...table.querySelectorAll('thead tr')];
+    const hit = rows.some((row) => {
+      const boxes = [...row.children].map((e) => e.getBoundingClientRect());
+      return boxes.some((box, i) => i && box.left < boxes[i - 1].right - 1);
+    });
+    return {
+      bad, hit, heads,
+      todayInHeader: !!(lab && th && lr.left >= tr.left - 1 && lr.right <= tr.right + 1 && lr.top >= tr.top - 1 && lr.bottom <= tr.bottom + 1),
+      tableFits: table.getBoundingClientRect().width <= report.getBoundingClientRect().width + 1,
+      note: !!document.querySelector('#report .ganttnote'),
+    };
+  });
+  ok(yearFit.bad.length === 0 && !yearFit.hit && yearFit.tableFits && yearFit.todayInHeader && !yearFit.note && yearFit.heads.length === 1 && yearFit.heads[0].slice(-4).map((s) => s.replace(/Today/g, '').trim()).join(',') === '2025,2026,2027,2028', 'a four-year milestone span uses one column per year, stays inside the page, and keeps Today in its header ' + JSON.stringify(yearFit));
+  await pg.emulateMediaType('screen');
   await pg.evaluate((j) => localStorage.setItem('pm.data.v3', j), keptMilestones);
   await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
   ok(/30% submittal/.test(await txt('#eng-schedule')), 'the project milestones are restored after the long-list check');

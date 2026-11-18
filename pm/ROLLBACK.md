@@ -386,7 +386,7 @@ Data: no schema change. Optional fields project.report {preparedFor, preparedBy,
 
 ## v3.28 (milestone grid and section breaks)
 
-A long list of milestones keeps the Schedule and Milestones grid on the page. The name wraps. The date and the sheet count stay on one line. When the dates cover more months than fit, the columns become single letters under a year, then quarters, then years. The diamond sits in the middle of its cell. Today is labeled where the header has room, and the dashed line stays in the cell. Each milestone row stays together, and the header repeats on the next page.
+A long list of milestones keeps the Schedule and Milestones grid on the page. The name wraps. The date and the sheet count stay on one line. When the dates cover more months than fit, the columns become single letters under a year, then quarters, then years. A span of about four years or more is one column per year, and that year is labeled once. The diamond sits in the middle of its cell. Today is written in that column’s header, and the dashed line stays in the cell. Each milestone row stays together, and the header repeats on the next page.
 
 Numbered sections have a divider between them on screen. Printing still flows the sections together. Cover settings include “Each section starts on a new page,” and each section has its own “New page” checkbox. Both start off. The first section stays with the table of contents so that page is not left blank. A section heading is not left alone at the bottom of a page.
 

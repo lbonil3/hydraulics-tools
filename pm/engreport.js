@@ -360,7 +360,7 @@
       years.push({ year: ticks[i].year, span: j - i });
       i = j;
     }
-    const head = years.length > 1 || ticks.length > 6 ? 'split' : 'single';
+    const head = unit === 'year' ? 'single' : (years.length > 1 || ticks.length > 6 ? 'split' : 'single');
     const place = (iso) => {
       const i = ticks.findIndex((tk) => iso >= tk.t && iso < tk.end);
       if (i < 0) return { col: -1, frac: 0 };
