@@ -58,7 +58,7 @@ function hostFor(svg){
     svg.before(host); host.appendChild(svg);
   }
   let c=svg._flowcv;
-  if(!c){c=document.createElement('canvas'); c.className='flowcv'; c.setAttribute('aria-hidden','true'); host.appendChild(c); svg._flowcv=c;}
+  if(!c){c=document.createElement('canvas'); c.className='flowcv flowpic'; c.setAttribute('aria-hidden','true'); host.appendChild(c); svg._flowcv=c; document.body.classList.add('flowsim');}
   return c;
 }
 function glOf(c){
@@ -95,57 +95,69 @@ function drawGL(c, sc, pts, dots){
 function draw2d(g, pts, dots, sx, sy){
   if(pts.length<2) return;
   g.beginPath();
-  pts.forEach((pt,i)=>g.lineTo?null:null);
   g.moveTo(pts[0].x*sx, pts[0].ys*sy);
   for(let i=1;i<pts.length;i++) g.lineTo(pts[i].x*sx, pts[i].ys*sy);
   for(let i=pts.length-1;i>=0;i--) g.lineTo(pts[i].x*sx, pts[i].yb*sy);
   g.closePath();
   if(colorOn){
-    const grd=g.createLinearGradient(pts[0].x*sx,0,pts[pts.length-1].x*sx,0);
-    const n=6; for(let k=0;k<=n;k++){const pt=pts[Math.min(pts.length-1, Math.round(k/n*(pts.length-1)))]; const c=color(pt.v); grd.addColorStop(k/n, `rgba(${c[0]},${c[1]},${c[2]},0.82)`);}
+    const x0=pts[0].x*sx, x1=pts[pts.length-1].x*sx;
+    const grd=g.createLinearGradient(x0,0,Math.max(x1, x0+1),0);
+    let prev=-0.001;
+    pts.forEach(pt=>{let t=(pt.x*sx-x0)/Math.max(x1-x0,1); t=Math.max(prev+0.0008, Math.min(0.999, t)); prev=t; const c=color(pt.v); grd.addColorStop(t, `rgba(${c[0]},${c[1]},${c[2]},0.8)`);});
     g.fillStyle=grd;
   } else g.fillStyle='rgba(36,130,196,0.78)';
   g.fill();
-  dots.forEach(d=>{g.beginPath(); g.fillStyle='rgba(240,248,255,0.95)'; g.strokeStyle='#0c3d66'; g.lineWidth=1; g.arc(d.x*sx, d.y*sy, 2.1, 0, 6.3); g.fill(); g.stroke();});
+  dots.forEach(d=>{g.beginPath(); g.fillStyle='rgba(240,248,255,0.95)'; g.strokeStyle='#0c3d66'; g.lineWidth=1; g.arc(d.x*sx, d.y*sy, d.r||2, 0, 6.3); g.fill(); g.stroke();});
 }
-function points(sc, s, D, invIn, invOut, length){
+function points(sc, s, D, invIn, invOut, length, tw){
   const pts=[], scX=(sc.x1-sc.x0)/Math.max(length,1e-6);
-  const poolX=Math.max(12, sc.x0-Math.min(90, 0.12*length*scX));
-  const yBed=sc.Y(invIn), yTop=sc.Y(invIn+Math.min(s.hw, D*4));
-  pts.push({x:poolX, ys:yTop, yb:yBed, v:0.4});
-  pts.push({x:sc.x0, ys:yTop, yb:yBed, v:Math.abs(s.q[0]||0)/Math.max(s.h[0],0.2)});
-  let vm=1;
+  const yBed=sc.Y(invIn);
+  const yPool=sc.Y(invIn+Math.min(Math.max(s.hw,0.05), D*3));
+  const yEnt=sc.Y(s.zb[0]+Math.min(s.h[0], D));
+  const vEnt=Math.abs(s.q[0])/Math.max(s.h[0],0.2);
+  const poolX=Math.max(10, sc.x0-Math.min(110, 0.22*(sc.x1-sc.x0)));
+  for(let k=0;k<=8;k++){
+    const t=k/8, ease=t*t;
+    pts.push({x:poolX+(sc.x0-poolX)*t, ys:yPool+(yEnt-yPool)*ease, yb:yBed, v:vEnt*ease});
+  }
+  let vm=Math.max(1, vEnt);
   for(let i=0;i<s.N;i++){
-    const x=sc.x0+scX*(i+0.5)*s.dx;
     const hd=Math.min(s.h[i], D);
     const v=Math.abs(s.q[i])/Math.max(s.h[i],0.05);
     vm=Math.max(vm, v);
-    pts.push({x, ys:sc.Y(s.zb[i]+hd), yb:sc.Y(s.zb[i]), v});
+    pts.push({x:sc.x0+scX*(i+0.5)*s.dx, ys:sc.Y(s.zb[i]+hd), yb:sc.Y(s.zb[i]), v});
   }
-  const yOut=Math.min(s.yout, D), vOut=Math.abs(s.q[s.N-1])/Math.max(s.h[s.N-1],0.05);
-  pts.push({x:Math.min(sc.W-8, sc.x1+70), ys:sc.Y(invOut+Math.max(yOut, 0.2)), yb:sc.Y(invOut), v:vOut});
+  const yJet=sc.Y(invOut+Math.min(s.yout, D));
+  const yTW=sc.Y(invOut+Math.max(tw||0, 0.15));
+  const vOut=Math.abs(s.q[s.N-1])/Math.max(s.h[s.N-1],0.05);
+  const apron=Math.min(36, Math.max(16, (sc.W-sc.x1)*0.25));
+  for(let k=1;k<=5;k++){
+    const t=k/5;
+    pts.push({x:sc.x1+apron*t, ys:yJet+(yTW-yJet)*t, yb:sc.Y(invOut), v:vOut*(1-t)});
+  }
   vmax=vm;
   return pts;
 }
-function advect(s, dt, D, length){
-  const n=matchMedia('(max-width:700px)').matches?28:56;
-  if(parts.length!==n){parts=[]; for(let i=0;i<n;i++) parts.push({u:Math.random()<0.45?Math.random()*0.25:Math.random(), f:0.15+0.7*Math.random()});}
+function advect(s, dt, length){
+  const phone=matchMedia('(max-width:700px)').matches, rows=4, per=phone?7:12, n=rows*per;
+  if(parts.length!==n){parts=[]; for(let r=0;r<rows;r++) for(let i=0;i<per;i++) parts.push({u:(i+0.35)/per, f:0.16+0.68*(r+0.5)/rows});}
   parts.forEach(p=>{
-    const x=p.u*s.N;
+    const x=Math.max(0, Math.min(0.999, p.u))*s.N;
     const i=Math.max(0, Math.min(s.N-1, Math.floor(x)));
-    const u=s.q[i]/Math.max(s.h[i],0.05);
-    p.u+=dt*u/Math.max(length,1)* (p.u<0.15?1.3:1);
-    if(p.u>1.05||p.u<0) p.u=Math.random()*0.08;
+    const speed=Math.max(0, s.q[i]/Math.max(s.h[i],0.05))*(0.72+0.55*p.f);
+    p.u+=dt*speed/Math.max(length,1);
+    if(p.u>=1) p.u-=1;
   });
 }
 function dots(sc, s, D, length){
   const scX=(sc.x1-sc.x0)/Math.max(length,1e-6), out=[];
   parts.forEach(p=>{
-    const x=Math.max(0, Math.min(0.999, p.u))*s.N;
-    const i=Math.max(0, Math.min(s.N-1, Math.floor(x)));
-    const bed=s.zb[i], top=bed+Math.min(s.h[i], D);
-    const z=bed+p.f*(top-bed);
-    out.push({x:sc.x0+scX*(i+0.5)*s.dx, y:sc.Y(z)});
+    const xf=Math.max(0, Math.min(0.999, p.u))*s.N;
+    const i=Math.max(0, Math.min(s.N-2, Math.floor(xf)));
+    const t=xf-i;
+    const bed=s.zb[i]*(1-t)+s.zb[i+1]*t;
+    const top=bed+(Math.min(s.h[i],D)*(1-t)+Math.min(s.h[i+1],D)*t);
+    out.push({x:sc.x0+scX*xf*s.dx, y:sc.Y(bed+p.f*(top-bed)), r:sc.W<400?1.6:2});
   });
   return out;
 }
@@ -164,7 +176,8 @@ function frame(){
   if(!st) return;
   if(playing) F.advance(st, matchMedia('(max-width:700px)').matches?0.08:0.18);
   const s=F.sample(st);
-  if(playing) advect(s, matchMedia('(max-width:700px)').matches?0.08:0.18, L.r.D, L.p.length);
+  if(playing) advect(s, matchMedia('(max-width:700px)').matches?0.1:0.18, L.p.length);
+  const phone=matchMedia('(max-width:700px)').matches;
   ['desk','phone'].forEach(which=>{
     const svg=document.getElementById(which==='desk'?'profile':'mprofile');
     if(!svg||!svg.clientWidth) return;
@@ -173,11 +186,12 @@ function frame(){
     const dpr=Math.min(2, window.devicePixelRatio||1), w=svg.clientWidth, h=svg.clientHeight;
     c.style.left='0px'; c.style.top='0px';
     if(c.width!==Math.round(w*dpr)){c.width=Math.round(w*dpr); c.height=Math.round(h*dpr); c.style.width=w+'px'; c.style.height=h+'px'; c._gl=undefined;}
-    const pts=points(sc, s, L.r.D, L.p.invIn, L.p.invOut, L.p.length);
+    const pts=points(sc, s, L.r.D, L.p.invIn, L.p.invOut, L.p.length, L.r.TW||0);
     const ds=dots(sc, s, L.r.D, L.p.length);
     const sx=w/sc.W, sy=h/sc.H;
-    if(!drawGL(c, sc, pts, ds)){
-      const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+    if(phone||!drawGL(c, sc, pts, ds)){
+      const g=c.getContext('2d'); if(!g) return;
+      g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
       draw2d(g, pts, ds, sx, sy);
     }
   });
