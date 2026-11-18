@@ -1,4 +1,4 @@
-/* Project Tracker v3.27: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.28: Engineering Report (drainage design report style), derived from the tracker data.
    A carried sheet counts in every package that has it. Unique plan sheets are labeled separately.
    Sheets carried into a package are listed in the same section and group as the original.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
@@ -167,7 +167,8 @@
   /* ---- stored edits (tolerant reads; writes keep the data small) ---- */
   function data(st) { const e = st.engReport; return e && typeof e === 'object' && !Array.isArray(e) ? e : {}; }
   function meta(st) { const m = data(st).meta || {}; return Object.fromEntries(META.map(([k]) => [k, typeof m[k] === 'string' ? m[k] : ''])); }
-  function secState(st, id) { const s = (data(st).secs || {})[id] || {}; return { on: s.on !== false, text: typeof s.text === 'string' ? s.text : '', mode: s.mode === 'replace' ? 'replace' : 'add' }; }
+  function secState(st, id) { const s = (data(st).secs || {})[id] || {}; return { on: s.on !== false, text: typeof s.text === 'string' ? s.text : '', mode: s.mode === 'replace' ? 'replace' : 'add', page: s.page === true }; }
+  function pageEach(st) { return data(st).pageEach === true; }
   function refs(st) { const r = data(st).refs; return typeof r === 'string' ? r.split('\n').map((x) => x.trim()).filter(Boolean) : DEFAULT_REFS.slice(); }
   function refsText(st) { return refs(st).join('\n'); }
   function safeRefUrl(u) {
@@ -194,7 +195,7 @@
     }).filter(Boolean).join('\n');
   }
   function ensure(st) { if (!st.engReport || typeof st.engReport !== 'object' || Array.isArray(st.engReport)) st.engReport = {}; return st.engReport; }
-  function tidy(st) { const e = st.engReport; if (!e) return; if (e.meta && !Object.keys(e.meta).length) delete e.meta; if (e.secs) { for (const k of Object.keys(e.secs)) if (!Object.keys(e.secs[k]).length) delete e.secs[k]; if (!Object.keys(e.secs).length) delete e.secs; } if (!Object.keys(e).length) delete st.engReport; }
+  function tidy(st) { const e = st.engReport; if (!e) return; if (e.pageEach !== true) delete e.pageEach; if (e.meta && !Object.keys(e.meta).length) delete e.meta; if (e.secs) { for (const k of Object.keys(e.secs)) if (!Object.keys(e.secs[k]).length) delete e.secs[k]; if (!Object.keys(e.secs).length) delete e.secs; } if (!Object.keys(e).length) delete st.engReport; }
   function setMeta(st, k, v) {
     if (!META.some(([x]) => x === k)) throw new Error('Unknown report field');
     const t = String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, 200), e = ensure(st);
@@ -206,8 +207,10 @@
     if ('on' in f) { if (f.on === false) s.on = false; else delete s.on; }
     if ('text' in f) { const t = String(f.text == null ? '' : f.text).replace(/\r\n?/g, '\n').slice(0, MAXT); if (t.trim()) s.text = t; else delete s.text; }
     if ('mode' in f) { if (f.mode === 'replace') s.mode = 'replace'; else delete s.mode; }
+    if ('page' in f) { if (f.page === true) s.page = true; else delete s.page; }
     e.secs[id] = s; tidy(st);
   }
+  function setPageEach(st, on) { const e = ensure(st); if (on) e.pageEach = true; else delete e.pageEach; tidy(st); }
   function setRefs(st, text) {
     const e = ensure(st);
     const t = String(text == null ? '' : text).replace(/\r\n?/g, '\n').slice(0, MAXT);
@@ -295,34 +298,69 @@
     const built = data.length > 1 ? { rows: data.concat([['Total', String(rows.reduce((a, g) => a + g.n, 0)), '', '']]), kinds: data.map(() => '').concat(['total']) } : { rows: data, kinds: data.map(() => '') };
     return { table: { head: ['Standard', 'Sheets', 'Sub-projects', 'Source'], rows: built.rows, kinds: built.kinds, cls: disc === 'SWP3' ? 'std-sw' : 'std-dr' } };
   }
-  /* Milestones only. Each dated milestone falls in one month column, or one week column when the
-     whole span is about twelve weeks or less. A blank date stays on the row as TBD. */
+  /* Keep the time axis short enough that the name, the date, and the periods fit the printed page. */
+  const GANTT_MAX = 10;
+  function quarterStart(iso) { const d = asDay(iso); const q = Math.floor(d.getMonth() / 3); return d.getFullYear() + '-' + String(q * 3 + 1).padStart(2, '0') + '-01'; }
+  function weekTicks(lo, hi) {
+    const ticks = [];
+    for (let t = mondayOf(lo), end = plusDays(mondayOf(hi), 7); t < end; t = plusDays(t, 7)) {
+      const d = asDay(t);
+      ticks.push({ t, end: plusDays(t, 7), label: (d.getMonth() + 1) + '/' + d.getDate(), year: d.getFullYear() });
+    }
+    return ticks;
+  }
+  function monthTicks(lo, hi, letters) {
+    const ticks = [];
+    for (let t = monthStart(lo), end = plusMonths(monthStart(hi), 1); t < end; t = plusMonths(t, 1)) {
+      const d = asDay(t);
+      ticks.push({ t, end: plusMonths(t, 1), label: letters ? MONS[d.getMonth()].charAt(0) : MONS[d.getMonth()], year: d.getFullYear() });
+    }
+    return ticks;
+  }
+  function quarterTicks(lo, hi) {
+    const ticks = [];
+    for (let t = quarterStart(lo), end = plusMonths(quarterStart(hi), 3); t < end; t = plusMonths(t, 3)) {
+      const d = asDay(t);
+      ticks.push({ t, end: plusMonths(t, 3), label: 'Q' + (Math.floor(d.getMonth() / 3) + 1), year: d.getFullYear() });
+    }
+    return ticks;
+  }
+  function yearTicks(lo, hi) {
+    const ticks = [];
+    for (let y = asDay(lo).getFullYear(), last = asDay(hi).getFullYear(); y <= last; y++) {
+      ticks.push({ t: y + '-01-01', end: (y + 1) + '-01-01', label: String(y), year: y });
+    }
+    return ticks;
+  }
+  /* Milestones only. Weeks, then months, then quarters, then years, whichever fits the page. */
   function scheduleChart(today, milestones) {
     const dated = milestones.map((x) => isISO(x.m.date) ? x.m.date : null).filter(Boolean).sort();
-    let unit = 'none', axisStart = null, axisEnd = null;
-    const ticks = [];
+    let unit = 'none', ticks = [];
     if (dated.length) {
       const lo = dated[0], hi = dated[dated.length - 1];
-      if (dayDiff(lo, hi) <= 84) {
-        unit = 'week';
-        axisStart = mondayOf(lo);
-        axisEnd = plusDays(mondayOf(hi), 7);
-        for (let t = axisStart; t < axisEnd; t = plusDays(t, 7)) {
-          const d = asDay(t);
-          ticks.push({ t, end: plusDays(t, 7), mon: MONS[d.getMonth()], day: d.getDate(), year: d.getFullYear() });
-        }
-      } else {
-        unit = 'month';
-        axisStart = monthStart(lo);
-        axisEnd = plusMonths(monthStart(hi), 1);
-        for (let t = axisStart; t < axisEnd; t = plusMonths(t, 1)) {
-          const d = asDay(t);
-          ticks.push({ t, end: plusMonths(t, 1), mon: MONS[d.getMonth()], day: null, year: d.getFullYear() });
+      const weeks = weekTicks(lo, hi);
+      if (weeks.length <= GANTT_MAX) { unit = 'week'; ticks = weeks; }
+      else {
+        const months = monthTicks(lo, hi, false);
+        if (months.length <= 6) { unit = 'month'; ticks = months; }
+        else if (months.length <= 12) { unit = 'month'; ticks = monthTicks(lo, hi, true); }
+        else {
+          const quarters = quarterTicks(lo, hi);
+          if (quarters.length <= 20) { unit = 'quarter'; ticks = quarters; }
+          else { unit = 'year'; ticks = yearTicks(lo, hi); }
         }
       }
-      let prev = null;
-      for (const tk of ticks) { tk.showYear = prev !== tk.year; prev = tk.year; }
     }
+    const axisStart = ticks.length ? ticks[0].t : null;
+    const axisEnd = ticks.length ? ticks[ticks.length - 1].end : null;
+    const years = [];
+    for (let i = 0; i < ticks.length;) {
+      let j = i;
+      while (j < ticks.length && ticks[j].year === ticks[i].year) j++;
+      years.push({ year: ticks[i].year, span: j - i });
+      i = j;
+    }
+    const head = unit === 'year' ? 'single' : (years.length > 1 || ticks.length > 6 ? 'split' : 'single');
     const place = (iso) => {
       const i = ticks.findIndex((tk) => iso >= tk.t && iso < tk.end);
       if (i < 0) return { col: -1, frac: 0 };
@@ -337,7 +375,13 @@
     });
     const todayIn = !!(axisStart && today >= axisStart && today < axisEnd);
     const here = todayIn ? place(today) : { col: -1, frac: 0 };
-    return { unit, start: axisStart, end: axisEnd, today, todayIn, todayCol: here.col, todayFrac: here.frac, ticks, rows };
+    let acc = 0;
+    for (const y of years) {
+      y.today = todayIn && here.col >= acc && here.col < acc + y.span && head === 'split' && y.span >= 2;
+      acc += y.span;
+    }
+    const todayNote = todayIn && !years.some((y) => y.today) && head === 'split';
+    return { unit, start: axisStart, end: axisEnd, today, todayIn, todayCol: here.col, todayFrac: here.frac, head, years, todayNote, ticks, rows };
   }
   /* ---- the sections: blocks = [{ p } | { ul } | { table:{ head, rows } }]; ph = the placeholder shown when the engineer adds nothing ---- */
   function build(st, today) {
@@ -568,5 +612,5 @@
     }
     return L.filter((x, i, a) => !(x === '' && a[i - 1] === '')).join('\n').replace(/\n+$/, '') + '\n';
   }
-  return { SECS, META, DEFAULT_REFS, KNOWN_REFS, PH, meta, secState, refs, refsText, refItems, serializeRefs, setMeta, setSec, setRefs, resetRefs, build, outline, text };
+  return { SECS, META, DEFAULT_REFS, KNOWN_REFS, PH, meta, secState, pageEach, refs, refsText, refItems, serializeRefs, setMeta, setSec, setPageEach, setRefs, resetRefs, build, outline, text };
 });

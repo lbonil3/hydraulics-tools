@@ -830,7 +830,9 @@ details.menu.active>summary{border-color:var(--brand);background:var(--brand-sof
 .report.eng .rtab thead,.report.eng .rtab.roads thead,.report.eng .gtab thead{display:table-header-group}
 .report.eng .rtab.roads tbody.rblock{break-inside:avoid;page-break-inside:avoid}
 .report.eng h2,.report.eng .esub{break-after:avoid;page-break-after:avoid}
-.report.eng .pielay,.report.eng .ganttwrap{break-inside:avoid;page-break-inside:avoid}
+.report.eng .pielay{break-inside:avoid;page-break-inside:avoid}
+.report.eng .esecp.np{break-before:page;page-break-before:always}
+.report.eng .esecp > h2 + *{break-before:avoid;page-break-before:avoid}
 .report.eng.pg-letter{page:eng}.report.eng.pg-a4{page:enga4}
 .report.eng .eidx td:nth-child(5){white-space:nowrap}
 /* v3.20 report fonts. Files in pm/fonts are SIL OFL (see the OFL-*.txt files there). No remote font host. */
@@ -924,20 +926,27 @@ html[data-rptfont] .pie text,html[data-rptfont] .gantt text{font-family:var(--rp
 .engnarr .rtab tr.rsecsub td,.report.eng .rtab tr.rsecsub td{background:var(--mb-light);border-top:.75pt solid var(--mb-gray)}
 .engnarr .rtab tr.rpkg td,.report.eng .rtab tr.rpkg td{background:#d9d9d9;border-top:.75pt solid var(--mb-dark)}
 .engnarr .rtab tr.rtot td,.report.eng .rtab tr.rtot td{color:var(--mb-navy);background:var(--mb-light);border-top:1.5pt solid var(--mb-navy);border-bottom:1.5pt solid var(--mb-navy)}
-.ganttwrap{margin:4pt 0 8pt;break-inside:avoid;page-break-inside:avoid}
-.gtab{width:100%;border-collapse:collapse;table-layout:fixed}
+.engnarr .esec + .esec{border-top:2px solid var(--mb-navy);margin-top:22px;padding-top:16px}
+.engnarr .ehead .chk.small{margin-left:auto}
+.ganttwrap{margin:4pt 0 8pt}
+.ganttnote{margin:2pt 0 0;font-size:8pt;color:var(--mb-dark,#666666)}
+.gtab{width:100%;border-collapse:collapse;table-layout:auto}
+.gtab tr{break-inside:avoid;page-break-inside:avoid}
 .gtab th,.gtab td{border:.6pt solid var(--mb-gray,#999999);padding:3pt 4pt;vertical-align:middle;font-size:8pt;color:var(--mb-char,#333333);background:#fff}
-.gtab thead th{color:var(--mb-navy,#002856);background:var(--mb-light,#E6E6E6);font-weight:700;text-align:center}
-.gtab .glab{text-align:left;width:22%}
-.gtab .gdate{width:18%;text-align:center}
-.gtab .gdone{width:12%;text-align:center}
+.gtab thead th{color:var(--mb-navy,#002856);background:var(--mb-light,#E6E6E6);font-weight:700;text-align:center;line-height:1.15}
+.gtab .glab{text-align:left;white-space:normal;overflow-wrap:anywhere;min-width:1.4in;max-width:1.9in}
+.gtab .gdate{white-space:nowrap;text-align:center;min-width:.98in}
+.gtab .gdone{white-space:nowrap;text-align:center;min-width:.62in}
+.gtab th.gtime,.gtab td.gcell{min-width:.2in;padding:2pt 0;font-size:7pt;text-align:center;white-space:nowrap}
+.gtab th.gyear{white-space:normal}
 .gtab td.gcell{position:relative;height:16pt}
 .gtab td.on{background:var(--mb-light,#E6E6E6)}
-.gtab .gantt-dia{position:absolute;top:50%;width:7pt;height:7pt;margin-top:-3.5pt;background:var(--mb-blue,#0085CA);transform:rotate(45deg)}
-.gtab .gantt-today{position:absolute;top:0;bottom:0;border-left:1px dashed var(--mb-char,#333333);height:auto}
-.gtab .gantt-todaylab{display:block;font-size:7pt;font-weight:400;color:var(--mb-char,#333333)}
+.gtab .gantt-dia{position:absolute;left:50%;top:50%;width:7pt;height:7pt;margin:-3.5pt 0 0 -3.5pt;background:var(--mb-blue,#0085CA);transform:rotate(45deg)}
+.gtab.coarse .gantt-dia{left:clamp(5pt, calc(var(--gpos) * 100%), calc(100% - 5pt))}
+.gtab .gantt-today{position:absolute;left:50%;top:0;bottom:0;margin-left:-.5pt;border-left:1px dashed var(--mb-char,#333333);height:auto}
+.gtab.coarse .gantt-today{left:clamp(1pt, calc(var(--tpos) * 100%), calc(100% - 1pt))}
+.gtab .gantt-todaylab{display:block;font-size:6.5pt;font-weight:700;letter-spacing:0;color:var(--mb-char,#333333);line-height:1.1}
 .gtab .gantt-tbd{font-style:italic;color:var(--mb-dark,#666666)}
-.gtab .p5 .gantt-dia,.gtab .t5 .gantt-today{left:5%}.gtab .p10 .gantt-dia,.gtab .t10 .gantt-today{left:10%}.gtab .p15 .gantt-dia,.gtab .t15 .gantt-today{left:15%}.gtab .p20 .gantt-dia,.gtab .t20 .gantt-today{left:20%}.gtab .p25 .gantt-dia,.gtab .t25 .gantt-today{left:25%}.gtab .p30 .gantt-dia,.gtab .t30 .gantt-today{left:30%}.gtab .p35 .gantt-dia,.gtab .t35 .gantt-today{left:35%}.gtab .p40 .gantt-dia,.gtab .t40 .gantt-today{left:40%}.gtab .p45 .gantt-dia,.gtab .t45 .gantt-today{left:45%}.gtab .p50 .gantt-dia,.gtab .t50 .gantt-today{left:50%}.gtab .p55 .gantt-dia,.gtab .t55 .gantt-today{left:55%}.gtab .p60 .gantt-dia,.gtab .t60 .gantt-today{left:60%}.gtab .p65 .gantt-dia,.gtab .t65 .gantt-today{left:65%}.gtab .p70 .gantt-dia,.gtab .t70 .gantt-today{left:70%}.gtab .p75 .gantt-dia,.gtab .t75 .gantt-today{left:75%}.gtab .p80 .gantt-dia,.gtab .t80 .gantt-today{left:80%}.gtab .p85 .gantt-dia,.gtab .t85 .gantt-today{left:85%}.gtab .p90 .gantt-dia,.gtab .t90 .gantt-today{left:90%}.gtab .p95 .gantt-dia,.gtab .t95 .gantt-today{left:95%}
 .ereflink{color:#0085CA;text-decoration:underline}
 .erefurl{display:none}
 .erefrow{display:flex;gap:6px;align-items:center;margin:4px 0}
