@@ -28,6 +28,8 @@ That work adds `culvert/design.js`, `culvert/designui.js` and `culvert/particles
 
 New form fields (`blockage`, `freeboard`, `minCover`, `sedOn`, `Qsed`, `fishOn`, `Qfish`) are stored with the project because every field is saved. Older Culvert Studio ignores unknown fields. Debris, sediment and fish passage stay off unless the user turns them on. Undo/redo is memory only and is not saved.
 
+The profile-section fix after that ships as its own commit and bumps the service worker cache to `culvert-studio-v5`. Revert that commit on its own if you only want the previous profile drawing back. It does not restore an isometric view.
+
 ## What v2 stores
 
 Optional `criteria` and `extras` on the project JSON, plus `culvert.criteria`, `culvert.extras` and `culvert.units` in localStorage. Older code ignores them.

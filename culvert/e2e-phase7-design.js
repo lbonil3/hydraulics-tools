@@ -9,9 +9,7 @@ const out=process.env.SHOT_DIR||'/opt/cursor/artifacts';
  const p=await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
  const set=async(id,v)=>p.evaluate((id,v)=>{const e=document.getElementById(id); e.value=v; e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true}));},id,v);
  await p.goto('http://localhost:8766/culvert/?v='+Date.now(),{waitUntil:'networkidle0'});
- await new Promise(r=>setTimeout(r,600));
- await set('twElev','104');
- await new Promise(r=>setTimeout(r,400));
+ await new Promise(r=>setTimeout(r,700));
  await p.evaluate(()=>document.getElementById('profile').closest('.card').scrollIntoView({block:'start'}));
  await new Promise(r=>setTimeout(r,700));
  await p.screenshot({path:path.join(out,'culvert-profile-desktop.png')});
@@ -32,12 +30,13 @@ const out=process.env.SHOT_DIR||'/opt/cursor/artifacts';
   tx:/Allowable headwater/.test(document.getElementById('txbody').innerText),
   warn:document.getElementById('w_cover').textContent,
   pdf:/TxDOT screening/.test(JSON.stringify((window.ReportPDF.build().internal||{}).pages||[])),
+  profile:(document.getElementById('profile').textContent||'').replace(/\s+/g,' ').slice(0,280),
+  jump:/Jump @/.test(document.getElementById('profile').textContent||''),
   errs:[]
  }));
  console.log('desktop', JSON.stringify(desk), 'pageerrors', errs);
  await p.emulate(pp.KnownDevices['iPhone 13']);
  await p.goto('http://localhost:8766/culvert/?v='+Date.now(),{waitUntil:'networkidle0'});
- await set('twElev','104');
  await new Promise(r=>setTimeout(r,800));
  await p.evaluate(()=>{const t=[...document.querySelectorAll('#mtabs button')].find(e=>/Results/.test(e.innerText)); if(t)t.click();});
  await new Promise(r=>setTimeout(r,500));
