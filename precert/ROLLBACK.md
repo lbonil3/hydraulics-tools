@@ -109,3 +109,21 @@ No GitHub Action is used (the repo has no workflows); run the script by hand.
 Undo (keeps v1.3): `git revert --no-edit precert-pre-v14..precert-v1.4-final` then push (no force),
 or `git checkout precert-pre-v14 -- precert` and commit.
 New file: precert/guide.js (Next step, PCG). UI-only state in `precert.ui.v1`: `tour` (0–3 or 'done'), `openProj`; no change to saved data.
+
+## v1.5 desktop usability
+
+The calculations, form fill, and saved records are unchanged. This version makes the same tool easier to follow on a wide screen.
+
+- Sections run in working order (profile, categories, projects, readiness, form, export) with a number and a status dot.
+- My profile puts the fields beside a live list of what the TxDOT form still needs, with a short explanation under the jargon fields and a TBPELS shortcut.
+- The filled form, the worksheet, and the readiness gaps sit beside the actions instead of below them.
+- Alt+1 through Alt+8, the arrow keys on the section bar, and ? for the shortcut list.
+- Print worksheet adds a readiness heading and the copy-into-CCIS text. Phone layout is unchanged.
+
+| Commit | Change |
+|---|---|
+| 1582c5f | precert v1.5: desktop path, side-by-side form and export, profile checklist, keyboard |
+
+Undo (keeps v1.4): `git revert --no-edit 1582c5f` then push (no force),
+or `git checkout precert-v1.4-final -- precert` once that tag exists, and commit.
+UI only. `precert.ui.v1` may gain `keys` (whether the shortcut list is open). Older versions ignore it. No new fields in `precert.data.v1`.
