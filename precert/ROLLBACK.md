@@ -122,8 +122,8 @@ The calculations, form fill, and saved records are unchanged. This version makes
 
 | Commit | Change |
 |---|---|
-| (this branch) | precert v1.5: desktop path, side-by-side form and export, profile checklist, keyboard |
+| 1582c5f | precert v1.5: desktop path, side-by-side form and export, profile checklist, keyboard |
 
-Undo (keeps v1.4): `git revert` the v1.5 commit, then push (no force),
+Undo (keeps v1.4): `git revert --no-edit 1582c5f` then push (no force),
 or `git checkout precert-v1.4-final -- precert` once that tag exists, and commit.
 UI only. `precert.ui.v1` may gain `keys` (whether the shortcut list is open). Older versions ignore it. No new fields in `precert.data.v1`.
