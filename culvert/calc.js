@@ -232,7 +232,9 @@ function inletControl(p,shape,B,D,A,Di,Bi,Qin,S,Ku,g){
 function analyze(p){
   const US=p.units!=='SI', g=US?32.174:9.81, Ku=US?1.0:1.811, kM=US?1.486:1.0, kf=US?29:19.63;
   const SEC=p.section&&p.section.sec?p.section:null; if(SEC)p=Object.assign({},p,{shape:SEC});
-  const D=SEC?SEC.D:p.rise, B=SEC?SEC.B:(p.shape==='box'?p.span:p.rise), N=p.barrels||1, Q=p.Q/N;
+  const D=SEC?SEC.D:p.rise, B=SEC?SEC.B:(p.shape==='box'?p.span:p.rise), N=p.barrels||1;
+  // HEC-9 screening: a blockage fraction closes that share of the opening. The same barrel is analyzed at Q/(1−blockage). 0 leaves every result unchanged.
+  const blk=Math.max(0, Math.min(0.85, +p.blockage||0)), Qact=p.Q/N, Q=blk>0?Qact/(1-blk):Qact;
   const S=(p.invIn-p.invOut)/p.length; let inl=p.inlet;
   const full=geom(p.shape,B,D,D), A=SEC?SEC.Afull:full.A, Pf=SEC?SEC.Pfull:(p.shape==='box'?2*(B+D):Math.PI*D), R=A/Pf; // full barrel: wetted perimeter includes the crown
   const nFull=SEC?secN(SEC,D,p.n):p.n;
@@ -297,7 +299,7 @@ function analyze(p){
   if(!profile){profile=[[0,Math.min(D,control==='Inlet'?dc:D)],[p.length,yout]];}
   const Vout=Q/geom(p.shape,B,D,yout).A;
   const hgl=buildHGL(p.shape,B,D,Q,g,p.length,S,profile,ocProf,control==='Outlet'||jumpType==='drowned');
-  return {taper,jump,jumpType,US,g,D,B,N,Q,S,A,R,dc,Vc,Hc,yn,X,regime,ratio,HWi,ELhi,TW,ho,V,hv,Hf,He,Ho,Hb,Hj,H,ELho,HWo,HWoHDS,control,HW,EL:p.invIn+HW,yout,Vout,inlet:inl,steep,ocMethod,outMethod,profile,hgl,yinO,hoHDS,ELhoHDS,skew,bend};
+  return {taper,jump,jumpType,US,g,D,B,N,Q:Qact,Qhyd:Q,blockage:blk,S,A,R,dc,Vc,Hc,yn,X,regime,ratio,HWi,ELhi,TW,ho,V,hv,Hf,He,Ho,Hb,Hj,H,ELho,HWo,HWoHDS,control,HW,EL:p.invIn+HW,yout,Vout,inlet:inl,steep,ocMethod,outMethod,profile,hgl,yinO,hoHDS,ELhoHDS,skew,bend};
 }
 
 // ---- Roadway overtopping (HDS-5 Eq. 3.9, Fig. 3.11; curves from HDS-1 / HY-7, as used in HY-8) ----
