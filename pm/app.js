@@ -1,4 +1,4 @@
-/* Project Tracker v3.27 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.28 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs, including the report font).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -616,30 +616,24 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('tr', { class: 'rtot' }, h('td', {}), h('td', {}, 'Total'), h('td', { class: 'cnum' }, pie.totalText), h('td', { class: 'cnum' }, pie.totalMi), h('td', { class: 'cnum' }, pie.totalPct))));
     return h('div', { class: 'pielay' }, chart, key);
   }
-  function ganttSlot(frac) { return Math.min(95, Math.max(5, Math.round((Number(frac) || 0) * 20) * 5)); }
-  function ganttTickLabel(tk) { return tk.mon + (tk.day ? ' ' + tk.day : '') + (tk.showYear ? ' ' + tk.year : ''); }
   function ganttBlock(g) {
-    const todaySlot = g.todayIn ? ganttSlot(g.todayFrac) : 0;
-    const head = [h('th', { class: 'glab', scope: 'col' }, 'Milestone'), h('th', { class: 'gdate', scope: 'col' }, 'Date'), h('th', { class: 'gdone', scope: 'col' }, 'Sheets')]
-      .concat(g.ticks.map((tk, i) => {
-        const today = g.todayIn && g.todayCol === i;
-        return h('th', { class: 'gtime' + (today ? ' gtoday' : ''), scope: 'col' }, ganttTickLabel(tk), today ? h('span', { class: 'gantt-todaylab' }, 'Today') : null);
-      }));
+    const split = g.head === 'split';
+    const stub = (cls, text, span) => h('th', { class: cls, scope: 'col', rowspan: split ? '2' : null }, text);
+    const periods = g.ticks.map((tk, i) => h('th', { class: 'gtime' + (!split && g.todayIn && g.todayCol === i ? ' gtoday' : ''), scope: 'col' }, tk.label, !split && g.todayIn && g.todayCol === i ? h('span', { class: 'gantt-todaylab' }, 'Today') : null));
+    const headRows = [h('tr', {}, stub('glab', 'Milestone'), stub('gdate', 'Date'), stub('gdone', 'Sheets'),
+      ...(split ? g.years.map((y) => h('th', { class: 'gyear', scope: 'colgroup', colspan: String(y.span) }, String(y.year), y.today ? h('span', { class: 'gantt-todaylab' }, 'Today') : null)) : periods))];
+    if (split) headRows.push(h('tr', {}, periods));
     const rows = g.rows.map((r) => h('tr', {},
       h('td', { class: 'glab' }, r.label),
       h('td', { class: 'gdate' + (r.tbd ? ' gantt-tbd' : '') }, r.dateText),
       h('td', { class: 'gdone' }, r.done),
-      g.ticks.map((_, i) => {
-        const on = r.col === i;
-        const today = g.todayIn && g.todayCol === i;
-        return h('td', { class: 'gcell' + (on ? ' on p' + ganttSlot(r.frac) : '') + (today ? ' t' + todaySlot : '') },
-          on ? h('span', { class: 'gantt-dia' }) : null,
-          today ? h('span', { class: 'gantt-today' }) : null);
-      })));
+      g.ticks.map((_, i) => h('td', { class: 'gcell' + (r.col === i ? ' on' : '') + (g.todayIn && g.todayCol === i ? ' today' : '') },
+        r.col === i ? h('span', { class: 'gantt-dia' }) : null,
+        g.todayIn && g.todayCol === i ? h('span', { class: 'gantt-today' }) : null))));
     const aria = g.rows.map((r) => r.label + ', ' + r.dateText + ', ' + r.done).join('; ');
     return h('div', { class: 'ganttwrap' }, h('table', { class: 'gtab gantt', role: 'img', 'aria-label': 'Milestones. ' + aria },
-      h('thead', {}, h('tr', {}, head)),
-      h('tbody', {}, rows)));
+      h('thead', {}, headRows),
+      h('tbody', {}, rows)), g.todayNote ? h('p', { class: 'ganttnote' }, 'The dashed line marks today.') : null);
   }
   function engBlocks(blocks, refsEl) {
     return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? h('ol', { class: 'erefs', id: 'engRefList' }, E.refItems(st).map((it) => h('li', {}, it.url ? [h('a', { class: 'ereflink', href: it.url, target: '_blank', rel: 'noopener noreferrer' }, it.text), h('span', { class: 'erefurl' }, it.url)] : it.text))) :
@@ -694,7 +688,9 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       const refsEl = s.id === 'criteria' ? refEditor() : null;
       return h('section', { class: 'npart esec' + (on ? '' : ' off'), 'data-sec': s.id, id: 'eng-' + s.id },
         h('div', { class: 'ehead' }, h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'engOn-' + s.id, checked: on, disabled: !s.present, onchange: (ev) => { commit(() => E.setSec(st, s.id, { on: ev.target.checked }), { render: false }); renderEngView(); } }),
-          h('b', {}, (on ? ++n + '. ' : '') + s.title)), !s.present ? h('span', { class: 'muted small' }, 'No SWP3 sheets tracked — section left out') : null),
+          h('b', {}, (on ? ++n + '. ' : '') + s.title)),
+          on ? h('label', { class: 'chk small' }, h('input', { type: 'checkbox', id: 'engPage-' + s.id, checked: E.pageEach(st) || e.page, disabled: E.pageEach(st), onchange: (ev) => { commit(() => E.setSec(st, s.id, { page: ev.target.checked }), { render: false }); renderEngView(); } }), 'New page') : null,
+          !s.present ? h('span', { class: 'muted small' }, 'No SWP3 sheets tracked — section left out') : null),
         on ? [h('div', { class: 'gen egen' + (e.mode === 'replace' && e.text.trim() ? ' struck' : '') }, h('div', { class: 'muted small' }, 'Generated from the tracker data' + (e.mode === 'replace' && e.text.trim() ? ' (replaced by your text)' : '')), engBlocks(s.blocks), !(s.blocks || []).length ? h('p', { class: 'muted' }, 'Nothing in the tracker for this section yet.') : null),
           h('div', { class: 'eedit' }, ta, refsEl, h('div', { class: 'row small' }, mode, h('span', { class: 'muted' }, e.text.trim() ? '' : s.ph ? 'Empty: the bracketed placeholder is printed.' : '')))] : null);
     });
@@ -705,7 +701,8 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('section', { class: 'npart rpset', id: 'engSet' }, h('h3', {}, 'Cover'),
         h('div', { class: 'rpgrid' }, E.META.map(([k, label]) => fld('engM-' + k, label, m[k], k === 'title' ? 'Drainage Design Report' : k === 'csj' ? 'e.g. 0000-00-000' : k === 'limits' ? 'e.g. From X to Y' : '', (v) => E.setMeta(st, k, v))),
           fld('engFor', 'Prepared for', rm.preparedFor, 'e.g. TxDOT Houston District', (v) => M.setReportMeta(st, 'preparedFor', v)), fld('engBy', 'Prepared by', rm.preparedBy, 'Name, firm', (v) => M.setReportMeta(st, 'preparedBy', v)),
-          h('label', { class: 'f' }, h('span', {}, 'Paper'), paper))),
+          h('label', { class: 'f' }, h('span', {}, 'Paper'), paper),
+          h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'engPageEach', checked: E.pageEach(st), onchange: (e) => { commit(() => E.setPageEach(st, e.target.checked)); renderEngView(); } }), 'Each section starts on a new page'))),
       h('article', { class: 'narr engnarr' }, cards));
   }
   function renderEngPrint() {
@@ -727,8 +724,9 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('dt', { class: 'rwide' }, 'Date'), h('dd', { class: 'rwide' }, today))));
     const rest = [];
     rest.push(h('nav', { class: 'rtoc etoc' }, h('h2', {}, 'Table of contents'), h('ol', {}, secs.map((s) => h('li', { value: String(s.no) }, s.title)))));
-    for (const s of secs) rest.push(h('section', { class: 'esecp', 'data-sec': s.id }, h('h2', {}, h('span', { class: 'rnum' }, s.no + '.'), ' ' + s.title),
-      engBlocks(s.auto), s.text.trim() ? s.text.trim().split(/\n\s*\n/).map((para) => h('p', { class: 'etxt' }, para)) : s.showPh ? h('p', { class: 'eph' }, s.ph) : null));
+    const eachPage = E.pageEach(st);
+    secs.forEach((s, i) => rest.push(h('section', { class: 'esecp' + ((eachPage || E.secState(st, s.id).page) && i > 0 ? ' np' : ''), 'data-sec': s.id }, h('h2', {}, h('span', { class: 'rnum' }, s.no + '.'), ' ' + s.title),
+      engBlocks(s.auto), s.text.trim() ? s.text.trim().split(/\n\s*\n/).map((para) => h('p', { class: 'etxt' }, para)) : s.showPh ? h('p', { class: 'eph' }, s.ph) : null)));
     rest.push(h('p', { class: 'rend rm' }, 'Generated by Project Tracker on ' + today + ' from the tracked plan sheets. Bracketed text is a placeholder for the engineer.'));
     document.documentElement.style.setProperty('--eng-date', '"' + today + '"');
     $('#report').className = 'report eng ' + (O.paper === 'a4' ? 'pg-a4' : 'pg-letter');

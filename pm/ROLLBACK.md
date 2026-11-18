@@ -384,6 +384,12 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.28 (milestone grid and section breaks)
+
+A long list of milestones keeps the Schedule and Milestones grid on the page. The name wraps. The date and the sheet count stay on one line. When the dates cover more months than fit, the columns become single letters under a year, then quarters, then years. The diamond sits in the middle of its cell. Today is labeled where the header has room, and the dashed line stays in the cell. Each milestone row stays together, and the header repeats on the next page.
+
+Numbered sections have a divider between them on screen. Printing still flows the sections together. Cover settings include “Each section starts on a new page,” and each section has its own “New page” checkbox. Both start off. The first section stays with the table of contents so that page is not left blank. A section heading is not left alone at the bottom of a page.
+
 ## v3.27 (print layout and reference links)
 
 The engineering report cover no longer has a seal, and it does not carry the running header or the page footer. The project name is set large, with the report title, CSJ, sub-projects, county, district, and date under it. The date row runs the full width of that table. Later pages repeat the table header, keep a road’s sub-rows together, and keep the pie chart and milestone grid together. Their footer puts the report date on the left and “Page X of Y” on the right, on one line. Custom standards are ordered so a numbered name sorts by the number.

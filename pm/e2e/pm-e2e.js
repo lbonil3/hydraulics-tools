@@ -665,6 +665,31 @@ function v2Fixture() {
   ok(/Total/.test(await txt('#eng-length .piekey')) && /ft/.test(await txt('#eng-length .piekey')), 'road length legend lists feet and a total');
   ok(await has('#eng-desc table.roads'), 'location section has the roads table');
   ok(await has('#eng-schedule .gantt') && /TBD/.test(await txt('#eng-schedule')) && /30% submittal/.test(await txt('#eng-schedule')) && !/Package /.test(await txt('#eng-schedule')), 'schedule chart lists milestones only, with TBD for a blank date');
+  ok(!(await pg.$eval('#engPageEach', (e) => e.checked)) && parseFloat(await pg.$eval('#eng-desc', (e) => getComputedStyle(e).borderTopWidth)) >= 2, 'sections are divided on screen, and each section starts on a new page only when asked');
+  const keptMilestones = await pg.evaluate(() => localStorage.getItem('pm.data.v3'));
+  await pg.evaluate(() => {
+    const st = JSON.parse(localStorage.getItem('pm.data.v3'));
+    const names = ['30% drainage submittal for the north segment', '60% submittal of storm sewer and inlets', '90% submittal with the district review comments incorporated', 'Final PS&E sealed package', 'Ready to let', 'District review workshop', 'City drainage criteria check', 'FEMA floodplain coordination', 'Utility conflict resolution milestone', 'Right of way clearance for the outfalls', 'SWP3 notice of intent', 'Pre-final constructability review', 'Internal QC of the hydraulic calculations', 'Bridge deck drain coordination', 'Culvert layout approval', 'Public meeting follow-up', 'Environmental clearance', 'Bid item quantity lock', 'As-advertised plan set', 'Letting'];
+    st.milestones = names.map((name, i) => ({ id: 'm' + i, name, date: i < 16 ? (2025 + Math.floor(i / 6)) + '-' + String((i % 6) * 2 + 1).padStart(2, '0') + '-15' : '' }));
+    localStorage.setItem('pm.data.v3', JSON.stringify(st));
+  });
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  const gridFit = await pg.evaluate(() => {
+    const cells = [...document.querySelectorAll('#eng-schedule .gtab th, #eng-schedule .gtab td')];
+    const bad = cells.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className + ':' + e.textContent.slice(0, 24));
+    const rows = [...document.querySelectorAll('#eng-schedule .gtab thead tr')];
+    const hit = rows.some((row) => {
+      const boxes = [...row.children].map((e) => e.getBoundingClientRect());
+      return boxes.some((b, i) => i && b.left < boxes[i - 1].right - 1);
+    });
+    const name = document.querySelector('#eng-schedule td.glab');
+    const date = document.querySelector('#eng-schedule td.gdate');
+    return { bad, hit, n: cells.length, wrap: name ? getComputedStyle(name).whiteSpace : '', date: date ? getComputedStyle(date).whiteSpace : '', unit: (document.querySelector('#eng-schedule .gtab') || {}).rows ? document.querySelectorAll('#eng-schedule .gtab thead tr').length : 0 };
+  });
+  ok(gridFit.bad.length === 0 && !gridFit.hit && gridFit.wrap === 'normal' && gridFit.date === 'nowrap' && gridFit.n > 20, 'a long milestone list fits its cells and the headers do not overlap ' + JSON.stringify(gridFit));
+  await pg.evaluate((j) => localStorage.setItem('pm.data.v3', j), keptMilestones);
+  await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+  ok(/30% submittal/.test(await txt('#eng-schedule')), 'the project milestones are restored after the long-list check');
   ok((await pg.$eval('#eng-length .piesw rect', (e) => e.getAttribute('fill'))) === '#002856', 'road length chart starts with navy');
   ok((await pg.$eval('#eng-desc table.roads th', (e) => getComputedStyle(e).borderTopColor)) === 'rgb(0, 40, 86)', 'engineering table headers use the navy rule');
   const roadCells = await pg.$eval('#eng-desc table.roads', (t) => {
@@ -791,6 +816,21 @@ function v2Fixture() {
     };
   });
   ok(printCss.page && printCss.coverFirst && printCss.dateWide && printCss.roadsHead === 'table-header-group' && printCss.gridHead === 'table-header-group' && printCss.avoid === 'avoid' && /\d{4}-\d{2}-\d{2}/.test(printCss.date), 'print: cover is its own page, table headers repeat, road groups stay together, footer date and page number share the margin ' + JSON.stringify(printCss));
+  ok((await pg.$$('#report section.np')).length === 0, 'sections share pages until a new-page option is turned on');
+  await click('#engPageEach'); await sleep(150);
+  ok(await pg.$eval('#engPage-criteria', (e) => e.checked && e.disabled), 'the global option checks every section and locks the individual toggles');
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  const pageBreaks = await pg.evaluate(() => ({
+    n: document.querySelectorAll('#report section.np').length,
+    first: document.querySelector('#report section.esecp').className,
+    row: getComputedStyle(document.querySelector('#report .gtab tr')).breakInside,
+  }));
+  ok(pageBreaks.n >= 2 && !/\bnp\b/.test(pageBreaks.first) && pageBreaks.row === 'avoid', 'later sections start on a new page, the first stays with the contents, and a milestone row stays together');
+  await click('#engPageEach'); await sleep(150);
+  await click('#engPage-criteria'); await sleep(150);
+  await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
+  ok((await pg.$$eval('#report section.np', (els) => els.map((e) => e.getAttribute('data-sec')))).join(',') === 'criteria', 'one section can start on a new page by itself');
+  await click('#engPage-criteria'); await sleep(150);
   const refLink = await pg.$eval('#eng-criteria a.ereflink', (e) => ({ href: e.href, color: getComputedStyle(e).color }));
   ok(refLink.href === 'https://www.txdot.gov/manuals/des/hyd/' && refLink.color === 'rgb(0, 133, 202)', 'design criteria references link in process blue to the official manual');
   ok(await has('#report .gantt') && /TBD/.test(ER), 'printed schedule includes the gantt');
