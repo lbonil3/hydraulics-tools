@@ -223,4 +223,19 @@ chk('Fig 3.11C kt free flow at 0.6',ktFactor(0.6,'gravel'),1.0,0.1);
  must('Design overtopping is a fail and the check-flood overtopping is only a check', txRows.some(x=>x.storm==='Design'&&x.item==='Overtopping'&&x.status==='fail')&&txRows.some(x=>x.storm==='Check'&&x.item==='Overtopping'&&x.status==='check'));
  must('Graphics source does not restore an isometric view', !/function drawIso|isocard|Isometric view/.test(require('fs').readFileSync(__dirname+'/graphics.js','utf8')));
 }
+{console.log('\n-- Flow picture calibration: shallow water vs HDS-5 (visualization tolerance 15% HW, 20% outlet velocity) --');
+ function must(name, cond){ok=ok&&!!cond; console.log(`${cond?'PASS':'FAIL'}  ${name}`);}
+ const FS=require('./flowsim.js');
+ const boxI=pick('box','b_90');
+ function cal(name, spec, seconds){
+  const c=FS.compare(spec,{seconds});
+  console.log(`  ${name}: sim HW ${c.sim.hw.toFixed(2)} vs design ${c.ref.HW.toFixed(2)} (${(c.hwErr*100).toFixed(1)}%), outlet V ${c.sim.vout.toFixed(2)} vs ${c.ref.Vout.toFixed(2)} (${(c.vErr*100).toFixed(1)}%), ${c.ref.control} control`);
+  must(name+' headwater within 15%', c.hwErr<=FS.TOL.hw);
+  must(name+' outlet velocity within 20%', c.vErr<=FS.TOL.vout);
+ }
+ cal('6x5 box 300 cfs, tailwater 3.5 ft', {US:true, shape:'box', B:6, D:5, L:200, n:0.012, invIn:100, invOut:98, Q:300, barrels:1, tw:3.5, inlet:boxI, Ke:boxI.Ke, cells:100}, 40);
+ cal('6x5 box 300 cfs, tailwater 6 ft', {US:true, shape:'box', B:6, D:5, L:200, n:0.012, invIn:100, invOut:98, Q:300, barrels:1, tw:6, inlet:boxI, Ke:boxI.Ke, cells:80}, 65);
+ cal('6x5 box 150 cfs, free outfall', {US:true, shape:'box', B:6, D:5, L:200, n:0.012, invIn:100, invOut:98, Q:150, barrels:1, tw:0, inlet:boxI, Ke:boxI.Ke, cells:80}, 40);
+ must('Flow picture source is not an isometric view', !/drawIso|isometric|perspective camera/i.test(require('fs').readFileSync(__dirname+'/flowview.js','utf8')));
+}
 console.log(ok?'\nALL CHECKS PASSED':'\nSOME CHECKS FAILED'); process.exit(ok?0:1);

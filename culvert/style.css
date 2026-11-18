@@ -41,7 +41,10 @@ table.size{border-collapse:collapse;width:100%;font-size:13px}table.size td,tabl
 #txbody .rf,#sizecard .muted,#txcard .muted{line-height:1.4}#txbody .rf{padding:5px 0;border-bottom:1px solid #eee}
 #txbody .rb{display:inline-block;min-width:52px;text-align:center;font-size:11px;font-weight:700;color:#fff;border-radius:4px;padding:2px 6px;margin-right:8px}
 #txbody .pass .rb{background:#2e7d32}#txbody .fail .rb{background:#c0392b}#txbody .warn .rb{background:#d68a00}#txbody .info .rb{background:#607d8b}
-.flowcv{position:absolute;pointer-events:none;z-index:2}
+.flowcv{position:absolute;pointer-events:none;z-index:3}
+#flowbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 12px;font-size:13px}
+#flowbar button,#flowbar select{min-height:32px}
+#flowread{flex:1 1 220px;color:#16324f}
 .muted{color:#526070;font-size:12.5px;margin:4px 0 8px}
 #sizebtn{margin-left:8px}
 /* desktop: keep profile + charts within the viewport (aspect preserved by viewBox) */
