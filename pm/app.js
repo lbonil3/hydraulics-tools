@@ -616,8 +616,14 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('tr', { class: 'rtot' }, h('td', {}), h('td', {}, 'Total'), h('td', { class: 'cnum' }, pie.totalText), h('td', { class: 'cnum' }, pie.totalMi), h('td', { class: 'cnum' }, pie.totalPct))));
     return h('div', { class: 'pielay' }, chart, key);
   }
+  function ganttMark(g, cls, frac) {
+    const el = h('span', { class: cls });
+    if (g.unit === 'quarter' || g.unit === 'year') el.style.setProperty(cls === 'gantt-dia' ? '--gpos' : '--tpos', String(Math.max(0, Math.min(1, frac))));
+    return el;
+  }
   function ganttBlock(g) {
     const split = g.head === 'split';
+    const coarse = g.unit === 'quarter' || g.unit === 'year';
     const stub = (cls, text, span) => h('th', { class: cls, scope: 'col', rowspan: split ? '2' : null }, text);
     const periods = g.ticks.map((tk, i) => h('th', { class: 'gtime' + (!split && g.todayIn && g.todayCol === i ? ' gtoday' : ''), scope: 'col' }, tk.label, !split && g.todayIn && g.todayCol === i ? h('span', { class: 'gantt-todaylab' }, 'Today') : null));
     const headRows = [h('tr', {}, stub('glab', 'Milestone'), stub('gdate', 'Date'), stub('gdone', 'Sheets'),
@@ -628,10 +634,10 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       h('td', { class: 'gdate' + (r.tbd ? ' gantt-tbd' : '') }, r.dateText),
       h('td', { class: 'gdone' }, r.done),
       g.ticks.map((_, i) => h('td', { class: 'gcell' + (r.col === i ? ' on' : '') + (g.todayIn && g.todayCol === i ? ' today' : '') },
-        r.col === i ? h('span', { class: 'gantt-dia' }) : null,
-        g.todayIn && g.todayCol === i ? h('span', { class: 'gantt-today' }) : null))));
+        r.col === i ? ganttMark(g, 'gantt-dia', r.frac) : null,
+        g.todayIn && g.todayCol === i ? ganttMark(g, 'gantt-today', g.todayFrac) : null))));
     const aria = g.rows.map((r) => r.label + ', ' + r.dateText + ', ' + r.done).join('; ');
-    return h('div', { class: 'ganttwrap' }, h('table', { class: 'gtab gantt', role: 'img', 'aria-label': 'Milestones. ' + aria },
+    return h('div', { class: 'ganttwrap' }, h('table', { class: 'gtab gantt' + (coarse ? ' coarse' : ''), role: 'img', 'aria-label': 'Milestones. ' + aria },
       h('thead', {}, headRows),
       h('tbody', {}, rows)), g.todayNote ? h('p', { class: 'ganttnote' }, 'The dashed line marks today.') : null);
   }

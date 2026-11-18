@@ -937,12 +937,14 @@ html[data-rptfont] .pie text,html[data-rptfont] .gantt text{font-family:var(--rp
 .gtab .glab{text-align:left;white-space:normal;overflow-wrap:anywhere;min-width:1.4in;max-width:1.9in}
 .gtab .gdate{white-space:nowrap;text-align:center;min-width:.98in}
 .gtab .gdone{white-space:nowrap;text-align:center;min-width:.62in}
-.gtab th.gtime,.gtab td.gcell{min-width:.34in;padding:3pt 1pt;text-align:center;white-space:nowrap}
+.gtab th.gtime,.gtab td.gcell{min-width:.2in;padding:2pt 0;font-size:7pt;text-align:center;white-space:nowrap}
 .gtab th.gyear{white-space:normal}
 .gtab td.gcell{position:relative;height:16pt}
 .gtab td.on{background:var(--mb-light,#E6E6E6)}
 .gtab .gantt-dia{position:absolute;left:50%;top:50%;width:7pt;height:7pt;margin:-3.5pt 0 0 -3.5pt;background:var(--mb-blue,#0085CA);transform:rotate(45deg)}
+.gtab.coarse .gantt-dia{left:clamp(5pt, calc(var(--gpos) * 100%), calc(100% - 5pt))}
 .gtab .gantt-today{position:absolute;left:50%;top:0;bottom:0;margin-left:-.5pt;border-left:1px dashed var(--mb-char,#333333);height:auto}
+.gtab.coarse .gantt-today{left:clamp(1pt, calc(var(--tpos) * 100%), calc(100% - 1pt))}
 .gtab .gantt-todaylab{display:block;font-size:6.5pt;font-weight:700;letter-spacing:0;color:var(--mb-char,#333333);line-height:1.1}
 .gtab .gantt-tbd{font-style:italic;color:var(--mb-dark,#666666)}
 .ereflink{color:#0085CA;text-decoration:underline}

@@ -346,7 +346,7 @@
         else if (months.length <= 12) { unit = 'month'; ticks = monthTicks(lo, hi, true); }
         else {
           const quarters = quarterTicks(lo, hi);
-          if (quarters.length <= 12) { unit = 'quarter'; ticks = quarters; }
+          if (quarters.length <= 20) { unit = 'quarter'; ticks = quarters; }
           else { unit = 'year'; ticks = yearTicks(lo, hi); }
         }
       }

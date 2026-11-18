@@ -700,26 +700,56 @@ function v2Fixture() {
   const yearFit = await pg.evaluate(() => {
     const table = document.querySelector('#report .gtab');
     const report = document.querySelector('#report');
+    report.style.setProperty('width', '7.3in');
     const cells = [...table.querySelectorAll('th, td')];
     const bad = cells.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className + ':' + e.textContent.trim().slice(0, 24));
     const heads = [...table.querySelectorAll('thead tr')].map((r) => [...r.children].map((c) => c.textContent.trim()));
     const lab = table.querySelector('.gantt-todaylab');
     const th = lab && lab.closest('th');
     const lr = lab ? lab.getBoundingClientRect() : null;
-    const tr = th ? th.getBoundingClientRect() : null;
+    const trb = th ? th.getBoundingClientRect() : null;
     const rows = [...table.querySelectorAll('thead tr')];
     const hit = rows.some((row) => {
       const boxes = [...row.children].map((e) => e.getBoundingClientRect());
       return boxes.some((box, i) => i && box.left < boxes[i - 1].right - 1);
     });
+    const groups = new Map();
+    let outside = 0;
+    for (const row of table.querySelectorAll('tbody tr')) {
+      const dia = row.querySelector('.gantt-dia');
+      if (!dia) continue;
+      const cell = dia.parentElement;
+      const dr = dia.getBoundingClientRect();
+      const cr = cell.getBoundingClientRect();
+      if (dr.left < cr.left - 1 || dr.right > cr.right + 1) outside++;
+      const key = [...cell.parentElement.children].indexOf(cell);
+      const date = Date.parse(row.querySelector('.gdate').textContent);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ date, x: dr.left });
+    }
+    let pairs = 0, badOrder = 0;
+    for (const g of groups.values()) {
+      if (g.length < 2) continue;
+      pairs++;
+      const sorted = [...g].sort((a, b) => a.date - b.date);
+      for (let i = 1; i < sorted.length; i++) if (sorted[i].x < sorted[i - 1].x - 0.5) badOrder++;
+    }
+    const line = table.querySelector('.gantt-today');
+    const lineCell = line && line.parentElement.getBoundingClientRect();
+    const lineBox = line && line.getBoundingClientRect();
+    const tableW = table.getBoundingClientRect().width;
+    const pageW = report.getBoundingClientRect().width;
+    report.style.removeProperty('width');
     return {
-      bad, hit, heads,
-      todayInHeader: !!(lab && th && lr.left >= tr.left - 1 && lr.right <= tr.right + 1 && lr.top >= tr.top - 1 && lr.bottom <= tr.bottom + 1),
-      tableFits: table.getBoundingClientRect().width <= report.getBoundingClientRect().width + 1,
+      bad, hit, heads, pairs, badOrder, outside, tableW, pageW,
+      todayInHeader: !!(lab && th && lr.left >= trb.left - 1 && lr.right <= trb.right + 1 && lr.top >= trb.top - 1 && lr.bottom <= trb.bottom + 1),
+      lineInCell: !!(line && lineBox.left >= lineCell.left - 1 && lineBox.right <= lineCell.right + 1),
+      tableFits: tableW <= pageW + 2,
       note: !!document.querySelector('#report .ganttnote'),
+      quarters: heads[1] ? heads[1].every((s) => /^Q[1-4]$/.test(s)) : false,
     };
   });
-  ok(yearFit.bad.length === 0 && !yearFit.hit && yearFit.tableFits && yearFit.todayInHeader && !yearFit.note && yearFit.heads.length === 1 && yearFit.heads[0].slice(-4).map((s) => s.replace(/Today/g, '').trim()).join(',') === '2025,2026,2027,2028', 'a four-year milestone span uses one column per year, stays inside the page, and keeps Today in its header ' + JSON.stringify(yearFit));
+  ok(yearFit.bad.length === 0 && !yearFit.hit && yearFit.tableFits && yearFit.todayInHeader && yearFit.lineInCell && !yearFit.note && yearFit.outside === 0 && yearFit.pairs >= 1 && yearFit.badOrder === 0 && yearFit.heads.length === 2 && yearFit.quarters && yearFit.heads[0].slice(-4).map((s) => s.replace(/Today/g, '').trim()).join(',') === '2025,2026,2027,2028', 'a four-year milestone span uses quarters, diamonds follow the date inside the cell, and Today stays in its header ' + JSON.stringify(yearFit));
   await pg.emulateMediaType('screen');
   await pg.evaluate((j) => localStorage.setItem('pm.data.v3', j), keptMilestones);
   await pg.reload({ waitUntil: 'networkidle0' }); await sleep(300);
