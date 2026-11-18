@@ -30,6 +30,15 @@ New form fields (`blockage`, `freeboard`, `minCover`, `sedOn`, `Qsed`, `fishOn`,
 
 The profile-section fix after that ships as its own commit and bumps the service worker cache to `culvert-studio-v5`. Revert that commit on its own if you only want the previous profile drawing back. It does not restore an isometric view.
 
+## Undo the flow picture
+
+```
+git revert --no-edit <flow-picture-commit>
+node culvert/test.js
+```
+
+That commit adds `culvert/flowsim.js` and `culvert/flowview.js` and bumps the service worker cache to `culvert-studio-v7`. Revert it together with the script tags in `index.html`. The picture is a shallow-water visualization drawn on the fixed profile, with a velocity color legend that uses the same ramp as the water. The HDS-5 numbers stay the design result. It does not add an isometric or 3D view.
+
 ## What v2 stores
 
 Optional `criteria` and `extras` on the project JSON, plus `culvert.criteria`, `culvert.extras` and `culvert.units` in localStorage. Older code ignores them.

@@ -41,7 +41,23 @@ table.size{border-collapse:collapse;width:100%;font-size:13px}table.size td,tabl
 #txbody .rf,#sizecard .muted,#txcard .muted{line-height:1.4}#txbody .rf{padding:5px 0;border-bottom:1px solid #eee}
 #txbody .rb{display:inline-block;min-width:52px;text-align:center;font-size:11px;font-weight:700;color:#fff;border-radius:4px;padding:2px 6px;margin-right:8px}
 #txbody .pass .rb{background:#2e7d32}#txbody .fail .rb{background:#c0392b}#txbody .warn .rb{background:#d68a00}#txbody .info .rb{background:#607d8b}
-.flowcv{position:absolute;pointer-events:none;z-index:2}
+.flowcv{position:absolute;pointer-events:none;z-index:3}
+body.flowsim canvas.flowcv:not(.flowpic){visibility:hidden}
+#flowbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 12px;font-size:13px}
+#flowbar button,#flowbar select{min-height:32px}
+#flowread{flex:1 1 220px;color:#16324f}
+.flowhost.flowkey{padding-bottom:52px}
+.flowlegend{position:absolute;z-index:4;left:8px;bottom:4px;pointer-events:none;background:#fff;border:1px solid #d5dce5;border-radius:6px;padding:4px 6px 3px;color:#1d2733;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 1px 2px rgba(29,39,51,.08)}
+.flowlegend[hidden]{display:none}
+.flowleg-title{color:#1f4e79;font-weight:700;margin:0 0 3px}
+.flowscale{display:block;width:168px;height:10px;border-radius:2px;border:1px solid rgba(29,39,51,.25)}
+.flowticks{display:flex;justify-content:space-between;width:168px;margin-top:1px;font-weight:600;font-variant-numeric:tabular-nums}
+@media (max-width:700px){
+ .flowhost.flowkey{padding-bottom:54px}
+ .flowlegend{left:6px;bottom:2px;font-size:12px}
+ .flowscale,.flowticks{width:168px}
+ .flowscale{height:10px}
+}
 .muted{color:#526070;font-size:12.5px;margin:4px 0 8px}
 #sizebtn{margin-left:8px}
 /* desktop: keep profile + charts within the viewport (aspect preserved by viewBox) */
