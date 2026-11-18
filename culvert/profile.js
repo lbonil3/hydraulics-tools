@@ -44,7 +44,7 @@ function overlay(p,r,allow,ro,bal){const svg=document.getElementById('profile');
 // ---------- phone profile ----------
 function geom(p,r,allow,ro,bal){const zc=ro?C.crestMin(ro):p.invIn+r.D*1.6,tw=p.twMode==='const'?Math.max(p.twElev,p.invOut):p.invOut;
  return {EL:r.EL,tw,zc,allow:isFinite(allow)?allow:NaN,invIn:p.invIn,invOut:p.invOut,D:r.D,
-  wsIn:Math.min(r.D,r.profile?r.profile[0][1]:r.dc),wsOut:Math.min(r.D,r.yout),L:p.length,prof:r.profile||null,jump:r.jump||null,US:r.US,h:bal&&bal.over?bal.road.hmax:0,V:r.V,Vout:r.Vout,dc:r.dc,yn:r.yn,steep:!!r.steep,
+  wsIn:Math.min(r.D,r.profile?r.profile[0][1]:r.dc),wsOut:Math.min(r.D,r.yout),L:p.length,prof:r.profile||null,jump:r.jump||null,US:r.US,h:bal&&bal.over?bal.road.hmax:0,V:r.V,Vout:r.Vout,dc:r.dc,yn:r.yn,steep:!!r.steep,B:r.B,Q:r.Qhyd||r.Q,
   hasTw:p.twMode==='const',road:!!ro};}
 function drawPhone(g){const W=340,H=230,svg=document.getElementById('mprofile');
  const zmin=Math.min(g.invOut,g.invIn)-0.45*g.D,zmax=Math.max(g.EL,g.zc+g.h,isFinite(g.allow)?g.allow:-1e9,g.invIn+g.D,g.tw)+0.3*g.D;
@@ -72,15 +72,17 @@ function drawPhone(g){const W=340,H=230,svg=document.getElementById('mprofile');
  if(yE<yi-0.5)s+=`<path d="M0 ${yE} L${xs} ${yE} L${xi} ${ti} L${xi} ${yi} L0 ${yi}Z" fill="#3d8fdc" opacity=".75"/><line x1="0" x2="${xs}" y1="${yE}" y2="${yE}" stroke="#1659a3" stroke-width="2"/><line class="ripple" x1="2" x2="${xs-4}" y1="${yE+3}" y2="${yE+3}"/>`;
  if(g.h>0.001){const yw=Math.min(Y(g.zc+g.h),road-5);s+=`<path d="M${c0-(road-yw)*(c0-xi)/(road-ti)} ${yw} L${c1} ${Y(g.zc+g.h*0.6)} L${xo} ${Math.min(yT,to)-2} L${xo} ${to} L${c1} ${road} L${c0} ${road}Z" fill="#3d8fdc" opacity=".7"/><path class="spill" d="M${c0} ${(yw+road)/2} L${c1} ${(Y(g.zc+g.h*0.6)+road)/2} L${xo} ${to-3}" style="animation-duration:${flowDur(Math.sqrt(g.h)*3)}"/>`;}
  if(g.hasTw&&yT<yo-0.5)s+=`<path d="M${xo} ${yT} L${W} ${yT} L${W} ${yo} L${xo} ${yo}Z" fill="#3d8fdc" opacity=".65"/><line x1="${xo}" x2="${W}" y1="${yT}" y2="${yT}" stroke="#1659a3" stroke-width="2"/><line class="ripple" x1="${xo+4}" x2="${W-2}" y1="${yT+3}" y2="${yT+3}"/>`;
- if(isFinite(g.dc)) s+=`<line x1="${xi}" x2="${xi+36}" y1="${PZ(0,Math.min(g.dc,g.D))}" y2="${PZ(0,Math.min(g.dc,g.D))}" stroke="#2e7d32" stroke-dasharray="3 2"/><text x="${xi+38}" y="${PZ(0,Math.min(g.dc,g.D))+4}" font-size="11" fill="#1b5e20">dc</text>`;
+ if(isFinite(g.dc)) s+=`<line x1="${xi}" x2="${xi+22}" y1="${PZ(0,Math.min(g.dc,g.D))}" y2="${PZ(0,Math.min(g.dc,g.D))}" stroke="#2e7d32" stroke-dasharray="3 2"/><line x1="${xi+22}" y1="${PZ(0,Math.min(g.dc,g.D))}" x2="${xi+8}" y2="${ti-10}" stroke="#1b5e20" stroke-width="0.7"/><text x="${xi+10}" y="${ti-12}" font-size="11" fill="#1b5e20">dc ${fmt(g.dc)}</text>`;
  if(isFinite(g.yn)){const a=PZ(0,Math.min(g.yn,g.D)),b=PZ(g.L,Math.min(g.yn,g.D));s+=`<line x1="${xi}" x2="${xo}" y1="${a}" y2="${b}" stroke="#6a1b9a" stroke-dasharray="2 2"/><text x="${(xi+xo)/2}" y="${Math.min(a,b)-3}" text-anchor="middle" font-size="11" fill="#6a1b9a">dn ${fmt(g.yn)}</text>`;}
  if(g.steep&&g.wsOut+0.05<g.dc) s+=`<text x="${xo-4}" y="${PZ(g.L,g.wsOut)-6}" text-anchor="end" font-size="11" fill="#0c3f73">Drawdown</text>`;
  if(isFinite(g.allow))s+=`<line x1="0" x2="${xi+30}" y1="${Y(g.allow)}" y2="${Y(g.allow)}" stroke="#c0392b" stroke-width="2" stroke-dasharray="6 4"/>`;
  const cl=v=>Math.max(12,Math.min(H-12,v)),mk=(n,x,y,c)=>`<g class="mk"><circle cx="${x}" cy="${cl(y)}" r="10" fill="${c}" stroke="#fff" stroke-width="2"/><text x="${x}" y="${cl(y)+4.5}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">${n}</text></g>`;
  s+=mk(1,14,yE,'#1659a3')+mk(2,W-14,g.hasTw?yT:yo-12,'#0f7b8a')+mk(3,xi+14,yi+14,'#4a4f57')+mk(4,xo-14,yo+14,'#4a4f57')+(g.road?mk(5,(c0+c1)/2,road-13,'#6b5428'):'')+(isFinite(g.allow)?mk(6,isFinite(g.allow)&&Math.abs(Y(g.allow)-yE)<22?40:14,Y(g.allow),'#c0392b'):'');
  svg.innerHTML=s;
- const pts=g.prof?g.prof.map(q=>[PX(q[0]),PZ(q[0],Math.min(q[1],g.D))]):[[xi,ws1],[xo,ws2]];
- svg._flow={vbW:W,vbH:H,pts,V:+g.V||0,Vout:+g.Vout||0,jumpX:g.jump?PX(g.jump.x):null};}
+ const rows=g.prof&&g.prof.length?g.prof:[[0,g.wsIn],[g.L,g.wsOut]];
+ const surf=[], bed=[], sta=[], vel=[];
+ rows.forEach(q=>{const y=Math.max(0.05, Math.min(q[1], g.D)); surf.push([PX(q[0]), PZ(q[0], y)]); bed.push([PX(q[0]), Y(g.invIn-(g.invIn-g.invOut)*q[0]/g.L)]); sta.push(q[0]/Math.max(g.L,1e-6)); vel.push((g.Q||1)/Math.max((g.B||g.D)*(y>=g.D-1e-6?g.D:y),1e-4));});
+ svg._flow={vbW:W,vbH:H,surf,bed,sta,vel,jumpU:g.jump?g.jump.x/Math.max(g.L,1e-6):null};}
 function keyTable(p,r,allow,ro,bal,g){const L=r.US?'ft':'m',Q=r.US?'cfs':'m³/s',dot=(n,c)=>`<span class="kd" style="background:${c}">${n}</span>`;
  const rows=[[dot(1,'#1659a3'),'Headwater El.',`${fmt(r.EL)} ${L}`,`HW ${fmt(r.HW)} · ${r.control} ctrl`],
   [dot(2,'#0f7b8a'),'Tailwater El.',g.hasTw?`${fmt(g.tw)} ${L}`:'Free outfall',g.hasTw?`TW ${fmt(r.TW)}`:''],
