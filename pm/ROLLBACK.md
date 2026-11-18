@@ -384,6 +384,12 @@ Tags: pm-pre-report (before), pm-v3.3, pm-v3.3-final.
 Undo (code): `git checkout pm-pre-report -- pm`, commit, push (no force).
 Data: no schema change. Optional fields project.report {preparedFor, preparedBy, scope, reportNo} in pm.data.v3 and ui.rpt in pm.ui.v3; older versions ignore them.
 
+## v3.27 (print layout and reference links)
+
+The engineering report cover no longer has a seal, and it does not carry the running header or the page footer. The project name is set large, with the report title, CSJ, sub-projects, county, district, and date under it. The date row runs the full width of that table. Later pages repeat the table header, keep a road’s sub-rows together, and keep the pie chart and milestone grid together. Their footer puts the report date on the left and “Page X of Y” on the right, on one line. Custom standards are ordered so a numbered name sorts by the number.
+
+Design Criteria references that have a known official page are links. Each reference also has an optional URL field. A reference with no known page and no URL stays plain text.
+
 ## v3.26 (schedule chart and report colors)
 
 Schedule and Milestones is a grid of the milestones only. Each milestone is a row, with its name, its date, and how many of its sheets are done. The columns to the right are months, or weeks when every date sits inside about twelve weeks. A dated milestone shades that cell and puts a diamond on the day. A milestone with no date says TBD and has no mark. Today, when it falls in the grid, is a dashed line with the word in the header. There is no separate milestone table.

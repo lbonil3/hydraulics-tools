@@ -770,7 +770,29 @@ function v2Fixture() {
   ok(/^4\. Design Criteria/.test(await txt('#eng-criteria .ehead b')), 'turning a section off renumbers the rest');
   await pg.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(150);
   const ER = await pg.$eval('#report', (e) => e.textContent);
-  ok(await has('#report.eng .ecover .eseal') && /NOT SEALED/.test(ER) && /0912-34-567/.test(ER), 'printed engineering report: cover with NOT SEALED seal block and CSJ');
+  const coverTxt = await txt('#report .ecover');
+  ok(!(await has('#report .ecover .eseal')) && !/seal/i.test(coverTxt) && /0912-34-567/.test(coverTxt) && /Sub-project/.test(coverTxt), 'printed cover has the project details and no seal');
+  const printCss = await pg.evaluate(() => {
+    const bits = [];
+    for (const sheet of document.styleSheets) { let rules; try { rules = [...sheet.cssRules]; } catch (e) { continue; } for (const r of rules) bits.push(r.cssText); }
+    const roads = document.querySelector('#report table.roads thead');
+    const grid = document.querySelector('#report table.gantt thead');
+    const block = document.querySelector('#report table.roads tbody.rblock');
+    const all = bits.join('\n');
+    const cover = document.querySelector('#report > .ecover');
+    return {
+      page: /@page eng[\s\S]*@bottom-left[\s\S]*var\(--eng-date\)/.test(all) && /@page cover[\s\S]*content:\s*none/.test(all),
+      roadsHead: roads ? getComputedStyle(roads).display : '',
+      gridHead: grid ? getComputedStyle(grid).display : '',
+      avoid: block ? getComputedStyle(block).breakInside : '',
+      coverFirst: !!(cover && cover.nextElementSibling && cover.nextElementSibling.matches('table.rpage')),
+      dateWide: [...document.querySelectorAll('#report .ecover dt.rwide')].some((e) => e.textContent.trim() === 'Date'),
+      date: getComputedStyle(document.documentElement).getPropertyValue('--eng-date'),
+    };
+  });
+  ok(printCss.page && printCss.coverFirst && printCss.dateWide && printCss.roadsHead === 'table-header-group' && printCss.gridHead === 'table-header-group' && printCss.avoid === 'avoid' && /\d{4}-\d{2}-\d{2}/.test(printCss.date), 'print: cover is its own page, table headers repeat, road groups stay together, footer date and page number share the margin ' + JSON.stringify(printCss));
+  const refLink = await pg.$eval('#eng-criteria a.ereflink', (e) => ({ href: e.href, color: getComputedStyle(e).color }));
+  ok(refLink.href === 'https://www.txdot.gov/manuals/des/hyd/' && refLink.color === 'rgb(0, 133, 202)', 'design criteria references link in process blue to the official manual');
   ok(await has('#report .gantt') && /TBD/.test(ER), 'printed schedule includes the gantt');
   ok(/Road Length by Sub-project/.test(ER) && await has('#report .pie') && await has('#report .piekey tr.rtot'), 'printed report opens with the road length chart and its total');
   ok(await has('#report .etoc') && /roadside ditches drain to the north/.test(ER) && !/Scope of Work/.test(ER) && /\[Engineer to state the design criteria/.test(ER), 'printed: TOC, engineer text, toggled-off section left out, placeholders kept');

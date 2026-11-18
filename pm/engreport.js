@@ -1,4 +1,4 @@
-/* Project Tracker v3.26: Engineering Report (drainage design report style), derived from the tracker data.
+/* Project Tracker v3.27: Engineering Report (drainage design report style), derived from the tracker data.
    A carried sheet counts in every package that has it. Unique plan sheets are labeled separately.
    Sheets carried into a package are listed in the same section and group as the original.
    Browser: window.PMEng (needs window.PMModel). Node: require('./engreport.js').
@@ -24,17 +24,18 @@
     ['concl', 'Conclusions and Recommendations'],
   ];
   const META = [['title', 'Report title'], ['csj', 'CSJ'], ['highway', 'Highway / road'], ['limits', 'Project limits'], ['county', 'County'], ['district', 'TxDOT district']];
-  /* real, widely used references; names only (no URLs except the one already in the app), the engineer confirms editions */
-  const DEFAULT_REFS = [
-    'TxDOT Hydraulic Design Manual (current edition)',
-    'TxDOT PS&E Preparation Manual, Chapter 6, Section 2 — Engineering Reviews (Table 6-1 Milestone Submittals): https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html',
-    'TxDOT Roadway Design Manual (current edition)',
-    'TxDOT Standard Specifications for Construction and Maintenance of Highways, Streets, and Bridges (edition adopted for the project)',
-    'FHWA HEC-22, Urban Drainage Design Manual',
-    'FHWA HDS-5, Hydraulic Design of Highway Culverts',
-    'NOAA Atlas 14, Volume 11 (Texas) precipitation-frequency estimates',
-    'TCEQ TPDES Construction General Permit TXR150000',
+  /* Official document pages only. A reference with no entry here stays plain text until someone types a URL. */
+  const KNOWN_REFS = [
+    ['TxDOT Hydraulic Design Manual (current edition)', 'https://www.txdot.gov/manuals/des/hyd/'],
+    ['TxDOT PS&E Preparation Manual, Chapter 6, Section 2 — Engineering Reviews (Table 6-1 Milestone Submittals)', 'https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html'],
+    ['TxDOT Roadway Design Manual (current edition)', 'https://www.txdot.gov/manuals/des/rdw/index.html'],
+    ['TxDOT Standard Specifications for Construction and Maintenance of Highways, Streets, and Bridges (edition adopted for the project)', 'https://www.txdot.gov/business/resources/txdot-specifications.html'],
+    ['FHWA HEC-22, Urban Drainage Design Manual', 'https://www.fhwa.dot.gov/engineering/hydraulics/pubs/hif24006.pdf'],
+    ['FHWA HDS-5, Hydraulic Design of Highway Culverts', 'https://www.fhwa.dot.gov/engineering/hydraulics/pubs/12026/hif12026.pdf'],
+    ['NOAA Atlas 14, Volume 11 (Texas) precipitation-frequency estimates', 'https://hdsc.nws.noaa.gov/pfds/?bkmrk=tx'],
+    ['TCEQ TPDES Construction General Permit TXR150000', 'https://www.tceq.texas.gov/permitting/stormwater/construction'],
   ];
+  const DEFAULT_REFS = KNOWN_REFS.map((r) => r[0]);
   const MAXT = 20000;
   const PH = {
     length: '',
@@ -169,6 +170,29 @@
   function secState(st, id) { const s = (data(st).secs || {})[id] || {}; return { on: s.on !== false, text: typeof s.text === 'string' ? s.text : '', mode: s.mode === 'replace' ? 'replace' : 'add' }; }
   function refs(st) { const r = data(st).refs; return typeof r === 'string' ? r.split('\n').map((x) => x.trim()).filter(Boolean) : DEFAULT_REFS.slice(); }
   function refsText(st) { return refs(st).join('\n'); }
+  function safeRefUrl(u) {
+    const s = String(u || '').trim();
+    if (!/^https?:\/\/\S+$/i.test(s)) return '';
+    try { const url = new URL(s); return (url.protocol === 'http:' || url.protocol === 'https:') ? url.href : ''; } catch (e) { return ''; }
+  }
+  function knownRefUrl(text) { const hit = KNOWN_REFS.find((r) => r[0] === text); return hit ? hit[1] : ''; }
+  function parseRefLine(line) {
+    let text = String(line || '').trim(), url = '';
+    const split = text.match(/^(.*?)\s+\|\s+(https?:\/\/\S+)$/i) || text.match(/^(.*?)\s*:\s*(https?:\/\/\S+)$/i);
+    if (split && split[1].trim()) { text = split[1].trim(); url = safeRefUrl(split[2]); }
+    if (!url) url = knownRefUrl(text);
+    return { text, url };
+  }
+  function refItems(st) { return refs(st).map(parseRefLine).filter((r) => r.text); }
+  function serializeRefs(items) {
+    return (items || []).map((it) => {
+      const text = String(it.text || '').replace(/\s+/g, ' ').trim();
+      const url = safeRefUrl(it.url);
+      if (!text) return '';
+      if (url && url !== knownRefUrl(text)) return text + ' | ' + url;
+      return text;
+    }).filter(Boolean).join('\n');
+  }
   function ensure(st) { if (!st.engReport || typeof st.engReport !== 'object' || Array.isArray(st.engReport)) st.engReport = {}; return st.engReport; }
   function tidy(st) { const e = st.engReport; if (!e) return; if (e.meta && !Object.keys(e.meta).length) delete e.meta; if (e.secs) { for (const k of Object.keys(e.secs)) if (!Object.keys(e.secs[k]).length) delete e.secs[k]; if (!Object.keys(e.secs).length) delete e.secs; } if (!Object.keys(e).length) delete st.engReport; }
   function setMeta(st, k, v) {
@@ -184,7 +208,14 @@
     if ('mode' in f) { if (f.mode === 'replace') s.mode = 'replace'; else delete s.mode; }
     e.secs[id] = s; tidy(st);
   }
-  function setRefs(st, text) { const e = ensure(st); const t = String(text == null ? '' : text).replace(/\r\n?/g, '\n').slice(0, MAXT); if (t.trim() === DEFAULT_REFS.join('\n')) delete e.refs; else e.refs = t; tidy(st); }
+  function setRefs(st, text) {
+    const e = ensure(st);
+    const t = String(text == null ? '' : text).replace(/\r\n?/g, '\n').slice(0, MAXT);
+    const canon = serializeRefs(DEFAULT_REFS.map(parseRefLine));
+    if (t.trim() === DEFAULT_REFS.join('\n') || t.trim() === canon.trim()) delete e.refs;
+    else e.refs = t;
+    tidy(st);
+  }
   function resetRefs(st) { const e = ensure(st); delete e.refs; tidy(st); }
   /* ---- tracker facts ---- */
   function facts(st) {
@@ -253,7 +284,7 @@
       if (!g) continue;
       rows.push(g); used.add(g);
     }
-    for (const g of groups.filter((x) => x.disc === disc && !used.has(x)).sort((a, b) => a.name.localeCompare(b.name))) rows.push(g);
+    for (const g of groups.filter((x) => x.disc === disc && !used.has(x)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))) rows.push(g);
     if (!rows.length) return null;
     const data = rows.map((g) => {
       let who = [...g.subs].sort().join(', ');
@@ -512,7 +543,7 @@
     if (b.p) return b.p;
     if (b.h) return b.h.toUpperCase();
     if (b.ul) return b.ul.map((x) => '  • ' + x).join('\n');
-    if (b.refs) return refs(st).map((x, i) => '  ' + (i + 1) + '. ' + x).join('\n');
+    if (b.refs) return refItems(st).map((r, i) => '  ' + (i + 1) + '. ' + r.text + (r.url ? ' ' + r.url : '')).join('\n');
     if (b.table) return [b.table.head.join(' | ')].concat(b.table.rows.map((r) => { const cells = Array.isArray(r) ? r : r.cells; const skip = new Set((r && r.skip) || []); return cells.filter((c, i) => !skip.has(i)).join(' | '); })).join('\n') + (b.table.note ? '\n' + b.table.note : '');
     if (b.pie) {
       const L = b.pie.rows.map((r) => r.label + ' | ' + r.ftText + ' | ' + r.miText + ' | ' + r.pctText);
@@ -537,5 +568,5 @@
     }
     return L.filter((x, i, a) => !(x === '' && a[i - 1] === '')).join('\n').replace(/\n+$/, '') + '\n';
   }
-  return { SECS, META, DEFAULT_REFS, PH, meta, secState, refs, refsText, setMeta, setSec, setRefs, resetRefs, build, outline, text };
+  return { SECS, META, DEFAULT_REFS, KNOWN_REFS, PH, meta, secState, refs, refsText, refItems, serializeRefs, setMeta, setSec, setRefs, resetRefs, build, outline, text };
 });

@@ -1,4 +1,4 @@
-/* Project Tracker v3.26 (testing mode: plain JSON in localStorage, no login).
+/* Project Tracker v3.27 (testing mode: plain JSON in localStorage, no login).
    Storage keys: pm.data.v3 (project JSON), pm.ui.v3 (view prefs, including the report font).
    v2 data (pm.data.v2) is never modified: on first v3 start it is copied to pm.data.v2.pre-v3-backup and migrated into pm.data.v3.
    Old encrypted v1 vault (pm.vault.v1) is only read for one-time migration. */
@@ -305,6 +305,7 @@
   function rchip(s) { return h('span', { class: 'rchip s-' + String(s).toLowerCase().replace(/\s+/g, '-') }, (ST_SYM[s] || '') + ' ' + s); }
   function rbar(p) { return h('span', { class: 'rbar' }, h('i', { 'data-w': Math.round(p) })); }
   function renderReport() {
+    document.documentElement.classList.toggle('engprint', ui.rptType === 'eng');
     if (ui.rptType === 'eng') return renderEngPrint();
     if (ui.rptType === 'work') return renderWorkPrint();
     const P = M.printReport(st), R = P.R, O = rptOpts(), MAX = 12;
@@ -615,55 +616,33 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         h('tr', { class: 'rtot' }, h('td', {}), h('td', {}, 'Total'), h('td', { class: 'cnum' }, pie.totalText), h('td', { class: 'cnum' }, pie.totalMi), h('td', { class: 'cnum' }, pie.totalPct))));
     return h('div', { class: 'pielay' }, chart, key);
   }
+  function ganttSlot(frac) { return Math.min(95, Math.max(5, Math.round((Number(frac) || 0) * 20) * 5)); }
+  function ganttTickLabel(tk) { return tk.mon + (tk.day ? ' ' + tk.day : '') + (tk.showYear ? ' ' + tk.year : ''); }
   function ganttBlock(g) {
-    const labW = 128, dateW = 100, doneW = 64, left = labW + dateW + doneW;
-    const nCol = g.ticks.length, plotW = nCol ? 440 : 0, colW = nCol ? plotW / nCol : 0;
-    const headH = 34, rowH = 24, n = Math.max(g.rows.length, 1);
-    const W = left + plotW, H = headH + n * rowH;
-    const tickText = (tk) => tk.mon + (tk.day ? ' ' + tk.day : '') + (tk.showYear ? (colW >= 52 ? ' ' + tk.year : " '" + String(tk.year).slice(2)) : '');
-    const kids = [svg('rect', { class: 'gantt-headbg', x: 0, y: 0, width: W, height: headH })];
-    g.rows.forEach((r, i) => {
-      if (r.col < 0) return;
-      kids.push(svg('rect', { class: 'gantt-shade', x: left + r.col * colW, y: headH + i * rowH, width: colW, height: rowH }));
-    });
-    const dia = (cx, cy) => { const s = 4.5; return [cx, cy - s, cx + s, cy, cx, cy + s, cx - s, cy].map((n) => n.toFixed(1)).join(' '); };
-    g.rows.forEach((r, i) => {
-      if (r.col < 0) return;
-      const y = headH + i * rowH, cy = y + rowH / 2;
-      const cx = left + r.col * colW + 6 + r.frac * Math.max(0, colW - 12);
-      kids.push(svg('polygon', { class: 'gantt-dia', points: dia(cx, cy) }));
-    });
-    if (g.todayIn && g.todayCol >= 0) {
-      const x = left + (g.todayCol + g.todayFrac) * colW;
-      kids.push(svg('line', { class: 'gantt-today', x1: x.toFixed(1), x2: x.toFixed(1), y1: headH, y2: H }));
-    }
-    for (let i = 0; i <= n; i++) {
-      const y = i === 0 ? 0 : headH + (i - 1) * rowH;
-      kids.push(svg('line', { class: 'gantt-grid', x1: 0, x2: W, y1: y, y2: y }));
-    }
-    kids.push(svg('line', { class: 'gantt-grid', x1: 0, x2: W, y1: H, y2: H }));
-    [0, labW, labW + dateW, left].concat(g.ticks.map((_, i) => left + (i + 1) * colW)).forEach((x) => {
-      kids.push(svg('line', { class: 'gantt-grid', x1: x, x2: x, y1: 0, y2: H }));
-    });
-    kids.push(svg('text', { class: 'gantt-head', x: 6, y: 21 }, 'Milestone'));
-    kids.push(svg('text', { class: 'gantt-head', x: labW + dateW / 2, y: 21, 'text-anchor': 'middle' }, 'Date'));
-    kids.push(svg('text', { class: 'gantt-head', x: labW + dateW + doneW / 2, y: 21, 'text-anchor': 'middle' }, 'Sheets'));
-    g.ticks.forEach((tk, i) => {
-      const todayHere = g.todayIn && g.todayCol === i;
-      kids.push(svg('text', { class: 'gantt-head', x: left + i * colW + colW / 2, y: todayHere ? 14 : 21, 'text-anchor': 'middle' }, tickText(tk)));
-      if (todayHere) kids.push(svg('text', { class: 'gantt-todaylab', x: left + i * colW + colW / 2, y: 28, 'text-anchor': 'middle' }, 'Today'));
-    });
-    g.rows.forEach((r, i) => {
-      const y = headH + i * rowH + 16;
-      kids.push(svg('text', { class: 'gantt-lab', x: 6, y }, r.label));
-      kids.push(svg('text', { class: r.tbd ? 'gantt-tbd' : 'gantt-date', x: labW + dateW / 2, y, 'text-anchor': 'middle' }, r.dateText));
-      kids.push(svg('text', { class: 'gantt-done', x: labW + dateW + doneW / 2, y, 'text-anchor': 'middle' }, r.done));
-    });
+    const todaySlot = g.todayIn ? ganttSlot(g.todayFrac) : 0;
+    const head = [h('th', { class: 'glab', scope: 'col' }, 'Milestone'), h('th', { class: 'gdate', scope: 'col' }, 'Date'), h('th', { class: 'gdone', scope: 'col' }, 'Sheets')]
+      .concat(g.ticks.map((tk, i) => {
+        const today = g.todayIn && g.todayCol === i;
+        return h('th', { class: 'gtime' + (today ? ' gtoday' : ''), scope: 'col' }, ganttTickLabel(tk), today ? h('span', { class: 'gantt-todaylab' }, 'Today') : null);
+      }));
+    const rows = g.rows.map((r) => h('tr', {},
+      h('td', { class: 'glab' }, r.label),
+      h('td', { class: 'gdate' + (r.tbd ? ' gantt-tbd' : '') }, r.dateText),
+      h('td', { class: 'gdone' }, r.done),
+      g.ticks.map((_, i) => {
+        const on = r.col === i;
+        const today = g.todayIn && g.todayCol === i;
+        return h('td', { class: 'gcell' + (on ? ' on p' + ganttSlot(r.frac) : '') + (today ? ' t' + todaySlot : '') },
+          on ? h('span', { class: 'gantt-dia' }) : null,
+          today ? h('span', { class: 'gantt-today' }) : null);
+      })));
     const aria = g.rows.map((r) => r.label + ', ' + r.dateText + ', ' + r.done).join('; ');
-    return h('div', { class: 'ganttwrap' }, svg('svg', { class: 'gantt', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Milestones. ' + aria }, kids));
+    return h('div', { class: 'ganttwrap' }, h('table', { class: 'gtab gantt', role: 'img', 'aria-label': 'Milestones. ' + aria },
+      h('thead', {}, h('tr', {}, head)),
+      h('tbody', {}, rows)));
   }
   function engBlocks(blocks, refsEl) {
-    return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? (refsEl || h('ol', { class: 'erefs' }, E.refs(st).map((x) => h('li', {}, x)))) :
+    return (blocks || []).map((b) => b.p ? h('p', {}, b.p) : b.h ? h('h3', { class: 'esub' }, b.h) : b.ul ? h('ul', {}, b.ul.map((x) => h('li', {}, x))) : b.refs ? h('ol', { class: 'erefs', id: 'engRefList' }, E.refItems(st).map((it) => h('li', {}, it.url ? [h('a', { class: 'ereflink', href: it.url, target: '_blank', rel: 'noopener noreferrer' }, it.text), h('span', { class: 'erefurl' }, it.url)] : it.text))) :
       b.gantt ? ganttBlock(b.gantt) :
       b.pie ? pieBlock(b.pie) :
       b.table ? h('div', { class: 'tablewrap' }, h('table', { class: 'rtab' + (b.table.cls ? ' ' + b.table.cls : '') },
@@ -684,6 +663,23 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
         })))),
         b.table.note ? h('p', { class: 'rfoot' }, b.table.note) : null) : null);
   }
+  function refEditor() {
+    const items = E.refItems(st);
+    const saveFrom = (rows) => { commit(() => E.setRefs(st, E.serializeRefs(rows)), { render: false }); };
+    const rowEl = (it, i) => {
+      const title = h('input', { type: 'text', class: 'ereftitle', value: it.text, maxlength: 500, 'aria-label': 'Reference ' + (i + 1) });
+      const url = h('input', { type: 'text', class: 'erefurl', value: it.url, maxlength: 500, placeholder: 'Official URL (optional)', 'aria-label': 'URL for reference ' + (i + 1) });
+      const read = () => [...box.querySelectorAll('.erefrow')].map((row) => ({ text: row.querySelector('.ereftitle').value, url: row.querySelector('.erefurl').value }));
+      title.addEventListener('change', () => { saveFrom(read()); renderEngView(); });
+      url.addEventListener('change', () => { saveFrom(read()); renderEngView(); });
+      return h('div', { class: 'erefrow' }, title, url, h('button', { type: 'button', class: 'ibtn', 'aria-label': 'Remove reference ' + (i + 1), onclick: () => { const next = read().filter((_, j) => j !== i); saveFrom(next); renderEngView(); } }, '×'));
+    };
+    const box = h('div', { class: 'erefbox', id: 'engRefs' },
+      h('div', { class: 'row' }, h('b', { class: 'small' }, 'References'), h('button', { type: 'button', class: 'link small', id: 'engRefsReset', onclick: () => { commit(() => E.resetRefs(st), { render: false }); renderEngView(); } }, 'Reset list')),
+      items.map(rowEl),
+      h('button', { type: 'button', class: 'btn sec sm', id: 'engRefsAdd', onclick: () => { saveFrom(items.concat([{ text: 'New reference', url: '' }])); renderEngView(); } }, 'Add reference'));
+    return box;
+  }
   function renderEngView() {
     const m = E.meta(st), rm = M.reportMeta(st), secs = E.build(st), O = rptOpts();
     const fld = (id, label, val, ph, on) => h('label', { class: 'f' }, h('span', {}, label), h('input', { id, type: 'text', value: val, placeholder: ph, maxlength: 200, onchange: (e) => commit(() => on(e.target.value)) }));
@@ -695,14 +691,12 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
       ta.value = e.text;
       ta.addEventListener('input', () => { E.setSec(st, s.id, { text: ta.value }); save(); });
       const mode = select([['add', 'Print after the generated text'], ['replace', 'Replace the generated text']], e.mode, { id: 'engMode-' + s.id, 'aria-label': 'How to use your text in ' + s.title, onchange: (ev) => { commit(() => E.setSec(st, s.id, { mode: ev.target.value }), { render: false }); renderEngView(); } });
-      const refsTa = s.id === 'criteria' ? h('textarea', { id: 'engRefs', class: 'etext', rows: 6, 'aria-label': 'References, one per line', maxlength: 20000 }) : null;
-      if (refsTa) { refsTa.value = E.refsText(st); refsTa.addEventListener('input', () => { E.setRefs(st, refsTa.value); save(); }); }
-      const refsEl = refsTa ? h('div', { class: 'erefbox' }, h('div', { class: 'row' }, h('b', { class: 'small' }, 'References (one per line, edit freely)'), h('button', { type: 'button', class: 'link small', id: 'engRefsReset', onclick: () => { commit(() => E.resetRefs(st), { render: false }); renderEngView(); } }, 'Reset list')), refsTa) : null;
+      const refsEl = s.id === 'criteria' ? refEditor() : null;
       return h('section', { class: 'npart esec' + (on ? '' : ' off'), 'data-sec': s.id, id: 'eng-' + s.id },
         h('div', { class: 'ehead' }, h('label', { class: 'chk' }, h('input', { type: 'checkbox', id: 'engOn-' + s.id, checked: on, disabled: !s.present, onchange: (ev) => { commit(() => E.setSec(st, s.id, { on: ev.target.checked }), { render: false }); renderEngView(); } }),
           h('b', {}, (on ? ++n + '. ' : '') + s.title)), !s.present ? h('span', { class: 'muted small' }, 'No SWP3 sheets tracked — section left out') : null),
-        on ? [h('div', { class: 'gen egen' + (e.mode === 'replace' && e.text.trim() ? ' struck' : '') }, h('div', { class: 'muted small' }, 'Generated from the tracker data' + (e.mode === 'replace' && e.text.trim() ? ' (replaced by your text)' : '')), engBlocks(s.blocks, refsEl), !(s.blocks || []).length && !refsEl ? h('p', { class: 'muted' }, 'Nothing in the tracker for this section yet.') : null),
-          h('div', { class: 'eedit' }, ta, h('div', { class: 'row small' }, mode, h('span', { class: 'muted' }, e.text.trim() ? '' : s.ph ? 'Empty: the bracketed placeholder is printed.' : '')))] : null);
+        on ? [h('div', { class: 'gen egen' + (e.mode === 'replace' && e.text.trim() ? ' struck' : '') }, h('div', { class: 'muted small' }, 'Generated from the tracker data' + (e.mode === 'replace' && e.text.trim() ? ' (replaced by your text)' : '')), engBlocks(s.blocks), !(s.blocks || []).length ? h('p', { class: 'muted' }, 'Nothing in the tracker for this section yet.') : null),
+          h('div', { class: 'eedit' }, ta, refsEl, h('div', { class: 'row small' }, mode, h('span', { class: 'muted' }, e.text.trim() ? '' : s.ph ? 'Empty: the bracketed placeholder is printed.' : '')))] : null);
     });
     $('#reportWrap').replaceChildren(h('div', { class: 'vhead' }, h('h2', {}, 'Engineering report'), rptTypeSel(), rptFontSel(),
         h('span', { class: 'vfbar' }, h('button', { type: 'button', class: 'btn sec sm', id: 'engCopy', onclick: () => { const t = E.text(st); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => toast('Engineering report copied as text.'), () => toast('Copy failed.')); else toast('Copy is not available here.'); } }, 'Copy as text'),
@@ -717,26 +711,30 @@ tbl('rstat', ['Status', 'Sheets', 'Share'], M.STATUSES.map((x) => h('tr', {}, h(
   function renderEngPrint() {
     const O = rptOpts(), m = E.meta(st), rm = M.reportMeta(st), today = M.todayISO(), secs = E.outline(st, today);
     const blank = (v, ph) => v ? h('span', {}, v) : h('span', { class: 'eph' }, ph);
+    const subs = M.orderedSubs(st).map((s) => M.subLabel(s)).join(', ');
     const body = [];
     body.push(h('div', { class: 'ecover' },
-      h('div', { class: 'eband' }, (m.title || 'Drainage Design Report').toUpperCase()),
+      h('p', { class: 'ekicker' }, m.title || 'Drainage Design Report'),
+      h('div', { class: 'erule' }),
       h('h1', {}, st.project.name || 'Project'),
+      h('div', { class: 'erule navy' }),
       h('dl', { class: 'rmeta' },
         h('dt', {}, 'CSJ'), h('dd', {}, blank(m.csj, '[CSJ]')), h('dt', {}, 'Highway'), h('dd', {}, blank(m.highway, '[Highway]')),
         h('dt', { class: 'rwide' }, 'Limits'), h('dd', { class: 'rwide' }, blank(m.limits, '[Project limits]')),
         h('dt', {}, 'County'), h('dd', {}, blank(m.county, '[County]')), h('dt', {}, 'District'), h('dd', {}, blank(m.district, '[TxDOT district]')),
+        h('dt', { class: 'rwide' }, 'Sub-projects'), h('dd', { class: 'rwide' }, subs || '—'),
         h('dt', {}, 'Prepared for'), h('dd', {}, blank(rm.preparedFor, '[Prepared for]')), h('dt', {}, 'Prepared by'), h('dd', {}, blank(rm.preparedBy, '[Prepared by]')),
-        h('dt', {}, 'Date'), h('dd', {}, today), h('dt', {}, 'Status'), h('dd', {}, 'Preliminary')),
-      h('div', { class: 'eseal' }, h('div', { class: 'esealbox' }, h('b', {}, 'NOT SEALED'), h('span', {}, 'Engineer’s seal placeholder')),
-        h('p', {}, h('b', {}, 'PRELIMINARY — FOR INTERIM REVIEW ONLY. '), 'This document is released for the purpose of interim review under the authority of ', h('span', { class: 'eph' }, '[Engineer name], P.E. No. [number]'), ' on ', h('span', { class: 'eph' }, '[date]'), '. It is not to be used for construction, bidding or permit purposes. ', h('span', { class: 'eph' }, '[Engineer to confirm this statement.]')))));
-    body.push(h('nav', { class: 'rtoc etoc' }, h('h2', {}, 'Table of contents'), h('ol', {}, secs.map((s) => h('li', { value: String(s.no) }, s.title)))));
-    for (const s of secs) body.push(h('section', { class: 'esecp', 'data-sec': s.id }, h('h2', {}, h('span', { class: 'rnum' }, s.no + '.'), ' ' + s.title),
+        h('dt', { class: 'rwide' }, 'Date'), h('dd', { class: 'rwide' }, today))));
+    const rest = [];
+    rest.push(h('nav', { class: 'rtoc etoc' }, h('h2', {}, 'Table of contents'), h('ol', {}, secs.map((s) => h('li', { value: String(s.no) }, s.title)))));
+    for (const s of secs) rest.push(h('section', { class: 'esecp', 'data-sec': s.id }, h('h2', {}, h('span', { class: 'rnum' }, s.no + '.'), ' ' + s.title),
       engBlocks(s.auto), s.text.trim() ? s.text.trim().split(/\n\s*\n/).map((para) => h('p', { class: 'etxt' }, para)) : s.showPh ? h('p', { class: 'eph' }, s.ph) : null));
-    body.push(h('p', { class: 'rend rm' }, 'Generated by Project Tracker on ' + today + ' from the tracked plan sheets. Bracketed text is a placeholder for the engineer.'));
+    rest.push(h('p', { class: 'rend rm' }, 'Generated by Project Tracker on ' + today + ' from the tracked plan sheets. Bracketed text is a placeholder for the engineer.'));
+    document.documentElement.style.setProperty('--eng-date', '"' + today + '"');
     $('#report').className = 'report eng ' + (O.paper === 'a4' ? 'pg-a4' : 'pg-letter');
-    $('#report').replaceChildren(h('table', { class: 'rpage' },
-      h('thead', {}, h('tr', {}, h('td', {}, h('div', { class: 'rrun' }, h('b', {}, st.project.name || 'Project'), h('span', {}, (m.title || 'Drainage Design Report') + (m.csj ? ' · CSJ ' + m.csj : '') + ' · Preliminary, not sealed'))))),
-      h('tbody', {}, h('tr', {}, h('td', {}, body)))));
+    $('#report').replaceChildren(body[0], h('table', { class: 'rpage' },
+      h('thead', {}, h('tr', {}, h('td', {}, h('div', { class: 'rrun' }, h('b', {}, st.project.name || 'Project'), h('span', {}, (m.title || 'Drainage Design Report') + (m.csj ? ' · CSJ ' + m.csj : '')))))),
+      h('tbody', {}, h('tr', {}, h('td', {}, rest)))));
   }
   function renderWorkView() {
     const b = WR.build(st);

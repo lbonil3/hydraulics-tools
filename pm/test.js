@@ -900,8 +900,8 @@ t('engineering report: sections, placeholders, no invented values', () => {
   const txt = E.text(st, today);
   assert(/PRELIMINARY — NOT SEALED/.test(txt) && /2\. INTRODUCTION AND PURPOSE/.test(txt) && /11\. CONCLUSIONS AND RECOMMENDATIONS/.test(txt));
   assert(!/\b(cfs|in\/hr|\d+-year|year storm|acres?)\b/i.test(txt), 'no design values invented');
-  const urls = txt.match(/https?:\/\/\S+/g) || [];
-  assert.deepStrictEqual([...new Set(urls)], ['https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html']);
+  const urls = new Set(txt.match(/https?:\/\/\S+/g) || []);
+  for (const u of ['https://www.txdot.gov/manuals/des/hyd/', 'https://www.txdot.gov/manuals/des/rdw/index.html', 'https://www.txdot.gov/manuals/des/pse/chapter-6--ps-e-submission--review-and-processing/section-2--engineering-reviews.html', 'https://www.fhwa.dot.gov/engineering/hydraulics/pubs/hif24006.pdf', 'https://www.tceq.texas.gov/permitting/stormwater/construction']) assert.ok(urls.has(u), u);
   assert(!/CSJ/.test(txt.split('\n').slice(0, 4).join('\n')), 'no CSJ line until one is entered');
 });
 t('v3.23 roads table gives each sub-project its own row', () => {
@@ -1058,7 +1058,7 @@ t('v3.26 schedule chart and the report color palette', () => {
   assert.strictEqual(pie.rows[3].stroke, '#ffffff');
   const css = require('fs').readFileSync(require('path').join(__dirname, 'style.css'), 'utf8');
   assert.ok(/--mb-navy:#002856/.test(css) && /--mb-blue:#0085CA/.test(css) && /--mb-light:#E6E6E6/.test(css));
-  assert.ok(/\.gantt-shade\{fill:var\(--mb-light/.test(css) && /\.gantt-dia\{fill:var\(--mb-blue/.test(css) && /\.gantt-grid\{stroke:var\(--mb-gray/.test(css));
+  assert.ok(/\.gtab \.gantt-dia\{[^}]*var\(--mb-blue/.test(css) && /\.gtab thead th\{[^}]*var\(--mb-navy/.test(css));
   assert.ok(/\.ganttwrap\{[^}]*break-inside:avoid/.test(css));
   assert.ok(/\.report\.eng \.rtab th\{[^}]*var\(--mb-navy\)/.test(css));
   assert.ok(/fill: BRAND\.light, ink: BRAND\.charcoal, stroke: BRAND\.charcoal/.test(require('fs').readFileSync(require('path').join(__dirname, 'engreport.js'), 'utf8')));
@@ -1080,7 +1080,15 @@ t('engineering report: edits, toggles, replace mode, refs, storage', () => {
   assert(/CSJ: 1234-56-789/.test(txt) && /Harris County/.test(txt) && /Existing ditches drain north\./.test(txt) && !/SCOPE OF WORK/.test(txt));
   E.setRefs(st, 'Ref one\n\n Ref two ');
   assert.deepStrictEqual(E.refs(st), ['Ref one', 'Ref two']);
+  E.setRefs(st, 'City drainage criteria | https://www.example.com/criteria\nLocal criteria manual');
+  const saved = E.refItems(st);
+  assert.strictEqual(saved[0].url, 'https://www.example.com/criteria');
+  assert.strictEqual(saved[1].url, '');
+  E.setRefs(st, 'javascript:alert(1)');
+  assert.strictEqual(E.refItems(st)[0].url, '');
   E.resetRefs(st); assert(E.refs(st).length >= 5 && st.engReport.refs === undefined);
+  const hyd = E.refItems(st).find((r) => /Hydraulic Design Manual/.test(r.text));
+  assert.strictEqual(hyd.url, 'https://www.txdot.gov/manuals/des/hyd/');
   // round trip through save/migrate, then clearing everything leaves no trace
   const back = M.migrate(JSON.parse(JSON.stringify(st)));
   assert.strictEqual(E.text(back, today), E.text(st, today));
@@ -1461,6 +1469,12 @@ t('v3.16 engineering report lists ponds, standards, packages, and item counts', 
   assert.ok(dr.rows.some((r) => r[0] === 'HIL-C-25 (HOU)' && r[1] === '1' && r[2] === 'A' && r[3] === 'Pick list'));
   assert.ok(dr.rows.some((r) => r[0] === 'PSL' && r[1] === '3' && /A/.test(r[2]) && /B/.test(r[2]) && r[3] === 'Pick list'), JSON.stringify(dr.rows));
   assert.ok(dr.rows.some((r) => r[0] === 'City inlet detail' && r[1] === '1' && r[3] === 'Custom'));
+  M.addSheet(st, M.secOf(A, 'dr-std').id, { title: 'Drainage detail sheet 2' });
+  M.addSheet(st, M.secOf(A, 'dr-std').id, { title: 'Drainage detail sheet 19' });
+  M.addSheet(st, M.secOf(A, 'dr-std').id, { title: 'Drainage detail sheet 20' });
+  const ordered = E.outline(st, today).find((s) => s.id === 'sheets').auto.find((b) => b.table && b.table.cls === 'std-dr').table.rows.map((r) => r[0]);
+  const nums = ordered.filter((n) => /Drainage detail sheet /.test(n));
+  assert.deepStrictEqual(nums, ['Drainage detail sheet 2', 'Drainage detail sheet 19', 'Drainage detail sheet 20']);
   const sw = sheets[sheets.findIndex((b) => b.h === 'SWP3 standards') + 1].table;
   assert.ok(sw.rows.some((r) => r[0] === 'EC(1)-16' && r[1] === '1' && r[2] === 'B' && r[3] === 'Pick list'));
   const idx = sheets.find((b) => b.table && b.table.cls === 'eidx').table.rows;
