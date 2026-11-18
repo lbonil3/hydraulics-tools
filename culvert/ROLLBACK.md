@@ -37,7 +37,7 @@ git revert --no-edit <flow-picture-commit>
 node culvert/test.js
 ```
 
-That commit adds `culvert/flowsim.js` and `culvert/flowview.js` and bumps the service worker cache to `culvert-studio-v6`. Revert it together with the script tags in `index.html`. The picture is a shallow-water visualization drawn on the fixed profile. The HDS-5 numbers stay the design result. It does not add an isometric or 3D view.
+That commit adds `culvert/flowsim.js` and `culvert/flowview.js` and bumps the service worker cache to `culvert-studio-v7`. Revert it together with the script tags in `index.html`. The picture is a shallow-water visualization drawn on the fixed profile, with a velocity color legend that uses the same ramp as the water. The HDS-5 numbers stay the design result. It does not add an isometric or 3D view.
 
 ## What v2 stores
 

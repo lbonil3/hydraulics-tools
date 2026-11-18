@@ -236,6 +236,9 @@ chk('Fig 3.11C kt free flow at 0.6',ktFactor(0.6,'gravel'),1.0,0.1);
  cal('6x5 box 300 cfs, tailwater 3.5 ft', {US:true, shape:'box', B:6, D:5, L:200, n:0.012, invIn:100, invOut:98, Q:300, barrels:1, tw:3.5, inlet:boxI, Ke:boxI.Ke, cells:100}, 40);
  cal('6x5 box 300 cfs, tailwater 6 ft', {US:true, shape:'box', B:6, D:5, L:200, n:0.012, invIn:100, invOut:98, Q:300, barrels:1, tw:6, inlet:boxI, Ke:boxI.Ke, cells:80}, 65);
  cal('6x5 box 150 cfs, free outfall', {US:true, shape:'box', B:6, D:5, L:200, n:0.012, invIn:100, invOut:98, Q:150, barrels:1, tw:0, inlet:boxI, Ke:boxI.Ke, cells:80}, 40);
- must('Flow picture source is not an isometric view', !/drawIso|isometric|perspective camera/i.test(require('fs').readFileSync(__dirname+'/flowview.js','utf8')));
+ const fv=require('fs').readFileSync(__dirname+'/flowview.js','utf8');
+ must('Flow picture source is not an isometric view', !/drawIso|isometric|perspective camera/i.test(fv));
+ must('Velocity legend uses the active speed unit and the same color ramp', /Velocity \(\$\{unit\}\)/.test(fv)&&/paintLegend\(svg, L\.r\.US\?'ft\/s':'m\/s'\)/.test(fv)&&/paintBar\(el\.querySelector\('\.flowscale'\), max\)/.test(fv)&&/flowticks/.test(fv)&&/function paintBar/.test(fv));
+ must('Service worker cache is past the profile fix', /culvert-studio-v7/.test(require('fs').readFileSync(__dirname+'/sw.js','utf8')));
 }
 console.log(ok?'\nALL CHECKS PASSED':'\nSOME CHECKS FAILED'); process.exit(ok?0:1);

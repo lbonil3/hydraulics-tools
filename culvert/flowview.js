@@ -61,6 +61,43 @@ function hostFor(svg){
   if(!c){c=document.createElement('canvas'); c.className='flowcv flowpic'; c.setAttribute('aria-hidden','true'); host.appendChild(c); svg._flowcv=c; document.body.classList.add('flowsim');}
   return c;
 }
+function scaleMax(){return Math.max(vmax, 1);}
+function fmtTick(v, max){return max>=20? v.toFixed(0) : v.toFixed(1);}
+function paintBar(canvas, max){
+  const g=canvas.getContext('2d'), w=canvas.width, h=canvas.height;
+  for(let x=0;x<w;x++){
+    const c=color((x/(w-1))*max);
+    g.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`;
+    g.fillRect(x,0,1,h);
+  }
+}
+function paintLegend(svg, unit){
+  const host=svg.parentElement;
+  if(!host||!host.classList.contains('flowhost')) return;
+  let el=host.querySelector('.flowlegend');
+  if(!el){
+    el=document.createElement('div');
+    el.className='flowlegend';
+    el.innerHTML='<div class="flowleg-title"></div><canvas class="flowscale" width="336" height="20" aria-hidden="true"></canvas><div class="flowticks"></div>';
+    host.appendChild(el);
+  }
+  el.hidden=!colorOn;
+  host.classList.toggle('flowkey', colorOn);
+  if(!colorOn) return;
+  const max=scaleMax();
+  const ticks=[0,0.25,0.5,0.75,1].map(t=>fmtTick(t*max, max));
+  const title=`Velocity (${unit})`;
+  const sig=title+'|'+ticks.join('|');
+  if(el.dataset.sig===sig) return;
+  el.dataset.sig=sig;
+  el.dataset.min=ticks[0];
+  el.dataset.max=ticks[ticks.length-1];
+  el.querySelector('.flowleg-title').textContent=title;
+  paintBar(el.querySelector('.flowscale'), max);
+  el.querySelector('.flowticks').innerHTML=ticks.map(t=>`<span>${t}</span>`).join('');
+  el.setAttribute('role','img');
+  el.setAttribute('aria-label', `${title}, ${ticks[0]} to ${ticks[ticks.length-1]}`);
+}
 function glOf(c){
   if(c._gl===null) return null;
   if(c._gl) return c._gl;
@@ -194,6 +231,7 @@ function frame(){
       g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
       draw2d(g, pts, ds, sx, sy);
     }
+    paintLegend(svg, L.r.US?'ft/s':'m/s');
   });
   report(s, L.r);
 }
